@@ -29,6 +29,17 @@
     #include "gpugemv_q4k_dxil.h"
     #include "gpugemv_q4k_wave32_dxil.h"
     #include "xllama/d3d12_dyn.h"
+    #if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        #include "ggml-quants.h"
+        #include "dflash_q3k_t1_dxil.h"
+        #include "dflash_q3k_t2_dxil.h"
+        #include "dflash_q3k_t4_dxil.h"
+        #include "dflash_q3k_t8_dxil.h"
+        #include "dflash_q5k_t1_dxil.h"
+        #include "dflash_q5k_t2_dxil.h"
+        #include "dflash_q5k_t4_dxil.h"
+        #include "dflash_q5k_t8_dxil.h"
+    #endif
 
 using Microsoft::WRL::ComPtr;
 #endif
@@ -292,6 +303,32 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
     out->push_back(std::move(r));
 }
 
+void measure_gpugemv_real_q4k_each(int n, int k, int, int iterations, GpugemvKernel kernel,
+                                   const void*, std::size_t, std::vector<GpugemvResult>* out) {
+    if (!out) return;
+    GpugemvResult result;
+    result.n = n;
+    result.k = k;
+    result.iterations = iterations;
+    result.kernel = kernel;
+    result.error_msg = "real GGUF D3D12 benchmark unavailable on this host";
+    out->push_back(std::move(result));
+}
+
+void measure_gpugemv_real_quant_each(GpugemvQuant, int n, int k, int warmup,
+                                     int iterations, GpugemvKernel kernel, const void* weights,
+                                     std::size_t weight_bytes, std::vector<GpugemvResult>* out) {
+    measure_gpugemv_real_q4k_each(n, k, warmup, iterations, kernel, weights, weight_bytes, out);
+}
+
+void measure_gpugemv_real_quant_batch_each(GpugemvQuant quant, int n, int k, int,
+                                           int warmup, int iterations, GpugemvKernel kernel,
+                                           const void* weights, std::size_t weight_bytes,
+                                           std::vector<GpugemvResult>* out) {
+    measure_gpugemv_real_quant_each(quant, n, k, warmup, iterations, kernel,
+                                    weights, weight_bytes, out);
+}
+
 GpugemvResult measure_gpugemv(int n, int k, int iterations, GpugemvKernel kernel) {
     std::vector<GpugemvResult> rows;
     measure_gpugemv_each(n, k, iterations, kernel, &rows);
@@ -420,8 +457,10 @@ void fill_checksum(GpugemvResult& r, const float* host_y, const float* gpu_y, in
 
 } // namespace
 
-void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
-                          std::vector<GpugemvResult>* out) {
+static void measure_gpugemv_impl(GpugemvQuant quant, int n, int k, int batch, int warmup,
+                                 int iterations, GpugemvKernel kernel,
+                                 const void* real_weights, std::size_t real_weight_bytes,
+                                 std::vector<GpugemvResult>* out) {
     if (!out)
         return;
     auto push_err = [&](const char* msg) {
@@ -446,6 +485,28 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         push_err("invalid n/k (need k%256==0, n>0,k>0)");
         return;
     }
+    if (batch < 1 || batch > 64 || (batch != 1 && quant == GpugemvQuant::Q4K)) {
+        push_err("unsupported batch for quant shader");
+        return;
+    }
+    if (quant != GpugemvQuant::Q4K) {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        const size_t block_bytes = quant == GpugemvQuant::Q3K ? sizeof(block_q3_K) :
+                                   quant == GpugemvQuant::Q5K ? sizeof(block_q5_K) : 0;
+        if (!block_bytes || !real_weights) {
+            push_err("unsupported quant type or missing real weights");
+            return;
+        }
+        seed.packed_bytes = static_cast<size_t>(n) * static_cast<size_t>(k / 256) * block_bytes;
+#else
+        push_err("Q3_K/Q5_K shader only available in dedicated Xbox app");
+        return;
+#endif
+    }
+    if (real_weights && real_weight_bytes != seed.packed_bytes) {
+        push_err("GGUF tensor bytes do not match quantized shape");
+        return;
+    }
 
     const GpugemvDispatch plan = gpugemv_plan_dispatch(n, kernel);
     if (plan.groups_x < 1u || plan.groups_x > 65535u) {
@@ -455,13 +516,45 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
 
     const int nb = k / kGpugemvQK;
     const std::size_t n_blocks = static_cast<std::size_t>(n) * static_cast<std::size_t>(nb);
-    std::vector<GpugemvQ4KBlock> host_w(n_blocks);
-    std::vector<float> host_x(static_cast<std::size_t>(k));
-    std::vector<float> host_y(static_cast<std::size_t>(n));
-    gpugemv_fill_weights(host_w.data(), n, k);
-    gpugemv_fill_x(host_x.data(), k);
-    gpugemv_cpu_ref(host_w.data(), host_x.data(), host_y.data(), n, k);
-    seed.expected_y_checksum = gpugemv_checksum_floats(host_y.data(), static_cast<std::size_t>(n));
+    std::vector<std::uint64_t> host_w_storage((seed.packed_bytes + 7u) / 8u);
+    auto* host_w = reinterpret_cast<std::uint8_t*>(host_w_storage.data());
+    std::vector<float> host_x(static_cast<std::size_t>(k) * batch);
+    std::vector<float> host_y(static_cast<std::size_t>(n) * batch);
+    if (real_weights) {
+        std::memcpy(host_w, real_weights, seed.packed_bytes);
+    } else {
+        gpugemv_fill_weights(reinterpret_cast<GpugemvQ4KBlock*>(host_w), n, k);
+    }
+    for (int b = 0; b < batch; ++b) {
+        float* x = host_x.data() + static_cast<size_t>(b) * k;
+        gpugemv_fill_x(x, k);
+        for (int col = 0; col < k; ++col) x[col] *= 1.0f + b * 0.01f;
+    }
+    if (quant == GpugemvQuant::Q4K) {
+        gpugemv_cpu_ref(reinterpret_cast<const GpugemvQ4KBlock*>(host_w),
+                        host_x.data(), host_y.data(), n, k);
+    } else {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        std::vector<float> dequantized(static_cast<size_t>(k));
+        const size_t row_bytes = seed.packed_bytes / static_cast<size_t>(n);
+        for (int row = 0; row < n; ++row) {
+            const auto* packed = host_w + static_cast<size_t>(row) * row_bytes;
+            if (quant == GpugemvQuant::Q3K)
+                dequantize_row_q3_K(reinterpret_cast<const block_q3_K*>(packed),
+                                    dequantized.data(), k);
+            else
+                dequantize_row_q5_K(reinterpret_cast<const block_q5_K*>(packed),
+                                    dequantized.data(), k);
+            for (int b = 0; b < batch; ++b) {
+                const float* x = host_x.data() + static_cast<size_t>(b) * k;
+                float sum = 0.0f;
+                for (int col = 0; col < k; ++col) sum += dequantized[col] * x[col];
+                host_y[static_cast<size_t>(b) * n + row] = sum;
+            }
+        }
+#endif
+    }
+    seed.expected_y_checksum = gpugemv_checksum_floats(host_y.data(), host_y.size());
 
     ComPtr<IDXGIFactory4> factory;
     HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
@@ -491,12 +584,17 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         adapter.Reset();
     }
     if (!device) {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        push_err("no hardware D3D12 adapter");
+        return;
+#else
         hr = create_device(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device));
         if (FAILED(hr)) {
             throw_if_failed(hr, "D3D12CreateDevice", seed);
             out->push_back(std::move(seed));
             return;
         }
+#endif
     }
 
     D3D12_FEATURE_DATA_D3D12_OPTIONS1 opt1 = {};
@@ -542,7 +640,22 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pso_desc = {};
     pso_desc.pRootSignature = root.Get();
-    if (kernel == GpugemvKernel::Naive) {
+    const int tile = batch == 1 ? 1 : batch <= 2 ? 2 : batch <= 4 ? 4 : 8;
+    if (quant == GpugemvQuant::Q3K) {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        if (tile == 1) pso_desc.CS = {kDflashQ3kT1Dxil, kDflashQ3kT1DxilSize};
+        else if (tile == 2) pso_desc.CS = {kDflashQ3kT2Dxil, kDflashQ3kT2DxilSize};
+        else if (tile == 4) pso_desc.CS = {kDflashQ3kT4Dxil, kDflashQ3kT4DxilSize};
+        else pso_desc.CS = {kDflashQ3kT8Dxil, kDflashQ3kT8DxilSize};
+#endif
+    } else if (quant == GpugemvQuant::Q5K) {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        if (tile == 1) pso_desc.CS = {kDflashQ5kT1Dxil, kDflashQ5kT1DxilSize};
+        else if (tile == 2) pso_desc.CS = {kDflashQ5kT2Dxil, kDflashQ5kT2DxilSize};
+        else if (tile == 4) pso_desc.CS = {kDflashQ5kT4Dxil, kDflashQ5kT4DxilSize};
+        else pso_desc.CS = {kDflashQ5kT8Dxil, kDflashQ5kT8DxilSize};
+#endif
+    } else if (kernel == GpugemvKernel::Naive) {
         pso_desc.CS.pShaderBytecode = kGpugemvQ4kDxil;
         pso_desc.CS.BytecodeLength = kGpugemvQ4kDxilSize;
     } else {
@@ -558,8 +671,8 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
     }
 
     const UINT64 w_bytes = static_cast<UINT64>(seed.packed_bytes);
-    const UINT64 x_bytes = static_cast<UINT64>(k) * sizeof(float);
-    const UINT64 y_bytes = static_cast<UINT64>(n) * sizeof(float);
+    const UINT64 x_bytes = static_cast<UINT64>(k) * batch * sizeof(float);
+    const UINT64 y_bytes = static_cast<UINT64>(n) * batch * sizeof(float);
 
     auto w_default =
         create_buffer(device.Get(), w_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE,
@@ -619,7 +732,7 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
             out->push_back(std::move(seed));
             return;
         }
-        std::memcpy(mapped, host_w.data(), static_cast<std::size_t>(w_bytes));
+        std::memcpy(mapped, host_w, static_cast<std::size_t>(w_bytes));
         w_upload->Unmap(0, nullptr);
     }
     {
@@ -643,6 +756,7 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         params.n = static_cast<std::uint32_t>(n);
         params.k = static_cast<std::uint32_t>(k);
         params.nb = static_cast<std::uint32_t>(nb);
+        params.pad = static_cast<std::uint32_t>(batch);
         void* mapped = nullptr;
         hr = cb_upload->Map(0, nullptr, &mapped);
         if (FAILED(hr)) {
@@ -707,7 +821,7 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         srv_x.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
     } else {
         srv_x.Format = DXGI_FORMAT_UNKNOWN;
-        srv_x.Buffer.NumElements = static_cast<UINT>(k);
+        srv_x.Buffer.NumElements = static_cast<UINT>(k * batch);
         srv_x.Buffer.StructureByteStride = sizeof(float);
     }
     device->CreateShaderResourceView(x_default.Get(), &srv_x, cpu_x);
@@ -718,7 +832,7 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
     uav.Format = DXGI_FORMAT_UNKNOWN;
     uav.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
     uav.Buffer.FirstElement = 0;
-    uav.Buffer.NumElements = static_cast<UINT>(n);
+    uav.Buffer.NumElements = static_cast<UINT>(n * batch);
     uav.Buffer.StructureByteStride = sizeof(float);
     device->CreateUnorderedAccessView(y_default.Get(), nullptr, &uav, cpu_y);
 
@@ -800,7 +914,7 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         cl->SetPipelineState(pso.Get());
         if (timestamps && qh)
             cl->EndQuery(qh.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
-        cl->Dispatch(plan.groups_x, 1, 1);
+        cl->Dispatch(plan.groups_x, static_cast<UINT>((batch + tile - 1) / tile), 1);
         D3D12_RESOURCE_BARRIER uavb = {};
         uavb.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
         uavb.UAV.pResource = y_default.Get();
@@ -822,13 +936,15 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
         return true;
     };
 
-    // Warmup: one untimed list A.
-    if (!record_list_a(/*timestamps=*/false) || !execute_wait(nullptr)) {
-        out->push_back(std::move(seed));
-        return;
+    // Reuse the same device, weights, PSO and descriptors across warmups and runs.
+    for (int i = 0; i < std::max(1, warmup); ++i) {
+        if (!record_list_a(/*timestamps=*/false) || !execute_wait(nullptr)) {
+            out->push_back(std::move(seed));
+            return;
+        }
     }
 
-    std::vector<float> gpu_y(static_cast<std::size_t>(n));
+    std::vector<float> gpu_y(static_cast<std::size_t>(n) * batch);
     for (int it = 0; it < seed.iterations; ++it) {
         GpugemvResult row = seed;
         row.run_index = it + 1;
@@ -924,9 +1040,35 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
             y_readback->Unmap(0, nullptr);
         }
         row.d3d12_ran = true;
-        fill_checksum(row, host_y.data(), gpu_y.data(), n);
+        fill_checksum(row, host_y.data(), gpu_y.data(), n * batch);
         out->push_back(std::move(row));
     }
+}
+
+void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
+                          std::vector<GpugemvResult>* out) {
+    measure_gpugemv_impl(GpugemvQuant::Q4K, n, k, 1, 1, iterations, kernel, nullptr, 0, out);
+}
+
+void measure_gpugemv_real_q4k_each(int n, int k, int warmup, int iterations,
+                                   GpugemvKernel kernel, const void* weights,
+                                   std::size_t weight_bytes, std::vector<GpugemvResult>* out) {
+    measure_gpugemv_impl(GpugemvQuant::Q4K, n, k, 1, warmup, iterations, kernel,
+                         weights, weight_bytes, out);
+}
+
+void measure_gpugemv_real_quant_each(GpugemvQuant quant, int n, int k, int warmup,
+                                     int iterations, GpugemvKernel kernel, const void* weights,
+                                     std::size_t weight_bytes, std::vector<GpugemvResult>* out) {
+    measure_gpugemv_impl(quant, n, k, 1, warmup, iterations, kernel, weights, weight_bytes, out);
+}
+
+void measure_gpugemv_real_quant_batch_each(GpugemvQuant quant, int n, int k, int batch,
+                                           int warmup, int iterations, GpugemvKernel kernel,
+                                           const void* weights, std::size_t weight_bytes,
+                                           std::vector<GpugemvResult>* out) {
+    measure_gpugemv_impl(quant, n, k, batch, warmup, iterations, kernel,
+                         weights, weight_bytes, out);
 }
 
 GpugemvResult measure_gpugemv(int n, int k, int iterations, GpugemvKernel kernel) {

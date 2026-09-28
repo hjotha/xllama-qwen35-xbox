@@ -1,0 +1,16 @@
+# Accidental second copy of the transport probe, including historical build output.
+/transport-probe/DFlashRpcProbe/
+gpu-implementation/f0-*/
+gpu-implementation/*.cap
+evidence/
+trim-optimization-*/
+*.zip
+*.log
+*.jsonl
+profiling-*/
+gokaya-baselines-*/
+*gokaya-before.*
+host-dflash2.patch
+xbox_key.cjs
+profile_ssh.py
+enable-game-default.json

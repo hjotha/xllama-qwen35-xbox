@@ -58,6 +58,12 @@ enum class GpugemvKernel : int {
     Wave32 = 1,
 };
 
+enum class GpugemvQuant : int {
+    Q3K = 3,
+    Q4K = 4,
+    Q5K = 5,
+};
+
 inline const char* gpugemv_kernel_name(GpugemvKernel k) {
     switch (k) {
     case GpugemvKernel::Naive:
@@ -224,6 +230,22 @@ GpugemvResult measure_gpugemv(int n = kGpugemvDefaultN, int k = kGpugemvDefaultK
 // Windows: out->size()==iterations on success.
 void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
                           std::vector<GpugemvResult>* out);
+
+// Identical Q4_K shader and CPU reference, with unmodified GGUF tensor bytes.
+// warmup dispatches are excluded from the recorded rows.
+void measure_gpugemv_real_q4k_each(int n, int k, int warmup, int iterations,
+                                   GpugemvKernel kernel, const void* weights,
+                                   std::size_t weight_bytes, std::vector<GpugemvResult>* out);
+
+// The Q3_K/Q5_K variants are compiled only for the dedicated Xbox RPC app.
+void measure_gpugemv_real_quant_each(GpugemvQuant quant, int n, int k, int warmup,
+                                     int iterations, GpugemvKernel kernel, const void* weights,
+                                     std::size_t weight_bytes, std::vector<GpugemvResult>* out);
+
+void measure_gpugemv_real_quant_batch_each(GpugemvQuant quant, int n, int k, int batch,
+                                           int warmup, int iterations, GpugemvKernel kernel,
+                                           const void* weights, std::size_t weight_bytes,
+                                           std::vector<GpugemvResult>* out);
 
 const char* gpugemv_csv_header();
 // kernel,n,k,iterations,run_index,packed_mb,packed_gbs,packed_gbs_cpu,packed_gbs_h61,

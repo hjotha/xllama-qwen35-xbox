@@ -1,0 +1,72 @@
+# DFlash2 no Xbox: estado consolidado em 27/09/2026
+
+## Atualização após autorização para Game por padrão
+
+- A pedido explícito do usuário, `Treat UWP apps as games by default` foi ativado no Xbox pelo Device Portal (`/ext/settings/defaultuwpcontenttypetogame`: `Value=True`) e o console foi reiniciado. A leitura após o reinício confirmou `True`. Os registros da versão 1.0.0.7 mostram `AppMemoryUsageLimit=5.368.709.120` bytes. A instrução histórica abaixo para não alterar a opção global foi superada por essa autorização.
+- O pacote **DFlashRpc 1.0.0.7** foi compilado, assinado, instalado (`Code=0`, `Success=true`) e iniciado. `LocalState\\dflash-dedicated.jsonl` registrou `ready`, GGUF Q3 de 916.702.560 bytes, contexto de 49.152 posições, KV Q4_0 de 270 MiB (K+V), e `listen` na porta 50053. O modelo/Q3 não foi baixado de novo; os hashes Xbox e `.57` coincidem.
+- A 1.0.0.6 passou a carregar após Game por padrão, mas o primeiro DRAFT sintético deu erro de posições (benchmark iniciava o draft na última posição sincronizada). Corrigido o benchmark para iniciar na posição seguinte, o processo encerrou em `llama_decode`: o grafo dividido recebia IDs e embeddings, mas não reservava o tensor de IDs. `llama.cpp/src/models/dflash.cpp` agora inclui esse input na expansão do grafo. O 1.0.0.7 completou o mesmo ciclo; evidências em `evidence/dflash-core-after-crash-1.0.0.6.log`, `evidence/dflash-dedicated-after-crash-1.0.0.6.jsonl` e `evidence/dflash-dedicated-smoke-n2-1.0.0.7.json`.
+- Benchmark **sintético de RPC dedicado, CPU Xbox**, 10 ciclos de aquecimento + 100 medidos por configuração, 1 posição `SYNC`, `RESET` por ciclo, mesmos floats de teste e conexão TCP persistente. p50 em ms:
+
+  | `n_max` | ciclo RPC (`RESET+SYNC+DRAFT`) | DRAFT RPC | compute DRAFT CPU Xbox | saídas divergentes |
+  | ---: | ---: | ---: | ---: | ---: |
+  | 2 | 105,296 | 97,227 | 94,655 | 0/100 |
+  | 4 | 144,616 | 136,575 | 133,342 | 0/100 |
+  | 6 | 203,721 | 195,500 | 191,257 | 0/100 |
+  | 7 | 216,696 | 208,670 | 204,111 | 0/100 |
+
+  JSON e JSONL: `evidence/dflash-dedicated-n{2,4,6,7}-100.*`. `n_max=8` não cabe no bloco treinado de 8 posições: o anchor ocupa uma, restando sete propostas. Essas latências **não** são TPS do target, acceptance ou comparação com DFlash local.
+- Durante esta sessão Game com inferência, 421 amostras de `rpc-memory.jsonl` desde a inicialização verificada do 1.0.0.7 registraram pico `AppMemoryUsage=1.348.149.248` bytes (1.285,7 MiB) e `PrivateWorkingSet=1.286.860.800` bytes, abaixo do limite de 5 GiB. Evidência: `evidence/rpc-memory-after-drafts-1.0.0.7.jsonl`.
+- Um snapshot do processo ativo após os drafts registrou `PageFileUsage=1.345.355.776`, `TotalCommit=1.346.109.440`, `PrivateWorkingSet=1.285.918.720` e `WorkingSetSize=1.312.935.936` bytes. `PageFileUsage` é o contador exposto pelo Device Portal e serve aqui como aproximação de private commit; DXGI LOCAL ainda não foi medido. Evidência: `evidence/xbox-processes-after-drafts-1.0.0.7.json`.
+- O teste `dflash_persistent_smoke.py` executou **duas passagens de quatro ciclos na mesma conexão**: um `RESET` por passagem, `SYNC → DRAFT → TRIM` a cada posição e replay determinístico. Foram oito `TRIM`; os hashes de saída das duas passagens foram idênticos. Isso confirma continuidade/rollback do protocolo com estados sintéticos sem reconstruir o modelo ou contexto por ciclo, mas não prova paridade nem aceitação com estados reais. Evidência: `evidence/dflash-persistent-smoke-1.0.0.7.json`.
+- O build isolado de `llama-server` na branch da `.57` está em andamento na coleta desta atualização; a produção não foi substituída. A paridade com DFlash local, o loop real Swift e os baselines A–E continuam pendentes. Não há base numérica para classificar viabilidade final.
+
+## Histórico anterior (estado superado onde indicado)
+
+## Atualização posterior: Q3_K_M, Xbox 1.0.0.6 e host .57
+
+- **GGUF para Swift:** não há requisito estrutural identificado para baixar um DFlash2 treinado especificamente para Swift 1.5. Swift 1.5 e Qwen3.8-27B base preservam a geometria e o tokenizer; o DFlash2 usa as operações de embedding e output head do target. O DFlash2 publicado foi treinado com o Qwen base, portanto a taxa de aceitação com Swift GSQ-RCO continua sem medição local e não deve ser inferida dos números do modelo base. Fontes: [DFlash2 publicado](https://huggingface.co/incoai/Qwen3.8-27B-DFlash2-GGUF), [Swift 1.5](https://huggingface.co/ukisai/Swift-1.5-Qwen3.8-27b), [grafo DFlash2 do llama.cpp](https://github.com/ggml-org/llama.cpp/blob/master/src/models/dflash.cpp). Outro runtime publicou [um teste com derivado Swift](https://huggingface.co/kvnxiao/swift-1.5-qwen3.8-27b-orcarouter-dflash2-nvfp4-ninfer/blob/main/RESULTS.md); não é baseline deste setup.
+- O Q3_K_M em `/home/hjotha/models/Qwen3.8-27B-DFlash2-Q3_K_M.gguf` na `.57` e `LocalState\dflash-q3.gguf` no Xbox têm **916.702.560 bytes** e o mesmo SHA-256: `72809a53e89cb959a3149c9b3752ad181b640164b51a3b9f445712520beec5dc`. O hash Xbox foi calculado por streaming do Device Portal.
+- O MSIX 1.0.0.4 inicialmente recebeu `0x800B0100` por falta de assinatura; após assinar com o certificado já instalado, o Device Portal confirmou `Code=0, Success=true`. O contexto continuou falhando. A 1.0.0.5 acrescentou `dflash-core.log` e revelou a causa inicial: `kvarn_k4v4_g128` é recusado para o contexto draft DFlash2. Evidência: `evidence/dflash-core-1.0.0.5.log`.
+- A 1.0.0.6 usa KV **Q4_0 comum** no DFlash, foi compilada, assinada, instalada e iniciada. O log mostra KV de **270,00 MiB** para **49.152 posições**, 5 camadas; depois a reserva do grafo falha ao alocar **28.870.656 bytes**. `rpc-memory.jsonl` da última inicialização mostra `AppMemoryUsageLimit=1.073.741.824` bytes (**App, 1 GiB**) e pico de `AppMemoryUsage=1.296.556.032` bytes. A porta 50053 continua indisponível e não houve draft. Evidências: `evidence/dflash-core-1.0.0.6.log` e `evidence/rpc-memory-1.0.0.6.jsonl`. É necessário classificar **este pacote** como Game no Dev Home e reiniciá-lo antes de repetir o teste de 49k; não alterar a configuração global de todos os apps.
+- Na `.57`, o processo de produção observado nesta atualização é **Ternary Bonsai 2 27B** pelo roteador na porta 8090, com GPU RTX 4070 visível (8.257/12.282 MiB usados na leitura). O preset Swift 1.5 ainda existe no roteador, mas não está carregado. O binário de produção anuncia `draft-dflash` local e não `--rpc`. Assim, nenhum TPS de Swift foi medido nesta atualização. A branch `/home/hjotha/beellama.cpp` `research/dflash2-xbox-rpc` está no mesmo commit-base do `llama.cpp` local; o patch DFlash2 foi aplicado nela sem sobrescrever as duas alterações anteriores. O build de teste está isolado em `build-dflash-xbox`, separado do executável em produção.
+- Todas as alterações seguem **sem commit, merge ou push**. O reporte de LAN anterior continua sendo transporte sintético, não inferência ponta a ponta.
+
+## Auditoria inicial (antes das instalações 1.0.0.4–1.0.0.6)
+
+Esta é uma auditoria do trabalho existente, não um benchmark de inferência. A única worktree local de DFlash2 agora é `C:\Users\hjotha\worktrees\xllama-dflash-xbox` (`research/dflash-xbox-rpc`). O `llama.cpp` aninhado está na branch `research/dflash-xbox-rpc`, base `57e515b8c0801926d298395cc900a7e154248940`. Não houve commit, merge ou push. Os checkouts `main` continuam intactos.
+
+## Consolidação e limpeza
+
+| Worktree removida | Material preservado na worktree ativa | Verificação |
+| --- | --- | --- |
+| `xbox-dflash-architecture` | `research/dflash2-xbox/dflash2-remote-pipeline-audit-2026-09-27.md` | SHA-256 igual. |
+| `xbox-dflash-rpc-probe` | Relatório LAN, três JSONs de transporte, três evidências adicionais em `evidence/`, 13 arquivos fonte do probe UWP e scripts em `research/dflash2-xbox/` | Arquivos originais iguais por hash; `dflash_dedicated_bench.py` e `xbox_portal.py` na worktree ativa são revisões posteriores. Saídas `AppPackages/bin/obj` não foram promovidas. |
+| `xllama-dflash2-xbox` | Quatro edições de compatibilidade em `llama.cpp` e três logs em `research/dflash2-xbox/evidence/` | Quatro arquivos e três logs iguais por SHA-256; demais arquivos exclusivos eram saídas de build. |
+
+As três branches vazias das worktrees removidas também foram apagadas. `xbox-memory-probe-game-debug` e `xbox-memory-probe-over5gb` pertencem à investigação de memória e foram preservadas.
+
+## Arquitetura presente no código
+
+- O ISTA/Swift 1.5, seus pesos, output head, embeddings e KV principal permanecem na `.57`.
+- `common/speculative.cpp` da branch local de `llama.cpp` captura cinco hidden states F32 por posição, prepara os embeddings do anchor/MASK na `.57`, envia `SYNC`/`DRAFT` por TCP persistente ao Xbox, executa o output head e o selector na `.57`, verifica no target e envia `TRIM` após o ciclo. Há JSONL de ciclo opt-in via `DFLASH_XBOX_METRICS`.
+- `uwp/dflash-rpc/dedicated.cpp` carrega `dflash-q3.gguf`, mantém um contexto e KV próprios por conexão e implementa `HELLO`, `RESET`, `SYNC`, `DRAFT` e `TRIM` no protocolo DFL2 v2. O projeto também expõe o RPC GGML genérico na porta 50052.
+- O caminho dedicado Xbox é **CPU** (`n_gpu_layers=0`); `xbox_gpu_us` e `xbox_sync_us` não têm compute GPU real. O servidor rejeita `n_max > 7`. O GGUF Q3 declara bloco 8, com anchor mais até sete propostas. O requisito de testar `n_max=8` precisa de compatibilidade comprovada, não só elevar o limite no código.
+- A alternativa “DFlash inteiro no Xbox” não pode usar este GGUF isoladamente: ele não inclui `token_embd.weight` e `output.weight` do target. Copiar essas matrizes do ISTA para o console contraria o requisito de manter os pesos principais na `.57`. O corte implementado corresponde à opção de projeção/selector locais e backbone DFlash2 remoto; ainda falta provar paridade.
+
+## Validação local e estado atual
+
+- O log `evidence/build-dflash-rpc-20260927-pooling-fix.log` registra build MSBuild concluído de `DFlashRpc_1.0.0.4_x64.msix`, após as últimas edições em `dedicated.cpp`. Este pacote **não foi instalado** nesta auditoria.
+- `git diff --check` passou no projeto xllama e no `llama.cpp` aninhado. `ast.parse` passou para cinco scripts Python da worktree ativa. Nenhum teste de drafts do 1.0.0.4 no Xbox foi executado.
+- Xbox, checado às 17:53 UTC: pacote instalado `HJotha.XboxDFlashRpc_1.0.0.3_x64__3hvcqmcd1t14m`; `DFlashRpc.exe` ativo; 50052 aberta e 50053 fechada. `LocalState\dflash-q3.gguf` tem 916.702.560 bytes, mas seu SHA no próprio console não foi medido. `dflash-dedicated.jsonl` contém três `context_failed` e nenhum `ready`/draft. O limite Game reportado foi 5.368.709.120 bytes; pico observado na fase Game, 1.057.935.360 bytes de AppMemoryUsage. Isso não demonstra pico de inferência porque o contexto falhou.
+- `.57`, checada no mesmo turno: produção saudável usa `Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf`, `draft-mtp`, KV `kvarn4`, temperatura 1, top-p 0,95, top-k 20, `p_min=0,70`, tiers `n_max=6/4/2/2/0`. Não há DFlash2 ativo. O binário atual foi compilado com `GGML_RPC=OFF` e não aceita `--rpc`. A branch `/home/hjotha/beellama.cpp` `research/dflash2-xbox-rpc` está no mesmo commit de `main`, com duas alterações locais (versão RPC e log de sync MTP), sem commit exclusivo.
+- O probe de **transporte**, em conexão persistente e 1.000 iterações aquecidas, mediu p50 de 5,499 ms para payload equivalente a três drafts e 10,207 ms para sete drafts. Não havia DFlash2, target verification nem GPU nesse teste. Os JSONs brutos estão em `research/dflash2-xbox/`.
+
+## O que falta para concluir
+
+1. **Destravar o contexto no Xbox.** Instalar e verificar o pacote 1.0.0.4, diagnosticar `llama_init_from_model()` se `context_failed` persistir, obter `ready`/porta 50053, carregar o GGUF uma só vez e medir memória de carregamento e pico de inferência. Medir AppMemoryUsage/Limit, private/total commit, working set, DXGI LOCAL, buffers temporários e KV DFlash, sem usar o buffer TCP de 1 GiB como memória de modelo.
+2. **Provar drafts corretos.** Com mesmos pesos, hidden states, seed, sampling e posições, comparar DFlash2 local com `SYNC`/`DRAFT` remoto, incluindo aceitação parcial, `TRIM`, reset, prefill longo e divergências FP/quant. O código local precisa ser construído e exercitado na `.57`; hoje é apenas fonte não implantada ali.
+3. **Fechar a instrumentação.** O JSONL atual registra propostas, aceitações, captura, serialização, send, tempos RPC/CPU Xbox, selector, verificação aproximada e TRIM, mas não separa `network_rtt_us`, `xbox_gpu_us`, `xbox_sync_us` nem `commit_us` exatamente como pedido. Agregar acceptance, accepted tokens/cycle, overhead/token e TPS final a partir de ciclos reais.
+4. **Fixar baselines comparáveis.** Medir ISTA Swift sozinho; ISTA + DFlash2 Q3 local; RPC genérico se o build e o grafo o permitirem; RPC dedicado; e a variante host projection/selector. Preservar modelo, quantização, KV, prompt, seed e sampling; testar prompt curto, ~8k, ~24k, ~40k se couber, e geração de pelo menos 512 tokens. Rodar `n_max=2/4/6/8` somente após resolver o limite real do bloco 8 e registrar impossibilidade caso 8 permaneça incompatível. Medir thresholds incluindo o preset atual `p_min=0,70`.
+5. **Medir GPU e decidir pelo TPS.** Não existe backend GGUF DFlash2 GPU no Xbox nesta branch. Medir a referência CPU sem rotulá-la como GPU; portar/validar GPU se o objetivo de ganho exigir. A produção `.57` deve permanecer preservada durante builds e A/B. Não há números atuais para classificar DFlash2 remoto como **VIÁVEL / MARGINAL / NÃO VIÁVEL**.
+
+Os ensaios antigos na `.57` usaram outro target ou falharam e não são baseline do Swift 1.5 atual. Os campos de TPS, acceptance e latência DFlash2 ficam sem valor até haver inferência real e comparação lado a lado.
