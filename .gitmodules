@@ -1,0 +1,5 @@
+[submodule "llama.cpp"]
+	path = llama.cpp
+	url = https://github.com/hjotha/beellama.cpp.git
+	shallow = true
+	branch = main

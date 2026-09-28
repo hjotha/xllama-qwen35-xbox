@@ -1,0 +1,149 @@
+{
+  "kind": "dflash2_xbox_cpu_dedicated_rpc_baseline",
+  "limitations": "CPU GGML; synthetic features and embeddings; RESET+SYNC+DRAFT are three round trips; no target verification or acceptance",
+  "host": "192.168.1.26",
+  "port": 50053,
+  "model": {
+    "bytes": 916702560,
+    "n_ctx": 49152,
+    "encoder_width": 25600,
+    "decoder_width": 5120,
+    "top_k": 16,
+    "mask_id": 248070,
+    "kv_bits_k": 4,
+    "kv_bits_v": 4
+  },
+  "warmup": 20,
+  "iterations": 50,
+  "sync_tokens": 1,
+  "drafts": 4,
+  "hello_rtt_us": 726.0,
+  "first_cycle_after_model_load": {
+    "cycle_rtt_us": 176395.5,
+    "reset": {
+      "rtt_us": 1210.2,
+      "xbox_receive_us": 0,
+      "xbox_prepare_us": 480,
+      "xbox_compute_us": 0,
+      "prior_response_us": 46
+    },
+    "sync": {
+      "rtt_us": 14758.4,
+      "xbox_receive_us": 2021,
+      "xbox_prepare_us": 37,
+      "xbox_compute_us": 11479,
+      "prior_response_us": 31
+    },
+    "draft": {
+      "rtt_us": 160426.9,
+      "xbox_receive_us": 783,
+      "xbox_prepare_us": 140,
+      "xbox_compute_us": 156093,
+      "prior_response_us": 66
+    }
+  },
+  "first_output_sha256": "6a86629984b1428a8a0bf064bc7693500d30a9ba75e804dfeb1111eb1da4840a",
+  "differing_outputs": 0,
+  "phases_us": {
+    "reset_rtt_us": {
+      "count": 50,
+      "mean": 1315.54,
+      "min": 850.0,
+      "p50": 1337.85,
+      "p90": 1528.85,
+      "p95": 1561.73,
+      "p99": 1635.4809999999998,
+      "max": 1695.8
+    },
+    "sync_rtt_us": {
+      "count": 50,
+      "mean": 6985.448,
+      "min": 6576.8,
+      "p50": 6959.65,
+      "p90": 7121.47,
+      "p95": 7202.36,
+      "p99": 8234.346999999996,
+      "max": 9194.6
+    },
+    "draft_rtt_us": {
+      "count": 50,
+      "mean": 135132.81,
+      "min": 134614.0,
+      "p50": 135078.7,
+      "p90": 135529.22,
+      "p95": 135549.54499999998,
+      "p99": 135705.59999999998,
+      "max": 135720.3
+    },
+    "cycle_rtt_us": {
+      "count": 50,
+      "mean": 143433.79799999998,
+      "min": 142741.8,
+      "p50": 143377.45,
+      "p90": 143880.50999999998,
+      "p95": 143967.175,
+      "p99": 145101.34399999998,
+      "max": 145956.09999999998
+    },
+    "sync_xbox_compute_us": {
+      "count": 50,
+      "mean": 4823.3,
+      "min": 4699,
+      "p50": 4791.0,
+      "p90": 5008.5,
+      "p95": 5042.3,
+      "p99": 5064.2,
+      "max": 5074
+    },
+    "draft_xbox_compute_us": {
+      "count": 50,
+      "mean": 131918.12,
+      "min": 131703,
+      "p50": 131894.0,
+      "p90": 132038.4,
+      "p95": 132220.85,
+      "p99": 132467.64,
+      "max": 132499
+    },
+    "sync_xbox_prepare_us": {
+      "count": 50,
+      "mean": 7.98,
+      "min": 7,
+      "p50": 8.0,
+      "p90": 8.0,
+      "p95": 9.0,
+      "p99": 9.509999999999998,
+      "max": 10
+    },
+    "draft_xbox_prepare_us": {
+      "count": 50,
+      "mean": 124.08,
+      "min": 121,
+      "p50": 123.0,
+      "p90": 129.1,
+      "p95": 131.0,
+      "p99": 134.51,
+      "max": 135
+    },
+    "sync_xbox_receive_us": {
+      "count": 50,
+      "mean": 994.32,
+      "min": 853,
+      "p50": 1020.0,
+      "p90": 1037.0,
+      "p95": 1043.65,
+      "p99": 1052.51,
+      "max": 1053
+    },
+    "draft_xbox_receive_us": {
+      "count": 50,
+      "mean": 931.56,
+      "min": 759,
+      "p50": 950.5,
+      "p90": 1011.0,
+      "p95": 1016.3,
+      "p99": 1020.53,
+      "max": 1022
+    }
+  }
+}

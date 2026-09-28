@@ -1,0 +1,193 @@
+#pragma once
+
+#include "llama.h"
+#include "common.h"
+
+struct common_speculative;
+
+// profiling hook: host timestamp of the most recent llama_context sync inside common_sampler_sample.
+// Only written when GGML_MTP_PROF is set; used to time MTP draft decodes without adding syncs.
+extern int64_t common_spec_prof_sync_us;
+
+struct common_speculative_token_dist {
+    llama_tokens ids;
+    std::vector<float> probs;
+};
+
+// comma separated list the provided types
+std::string common_speculative_type_name_str(const std::vector<enum common_speculative_type> & types);
+
+// comma separated list of all types
+const char * common_speculative_all_types_str();
+
+// parse user provided types
+std::vector<enum common_speculative_type> common_speculative_types_from_names(const std::vector<std::string> & names);
+
+// infer the spec types from the GGUF metadata of a draft model; empty if unknown
+std::vector<enum common_speculative_type> common_speculative_types_from_gguf(const std::string & path);
+
+// convert string to type
+enum common_speculative_type common_speculative_type_from_name(const std::string & name);
+
+// convert type to string
+std::string common_speculative_type_to_str(enum common_speculative_type type);
+
+// return the max number of draft tokens based on the speculative parameters
+int32_t common_speculative_n_max(const common_params_speculative * spec);
+
+// return the max number of draft tokens from the initialized implementations
+int32_t common_speculative_n_max(const common_speculative * spec);
+
+// Resolve the model-declared DFlash block-attention policy. DFlash defaults to
+// non-causal when the optional metadata key is absent.
+bool common_speculative_dflash_causal_attn(const llama_model * model);
+
+// Bee's variable-depth adaptive draft-max is limited to the original DFlash path.
+bool common_speculative_dflash_adaptive_dm_supported(int32_t selector_top_k);
+bool common_speculative_dflash_backend_sampling_allowed(
+        bool requested, int32_t target_device_count, bool is_dflash2);
+bool common_speculative_adaptive_dm_supported(const common_speculative * spec);
+
+// True when a model-backed draft context is a non-owning view of target KV state.
+bool common_speculative_draft_memory_is_shared(const common_speculative * spec);
+
+// validate and resolve the unconditional synthetic acceptance rates
+std::vector<double> common_speculative_synth_rates_resolve(const common_params_speculative * spec, int32_t n_max);
+
+// return the conditional synthetic acceptance probabilities
+const std::vector<double> & common_speculative_get_synth_probs(const common_speculative * spec);
+
+void common_validate_draft_kvarn_mode(const common_params_speculative & params);
+common_params common_base_params_to_speculative(const common_params & params);
+
+struct common_speculative_output_limits {
+    int32_t total;
+    int32_t per_seq;
+};
+
+// return the output limits needed for speculative decoding
+common_speculative_output_limits common_speculative_get_output_limits(
+        int32_t n_batch, int32_t n_parallel, int32_t n_draft);
+
+common_speculative * common_speculative_init(common_params_speculative & params, uint32_t n_seq);
+
+void common_speculative_free(common_speculative * spec);
+
+struct common_speculative_draft_params {
+    // this flag is used to chain the drafts through all the available implementations
+    // after the first successful draft from an implementation, we set it
+    //   to false to prevent further drafts for that sequence
+    // at the end of the draft() call, all drafting flags will be reset to false
+    bool drafting = false;
+
+    // overrides individual configurations (-1 disabled)
+    // can be used to constraint the max draft based on the remaining context size
+    int32_t n_max = -1;
+
+    llama_pos   pos0;
+    llama_token id_last;
+
+    // TODO: remove in the future by keeping track of the prompt from the _begin() call and the consecutive accept calls
+    const llama_tokens * prompt;
+
+    // the generated draft from the last _draft() call
+    llama_tokens * result;
+
+    // optional sparse proposal distributions, one per draft token
+    std::vector<common_speculative_token_dist> * dists = nullptr;
+
+    float temperature = 0.0f;
+    uint32_t seed = LLAMA_DEFAULT_SEED;
+};
+
+common_speculative_draft_params & common_speculative_get_draft_params(common_speculative * spec, llama_seq_id seq_id);
+
+// optionally call once at the beginning of a new generation
+void common_speculative_begin(common_speculative * spec, llama_seq_id seq_id, const llama_tokens & prompt);
+
+// process the batch and update the internal state of the speculative context
+bool common_speculative_process(common_speculative * spec, const llama_batch & batch);
+
+// Managed resident weights, single-sequence, single-head MTP only. Call immediately after decoding this exact
+// token batch on the target with unmasked nextn embeddings enabled, instead of process().
+// The owner must exclude concurrent decode/state operations. Keeps target KV intact,
+// clears draft KV and seeds the next draft from the last real target hidden row.
+// Earlier draft history is deliberately absent and masked by the KV attention path.
+// Returns false without changing either context or the carry for unsupported/invalid input.
+// Pass the nonzero ID obtained from the target immediately after that successful decode.
+bool common_speculative_bootstrap(common_speculative * spec, const llama_batch & batch, uint64_t decode_id);
+
+// Allocation-free readiness for resident-weight MTP; checks carry and target/draft KV
+// boundaries before the next draft. Other modes keep their existing behavior.
+bool common_speculative_is_ready(common_speculative * spec, llama_seq_id seq_id, llama_pos next_pos);
+
+// generate drafts for the sequences specified with `common_speculative_get_draft_params`
+// False means resident MTP carry/KV is not aligned; no draft implementation is run.
+bool common_speculative_draft(common_speculative * spec);
+
+// informs the speculative context that n_accepted tokens were accepted by the target model
+void common_speculative_accept(common_speculative * spec, llama_seq_id, uint16_t n_accepted);
+
+// Optional host-owned internal state. These hooks do not save or restore KV.
+// The owner must quiesce decode/draft operations and restore matching target/draft state,
+// and may require a checkpoint position. No borrowed device state escapes these hooks.
+// Failed import leaves the previous implementation state unchanged.
+// For single-head MTP, empty data with expected_pos < 0 explicitly resets the carry;
+// the caller must separately clear any target/draft KV after a failed restore.
+bool common_speculative_get_state(common_speculative * spec, llama_seq_id seq_id, std::vector<uint8_t> & data);
+bool common_speculative_validate_state(common_speculative * spec, llama_seq_id seq_id, const std::vector<uint8_t> & data);
+bool common_speculative_set_state(common_speculative * spec, llama_seq_id seq_id, const std::vector<uint8_t> & data,
+        llama_pos expected_pos = -1);
+
+// Prepare validates and owns the decoded implementation payload. Commit has no
+// remaining parsing or allocation and cannot fail.
+struct common_speculative_state_restore_plan;
+common_speculative_state_restore_plan * common_speculative_prepare_state(
+        common_speculative * spec,
+        llama_seq_id seq_id,
+        const uint8_t * data,
+        size_t size);
+void common_speculative_state_restore_plan_commit(common_speculative_state_restore_plan * plan);
+void common_speculative_state_restore_plan_free(common_speculative_state_restore_plan * plan);
+
+// print statistics about the speculative decoding
+void common_speculative_print_stats(const common_speculative * spec);
+
+// TEST/DEBUG ONLY: directly stage target-tap context rows for the dspark
+// implementation (if registered), bypassing the normal process()-driven
+// capture path, which requires a real target context with
+// llama_set_capture_layers engaged and logits requested on every row. Used by
+// the Phase 2 synthetic-target harness (tests/test-dspark-loop.cpp) to drive
+// the block-draft loop deterministically without a target model.
+// `feat` is [n_rows * n_embd_cap] row-major, `pos` is [n_rows] absolute
+// positions, both appended to the sequence's pending context buffer exactly
+// as process() would have. Returns false if no dspark implementation is
+// registered.
+bool common_speculative_dspark_stage_ctx_test(common_speculative * spec,
+                                              llama_seq_id         seq_id,
+                                              const float *        feat,
+                                              int64_t              n_rows,
+                                              int64_t              n_embd_cap,
+                                              const int32_t *      pos);
+
+struct common_speculative_deleter {
+    void operator()(common_speculative * s) { common_speculative_free(s); }
+};
+
+typedef std::unique_ptr<common_speculative, common_speculative_deleter> common_speculative_ptr;
+
+struct common_speculative_init_result {
+    common_speculative_init_result(common_params & params, llama_model * model_tgt, llama_context * ctx_tgt);
+    ~common_speculative_init_result();
+
+    llama_model   * model();
+    llama_context * context();
+
+private:
+    struct impl;
+    std::unique_ptr<impl> pimpl;
+};
+
+using common_speculative_init_result_ptr = std::unique_ptr<common_speculative_init_result>;
+
+common_speculative_init_result_ptr common_speculative_init_from_params(common_params & params, llama_model * model_tgt, llama_context * ctx_tgt);
