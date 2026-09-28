@@ -1,0 +1,17 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 1584.309800000483,
+  "status": -6,
+  "response_bytes": 114,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 1571567,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "probe": "directml_q3_k_to_fp16_gemm",
+    "batch": 1,
+    "passed": false,
+    "error": "DirectML binding table Reset: 0x887A0005"
+  }
+}
