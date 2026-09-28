@@ -181,9 +181,7 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         req.op == DFLASH_RPC_GPU_REAL_Q5K) {
         if (req.n_tokens) return -1;
         uint32_t batch = 1;
-        if (req.op == DFLASH_RPC_GPU_REAL_Q4K) {
-            if (!input.empty()) return -1;
-        } else if (input.size() == sizeof(batch)) {
+        if (input.size() == sizeof(batch)) {
             std::memcpy(&batch, input.data(), sizeof(batch));
         } else if (!input.empty()) {
             return -1;

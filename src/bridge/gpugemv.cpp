@@ -35,6 +35,9 @@
         #include "dflash_q3k_t2_dxil.h"
         #include "dflash_q3k_t4_dxil.h"
         #include "dflash_q3k_t8_dxil.h"
+        #include "dflash_q4k_t2_dxil.h"
+        #include "dflash_q4k_t4_dxil.h"
+        #include "dflash_q4k_t8_dxil.h"
         #include "dflash_q5k_t1_dxil.h"
         #include "dflash_q5k_t2_dxil.h"
         #include "dflash_q5k_t4_dxil.h"
@@ -485,10 +488,20 @@ static void measure_gpugemv_impl(GpugemvQuant quant, int n, int k, int batch, in
         push_err("invalid n/k (need k%256==0, n>0,k>0)");
         return;
     }
-    if (batch < 1 || batch > 64 || (batch != 1 && quant == GpugemvQuant::Q4K)) {
+    if (batch < 1 || batch > 64) {
         push_err("unsupported batch for quant shader");
         return;
     }
+    if ((batch > 1 || quant != GpugemvQuant::Q4K) && kernel == GpugemvKernel::Naive) {
+        push_err("dedicated quant shader requires Wave32 dispatch");
+        return;
+    }
+#if !defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+    if (batch > 1) {
+        push_err("Q4_K batch shader only available in dedicated Xbox app");
+        return;
+    }
+#endif
     if (quant != GpugemvQuant::Q4K) {
 #if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
         const size_t block_bytes = quant == GpugemvQuant::Q3K ? sizeof(block_q3_K) :
@@ -531,8 +544,11 @@ static void measure_gpugemv_impl(GpugemvQuant quant, int n, int k, int batch, in
         for (int col = 0; col < k; ++col) x[col] *= 1.0f + b * 0.01f;
     }
     if (quant == GpugemvQuant::Q4K) {
-        gpugemv_cpu_ref(reinterpret_cast<const GpugemvQ4KBlock*>(host_w),
-                        host_x.data(), host_y.data(), n, k);
+        for (int b = 0; b < batch; ++b) {
+            gpugemv_cpu_ref(reinterpret_cast<const GpugemvQ4KBlock*>(host_w),
+                            host_x.data() + static_cast<size_t>(b) * k,
+                            host_y.data() + static_cast<size_t>(b) * n, n, k);
+        }
     } else {
 #if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
         std::vector<float> dequantized(static_cast<size_t>(k));
@@ -654,6 +670,12 @@ static void measure_gpugemv_impl(GpugemvQuant quant, int n, int k, int batch, in
         else if (tile == 2) pso_desc.CS = {kDflashQ5kT2Dxil, kDflashQ5kT2DxilSize};
         else if (tile == 4) pso_desc.CS = {kDflashQ5kT4Dxil, kDflashQ5kT4DxilSize};
         else pso_desc.CS = {kDflashQ5kT8Dxil, kDflashQ5kT8DxilSize};
+#endif
+    } else if (batch > 1) {
+#if defined(XLLAMA_DFLASH_HARDWARE_ONLY)
+        if (tile == 2) pso_desc.CS = {kDflashQ4kT2Dxil, kDflashQ4kT2DxilSize};
+        else if (tile == 4) pso_desc.CS = {kDflashQ4kT4Dxil, kDflashQ4kT4DxilSize};
+        else pso_desc.CS = {kDflashQ4kT8Dxil, kDflashQ4kT8DxilSize};
 #endif
     } else if (kernel == GpugemvKernel::Naive) {
         pso_desc.CS.pShaderBytecode = kGpugemvQ4kDxil;

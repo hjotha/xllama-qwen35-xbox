@@ -1,5 +1,5 @@
 // GGML QK_K = 256. Offsets and bit order follow ggml-common.h and
-// dequantize_row_q3_K/dequantize_row_q5_K in ggml-quants.c.
+// dequantize_row_q3_K/dequantize_row_q4_K/dequantize_row_q5_K in ggml-quants.c.
 // W is declared by quant_k_matmul.hlsli before including this file.
 
 uint dflash_load_u8(uint offset) {
@@ -28,6 +28,26 @@ float dflash_q3k(uint base, uint element, float d) {
     const uint high2 = (high_byte >> (2u * (scale_index >> 2u))) & 3u;
     const int scale = int(low4 | (high2 << 4u)) - 32;
     return (d * float(scale)) * float(quant);
+}
+
+float dflash_q4k(uint base, uint element, float d, float dmin) {
+    // block_q4_K: fp16 d,dmin; scales[12]; qs[128]; 144 bytes.
+    const uint scale_index = element >> 5u;
+    uint scale, minimum;
+    if (scale_index < 4u) {
+        scale = dflash_load_u8(base + 4u + scale_index) & 63u;
+        minimum = dflash_load_u8(base + 8u + scale_index) & 63u;
+    } else {
+        scale = (dflash_load_u8(base + 8u + scale_index) & 15u)
+                | ((dflash_load_u8(base + scale_index) >> 6u) << 4u);
+        minimum = (dflash_load_u8(base + 8u + scale_index) >> 4u)
+                  | ((dflash_load_u8(base + 4u + scale_index) >> 6u) << 4u);
+    }
+
+    const uint packed = dflash_load_u8(base + 16u + (element >> 6u) * 32u
+                                       + (element & 31u));
+    const uint quant = (packed >> ((element & 32u) != 0u ? 4u : 0u)) & 15u;
+    return (d * float(scale)) * float(quant) - dmin * float(minimum);
 }
 
 float dflash_q5k(uint base, uint element, float d, float dmin) {

@@ -237,7 +237,8 @@ void measure_gpugemv_real_q4k_each(int n, int k, int warmup, int iterations,
                                    GpugemvKernel kernel, const void* weights,
                                    std::size_t weight_bytes, std::vector<GpugemvResult>* out);
 
-// The Q3_K/Q5_K variants are compiled only for the dedicated Xbox RPC app.
+// The Q3_K/Q5_K variants and Q4_K batch variants are compiled only for the
+// dedicated Xbox RPC app. Q4_K batch=1 keeps the existing wave32 kernel.
 void measure_gpugemv_real_quant_each(GpugemvQuant quant, int n, int k, int warmup,
                                      int iterations, GpugemvKernel kernel, const void* weights,
                                      std::size_t weight_bytes, std::vector<GpugemvResult>* out);

@@ -30,8 +30,8 @@ def main():
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.batch < 1 or args.batch > 64 or (args.batch != 1 and args.opcode not in (11, 12)):
-        parser.error("batch 2..64 is supported only for Q3_K/Q5_K diagnostics")
+    if args.batch < 1 or args.batch > 64 or (args.batch != 1 and args.opcode not in (9, 11, 12)):
+        parser.error("batch 2..64 is supported only for Q3_K/Q4_K/Q5_K diagnostics")
     start = time.perf_counter()
     with socket.create_connection((args.host, args.port), timeout=300) as conn:
         conn.settimeout(300)

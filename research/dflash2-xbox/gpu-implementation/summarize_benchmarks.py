@@ -58,7 +58,7 @@ def main():
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    files = sorted(args.evidence.glob("real-*.json"))
+    files = sorted((*args.evidence.glob("real-*.json"), *args.evidence.glob("q4k-batch*.json")))
     rows = [row for path in files for row in rows_for(path)]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     with args.output.open("w", newline="", encoding="utf-8") as handle:

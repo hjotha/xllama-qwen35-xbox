@@ -243,7 +243,7 @@ dflash_gpu_probe_result run_dflash_gpu_real_quant(const std::string & model_path
         result.json = "{\"passed\":false,\"stage\":\"quant type\"}";
         return result;
     }
-    if (batch < 1 || batch > 64 || (batch != 1 && quant == xllama::GpugemvQuant::Q4K)) {
+    if (batch < 1 || batch > 64) {
         result.json = "{\"passed\":false,\"stage\":\"batch range\"}";
         return result;
     }
