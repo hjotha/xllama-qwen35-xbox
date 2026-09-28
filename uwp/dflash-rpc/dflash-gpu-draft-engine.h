@@ -34,6 +34,7 @@ public:
     struct Checkpoint {
         std::string name;
         std::vector<float> values;
+        double gpu_ms = -1.0; // since the preceding checkpoint copy completed
     };
 
     bool initialize(DflashGpuSyncEngine & sync, const std::string & gguf_path,
@@ -122,6 +123,9 @@ private:
     uint64_t fence_value_ = 0;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> pending_uploads_;
     std::vector<PendingCheckpoint> pending_checkpoints_;
+    Microsoft::WRL::ComPtr<ID3D12QueryHeap> trace_queries_;
+    Buffer trace_times_;
+    uint64_t trace_frequency_ = 0;
     bool fatal_inflight_ = false;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> matmul_root_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> ops_root_;

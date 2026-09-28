@@ -85,6 +85,19 @@ bool cpu_trace_callback(ggml_tensor * tensor, bool ask, void * user_data) {
             }
         }
     }
+    if (!selected) {
+        // Layer 4 FFN checkpoints isolate amplification after attention.
+        for (const char * prefix : {"ffn_inp-", "ffn_norm-", "ffn_conv_coeff-",
+                                    "ffn_conv_in-", "ffn_gate-", "ffn_up-",
+                                    "ffn_swiglu-", "ffn_out-", "ffn_conv_out-"}) {
+            const size_t length = std::strlen(prefix);
+            if (std::strncmp(name, prefix, length) == 0 &&
+                name[length] == '4' && name[length + 1] == '\0') {
+                selected = true;
+                break;
+            }
+        }
+    }
     if (!selected && !hadamard) return false;
     if (ask) return true;
     if (tensor->type != GGML_TYPE_F32 || !ggml_is_contiguous(tensor) ||
@@ -96,6 +109,7 @@ bool cpu_trace_callback(ggml_tensor * tensor, bool ask, void * user_data) {
 }
 
 struct CapturedFrame {
+    uint32_t record_index = 0;
     dflash_rpc_request request{};
     dflash_rpc_response response{};
     std::vector<uint8_t> input;
@@ -118,42 +132,54 @@ std::string escaped(const std::string & source) {
     return result;
 }
 
-bool read_sequence(const std::string & path, CapturedSequence * result,
-                   std::string * error) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) { *error = "capture open failed"; return false; }
+bool read_capture_header(std::ifstream & file, std::string * error) {
     char magic[8];
     file.read(magic, sizeof(magic));
     if (!file || std::memcmp(magic, "DFLCAP01", 8)) {
         *error = "invalid DFLCAP01 header"; return false;
     }
+    return true;
+}
+
+bool read_frame(std::ifstream & file, uint32_t index, CapturedFrame * frame,
+                std::string * error) {
+    uint32_t lengths[2];
+    file.read(reinterpret_cast<char *>(lengths), sizeof(lengths));
+    if (!file || lengths[0] < sizeof(dflash_rpc_request) ||
+        lengths[1] < sizeof(dflash_rpc_response) ||
+        lengths[0] > 8u * 1024u * 1024u || lengths[1] > 8u * 1024u * 1024u) {
+        *error = "capture record length invalid"; return false;
+    }
+    std::vector<uint8_t> request(lengths[0]), response(lengths[1]);
+    file.read(reinterpret_cast<char *>(request.data()), request.size());
+    file.read(reinterpret_cast<char *>(response.data()), response.size());
+    if (!file) { *error = "capture record truncated"; return false; }
+    frame->record_index = index;
+    std::memcpy(&frame->request, request.data(), sizeof(frame->request));
+    std::memcpy(&frame->response, response.data(), sizeof(frame->response));
+    if (frame->request.magic != DFLASH_RPC_MAGIC ||
+        frame->request.version != DFLASH_RPC_VERSION ||
+        frame->request.payload_bytes != lengths[0] - sizeof(frame->request) ||
+        frame->response.magic != DFLASH_RPC_MAGIC ||
+        frame->response.version != DFLASH_RPC_VERSION ||
+        frame->response.status ||
+        frame->response.payload_bytes != lengths[1] - sizeof(frame->response)) {
+        *error = "invalid captured DFL2 frame"; return false;
+    }
+    frame->input.assign(request.begin() + sizeof(frame->request), request.end());
+    frame->expected.assign(response.begin() + sizeof(frame->response), response.end());
+    return true;
+}
+
+bool read_sequence(const std::string & path, CapturedSequence * result,
+                   std::string * error) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) { *error = "capture open failed"; return false; }
+    if (!read_capture_header(file, error)) return false;
     uint32_t phase = 0;
     for (uint32_t index = 0; index < 64 && phase < 4; ++index) {
-        uint32_t lengths[2];
-        file.read(reinterpret_cast<char *>(lengths), sizeof(lengths));
-        if (!file || lengths[0] < sizeof(dflash_rpc_request) ||
-            lengths[1] < sizeof(dflash_rpc_response) ||
-            lengths[0] > 8u * 1024u * 1024u || lengths[1] > 8u * 1024u * 1024u) {
-            *error = "capture record length invalid"; return false;
-        }
-        std::vector<uint8_t> request(lengths[0]), response(lengths[1]);
-        file.read(reinterpret_cast<char *>(request.data()), request.size());
-        file.read(reinterpret_cast<char *>(response.data()), response.size());
-        if (!file) { *error = "capture record truncated"; return false; }
         CapturedFrame frame;
-        std::memcpy(&frame.request, request.data(), sizeof(frame.request));
-        std::memcpy(&frame.response, response.data(), sizeof(frame.response));
-        if (frame.request.magic != DFLASH_RPC_MAGIC ||
-            frame.request.version != DFLASH_RPC_VERSION ||
-            frame.request.payload_bytes != lengths[0] - sizeof(frame.request) ||
-            frame.response.magic != DFLASH_RPC_MAGIC ||
-            frame.response.version != DFLASH_RPC_VERSION ||
-            frame.response.status ||
-            frame.response.payload_bytes != lengths[1] - sizeof(frame.response)) {
-            *error = "invalid captured DFL2 frame"; return false;
-        }
-        frame.input.assign(request.begin() + sizeof(frame.request), request.end());
-        frame.expected.assign(response.begin() + sizeof(frame.response), response.end());
+        if (!read_frame(file, index, &frame, error)) return false;
         if (phase == 0 && frame.request.op == DFLASH_RPC_SYNC) {
             result->sync = std::move(frame); ++phase;
         } else if (phase == 1 && frame.request.op == DFLASH_RPC_DRAFT) {
@@ -167,6 +193,24 @@ bool read_sequence(const std::string & path, CapturedSequence * result,
     }
     if (phase != 4) { *error = "capture lacks SYNC/DRAFT/SYNC_TRIM/DRAFT"; return false; }
     return true;
+}
+
+bool read_draft_prefix(const std::string & path, uint32_t ordinal,
+                       std::vector<CapturedFrame> * frames, std::string * error) {
+    std::ifstream file(path, std::ios::binary);
+    if (!file) { *error = "capture open failed"; return false; }
+    if (!read_capture_header(file, error)) return false;
+    uint32_t drafts = 0;
+    // The two SHA-whitelisted captures have at most 369 records.
+    for (uint32_t index = 0; index < 369 && file.peek() != EOF; ++index) {
+        CapturedFrame frame;
+        if (!read_frame(file, index, &frame, error)) return false;
+        if (frame.request.op == DFLASH_RPC_DRAFT) ++drafts;
+        frames->push_back(std::move(frame));
+        if (drafts == ordinal) return true;
+    }
+    *error = "capture lacks requested DRAFT ordinal";
+    return false;
 }
 
 bool parse_sync(const CapturedFrame & frame, uint32_t prefix,
@@ -283,6 +327,66 @@ std::vector<float> expand_embeddings(const std::vector<float> & captured,
     return result;
 }
 
+// Apply every sequence mutation from a captured prefix to the CPU reference.
+// The optional GPU engine receives the same mutation during the main replay.
+bool apply_capture_mutation(llama_context * ctx, CpuBatches & batches,
+                            DflashGpuSyncEngine * gpu, const CapturedFrame & frame,
+                            std::string * error) {
+    const auto op = frame.request.op;
+    if (op == DFLASH_RPC_HELLO || op == DFLASH_RPC_MOCK) return true;
+    if (op == DFLASH_RPC_RESET) {
+        if (frame.request.n_tokens || !frame.input.empty()) {
+            *error = "captured RESET shape invalid"; return false;
+        }
+        llama_memory_clear(llama_get_memory(ctx), false);
+        if (gpu) gpu->reset();
+        return !gpu || gpu->sequence_valid();
+    }
+    if (op == DFLASH_RPC_DRAFT) return true; // caller compares its hidden output
+    if (op == DFLASH_RPC_TRIM) {
+        dflash_rpc_trim_request trim{};
+        if (frame.request.n_tokens || frame.input.size() != sizeof(trim)) {
+            *error = "captured TRIM shape invalid"; return false;
+        }
+        std::memcpy(&trim, frame.input.data(), sizeof(trim));
+        if (trim.pos0 < 0 ||
+            !llama_memory_seq_rm(llama_get_memory(ctx), 0, trim.pos0, -1) ||
+            (gpu && !gpu->trim(static_cast<uint32_t>(trim.pos0), error))) {
+            *error = "captured TRIM failed"; return false;
+        }
+        return true;
+    }
+    uint32_t prefix = 0;
+    dflash_rpc_sync_trim_request trim{};
+    if (op == DFLASH_RPC_SYNC_TRIM) {
+        if (!frame.request.n_tokens && frame.input.empty()) return true; // feature probe
+        if (frame.input.size() < sizeof(trim)) {
+            *error = "captured SYNC_TRIM header invalid"; return false;
+        }
+        std::memcpy(&trim, frame.input.data(), sizeof(trim));
+        if ((trim.reset && trim.pos0 != 0) || trim.pos0 < -1) {
+            *error = "captured SYNC_TRIM position invalid"; return false;
+        }
+        prefix = sizeof(trim);
+        if (trim.reset) llama_memory_clear(llama_get_memory(ctx), false);
+        else if (trim.pos0 >= 0 &&
+                 !llama_memory_seq_rm(llama_get_memory(ctx), 0, trim.pos0, -1)) {
+            *error = "CPU SYNC_TRIM failed"; return false;
+        }
+    } else if (op != DFLASH_RPC_SYNC) {
+        *error = "unsupported captured operation"; return false;
+    }
+    std::vector<int32_t> positions;
+    std::vector<float> features;
+    if (!parse_sync(frame, prefix, &positions, &features, error) ||
+        !cpu_sync(ctx, batches.sync, positions, features, error)) return false;
+    return !gpu || gpu->sync(positions.data(), features.data(),
+                              static_cast<uint32_t>(positions.size()),
+                              trim.reset != 0,
+                              op == DFLASH_RPC_SYNC || trim.reset ? -1 : trim.pos0,
+                              error);
+}
+
 struct Metrics {
     double max_abs = 0;
     double max_rel = 0;
@@ -328,7 +432,8 @@ double elapsed_ms(clock_type::time_point start) {
 
 DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     const std::string & model_path, const std::string & capture_path,
-    llama_context * cpu_context, uint32_t batch_mask) {
+    llama_context * cpu_context, uint32_t batch_mask,
+    uint32_t capture_draft_ordinal) {
     DflashGpuDraftProbeResult result;
     bool cpu_context_mutated = false;
     uint64_t capture_bytes = 0;
@@ -343,8 +448,9 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
         return result;
     };
     if (!cpu_context || model_path.empty() || capture_path.empty() ||
-        (batch_mask & ~uint32_t(0x1f)))
+        (batch_mask & ~uint32_t(0x1f)) || capture_draft_ordinal > 369u)
         return failed("arguments", "invalid diagnostic arguments");
+    const bool replay_capture = capture_draft_ordinal != 0;
     if (!batch_mask) batch_mask = 0x1f;
     std::string error;
     std::error_code file_error;
@@ -367,7 +473,10 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     if (!trusted_capture)
         return failed("capture_sha256", "capture SHA-256 differs from reference");
     CapturedSequence captured;
-    if (!read_sequence(capture_path, &captured, &error))
+    std::vector<CapturedFrame> prefix_frames;
+    if (!(replay_capture
+          ? read_draft_prefix(capture_path, capture_draft_ordinal, &prefix_frames, &error)
+          : read_sequence(capture_path, &captured, &error)))
         return failed("capture", error);
     const uint64_t size_after_read = std::filesystem::file_size(
         std::filesystem::path(capture_path), file_error);
@@ -377,28 +486,35 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
         return failed("capture_changed", "capture changed while hashing/reading");
     std::vector<int32_t> prefill_pos, reinject_pos;
     std::vector<float> prefill_features, reinject_features;
-    if (!parse_sync(captured.sync, 0, &prefill_pos, &prefill_features, &error) ||
-        !parse_sync(captured.reinject, sizeof(dflash_rpc_sync_trim_request),
-                    &reinject_pos, &reinject_features, &error))
-        return failed("capture_sync", error);
     dflash_rpc_sync_trim_request trim{};
-    std::memcpy(&trim, captured.reinject.input.data(), sizeof(trim));
     dflash_rpc_draft_request first{}, second{};
     std::vector<float> first_embedding, second_embedding;
-    if (!parse_draft(captured.draft1, &first, &first_embedding, &error) ||
-        !parse_draft(captured.draft2, &second, &second_embedding, &error) ||
-        first.pos0 < 0 || second.pos0 != first.pos0 + 1 ||
-        trim.reset || trim.pos0 != first.pos0 ||
-        reinject_pos.empty() || reinject_pos.front() != first.pos0)
-        return failed("capture_draft", error.empty() ? "unexpected anchor/reinject positions" : error);
+    if (!replay_capture) {
+        if (!parse_sync(captured.sync, 0, &prefill_pos, &prefill_features, &error) ||
+            !parse_sync(captured.reinject, sizeof(dflash_rpc_sync_trim_request),
+                        &reinject_pos, &reinject_features, &error))
+            return failed("capture_sync", error);
+        std::memcpy(&trim, captured.reinject.input.data(), sizeof(trim));
+        if (!parse_draft(captured.draft1, &first, &first_embedding, &error) ||
+            !parse_draft(captured.draft2, &second, &second_embedding, &error) ||
+            first.pos0 < 0 || second.pos0 != first.pos0 + 1 ||
+            trim.reset || trim.pos0 != first.pos0 ||
+            reinject_pos.empty() || reinject_pos.front() != first.pos0)
+            return failed("capture_draft", error.empty() ? "unexpected anchor/reinject positions" : error);
+    }
     const auto * model = llama_get_model(cpu_context);
     if (!model || llama_model_n_embd_out(model) != 5120 ||
         llama_model_target_layer_ids_n(model) * llama_model_n_embd(model) != 25600)
         return failed("cpu_model", "CPU model geometry mismatch");
     const int32_t mask = llama_vocab_mask(llama_model_get_vocab(model));
+    const uint32_t batches[5] = {2, 3, 5, 7, 8};
+    uint32_t trace_batch = replay_capture ? prefix_frames.back().request.n_tokens : 2u;
+    if (!replay_capture) for (uint32_t i = 0; i < 5; ++i) {
+        if (batch_mask & (1u << i)) { trace_batch = batches[i]; break; }
+    }
     CpuTrace cpu_trace;
     std::vector<float> trace_cpu_final;
-    if (batch_mask & 1u) {
+    if (batch_mask) {
         auto trace_params = llama_context_default_params();
         trace_params.n_ctx = 2048;
         trace_params.n_batch = 64;
@@ -423,15 +539,42 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
         if (!trace_batches.sync.embd || !trace_batches.draft.embd ||
             !trace_batches.draft.token)
             return failed("trace_cpu_batches", "CPU trace batch allocation failed");
-        if (!cpu_sync(trace_ctx.get(), trace_batches.sync, prefill_pos,
-                      prefill_features, &error))
-            return failed("trace_cpu_prefill", error);
-        cpu_trace.active = true;
-        if (!cpu_draft(trace_ctx.get(), trace_batches.draft, mask, first,
-                       expand_embeddings(first_embedding, 2), 2,
-                       &trace_cpu_final, &error))
-            return failed("trace_cpu_draft", error);
-        cpu_trace.active = false;
+        if (replay_capture) {
+            for (const auto & frame : prefix_frames) {
+                if (frame.request.op != DFLASH_RPC_DRAFT) {
+                    if (!apply_capture_mutation(trace_ctx.get(), trace_batches,
+                                                nullptr, frame, &error))
+                        return failed("trace_cpu_prefix", error);
+                    continue;
+                }
+                dflash_rpc_draft_request params{};
+                std::vector<float> embedding, hidden;
+                if (!parse_draft(frame, &params, &embedding, &error))
+                    return failed("trace_capture_draft", error);
+                const bool selected = frame.record_index == prefix_frames.back().record_index;
+                cpu_trace.active = selected;
+                if (!cpu_draft(trace_ctx.get(), trace_batches.draft, mask, params,
+                               expand_embeddings(embedding, frame.request.n_tokens),
+                               frame.request.n_tokens, &hidden, &error))
+                    return failed("trace_cpu_draft", error);
+                cpu_trace.active = false;
+                if (frame.expected.size() != hidden.size() * sizeof(float) ||
+                    std::memcmp(frame.expected.data(), hidden.data(), frame.expected.size()))
+                    return failed("trace_cpu_capture", "CPU differs at capture record " +
+                                  std::to_string(frame.record_index));
+                if (selected) trace_cpu_final = std::move(hidden);
+            }
+        } else {
+            if (!cpu_sync(trace_ctx.get(), trace_batches.sync, prefill_pos,
+                          prefill_features, &error))
+                return failed("trace_cpu_prefill", error);
+            cpu_trace.active = true;
+            if (!cpu_draft(trace_ctx.get(), trace_batches.draft, mask, first,
+                           expand_embeddings(first_embedding, trace_batch), trace_batch,
+                           &trace_cpu_final, &error))
+                return failed("trace_cpu_draft", error);
+            cpu_trace.active = false;
+        }
     }
     CpuBatches cpu;
     if (!cpu.sync.embd || !cpu.draft.embd || !cpu.draft.token)
@@ -446,7 +589,6 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     DflashGpuDraftEngine gpu_draft;
     if (!gpu_draft.initialize(gpu_sync, model_path, &error))
         return failed("gpu_draft_init", error);
-    const uint32_t batches[5] = {2, 3, 5, 7, 8};
     std::ostringstream json;
     json << std::setprecision(9) << "{\"passed\":";
     std::ostringstream cases;
@@ -456,10 +598,12 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     uint32_t comparisons = 0;
     bool trace_done = false;
     std::string trace_json = "null";
+    uint32_t capture_case_ordinal = 0;
+    uint32_t capture_case_record_index = 0;
     auto do_draft = [&](const char * stage, uint32_t batch,
                         dflash_rpc_draft_request params,
                         const std::vector<float> & captured_embedding,
-                        bool compare_capture) -> bool {
+                        const CapturedFrame * expected_frame) -> bool {
         const auto input = expand_embeddings(captured_embedding, batch);
         std::vector<float> cpu_hidden, gpu_hidden(input.size());
         const auto cpu_start = clock_type::now();
@@ -467,8 +611,9 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
                        batch, &cpu_hidden, &error)) return false;
         const double cpu_ms = elapsed_ms(cpu_start);
         const auto gpu_start = clock_type::now();
-        const bool take_trace = !trace_done && batch == 2 &&
-                                std::strcmp(stage, "initial") == 0;
+        const bool take_trace = !trace_done && batch == trace_batch &&
+            (replay_capture ? capture_case_ordinal == capture_draft_ordinal :
+                              std::strcmp(stage, "initial") == 0);
         std::vector<DflashGpuDraftEngine::Checkpoint> gpu_trace;
         if (!gpu_draft.draft(static_cast<uint32_t>(params.pos0), input.data(),
                              batch - 1, gpu_hidden.data(), &error,
@@ -477,7 +622,8 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
         if (take_trace) {
             trace_done = true;
             std::ostringstream out;
-            out << std::setprecision(9) << "{\"batch\":2,\"cpuTraceMatchesMain\":";
+            out << std::setprecision(9) << "{\"batch\":" << trace_batch
+                << ",\"cpuTraceMatchesMain\":";
             if (trace_cpu_final.size() == cpu_hidden.size()) {
                 const Metrics match = compare(trace_cpu_final, cpu_hidden);
                 out << (match.mismatches == 0 && match.nonfinite == 0 ? "true" : "false")
@@ -491,7 +637,7 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
                 if (!first_checkpoint) out << ',';
                 first_checkpoint = false;
                 out << "{\"name\":\"" << checkpoint.name << "\",\"gpuElements\":"
-                    << checkpoint.values.size();
+                    << checkpoint.values.size() << ",\"gpuIntervalMs\":" << checkpoint.gpu_ms;
                 const auto found = cpu_trace.values.find(checkpoint.name);
                 if (found == cpu_trace.values.end() ||
                     found->second.size() != checkpoint.values.size()) {
@@ -534,7 +680,11 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
                         out << ']';
                     }
                     if (checkpoint.name == "ffn_norm-1" ||
-                        checkpoint.name == "ffn_conv_coeff-1") {
+                        checkpoint.name == "ffn_conv_coeff-1" ||
+                        checkpoint.name == "ffn_norm-4" ||
+                        checkpoint.name == "ffn_conv_coeff-4" ||
+                        checkpoint.name == "attn_conv_in-4" ||
+                        checkpoint.name == "Vcur-4") {
                         out << ",\"rawCpu\":[";
                         for (size_t i = 0; i < found->second.size(); ++i) {
                             if (i) out << ',';
@@ -554,16 +704,21 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
             trace_json = out.str();
         }
         const Metrics m = compare(cpu_hidden, gpu_hidden);
+        const bool compare_capture = expected_frame != nullptr;
         const bool capture_exact = compare_capture &&
-            captured.draft1.expected.size() == cpu_hidden.size() * sizeof(float) &&
-            !std::memcmp(cpu_hidden.data(), captured.draft1.expected.data(),
-                         captured.draft1.expected.size());
+            expected_frame->expected.size() == cpu_hidden.size() * sizeof(float) &&
+            !std::memcmp(cpu_hidden.data(), expected_frame->expected.data(),
+                         expected_frame->expected.size());
         const bool within = m.mismatches == 0 && m.nonfinite == 0 &&
                             (!compare_capture || capture_exact);
         all_pass = all_pass && within;
         if (!first_case) cases << ',';
         first_case = false;
         cases << "{\"stage\":\"" << stage << "\",\"batch\":" << batch
+              << (replay_capture ? ",\"captureDraftOrdinal\":" +
+                  std::to_string(capture_case_ordinal) + ",\"captureRecordIndex\":" +
+                  std::to_string(capture_case_record_index) : "")
+              << (replay_capture ? ",\"pos0\":" + std::to_string(params.pos0) : "")
               << ",\"cpuMs\":" << cpu_ms << ",\"gpuMs\":" << gpu_ms
               << ",\"maxAbs\":" << m.max_abs << ",\"maxRel\":" << m.max_rel
               << ",\"nmse\":" << m.nmse << ",\"cosine\":" << m.cosine
@@ -578,7 +733,23 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
         return true;
     };
 
-    for (uint32_t variant = 0; variant < 5; ++variant) {
+    if (replay_capture) {
+        for (const auto & frame : prefix_frames) {
+            if (frame.request.op != DFLASH_RPC_DRAFT) {
+                if (!apply_capture_mutation(cpu_context, cpu, &gpu_sync, frame, &error))
+                    return failed("capture_prefix", error);
+                continue;
+            }
+            dflash_rpc_draft_request params{};
+            std::vector<float> embedding;
+            if (!parse_draft(frame, &params, &embedding, &error))
+                return failed("capture_draft", error);
+            ++capture_case_ordinal;
+            capture_case_record_index = frame.record_index;
+            if (!do_draft("capture", frame.request.n_tokens, params, embedding, &frame))
+                return failed("draft_capture", error);
+        }
+    } else for (uint32_t variant = 0; variant < 5; ++variant) {
         if (!(batch_mask & (1u << variant))) continue;
         const uint32_t batch = batches[variant];
         for (uint32_t scenario = 0; scenario < 2; ++scenario) {
@@ -593,8 +764,9 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
                                static_cast<uint32_t>(prefill_pos.size()),
                                false, -1, &error))
                 return failed("prefill", error);
-            const bool exact = batch == 5 && scenario == 0;
-            if (!do_draft("initial", batch, first, first_embedding, exact))
+            const CapturedFrame * expected = batch == 5 && scenario == 0 ?
+                &captured.draft1 : nullptr;
+            if (!do_draft("initial", batch, first, first_embedding, expected))
                 return failed("draft_initial", error);
             if (scenario == 0) {
                 // Partial rejection: preserve anchor row, discard the rest.
@@ -614,7 +786,7 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
                     return failed("reinject", error);
             }
             if (!do_draft(scenario == 0 ? "partial_trim_next" : "reinject_next",
-                          batch, second, second_embedding, false))
+                          batch, second, second_embedding, nullptr))
                 return failed("draft_next", error);
         }
     }
@@ -624,6 +796,9 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
          << ",\"gpuBackend\":\"d3d12-hardware\""
          << ",\"captureBytes\":" << capture_bytes
          << ",\"captureSha256\":\"" << capture_sha256 << '"'
+         << (replay_capture ? ",\"captureDraftOrdinal\":" +
+             std::to_string(capture_draft_ordinal) + ",\"captureRecordIndex\":" +
+             std::to_string(prefix_frames.back().record_index) : "")
          << ",\"comparison\":\"cpu_llama_decode_hidden_f32\""
          << ",\"tolerance\":\"provisional: abs<=1e-3+1e-3*max(abs(cpu),abs(gpu))\""
          << ",\"fullPipelineParityGate\":false"

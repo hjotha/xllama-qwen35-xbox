@@ -305,9 +305,14 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
     }
     if (req.op == DFLASH_RPC_GPU_DRAFT_PROBE) {
         if (state.mock || req.n_tokens ||
-            (input.size() != 0 && input.size() != sizeof(uint32_t))) return -1;
+            (input.size() != 0 && input.size() != sizeof(uint32_t) &&
+             input.size() != 2 * sizeof(uint32_t))) return -1;
         uint32_t batch_mask = 0;
+        uint32_t capture_draft_ordinal = 0;
         if (!input.empty()) std::memcpy(&batch_mask, input.data(), sizeof(batch_mask));
+        if (input.size() == 2 * sizeof(uint32_t))
+            std::memcpy(&capture_draft_ordinal, input.data() + sizeof(uint32_t),
+                        sizeof(capture_draft_ordinal));
         if (batch_mask & ~uint32_t(0x1f)) return -1;
         const size_t last_separator = state.model_path.find_last_of("\\/");
         if (last_separator == std::string::npos) return -1;
@@ -316,7 +321,7 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         prepare_us = elapsed_us(prepare_start);
         const auto compute_start = clock_type::now();
         const auto probe = run_dflash_gpu_draft_probe(state.model_path,
-            capture_path, state.ctx, batch_mask);
+            capture_path, state.ctx, batch_mask, capture_draft_ordinal);
         compute_us = elapsed_us(compute_start);
         output.assign(probe.json.begin(), probe.json.end());
         return probe.passed ? 0 : -6;
@@ -665,6 +670,7 @@ void client_loop(SOCKET sock, dflash_state & state, const std::string & log_path
               ",\"payloadBytes\":" + std::to_string(req.payload_bytes) +
               ",\"responseBytes\":" + std::to_string(output.size()) +
               ",\"status\":" + std::to_string(rc) +
+              ",\"configuredBackend\":\"" + state.backend + "\"" +
               ",\"mock\":" + std::string(state.mock ? "true" : "false") +
               ",\"idleUs\":" + std::to_string(idle_us) +
               ",\"receiveUs\":" + std::to_string(receive_us) +

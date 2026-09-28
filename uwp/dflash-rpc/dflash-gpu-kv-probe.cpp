@@ -113,6 +113,13 @@ void fill_row(float * row, uint32_t seed) {
         const int value = static_cast<int>((i * 73u + seed * 41u) % 997u) - 498;
         row[i] = static_cast<float>(value) * 0.00317f;
     }
+    if (seed == 1) {
+        // Rounding the F32 addition gives 11 before integer truncation;
+        // truncating the unrounded sum would incorrectly store nibble 10.
+        for (uint32_t i = 0; i < 32; ++i) row[i] = 0.0f;
+        row[0] = -8.0f;
+        row[30] = std::nextafter(2.5f, 0.0f);
+    }
 }
 
 } // namespace

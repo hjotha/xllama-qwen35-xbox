@@ -1,0 +1,110 @@
+{
+  "server_log_path": "C:\\Users\\hjotha\\AppData\\Local\\Temp\\dflash-q2-parity-20260928\\agy-replay75\\dedicated.jsonl",
+  "server_log_sha256": "7495e78a423bf4294e0b0fa7603f086356edc744ca60bd6161b58f946db96e3b",
+  "binary_sha256": "bda17a8cb9beee2bb7de875d11401374f3cff538fc8bf7b1ecbac2b5388d3585",
+  "match_method": "Monotonic first matching opcode, cycle ID and compute time, starting at unique first row.",
+  "modes": {
+    "gpu-sequential": {
+      "matched_rpc_calls": 195,
+      "configured_backend": "d3d12",
+      "first_request_line": 15392,
+      "last_request_line": 15589,
+      "first_request": {
+        "phase": "request",
+        "cycleId": 6,
+        "op": 18,
+        "nTokens": 11,
+        "payloadBytes": 1228864,
+        "responseBytes": 102400,
+        "status": 0,
+        "configuredBackend": "d3d12",
+        "mock": false,
+        "idleUs": 676087,
+        "receiveUs": 10794,
+        "prepareUs": 965,
+        "computeUs": 69060,
+        "kvUs": 0,
+        "postUs": 349,
+        "responseUs": 80
+      },
+      "last_request": {
+        "phase": "request",
+        "cycleId": 203,
+        "op": 18,
+        "nTokens": 5,
+        "payloadBytes": 614440,
+        "responseBytes": 102400,
+        "status": 0,
+        "configuredBackend": "d3d12",
+        "mock": false,
+        "idleUs": 59146,
+        "receiveUs": 5168,
+        "prepareUs": 426,
+        "computeUs": 66750,
+        "kvUs": 0,
+        "postUs": 128,
+        "responseUs": 99
+      },
+      "first_512_mean_ms": {
+        "total_cycle_us": 126.73708974358975,
+        "xbox_compute_us": 69.17750641025641,
+        "draft_rpc_us": 76.61489102564103,
+        "target_verify_us": 45.011102564102565,
+        "selector_us": 4.939801282051282
+      },
+      "first_512_proposed": 606,
+      "first_512_accepted": 354
+    },
+    "gpu-pipeline": {
+      "matched_rpc_calls": 195,
+      "configured_backend": "d3d12",
+      "first_request_line": 15596,
+      "last_request_line": 15797,
+      "first_request": {
+        "phase": "request",
+        "cycleId": 6,
+        "op": 18,
+        "nTokens": 11,
+        "payloadBytes": 1228864,
+        "responseBytes": 102400,
+        "status": 0,
+        "configuredBackend": "d3d12",
+        "mock": false,
+        "idleUs": 1448895,
+        "receiveUs": 11951,
+        "prepareUs": 869,
+        "computeUs": 67866,
+        "kvUs": 0,
+        "postUs": 340,
+        "responseUs": 101
+      },
+      "last_request": {
+        "phase": "request",
+        "cycleId": 207,
+        "op": 18,
+        "nTokens": 5,
+        "payloadBytes": 614440,
+        "responseBytes": 102400,
+        "status": 0,
+        "configuredBackend": "d3d12",
+        "mock": false,
+        "idleUs": 58927,
+        "receiveUs": 5151,
+        "prepareUs": 423,
+        "computeUs": 66826,
+        "kvUs": 0,
+        "postUs": 126,
+        "responseUs": 97
+      },
+      "first_512_mean_ms": {
+        "total_cycle_us": 127.33475,
+        "xbox_compute_us": 69.09871794871795,
+        "draft_rpc_us": 76.4865641025641,
+        "target_verify_us": 45.729602564102564,
+        "selector_us": 4.941173076923077
+      },
+      "first_512_proposed": 606,
+      "first_512_accepted": 354
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "records": 369,
+  "capture_sha256": "5ff0aeb6e85c4deb4b473905513a2e166480cb9033deeb0589033a5aa835508e",
+  "package": "1.0.0.73",
+  "backend": "d3d12",
+  "model": "dflash-q2.gguf",
+  "comparison": "exact DFL2 status/header/payload; four timing fields excluded",
+  "package_sha256": "a6d859e96c9f9e59c7406a40b7ecf9e7bf319593768c6a331b240c79f71caf6d",
+  "reference": "Q2 CPU package 1.0.0.71, same 369 requests as Q3 F0; first 8 frames cross-checked against frozen Q2 fixture"
+}

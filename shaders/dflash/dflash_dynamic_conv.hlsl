@@ -39,7 +39,8 @@ void CSMain(uint3 tid : SV_DispatchThreadID) {
     const float current = asfloat(hidden.Load(element * 4));
     const float weight0 = asfloat(base_weight.Load(weight_base * 4))
                         + asfloat(dynamic_coeff.Load(coeff_base * 4));
-    float result = weight0 * current;
+    // GGML materializes each multiply before adding the two taps.
+    precise float result = weight0 * current;
 
     // ggml_concat([zeros, previous], axis=token) resets at *every* block.
     if (token % block_size != 0) {

@@ -1,13 +1,16 @@
 #include "gpu-attention-probe.h"
 
 #include "dflash-gpu-kv.h"
+#include "dflash-ucrt-exp-table.h"
 #include "dflash_attention_dxil.h"
 #include "xllama/d3d12_dyn.h"
 
+#include <DirectXPackedVector.h>
 #include <dxgi1_4.h>
 #include <wrl/client.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -30,6 +33,49 @@ constexpr uint32_t kQueryPositions[] = {2050, 2051};
 constexpr uint64_t kRowBytes = 1280;
 constexpr uint64_t kSourceRowBytes = kWidth * sizeof(float);
 constexpr uint64_t kOutputBytes = kQueries * kQHeads * kDim * sizeof(float);
+
+// Diagnose the native console CRT, independently of the Windows host CRT.
+std::string cpu_expf_check() {
+    constexpr uint32_t count = 1u << 20;
+    uint32_t polynomial_differences = 0, double_differences = 0;
+    std::string examples;
+    for (uint32_t i = 0; i < count; ++i) {
+        const float x = static_cast<float>(-104.0 * double(i) / double(count - 1u));
+        const double y = double(x) * 92.33248261689366;
+        const int n = static_cast<int>(std::nearbyint(y));
+        const int j = n & 63;
+        const int k = (n - j) / 64;
+        volatile double nr = -double(n) * 0.010830424696249145;
+        volatile double r = nr + double(x);
+        volatile double p0 = r * (1.0 / 6.0);
+        volatile double p = p0 + 0.5;
+        volatile double rr = r * r;
+        volatile double z0 = rr * p;
+        volatile double z = z0 + r;
+        double t;
+        std::memcpy(&t, &dflash_exp::kUcrtExpTable[j], sizeof(t));
+        volatile double v0 = z * t;
+        volatile double v = v0 + t;
+        const float polynomial = static_cast<float>(std::ldexp(v, k));
+        const float native = std::exp(x);
+        const float from_double = static_cast<float>(std::exp(double(x)));
+        if (native != from_double) ++double_differences;
+        if (native != polynomial) {
+            if (polynomial_differences < 8) {
+                char item[256];
+                std::snprintf(item, sizeof(item),
+                    "%s{\"x\":%.9g,\"native\":%.9g,\"polynomial\":%.9g,\"fromDouble\":%.9g}",
+                    examples.empty() ? "" : ",", x, native, polynomial, from_double);
+                examples += item;
+            }
+            ++polynomial_differences;
+        }
+    }
+    return "{\"samples\":" + std::to_string(count) +
+        ",\"polynomialDifferences\":" + std::to_string(polynomial_differences) +
+        ",\"doubleDifferences\":" + std::to_string(double_differences) +
+        ",\"examples\":[" + examples + "]}";
+}
 
 std::string quote(const std::string & input) {
     std::string result = "\"";
@@ -134,10 +180,31 @@ std::vector<uint32_t> active_rows(const DflashGpuKv & kv) {
     return result;
 }
 
+// Mirror the shader Q8_0 query packing before computing attention scores.
+// The quantization multiplier uses the unrounded maximum; the stored scale is FP16.
+std::array<float, kDim> packed_query(uint32_t query, uint32_t head) {
+    std::array<float, kDim> values{};
+    for (uint32_t block = 0; block < kDim / 32u; ++block) {
+        float maximum = 0.0f;
+        for (uint32_t i = 0; i < 32u; ++i)
+            maximum = std::max(maximum, std::fabs(query_value(query, head, block * 32u + i)));
+        const float scale = DirectX::PackedVector::XMConvertHalfToFloat(
+            DirectX::PackedVector::XMConvertFloatToHalf(maximum / 127.0f));
+        const float inverse = maximum != 0.0f ? 127.0f / maximum : 0.0f;
+        for (uint32_t i = 0; i < 32u; ++i) {
+            const float scaled = query_value(query, head, block * 32u + i) * inverse;
+            const int quant = std::clamp(int(std::nearbyint(scaled)), -127, 127);
+            values[block * 32u + i] = float(quant) * scale;
+        }
+    }
+    return values;
+}
+
 float reference(uint32_t query, uint32_t head, uint32_t d,
                 const std::vector<uint32_t> & active, uint32_t version) {
     const uint32_t qp = kQueryPositions[query];
     const uint32_t kv_head = head / 4u;
+    const auto q8_query = packed_query(query, head);
     const double sink = sink_value(head);
     std::vector<double> scores;
     std::vector<uint32_t> visible;
@@ -145,7 +212,7 @@ float reference(uint32_t query, uint32_t head, uint32_t d,
         if (p <= qp && qp - p >= 2048u) continue;
         double dot = 0.0;
         for (uint32_t i = 0; i < kDim; ++i)
-            dot += double(query_value(query, head, i)) *
+            dot += double(q8_query[i]) *
                    kv_value(p, 0, kv_head * kDim + i, p == 2051 ? version : 0);
         scores.push_back(dot / std::sqrt(128.0));
         visible.push_back(p);
@@ -303,7 +370,11 @@ dflash_gpu_attention_probe_result run_dflash_gpu_attention_probe() {
     auto active_upload = buffer(device.Get(), sizeof(kPositions), D3D12_HEAP_TYPE_UPLOAD,
                                 D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &hr);
     if (!active_upload) return fail("active position upload", "buffer", hr);
-    auto sink_upload = buffer(device.Get(), sizeof(sinks), D3D12_HEAP_TYPE_UPLOAD,
+    std::array<uint8_t, sizeof(sinks) + sizeof(dflash_exp::kUcrtExpTable)> sink_payload{};
+    std::memcpy(sink_payload.data(), sinks, sizeof(sinks));
+    std::memcpy(sink_payload.data() + sizeof(sinks), dflash_exp::kUcrtExpTable,
+                sizeof(dflash_exp::kUcrtExpTable));
+    auto sink_upload = buffer(device.Get(), sink_payload.size(), D3D12_HEAP_TYPE_UPLOAD,
                               D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &hr);
     if (!sink_upload) return fail("sink upload", "buffer", hr);
     auto output = buffer(device.Get(), kOutputBytes, D3D12_HEAP_TYPE_DEFAULT,
@@ -331,7 +402,7 @@ dflash_gpu_attention_probe_result run_dflash_gpu_attention_probe() {
     if (FAILED(hr = upload(source_upload.Get(), source.data(), source.size() * sizeof(float))) ||
         FAILED(hr = upload(query_upload.Get(), queries.data(), kOutputBytes)) ||
         FAILED(hr = upload(query_pos_upload.Get(), kQueryPositions, sizeof(kQueryPositions))) ||
-        FAILED(hr = upload(sink_upload.Get(), sinks, sizeof(sinks))))
+        FAILED(hr = upload(sink_upload.Get(), sink_payload.data(), sink_payload.size())))
         return fail("upload", "Map/copy", hr);
 
     auto pack = [&](uint32_t position_index, uint32_t source_row) {
@@ -450,6 +521,7 @@ dflash_gpu_attention_probe_result run_dflash_gpu_attention_probe() {
     result.json = "{\"passed\":true,\"probe\":\"dflash_attention_q4_0\",\"adapter\":" +
                   quote(utf8(desc.Description)) +
                   ",\"hardware\":true,\"shaderModel\":\"6.0\",\"queryCount\":2" +
-                  ",\"swa\":2048,\"fencesCompleted\":3,\"stages\":" + stages + "]}";
+                  ",\"swa\":2048,\"fencesCompleted\":3,\"stages\":" + stages +
+                  "],\"cpuExpfCheck\":" + cpu_expf_check() + "}";
     return result;
 }

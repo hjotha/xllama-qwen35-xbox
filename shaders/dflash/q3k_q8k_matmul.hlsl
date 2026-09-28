@@ -1,8 +1,8 @@
 // GGML Q3_K W[N,K] times Q8_K X[batch,K] -> F32 Y[batch,N].
 // Q3_K: 110 bytes/block. Q8_K: 292 bytes/block. K must divide 256.
-// Dispatch(N,ceil(batch/8),1); one 256-thread group per output row/tile.
-// Integer products are summed exactly per QK block, then scaled in F32.
-// Requires SM6 WaveOps; CPU path remains the fallback if unavailable.
+// Dispatch(N,ceil(batch/8),1); one 64-thread group per output row/tile.
+// Match GGML's x86 AVX2 path: eight FMA accumulators and its final hsum.
+#include "ggml_float.hlsli"
 
 cbuffer Params : register(b0) {
     uint n;
@@ -15,10 +15,11 @@ ByteAddressBuffer W : register(t0);
 ByteAddressBuffer X : register(t1);
 RWStructuredBuffer<float> Y : register(u0);
 
-groupshared int wave_sum[8 * 8];  // 8 batch items x 8 waves (wave32/64 on SM6)
+groupshared float lane_sum[8 * 8];
 groupshared uint s_w3[28];        // 28 uint32s = 112 bytes (covers full 110 bytes of Q3_K block)
 groupshared uint s_q8[512];
 groupshared float s_d8[8];
+groupshared int scaled_weights[256];
 
 uint load_shared_q3_u8(uint offset, uint shift) {
     const uint byte_pos = shift + offset;
@@ -49,19 +50,18 @@ int q3_scaled_integer(uint element, uint shift) {
     return scale * quant;
 }
 
-[numthreads(256, 1, 1)]
+[numthreads(64, 1, 1)]
 void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
     const uint row = gid.x;
     const uint batch_start = gid.y * 8u;
     if (row >= n || batch_start >= batch)
         return; // group-uniform exit before any barrier
 
-    const uint wave_size = WaveGetLaneCount();
-    const uint wave_id = lane / wave_size;
-    const uint wave_count = 256u / wave_size;
     const uint n_batch_in_group = min(8u, batch - batch_start);
     const uint total_q8_vec4 = n_batch_in_group * 16u;
-    float accum = 0.0f;
+    const uint b = lane / 8u;
+    const uint avx_lane = lane & 7u;
+    precise float accum = 0.0f;
 
     [loop]
     for (uint block = 0u; block < nb; ++block) {
@@ -80,9 +80,9 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
         if (lane < n_batch_in_group) {
             s_d8[lane] = asfloat(X.Load(((batch_start + lane) * nb + block) * 292u));
         }
-        if (lane < total_q8_vec4) {
-            const uint b = lane >> 4u;
-            const uint q = lane & 15u;
+        for (uint load = lane; load < total_q8_vec4; load += 64u) {
+            const uint b = load >> 4u;
+            const uint q = load & 15u;
             const uint4 v = X.Load4(((batch_start + b) * nb + block) * 292u + 4u + q * 16u);
             const uint dst = b * 64u + q * 4u;
             s_q8[dst + 0u] = v.x;
@@ -91,33 +91,35 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
             s_q8[dst + 3u] = v.w;
         }
         GroupMemoryBarrierWithGroupSync();
-
-        const int weight = q3_scaled_integer(lane, shift);
-        [unroll]
-        for (uint b = 0u; b < 8u; ++b) {
-            if (batch_start + b < batch) {
-                const uint packed = s_q8[b * 64u + (lane >> 2u)];
-                const uint byte_value = (packed >> ((lane & 3u) * 8u)) & 255u;
-                const int q8 = int(byte_value << 24u) >> 24;
-                const int sum_val = WaveActiveSum(weight * q8);
-                if (WaveIsFirstLane())
-                    wave_sum[b * 8u + wave_id] = sum_val;
-            }
+        [unroll] for (uint part = 0u; part < 4u; ++part) {
+            const uint element = lane + part * 64u;
+            scaled_weights[element] = q3_scaled_integer(element, shift);
         }
         GroupMemoryBarrierWithGroupSync();
 
-        if (lane < 8u && batch_start + lane < batch) {
-            const uint b = lane;
-            const float d3 = f16tof32(load_shared_q3_u16(108u, shift));
+        if (b < n_batch_in_group) {
             int integer_sum = 0;
-            for (uint wave = 0u; wave < wave_count; ++wave)
-                integer_sum += wave_sum[b * 8u + wave];
-            const float d8 = s_d8[b];
-            accum += (d8 * d3) * float(integer_sum);
+            [unroll] for (uint segment = 0u; segment < 8u; ++segment) {
+                const uint first = segment * 32u + avx_lane * 4u;
+                const uint packed = s_q8[b * 64u + first / 4u];
+                [unroll] for (uint j = 0u; j < 4u; ++j) {
+                    const int q8 = int((packed >> (j * 8u)) << 24u) >> 24;
+                    integer_sum += scaled_weights[first + j] * q8;
+                }
+            }
+            precise float d = s_d8[b] * f16tof32(load_shared_q3_u16(108u, shift));
+            accum = ggml_fma_f32(d, float(integer_sum), accum);
         }
-        GroupMemoryBarrierWithGroupSync(); // wave_sum can be reused next block
+        GroupMemoryBarrierWithGroupSync();
     }
-    if (lane < 8u && batch_start + lane < batch) {
-        Y[(batch_start + lane) * n + row] = accum;
+    if (b < n_batch_in_group) lane_sum[lane] = accum;
+    GroupMemoryBarrierWithGroupSync();
+    if (b < n_batch_in_group && avx_lane == 0u) {
+        precise float a = lane_sum[lane] + lane_sum[lane + 4u];
+        precise float c = lane_sum[lane + 1u] + lane_sum[lane + 5u];
+        precise float e = lane_sum[lane + 2u] + lane_sum[lane + 6u];
+        precise float g = lane_sum[lane + 3u] + lane_sum[lane + 7u];
+        precise float result = (a + e) + (c + g);
+        Y[(batch_start + b) * n + row] = result;
     }
 }

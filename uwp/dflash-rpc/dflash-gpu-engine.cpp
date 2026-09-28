@@ -1,4 +1,5 @@
 #include "dflash-gpu-engine.h"
+#include "dflash-gpu-rope.h"
 
 #include "dflash_q3k_t1_dxil.h"
 #include "dflash_q3k_t8_dxil.h"
@@ -488,11 +489,11 @@ bool DflashGpuSyncEngine::initialize(const std::string & model_path,
         !create_buffer(input_q8_bytes, D3D12_HEAP_TYPE_DEFAULT,
                        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &input_q8_, error) ||
-        !create_buffer(kBatch * 4, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE,
+        !create_buffer(kBatch * (1 + 128) * 4, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_COPY_DEST, &positions_, error) ||
         !create_buffer(input_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_GENERIC_READ, &input_upload_, error) ||
-        !create_buffer(kBatch * 4, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+        !create_buffer(kBatch * (1 + 128) * 4, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_GENERIC_READ, &position_upload_, error) ||
         !create_buffer(encoder_bytes, D3D12_HEAP_TYPE_DEFAULT,
                        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
@@ -661,7 +662,7 @@ void DflashGpuSyncEngine::dispatch_key(uint32_t batch, const Layer & layer) {
     transition(rotated_key_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[8] = {batch, kKvHeads * kHeadWidth, 0,
                                    bits(layer.key_scale), bits(epsilon_),
-                                   bits(rope_base_), bits(1.0f), 0};
+                                   bits(rope_base_), bits(1.0f), kBatch * 4};
     cmd_->SetComputeRootSignature(ops_root_.Get());
     cmd_->SetPipelineState(key_pso_.Get());
     cmd_->SetComputeRoot32BitConstants(0, 8, constants, 0);
@@ -689,6 +690,41 @@ void DflashGpuSyncEngine::dispatch_hadamard(Buffer & input, Buffer & output,
     transition(output, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 }
 
+bool DflashGpuSyncEngine::project_kv(uint32_t layer_index, uint32_t count,
+                                      std::string * error) {
+    const Layer & layer = layers_[layer_index];
+    if (!matmul(layer.key, encoder_, key_, count, error) ||
+        !matmul(layer.value, encoder_, value_, count, error)) {
+        sequence_valid_ = false; return false;
+    }
+    dispatch_key(count, layer);
+    // Quantized llama KV rotates the RoPE'd K with H128 before Q4_0.
+    dispatch_hadamard(rotated_key_, hadamard_key_, count, kHeadWidth);
+    transition(value_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    Buffer * value_source = &value_;
+    if (layer.value_scale != 1.0f) {
+        transition(scaled_value_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        const uint32_t constants[8] = {count, kKvHeads * kHeadWidth, 0,
+                                       bits(layer.value_scale), bits(epsilon_),
+                                       bits(rope_base_), bits(1.0f), 0};
+        cmd_->SetComputeRootSignature(ops_root_.Get());
+        cmd_->SetPipelineState(scale_pso_.Get());
+        cmd_->SetComputeRoot32BitConstants(0, 8, constants, 0);
+        cmd_->SetComputeRootShaderResourceView(1, value_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootShaderResourceView(2, enc_norm_.buffer.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(3,
+            scaled_value_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootShaderResourceView(4, positions_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch((count * kKvHeads * kHeadWidth + 127) / 128, 1, 1);
+        uav_barrier(scaled_value_);
+        transition(scaled_value_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        value_source = &scaled_value_;
+    }
+    // V uses H64 independently on each half of its 128-wide head.
+    dispatch_hadamard(*value_source, hadamard_value_, count, 64);
+    return true;
+}
+
 bool DflashGpuSyncEngine::sync(const int32_t * positions, const float * features,
                                uint32_t count, bool reset, int32_t trim_to,
                                std::string * error) {
@@ -705,7 +741,7 @@ bool DflashGpuSyncEngine::sync(const int32_t * positions, const float * features
                 return fail(error, "duplicate SYNC position");
     }
     const uint64_t input_bytes = uint64_t(count) * kFeatureWidth * sizeof(float);
-    const uint64_t position_bytes = uint64_t(count) * sizeof(int32_t);
+    const uint64_t position_bytes = uint64_t(kBatch + count * 128) * 4;
     void * mapped = nullptr;
     HRESULT hr = input_upload_.resource->Map(0, nullptr, &mapped);
     if (FAILED(hr)) return fail(error, "SYNC input Map", hr);
@@ -713,7 +749,10 @@ bool DflashGpuSyncEngine::sync(const int32_t * positions, const float * features
     input_upload_.resource->Unmap(0, nullptr);
     hr = position_upload_.resource->Map(0, nullptr, &mapped);
     if (FAILED(hr)) return fail(error, "SYNC positions Map", hr);
-    std::memcpy(mapped, positions, static_cast<size_t>(position_bytes));
+    std::memcpy(mapped, positions, size_t(count) * sizeof(int32_t));
+    for (uint32_t row = 0; row < count; ++row)
+        dflash_rope_cache(static_cast<float *>(mapped) + kBatch + row * 128,
+                          static_cast<uint32_t>(positions[row]), rope_base_);
     position_upload_.resource->Unmap(0, nullptr);
     // A recording or device error from this point invalidates the whole
     // sequence: DflashGpuKv marks slots valid when Pack is recorded.
@@ -738,36 +777,7 @@ bool DflashGpuSyncEngine::sync(const int32_t * positions, const float * features
     }
     dispatch_norm(count);
     for (uint32_t il = 0; il < kLayers; ++il) {
-        const Layer & layer = layers_[il];
-        if (!matmul(layer.key, encoder_, key_, count, error) ||
-            !matmul(layer.value, encoder_, value_, count, error)) {
-            sequence_valid_ = false; return false;
-        }
-        dispatch_key(count, layer);
-        // Quantized llama KV rotates the RoPE'd K with H128 before Q4_0.
-        dispatch_hadamard(rotated_key_, hadamard_key_, count, kHeadWidth);
-        transition(value_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-        Buffer * value_source = &value_;
-        if (layer.value_scale != 1.0f) {
-            transition(scaled_value_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-            const uint32_t constants[8] = {count, kKvHeads * kHeadWidth, 0,
-                                           bits(layer.value_scale), bits(epsilon_),
-                                           bits(rope_base_), bits(1.0f), 0};
-            cmd_->SetComputeRootSignature(ops_root_.Get());
-            cmd_->SetPipelineState(scale_pso_.Get());
-            cmd_->SetComputeRoot32BitConstants(0, 8, constants, 0);
-            cmd_->SetComputeRootShaderResourceView(1, value_.resource->GetGPUVirtualAddress());
-            cmd_->SetComputeRootShaderResourceView(2, enc_norm_.buffer.resource->GetGPUVirtualAddress());
-            cmd_->SetComputeRootUnorderedAccessView(3,
-                scaled_value_.resource->GetGPUVirtualAddress());
-            cmd_->SetComputeRootShaderResourceView(4, positions_.resource->GetGPUVirtualAddress());
-            cmd_->Dispatch((count * kKvHeads * kHeadWidth + 127) / 128, 1, 1);
-            uav_barrier(scaled_value_);
-            transition(scaled_value_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-            value_source = &scaled_value_;
-        }
-        // V uses H64 independently on each half of its 128-wide head.
-        dispatch_hadamard(*value_source, hadamard_value_, count, 64);
+        if (!project_kv(il, count, error)) return false;
         for (uint32_t row = 0; row < count; ++row) {
             const uint64_t source_offset = uint64_t(row) * kKvHeads * kHeadWidth * 4;
             if (!kv_.record_pack(cmd_.Get(), il, static_cast<uint32_t>(positions[row]),
@@ -836,14 +846,19 @@ bool DflashGpuSyncEngine::read_encoder_q8(void * destination, uint32_t count,
                        "Q8 encoder", error);
 }
 
-bool DflashGpuSyncEngine::read_last_layer_kv(const int32_t * positions,
+bool DflashGpuSyncEngine::read_layer_kv(const int32_t * positions,
                                               uint32_t count, KvSnapshot * snapshot,
-                                              std::string * error) {
+                                              std::string * error, uint32_t layer) {
     if (!ready_ || !sequence_valid_ || !positions || !snapshot ||
-        !count || count != last_batch_ ||
+        !count || count != last_batch_ || layer >= kLayers ||
         std::memcmp(positions, last_positions_, size_t(count) * sizeof(int32_t)) != 0)
         return fail(error, "KV diagnostic batch unavailable");
-    constexpr uint32_t layer = kLayers - 1;
+    // Layers reuse the same buffers. Recompute only projections
+    // for this diagnostic; leave the actual cached Q4 bytes untouched.
+    if (!begin(error) || !project_kv(layer, count, error) || !submit(error)) {
+        sequence_valid_ = false;
+        return false;
+    }
     constexpr uint64_t packed_row_bytes = uint64_t(kKvHeads * kHeadWidth / 32) * 20;
     const uint64_t float_bytes = uint64_t(count) * kKvHeads * kHeadWidth * 4;
     const uint64_t packed_bytes = uint64_t(count) * packed_row_bytes;

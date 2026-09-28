@@ -5,6 +5,7 @@
 #include "ggml-cpu.h"
 #include "gguf.h"
 #include "llama.h"
+#include "llama-ext.h"
 #include "../../llama.cpp/ggml/src/ggml-quants.h"
 #include "../../llama.cpp/src/llama-kv-cache.h"
 #include "../../llama.cpp/src/llama-kv-cache-iswa.h"
@@ -20,6 +21,7 @@
 #include <limits>
 #include <memory>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace {
@@ -504,7 +506,7 @@ std::string q8_fc_scale_samples_json(const float * features,
 }
 
 std::vector<float> hadamard_cpu_reference(const std::vector<float> & input,
-                                          uint32_t transform_width) {
+                                           uint32_t transform_width) {
     std::vector<float> output(input.size());
     constexpr uint32_t head_width = DflashGpuSyncEngine::kHeadWidth;
     const float factor = transform_width == 64 ? 0.125f :
@@ -524,6 +526,48 @@ std::vector<float> hadamard_cpu_reference(const std::vector<float> & input,
         }
     }
     return output;
+}
+
+std::vector<float> fwht_cpu_reference(const std::vector<float> & input,
+                                      uint32_t transform_width) {
+    std::vector<float> output = input;
+    const float factor = transform_width == 64 ? 0.125f : 0.08838834764831845f;
+    for (size_t base = 0; base < output.size(); base += transform_width) {
+        for (uint32_t i = 0; i < transform_width; ++i)
+            output[base + i] *= factor;
+        for (uint32_t stride = 1; stride < transform_width; stride <<= 1) {
+            for (uint32_t pair = 0; pair < transform_width; pair += 2 * stride) {
+                for (uint32_t lane = 0; lane < stride; ++lane) {
+                    const size_t lo = base + pair + lane;
+                    const size_t hi = lo + stride;
+                    const float a = output[lo], b = output[hi];
+                    output[lo] = a + b;
+                    output[hi] = a - b;
+                }
+            }
+        }
+    }
+    return output;
+}
+
+void json_float_block(std::ostringstream & out, const std::vector<float> & values,
+                      size_t first) {
+    out << '[';
+    for (size_t i = 0; i < 32; ++i) {
+        if (i) out << ',';
+        out << json_number(values[first + i]);
+    }
+    out << ']';
+}
+
+void json_byte_block(std::ostringstream & out, const std::vector<uint8_t> & values,
+                     size_t first) {
+    out << '[';
+    for (size_t i = 0; i < 20; ++i) {
+        if (i) out << ',';
+        out << unsigned(values[first + i]);
+    }
+    out << ']';
 }
 
 std::vector<uint8_t> q4_gpu_stride_reference(const std::vector<float> & input) {
@@ -1001,6 +1045,37 @@ struct owned_batch {
     ~owned_batch() { if (value.embd || value.token) llama_batch_free(value); }
 };
 
+struct kv_cpu_trace {
+    std::string key_name;
+    std::string value_name;
+    std::vector<float> encoder;
+    std::vector<float> key;
+    std::vector<float> value;
+    std::string error;
+};
+
+bool kv_cpu_trace_callback(ggml_tensor * tensor, bool ask, void * user_data) {
+    auto & trace = *static_cast<kv_cpu_trace *>(user_data);
+    if (!tensor) return false;
+    std::vector<float> * destination = nullptr;
+    if (std::strcmp(tensor->name, "inp_g_embeddings") == 0)
+        destination = &trace.encoder;
+    else if (trace.key_name == tensor->name)
+        destination = &trace.key;
+    else if (trace.value_name == tensor->name)
+        destination = &trace.value;
+    if (!destination) return false;
+    if (ask) return true;
+    if (tensor->type != GGML_TYPE_F32 || !ggml_is_contiguous(tensor) ||
+        !tensor->buffer || ggml_nbytes(tensor) % sizeof(float)) {
+        trace.error = std::string("CPU trace tensor unavailable: ") + tensor->name;
+        return true;
+    }
+    destination->resize(ggml_nbytes(tensor) / sizeof(float));
+    ggml_backend_tensor_get(tensor, destination->data(), 0, ggml_nbytes(tensor));
+    return true;
+}
+
 bool cpu_sync(llama_context * ctx, llama_batch & batch,
               const int32_t * positions, const float * features, uint32_t count,
               std::vector<float> * output, std::string * error) {
@@ -1206,7 +1281,7 @@ dflash_gpu_sync_probe_result run_dflash_gpu_sync_probe(
     }
 
     DflashGpuSyncEngine::KvSnapshot kv_snapshot;
-    if (!engine.read_last_layer_kv(positions, count, &kv_snapshot, &error))
+    if (!engine.read_layer_kv(positions, count, &kv_snapshot, &error))
         return finish("kv_physical_readback", error);
     const auto cpu_h128_k = hadamard_cpu_reference(kv_snapshot.pre_key, 128);
     const auto cpu_h64_v = hadamard_cpu_reference(kv_snapshot.pre_value, 64);
@@ -1261,6 +1336,186 @@ dflash_gpu_sync_probe_result run_dflash_gpu_sync_probe(
     const auto kv_numeric = q4_numeric_gate(cpu_kv_bytes, gpu_kv_bytes, kv_snapshot, count);
     intermediates.push_back(q4_numeric_gate_json(kv_numeric));
     if (!kv_numeric.passed) all_passed = false;
+    if (!kv_numeric.passed) {
+        // A separate CPU context proves the selected projection belongs to the
+        // same execution before its F32 tensors are used as a reference.
+        const auto diagnose = [&] {
+            auto diagnostic_error = [&](const std::string & reason) {
+                intermediates.push_back(std::string("{\"name\":\"kv_first_mismatch_stage\","
+                    "\"diagnosticOnly\":true,\"error\":") + json_string(reason) + '}');
+            };
+            const auto mismatch = std::mismatch(cpu_kv_bytes.begin(), cpu_kv_bytes.end(),
+                                                gpu_kv_bytes.begin());
+            if (mismatch.first == cpu_kv_bytes.end()) {
+                diagnostic_error("numeric gate failed without differing physical bytes");
+                return;
+            }
+            const size_t index = size_t(mismatch.first - cpu_kv_bytes.begin());
+            const uint32_t layer = uint32_t(index / (2 * kind_bytes));
+            const uint32_t kind = uint32_t((index / kind_bytes) & 1u);
+            const size_t within_kind = index % kind_bytes;
+            const uint32_t row = uint32_t(within_kind / packed_row_bytes);
+            const size_t block = (within_kind % packed_row_bytes) / 20;
+            const size_t byte_in_block = within_kind % 20;
+            DflashGpuSyncEngine::KvSnapshot selected;
+            std::string diagnostic_message;
+            if (!engine.read_layer_kv(positions, count, &selected,
+                                      &diagnostic_message, layer)) {
+                diagnostic_error("GPU selected-layer readback: " + diagnostic_message);
+                return;
+            }
+            const auto & selected_packed = kind ? selected.packed_value : selected.packed_key;
+            const size_t packed_kind_offset = (size_t(layer) * 2 + kind) * kind_bytes;
+            const bool snapshot_matches_cache = selected_packed.size() == kind_bytes &&
+                std::memcmp(selected_packed.data(),
+                            gpu_kv_bytes.data() + packed_kind_offset, kind_bytes) == 0;
+            const auto & selected_rotated = kind ? selected.rotated_value : selected.rotated_key;
+            const size_t expected_floats = size_t(count) *
+                DflashGpuSyncEngine::kKvHeads * DflashGpuSyncEngine::kHeadWidth;
+            if (selected_packed.size() != kind_bytes ||
+                selected.pre_key.size() != expected_floats ||
+                selected.pre_value.size() != expected_floats ||
+                selected.rotated_key.size() != expected_floats ||
+                selected.rotated_value.size() != expected_floats) {
+                diagnostic_error("GPU selected-layer snapshot shape mismatch");
+                return;
+            }
+            const auto packed_from_gpu = q4_gpu_stride_reference(selected_rotated);
+            intermediates.push_back(q4_physical_json(
+                "selected_layer_cpu_pack_from_gpu_hadamard_vs_gpu",
+                packed_from_gpu, selected_packed));
+
+            kv_cpu_trace trace;
+            trace.key_name = "Kcur_injected-" + std::to_string(layer);
+            trace.value_name = "Vcur_injected-" + std::to_string(layer);
+            const auto * model = llama_get_model(ctx);
+            if (!model) { diagnostic_error("CPU model unavailable for trace"); return; }
+            auto params = llama_context_default_params();
+            const int32_t max_position = *std::max_element(positions, positions + count);
+            params.n_ctx = std::min(DflashGpuSyncEngine::kContext,
+                std::max(2048u, uint32_t(max_position) + count + 1u));
+            params.n_batch = 64;
+            params.n_ubatch = 64;
+            params.n_seq_max = 1;
+            params.n_threads = 4;
+            params.n_threads_batch = 4;
+            params.embeddings = true;
+            params.pooling_type = LLAMA_POOLING_TYPE_NONE;
+            params.dflash_split = true;
+            params.type_k = GGML_TYPE_Q4_0;
+            params.type_v = GGML_TYPE_Q4_0;
+            params.cb_eval = kv_cpu_trace_callback;
+            params.cb_eval_user_data = &trace;
+            std::unique_ptr<llama_context, decltype(&llama_free)> trace_ctx(
+                llama_init_from_model(const_cast<llama_model *>(model), params), &llama_free);
+            if (!trace_ctx) { diagnostic_error("CPU trace context init failed"); return; }
+            llama_set_embeddings_nextn(trace_ctx.get(), true, false);
+            llama_set_causal_attn(trace_ctx.get(), false);
+            owned_batch trace_batch;
+            trace_batch.value = llama_batch_init(static_cast<int32_t>(count),
+                                                 DflashGpuSyncEngine::kFeatureWidth, 1);
+            if (!trace_batch.value.embd || !trace_batch.value.pos ||
+                !trace_batch.value.n_seq_id || !trace_batch.value.seq_id ||
+                !trace_batch.value.logits) {
+                diagnostic_error("CPU trace batch init failed"); return;
+            }
+            std::vector<float> trace_encoder;
+            if (!cpu_sync(trace_ctx.get(), trace_batch.value, positions, features,
+                          count, &trace_encoder, &diagnostic_message)) {
+                diagnostic_error("CPU trace SYNC: " + diagnostic_message); return;
+            }
+            std::vector<uint8_t> trace_kv_bytes;
+            std::string trace_geometry;
+            if (!cpu_kv_packed_snapshot(trace_ctx.get(), positions, count,
+                                        &trace_kv_bytes, &trace_geometry,
+                                        &diagnostic_message)) {
+                diagnostic_error("CPU trace KV: " + diagnostic_message); return;
+            }
+            const bool encoder_exact = trace_encoder.size() == cpu.size() &&
+                std::memcmp(trace_encoder.data(), cpu.data(), cpu.size() * sizeof(float)) == 0 &&
+                (trace.encoder.empty() ||
+                 (trace.encoder.size() == cpu.size() &&
+                  std::memcmp(trace.encoder.data(), cpu.data(), cpu.size() * sizeof(float)) == 0));
+            const bool kv_exact = trace_kv_bytes == cpu_kv_bytes;
+            const bool trace_trusted = trace.error.empty() && encoder_exact && kv_exact &&
+                trace.key.size() == expected_floats &&
+                trace.value.size() == expected_floats;
+            std::ostringstream details;
+            details.imbue(std::locale::classic());
+            details << "{\"name\":\"kv_first_mismatch_stage\",\"diagnosticOnly\":true"
+                    << ",\"layer\":" << layer << ",\"kind\":"
+                    << json_string(kind ? "v" : "k")
+                    << ",\"position\":" << positions[row] << ",\"row\":" << row
+                    << ",\"block\":" << block << ",\"byteInBlock\":"
+                    << byte_in_block << ",\"cpuByte\":" << unsigned(cpu_kv_bytes[index])
+                    << ",\"gpuByte\":" << unsigned(gpu_kv_bytes[index])
+                    << ",\"snapshotMatchesGpuCache\":"
+                    << (snapshot_matches_cache ? "true" : "false")
+                    << ",\"traceEncoderExact\":" << (encoder_exact ? "true" : "false")
+                    << ",\"traceKvExact\":" << (kv_exact ? "true" : "false")
+                    << ",\"traceTrusted\":" << (trace_trusted ? "true" : "false")
+                    << ",\"traceKeyElements\":" << trace.key.size()
+                    << ",\"traceValueElements\":" << trace.value.size()
+                    << ",\"traceError\":"
+                    << (trace.error.empty() ? "null" : json_string(trace.error));
+            const auto & cpu_pre = kind ? trace.value : trace.key;
+            const auto & gpu_pre = kind ? selected.pre_value : selected.pre_key;
+            const size_t first_float = (size_t(row) * packed_row_bytes / 20 + block) * 32;
+            const size_t first_packed = size_t(row) * packed_row_bytes + block * 20;
+            if (trace_trusted && cpu_pre.size() == gpu_pre.size() &&
+                gpu_pre.size() == selected_rotated.size() &&
+                first_float + 32 <= cpu_pre.size() &&
+                first_packed + 20 <= selected_packed.size()) {
+                const auto cpu_key_rotated = fwht_cpu_reference(trace.key, 128);
+                const auto cpu_value_rotated = fwht_cpu_reference(trace.value, 64);
+                const auto & cpu_rotated = kind ? cpu_value_rotated : cpu_key_rotated;
+                for (uint32_t projection = 0; projection < 2; ++projection) {
+                    const auto & reference = projection ? trace.value : trace.key;
+                    const auto & actual = projection ? selected.pre_value : selected.pre_key;
+                    const auto & rotated_reference = projection ? cpu_value_rotated : cpu_key_rotated;
+                    const auto & rotated_actual = projection ? selected.rotated_value : selected.rotated_key;
+                    const std::string prefix = std::string("selected_layer_") +
+                        (projection ? "v" : "k");
+                    if (reference.size() == actual.size() &&
+                        rotated_reference.size() == rotated_actual.size()) {
+                        intermediates.push_back(intermediate_json(prefix + "_pre_cpu_vs_gpu",
+                            compare_all(reference.data(), actual.data(), actual.size(), 0, 0)));
+                        intermediates.push_back(intermediate_json(prefix + "_fwht_cpu_vs_gpu",
+                            compare_all(rotated_reference.data(), rotated_actual.data(),
+                                        rotated_actual.size(), 0, 0)));
+                    }
+                }
+                const auto packed_from_cpu_fwht = q4_gpu_stride_reference(cpu_rotated);
+                const std::vector<uint8_t> physical_cpu_kind(
+                    cpu_kv_bytes.begin() + packed_kind_offset,
+                    cpu_kv_bytes.begin() + packed_kind_offset + kind_bytes);
+                intermediates.push_back(q4_physical_json(
+                    "selected_layer_cpu_pack_from_cpu_fwht_vs_cpu_cache",
+                    packed_from_cpu_fwht, physical_cpu_kind));
+                details << ",\"cpuPre32\":";
+                json_float_block(details, cpu_pre, first_float);
+                details << ",\"gpuPre32\":";
+                json_float_block(details, gpu_pre, first_float);
+                details << ",\"cpuFwht32\":";
+                json_float_block(details, cpu_rotated, first_float);
+                details << ",\"cpuPacked20\":";
+                json_byte_block(details, physical_cpu_kind, first_packed);
+                details << ",\"gpuPacked20\":";
+                json_byte_block(details, selected_packed, first_packed);
+            }
+            if (first_float + 32 <= selected_rotated.size()) {
+                details << ",\"gpuHadamard32\":";
+                json_float_block(details, selected_rotated, first_float);
+            }
+            if (first_packed + 20 <= packed_from_gpu.size()) {
+                details << ",\"cpuPackFromGpuHadamard20\":";
+                json_byte_block(details, packed_from_gpu, first_packed);
+            }
+            details << '}';
+            intermediates.push_back(details.str());
+        };
+        diagnose();
+    }
 
     // Instrument the exact boundary where the full encoder first diverges.
     // F2's synthetic FC probe does not use these recorded target features.

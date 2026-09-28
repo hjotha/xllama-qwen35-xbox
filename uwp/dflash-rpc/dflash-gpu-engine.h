@@ -49,10 +49,10 @@ public:
         std::vector<uint8_t> packed_key;
         std::vector<uint8_t> packed_value;
     };
-    // Diagnostic only: latest SYNC batch, final layer. Reads raw Q4 GPU blocks
-    // plus F32 values on both sides of Hadamard; no SYNC readback is added.
-    bool read_last_layer_kv(const int32_t * positions, uint32_t count,
-                            KvSnapshot * snapshot, std::string * error);
+    // Diagnostic only: latest SYNC batch. Other layers recompute projections;
+    // actual packed KV is unchanged, and normal SYNC has no readback.
+    bool read_layer_kv(const int32_t * positions, uint32_t count,
+                            KvSnapshot * snapshot, std::string * error, uint32_t layer = kLayers - 1);
     // Raw 20-byte Q4 blocks for every layer, K then V, each requested row.
     // Layout: ((layer * 2 + kind) * count + row) * 640 bytes.
     bool read_kv_packed(const int32_t * positions, uint32_t count,
@@ -110,6 +110,7 @@ private:
                 uint32_t batch, std::string * error);
     bool quantize_q8(Buffer & input, Buffer & output, uint32_t width,
                      uint32_t batch, std::string * error);
+    bool project_kv(uint32_t layer, uint32_t count, std::string * error);
     void dispatch_norm(uint32_t batch);
     void dispatch_key(uint32_t batch, const Layer & layer);
     void dispatch_hadamard(Buffer & input, Buffer & output, uint32_t batch,

@@ -1,4 +1,6 @@
 #include "dflash-gpu-draft-engine.h"
+#include "dflash-gpu-rope.h"
+#include "dflash-ucrt-exp-table.h"
 
 #include "dflash_q2k_q8k_dxil.h"
 #include "dflash_q3k_q8k_dxil.h"
@@ -194,6 +196,8 @@ void DflashGpuDraftEngine::quarantine_inflight() {
     keep(retained, swiglu_pso_);
     keep(retained, conv_pso_);
     keep(retained, attention_pso_);
+    keep(retained, trace_queries_);
+    keep(retained, trace_times_.resource);
     for (const auto & buffer : buffers_) keep(retained, buffer.resource);
     for (const auto & upload : pending_uploads_) keep(retained, upload);
     for (const auto & checkpoint : pending_checkpoints_)
@@ -223,6 +227,9 @@ bool DflashGpuDraftEngine::record_checkpoint(const char * name, Slot slot,
     PendingCheckpoint checkpoint;
     checkpoint.name = name;
     checkpoint.bytes = uint64_t(batch) * width * sizeof(float);
+    const uint32_t query = 2u * static_cast<uint32_t>(pending_checkpoints_.size()) + 1u;
+    if (query + 1u >= 256u) return fail(error, "DRAFT trace query capacity exceeded");
+    if (trace_frequency_) cmd_->EndQuery(trace_queries_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, query);
     if (!create_buffer(checkpoint.bytes, D3D12_HEAP_TYPE_READBACK,
                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST,
                        &checkpoint.readback, error)) return false;
@@ -230,6 +237,7 @@ bool DflashGpuDraftEngine::record_checkpoint(const char * name, Slot slot,
     transition(source, D3D12_RESOURCE_STATE_COPY_SOURCE);
     cmd_->CopyBufferRegion(checkpoint.readback.resource.Get(), 0,
                            source.resource.Get(), 0, checkpoint.bytes);
+    if (trace_frequency_) cmd_->EndQuery(trace_queries_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, query + 1u);
     pending_checkpoints_.push_back(std::move(checkpoint));
     return true;
 }
@@ -384,10 +392,10 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
     const uint64_t file_size = static_cast<uint64_t>(file.tellg());
     const uint64_t data_offset = gguf_get_data_offset(gguf.get());
     auto load = [&](const std::string & name, uint32_t cols, uint32_t rows,
-                    bool f32_only, Weight * out, bool optional = false,
+                    bool f32_only, Weight * out, bool optional_sink = false,
                     bool conv_base = false) -> bool {
         const int64_t id = gguf_find_tensor(gguf.get(), name.c_str());
-        if (id < 0) return optional ? true : fail(error, "missing tensor " + name);
+        if (id < 0) return optional_sink ? true : fail(error, "missing tensor " + name);
         const auto type = gguf_get_tensor_type(gguf.get(), id);
         if (f32_only ? type != GGML_TYPE_F32 :
             (type != GGML_TYPE_F32 && type != GGML_TYPE_Q2_K && type != GGML_TYPE_Q3_K &&
@@ -416,10 +424,11 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
             bytes > file_size - offset ||
             bytes > static_cast<uint64_t>(std::numeric_limits<std::streamsize>::max()))
             return fail(error, "tensor file range/size invalid " + name);
+        const uint64_t upload_bytes = bytes + (optional_sink ? sizeof(dflash_exp::kUcrtExpTable) : 0u);
         Buffer upload;
-        if (!create_buffer(bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+        if (!create_buffer(upload_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                            D3D12_RESOURCE_STATE_GENERIC_READ, &upload, error) ||
-            !create_buffer(bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE,
+            !create_buffer(upload_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_NONE,
                            D3D12_RESOURCE_STATE_COPY_DEST, &out->buffer, error)) return false;
         void * mapped = nullptr;
         HRESULT hr = upload.resource->Map(0, nullptr, &mapped);
@@ -428,14 +437,17 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
         file.seekg(static_cast<std::streamoff>(offset));
         file.read(static_cast<char *>(mapped), static_cast<std::streamsize>(bytes));
         const bool read_ok = static_cast<bool>(file);
-        if (aligned4(bytes) > bytes)
-            std::memset(static_cast<uint8_t *>(mapped) + bytes, 0,
-                        static_cast<size_t>(aligned4(bytes) - bytes));
+        if (read_ok && optional_sink)
+            std::memcpy(static_cast<uint8_t *>(mapped) + bytes,
+                        dflash_exp::kUcrtExpTable, sizeof(dflash_exp::kUcrtExpTable));
+        if (aligned4(upload_bytes) > upload_bytes)
+            std::memset(static_cast<uint8_t *>(mapped) + upload_bytes, 0,
+                        static_cast<size_t>(aligned4(upload_bytes) - upload_bytes));
         upload.resource->Unmap(0, nullptr);
         if (!read_ok) return fail(error, "GGUF tensor read failed " + name);
         if (!begin(error)) return false;
         cmd_->CopyBufferRegion(out->buffer.resource.Get(), 0,
-                               upload.resource.Get(), 0, aligned4(bytes));
+                               upload.resource.Get(), 0, aligned4(upload_bytes));
         transition(out->buffer, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
         pending_uploads_.push_back(upload.resource);
         if (!submit(error)) return false;
@@ -550,7 +562,7 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
 
     const uint64_t hidden_bytes = uint64_t(kMaxTokens) * kHidden * 4;
     const uint64_t max_bytes = uint64_t(kMaxTokens) * kFfn * 4;
-    const uint64_t position_bytes = kMaxTokens * 4;
+    const uint64_t position_bytes = kMaxTokens * (1 + 128) * 4;
     const uint64_t active_bytes = 2056u * 4u;
     for (size_t i = 0; i < Count; ++i) {
         const Slot slot = static_cast<Slot>(i);
@@ -564,7 +576,7 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
         else if (slot == UploadActive)
             size = active_bytes * kLayers;
         else if (slot == NoSink)
-            size = kQHeads * 4;
+            size = kQHeads * 4u + sizeof(dflash_exp::kUcrtExpTable);
         const auto heap = slot == UploadEmbedding || slot == UploadPositions ||
             slot == UploadActive ? D3D12_HEAP_TYPE_UPLOAD :
             slot == Readback ? D3D12_HEAP_TYPE_READBACK : D3D12_HEAP_TYPE_DEFAULT;
@@ -581,7 +593,7 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
     Buffer init_zero, init_sink;
     if (!create_buffer(max_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_GENERIC_READ, &init_zero, error) ||
-        !create_buffer(kQHeads * 4, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+        !create_buffer(kQHeads * 4u + sizeof(dflash_exp::kUcrtExpTable), D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_GENERIC_READ, &init_sink, error)) return false;
     void * mapped = nullptr;
     hr = init_zero.resource->Map(0, nullptr, &mapped);
@@ -594,12 +606,14 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
         const float no_sink = -std::numeric_limits<float>::infinity();
         std::memcpy(static_cast<uint8_t *>(mapped) + i * 4, &no_sink, 4);
     }
+    std::memcpy(static_cast<uint8_t *>(mapped) + kQHeads * 4u,
+                dflash_exp::kUcrtExpTable, sizeof(dflash_exp::kUcrtExpTable));
     init_sink.resource->Unmap(0, nullptr);
     if (!begin(error)) return false;
     cmd_->CopyBufferRegion(buffers_[Zero].resource.Get(), 0,
                            init_zero.resource.Get(), 0, max_bytes);
     cmd_->CopyBufferRegion(buffers_[NoSink].resource.Get(), 0,
-                           init_sink.resource.Get(), 0, kQHeads * 4);
+                           init_sink.resource.Get(), 0, kQHeads * 4u + sizeof(dflash_exp::kUcrtExpTable));
     transition(buffers_[Zero], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     transition(buffers_[NoSink], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     pending_uploads_.push_back(init_zero.resource);
@@ -712,7 +726,7 @@ void DflashGpuDraftEngine::rope(Slot input, Slot output,
     Buffer & y = buffers_[output];
     transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    const uint32_t constants[8] = {batch, width, kHead, 0,
+    const uint32_t constants[8] = {batch, width, kHead, kMaxTokens * 4,
         bits(1.0f), bits(epsilon_), bits(rope_base_), 0};
     cmd_->SetComputeRootSignature(ops_root_.Get());
     cmd_->SetPipelineState(rope_pso_.Get());
@@ -921,6 +935,8 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
     for (uint32_t i = 0; i < batch; ++i) {
         const uint32_t pos = pos0 + i;
         std::memcpy(static_cast<uint8_t *>(mapped) + i * 4, &pos, 4);
+        dflash_rope_cache(static_cast<float *>(mapped) + kMaxTokens + i * 128,
+                          pos, rope_base_);
     }
     buffers_[UploadPositions].resource->Unmap(0, nullptr);
 
@@ -932,6 +948,22 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
     quant_source_ = Count;
     pending_checkpoints_.clear();
     if (checkpoints) checkpoints->clear();
+    trace_frequency_ = 0;
+    if (checkpoints) {
+        if (!trace_queries_) {
+            const D3D12_QUERY_HEAP_DESC desc = {D3D12_QUERY_HEAP_TYPE_TIMESTAMP, 256, 0};
+            device_->CreateQueryHeap(&desc, IID_PPV_ARGS(&trace_queries_));
+        }
+        if (trace_queries_ && SUCCEEDED(queue_->GetTimestampFrequency(&trace_frequency_)) && trace_frequency_) {
+            if (!trace_times_.resource && !create_buffer(256 * sizeof(uint64_t), D3D12_HEAP_TYPE_READBACK,
+                    D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST, &trace_times_, error)) {
+                invalidate(); return false;
+            }
+            cmd_->EndQuery(trace_queries_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
+        } else {
+            trace_frequency_ = 0;
+        }
+    }
     auto snapshot = [&](const char * name, Slot slot, uint32_t width) {
         return !checkpoints || record_checkpoint(name, slot, batch, width, error);
     };
@@ -954,7 +986,7 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
     cmd_->CopyBufferRegion(buffers_[Embedding].resource.Get(), 0,
         buffers_[UploadEmbedding].resource.Get(), 0, input_bytes);
     cmd_->CopyBufferRegion(buffers_[Positions].resource.Get(), 0,
-        buffers_[UploadPositions].resource.Get(), 0, batch * 4);
+        buffers_[UploadPositions].resource.Get(), 0, (kMaxTokens + batch * 128) * 4);
     transition(buffers_[Positions], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     scale_add(Embedding, Zero, HiddenA, batch, kHidden, embedding_scale_);
     if (!snapshot("inp_noise_embd", HiddenA, kHidden)) { invalidate(); return false; }
@@ -965,17 +997,20 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
         if (il == 0 && !snapshot("noise_norm-0", Norm, kHidden)) {
             invalidate(); return false;
         }
-        if (il == 4 && !layer_snapshot("noise_norm", il, Norm, kHidden)) {
+        if (il != 0 && !layer_snapshot("noise_norm", il, Norm, kHidden)) {
             invalidate(); return false;
         }
         if (!matmul(layer.attn_conv_proj, Norm, ConvCoeff, batch, error)) {
+            invalidate(); return false;
+        }
+        if (!layer_snapshot("attn_conv_coeff", il, ConvCoeff, 1280)) {
             invalidate(); return false;
         }
         conv(Norm, ConvCoeff, layer.attn_conv_base, ConvIn, batch, 0);
         if (il == 0 && !snapshot("attn_conv_in-0", ConvIn, kHidden)) {
             invalidate(); return false;
         }
-        if (il == 4 && !layer_snapshot("attn_conv_in", il, ConvIn, kHidden)) {
+        if (il != 0 && !layer_snapshot("attn_conv_in", il, ConvIn, kHidden)) {
             invalidate(); return false;
         }
         if (!matmul(layer.q, ConvIn, Q, batch, error) ||
@@ -992,7 +1027,7 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
                         !snapshot("Vcur-0", V, kKvHeads * kHead))) {
             invalidate(); return false;
         }
-        if (il == 4 && (!layer_snapshot("Qcur", il, QRope, kQHeads * kHead) ||
+        if (il != 0 && (!layer_snapshot("Qcur", il, QRope, kQHeads * kHead) ||
                         !layer_snapshot("Kcur", il, KRope, kKvHeads * kHead) ||
                         !layer_snapshot("Vcur", il, V, kKvHeads * kHead))) {
             invalidate(); return false;
@@ -1002,9 +1037,9 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
         hadamard(QRope, QRot, batch, kQHeads, 128);
         hadamard(KRope, KRot, batch, kKvHeads, 128);
         hadamard(V, VRot, batch, kKvHeads, 64);
-        if (il == 0 && (!snapshot("q_h128-0", QRot, kQHeads * kHead) ||
-                        !snapshot("k_h128-0", KRot, kKvHeads * kHead) ||
-                        !snapshot("v_h64-0", VRot, kKvHeads * kHead))) {
+        if (!layer_snapshot("q_h128", il, QRot, kQHeads * kHead) ||
+            !layer_snapshot("k_h128", il, KRot, kKvHeads * kHead) ||
+            !layer_snapshot("v_h64", il, VRot, kKvHeads * kHead)) {
             invalidate(); return false;
         }
         if (!pack_kv(il, pos0, batch, error) ||
@@ -1015,8 +1050,7 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
             invalidate(); return false;
         }
         hadamard(AttentionRot, Attention, batch, kQHeads, 64);
-        if (il == 0 && !snapshot("out_h64-0", Attention,
-                                  kQHeads * kHead)) {
+        if (!layer_snapshot("out_h64", il, Attention, kQHeads * kHead)) {
             invalidate(); return false;
         }
         if (!matmul(layer.o, Attention, AttnOut, batch, error)) {
@@ -1027,43 +1061,43 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
             invalidate(); return false;
         }
         scale_add(ConvOut, HiddenA, FfnIn, batch, kHidden);
-        if (il <= 1 && !layer_snapshot("ffn_inp", il, FfnIn, kHidden)) {
+        if (!layer_snapshot("ffn_inp", il, FfnIn, kHidden)) {
             invalidate(); return false;
         }
         norm(FfnIn, layer.ffn_norm, FfnNorm, batch, kHidden);
-        if (il <= 1 && !layer_snapshot("ffn_norm", il, FfnNorm, kHidden)) {
+        if (!layer_snapshot("ffn_norm", il, FfnNorm, kHidden)) {
             invalidate(); return false;
         }
         if (!matmul(layer.ffn_conv_proj, FfnNorm, FfnCoeff, batch, error)) {
             invalidate(); return false;
         }
-        if (il <= 1 && !layer_snapshot("ffn_conv_coeff", il, FfnCoeff, 1280)) {
+        if (!layer_snapshot("ffn_conv_coeff", il, FfnCoeff, 1280)) {
             invalidate(); return false;
         }
         conv(FfnNorm, FfnCoeff, layer.ffn_conv_base, FfnConv, batch, 0);
-        if (il <= 1 && !layer_snapshot("ffn_conv_in", il, FfnConv, kHidden)) {
+        if (!layer_snapshot("ffn_conv_in", il, FfnConv, kHidden)) {
             invalidate(); return false;
         }
         if (!matmul(layer.gate, FfnConv, Gate, batch, error) ||
             !matmul(layer.up, FfnConv, Up, batch, error)) {
             invalidate(); return false;
         }
-        if (il <= 1 && (!layer_snapshot("ffn_gate", il, Gate, kFfn) ||
-                        !layer_snapshot("ffn_up", il, Up, kFfn))) {
+        if (!layer_snapshot("ffn_gate", il, Gate, kFfn) ||
+            !layer_snapshot("ffn_up", il, Up, kFfn)) {
             invalidate(); return false;
         }
         swiglu(Gate, Up, Activated, batch);
-        if (il <= 1 && !layer_snapshot("ffn_swiglu", il, Activated, kFfn)) {
+        if (!layer_snapshot("ffn_swiglu", il, Activated, kFfn)) {
             invalidate(); return false;
         }
         if (!matmul(layer.down, Activated, Down, batch, error)) {
             invalidate(); return false;
         }
-        if (il <= 1 && !layer_snapshot("ffn_out", il, Down, kHidden)) {
+        if (!layer_snapshot("ffn_out", il, Down, kHidden)) {
             invalidate(); return false;
         }
         conv(Down, FfnCoeff, layer.ffn_conv_base, ConvOut, batch, 1);
-        if (il <= 1 && !layer_snapshot("ffn_conv_out", il, ConvOut, kHidden)) {
+        if (!layer_snapshot("ffn_conv_out", il, ConvOut, kHidden)) {
             invalidate(); return false;
         }
         scale_add(ConvOut, FfnIn, HiddenB, batch, kHidden);
@@ -1074,14 +1108,32 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
         quant_source_ = Count;
     }
     norm(HiddenA, output_norm_, Norm, batch, kHidden);
+    if (!snapshot("output_norm", Norm, kHidden)) { invalidate(); return false; }
     transition(buffers_[Norm], D3D12_RESOURCE_STATE_COPY_SOURCE);
     cmd_->CopyBufferRegion(buffers_[Readback].resource.Get(), 0,
                             buffers_[Norm].resource.Get(), 0, input_bytes);
+    const uint32_t query_count = 2u * static_cast<uint32_t>(pending_checkpoints_.size()) + 1u;
+    if (trace_frequency_) cmd_->ResolveQueryData(trace_queries_.Get(), D3D12_QUERY_TYPE_TIMESTAMP,
+            0, query_count, trace_times_.resource.Get(), 0);
     if (!submit(error)) { invalidate(); return false; }
     if (checkpoints) {
+        std::vector<uint64_t> times(query_count);
+        if (trace_frequency_) {
+            void * data = nullptr;
+            const D3D12_RANGE read = {0, query_count * sizeof(uint64_t)};
+            hr = trace_times_.resource->Map(0, &read, &data);
+            if (FAILED(hr)) { invalidate(); return fail(error, "DRAFT trace timestamps Map", hr); }
+            std::memcpy(times.data(), data, read.End);
+            const D3D12_RANGE empty = {0, 0};
+            trace_times_.resource->Unmap(0, &empty);
+        }
+        uint32_t query = 0;
         for (const PendingCheckpoint & checkpoint : pending_checkpoints_) {
             Checkpoint sample;
             sample.name = checkpoint.name;
+            if (trace_frequency_ && times[query + 1] >= times[query])
+                sample.gpu_ms = 1000.0 * double(times[query + 1] - times[query]) / double(trace_frequency_);
+            query += 2;
             sample.values.resize(static_cast<size_t>(checkpoint.bytes / sizeof(float)));
             void * data = nullptr;
             const D3D12_RANGE read = {0, static_cast<SIZE_T>(checkpoint.bytes)};
