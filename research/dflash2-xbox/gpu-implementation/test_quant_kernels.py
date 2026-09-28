@@ -1,11 +1,12 @@
-"""Check DFlash Q3_K/Q5_K shader layouts against this checkout's GGML DLL.
+"""Check DFlash Q3_K/Q4_K/Q5_K shader layouts against this checkout's GGML DLL.
 
 Build native ggml-base from the current llama.cpp/ggml source and pass its DLL:
   python test_quant_kernels.py --ggml-base C:/path/to/ggml-base.dll
 
-Optional --q3/--q5 files hold one or more raw GGUF tensor blocks. This tests
-the byte-level decode contract; DXC compilation is checked separately and this
-does not claim that an Xbox shader has executed.
+Optional --q3/--q4/--q5 files hold one or more raw GGUF tensor blocks.
+Optional --f32 is a real [5120,2,2] convolution-base tensor, tested as a
+4x5120 diagnostic matrix. The byte-level decode and host reduction checks do
+not claim that an Xbox shader or the complete DFlash convolution has executed.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from pathlib import Path
 
 QK_K = 256
 Q3_BYTES = 110
+Q4_BYTES = 144
 Q5_BYTES = 176
 
 
@@ -78,8 +80,26 @@ def q5_element(raw: bytes, base: int, element: int) -> float:
     return f32(f32(f32(d * scale) * quant) - f32(dmin * minimum))
 
 
+def q4_element(raw: bytes, base: int, element: int) -> float:
+    d, dmin = struct.unpack_from("<ee", raw, base)
+    scale_index = element >> 5
+    if scale_index < 4:
+        scale = load_u8(raw, base + 4 + scale_index) & 63
+        minimum = load_u8(raw, base + 8 + scale_index) & 63
+    else:
+        scale = (load_u8(raw, base + 8 + scale_index) & 15) | (
+            (load_u8(raw, base + scale_index) >> 6) << 4
+        )
+        minimum = (load_u8(raw, base + 8 + scale_index) >> 4) | (
+            (load_u8(raw, base + 4 + scale_index) >> 6) << 4
+        )
+    packed = load_u8(raw, base + 16 + (element >> 6) * 32 + (element & 31))
+    quant = (packed >> (4 if element & 32 else 0)) & 15
+    return f32(f32(f32(d * scale) * quant) - f32(dmin * minimum))
+
+
 def ggml_decode(dll: ctypes.CDLL, kind: str, raw: bytes) -> list[float]:
-    block_bytes = Q3_BYTES if kind == "q3" else Q5_BYTES
+    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
     if len(raw) == 0 or len(raw) % block_bytes:
         raise ValueError(f"{kind} length must be a nonzero multiple of {block_bytes}")
     func = getattr(dll, f"dequantize_row_{kind}_K")
@@ -92,8 +112,8 @@ def ggml_decode(dll: ctypes.CDLL, kind: str, raw: bytes) -> list[float]:
 
 
 def check_case(dll: ctypes.CDLL, kind: str, raw: bytes, label: str) -> tuple[int, float]:
-    block_bytes = Q3_BYTES if kind == "q3" else Q5_BYTES
-    decode = q3_element if kind == "q3" else q5_element
+    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
+    decode = {"q3": q3_element, "q4": q4_element, "q5": q5_element}[kind]
     reference = ggml_decode(dll, kind, raw)
     exact = 0
     max_error = 0.0
@@ -116,7 +136,7 @@ def check_case(dll: ctypes.CDLL, kind: str, raw: bytes, label: str) -> tuple[int
 
 def random_blocks(kind: str, count: int, seed: int) -> bytes:
     rng = random.Random(seed)
-    block_bytes = Q3_BYTES if kind == "q3" else Q5_BYTES
+    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
     data = bytearray(rng.randbytes(block_bytes * count))
     for block in range(count):
         base = block * block_bytes
@@ -127,16 +147,54 @@ def random_blocks(kind: str, count: int, seed: int) -> bytes:
     return bytes(data)
 
 
+def check_f32_conv_base(raw: bytes) -> None:
+    k, n = 5120, 4  # Flatten GGUF [5120,2,2] outer axes for this diagnostic.
+    if len(raw) != n * k * 4:
+        raise ValueError(f"F32 conv-base needs {n * k * 4} bytes, got {len(raw)}")
+    weights = struct.unpack(f"<{n * k}f", raw)
+    if not all(math.isfinite(weight) for weight in weights):
+        raise ValueError("F32 conv-base contains non-finite weights")
+    rng = random.Random(0xD5A53)
+    activations = [[f32(rng.uniform(-1, 1)) for _ in range(k)] for _ in range(8)]
+    for batch in (1, 2, 4, 5, 7, 8):
+        max_error = 0.0
+        for b in range(batch):
+            x = activations[b]
+            for row in range(n):
+                base = row * k
+                partial = [0.0] * 256
+                for lane in range(256):
+                    acc = 0.0
+                    for column in range(lane, k, 256):
+                        acc = f32(acc + f32(weights[base + column] * x[column]))
+                    partial[lane] = acc
+                for stride in (128, 64, 32, 16, 8, 4, 2, 1):
+                    for lane in range(stride):
+                        partial[lane] = f32(partial[lane] + partial[lane + stride])
+                reference = math.fsum(weights[base + column] * x[column]
+                                      for column in range(k))
+                error = abs(partial[0] - reference)
+                max_error = max(max_error, error)
+                if not math.isclose(partial[0], reference, abs_tol=1e-4, rel_tol=1e-4):
+                    raise AssertionError(
+                        f"F32 host reduction batch={batch} row={row}: "
+                        f"shader order={partial[0]} reference={reference}"
+                    )
+        print(f"f32 conv-base host reduction: batch={batch}, max_abs_err={max_error:.9g}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ggml-base", required=True, type=Path)
     parser.add_argument("--q3", type=Path, help="raw GGUF Q3_K tensor blocks")
+    parser.add_argument("--q4", type=Path, help="raw GGUF Q4_K tensor blocks")
     parser.add_argument("--q5", type=Path, help="raw GGUF Q5_K tensor blocks")
+    parser.add_argument("--f32", type=Path, help="raw GGUF [5120,2,2] F32 conv-base tensor")
     args = parser.parse_args()
     dll = ctypes.CDLL(str(args.ggml_base.resolve()))
-    for kind in ("q3", "q5"):
+    for kind in ("q3", "q4", "q5"):
         check_case(dll, kind, random_blocks(kind, 19, 0xD5A53), "random")
-        block_bytes = Q3_BYTES if kind == "q3" else Q5_BYTES
+        block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
         edge = bytearray(block_bytes * 2)
         # Exercise zero/all-one high masks and the alternating 2-byte Q3_K
         # block alignment while keeping fp16 scales finite.
@@ -148,9 +206,11 @@ def main() -> None:
             else:
                 struct.pack_into("<ee", edge, base, 0.5, -0.25)
         check_case(dll, kind, bytes(edge), "edge")
-        sample = args.q3 if kind == "q3" else args.q5
+        sample = {"q3": args.q3, "q4": args.q4, "q5": args.q5}[kind]
         if sample:
             check_case(dll, kind, sample.read_bytes(), sample.name)
+    if args.f32:
+        check_f32_conv_base(args.f32.read_bytes())
 
 
 if __name__ == "__main__":
