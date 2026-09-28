@@ -26,17 +26,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", default="192.168.1.26")
     parser.add_argument("--port", type=int, default=50053)
-    parser.add_argument("--opcode", type=int, choices=(8, 9, 10, 11, 12), default=8)
+    parser.add_argument("--opcode", type=int, choices=(8, 9, 10, 11, 12, 13, 15, 16, 17), default=8)
+    parser.add_argument("--draft-mask", type=lambda value: int(value, 0), default=0)
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.batch < 1 or args.batch > 64 or (args.batch != 1 and args.opcode not in (9, 11, 12)):
         parser.error("batch 2..64 is supported only for Q3_K/Q4_K/Q5_K diagnostics")
+    if args.draft_mask < 0 or args.draft_mask > 0x1f or (args.draft_mask and args.opcode != 17):
+        parser.error("draft mask 1..31 is supported only for opcode 17")
     start = time.perf_counter()
     with socket.create_connection((args.host, args.port), timeout=300) as conn:
         conn.settimeout(300)
         conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        payload = struct.pack("<I", args.batch) if args.batch != 1 else b""
+        payload = struct.pack("<I", args.draft_mask) if args.draft_mask else (
+            struct.pack("<I", args.batch) if args.batch != 1 else b"")
         conn.sendall(REQUEST.pack(0x324C4644, 2, args.opcode, 1, 0, len(payload)) + payload)
         header = RESPONSE.unpack(read_exact(conn, RESPONSE.size))
         payload = read_exact(conn, header[5])

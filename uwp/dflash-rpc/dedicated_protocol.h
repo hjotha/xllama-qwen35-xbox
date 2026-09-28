@@ -20,6 +20,11 @@ enum dflash_rpc_op : uint16_t {
     DFLASH_RPC_DML_REAL_Q4K = 10, // opt-in FP16 DirectML comparison; no sequence mutation
     DFLASH_RPC_GPU_REAL_Q3K = 11, // real GGUF fc.weight benchmark
     DFLASH_RPC_GPU_REAL_Q5K = 12, // real GGUF attention V benchmark
+    DFLASH_RPC_GPU_KV_Q40 = 13, // isolated hardware KV pack/trim/reinject diagnostic
+    DFLASH_RPC_GPU_SYNC = 14, // destructive diagnostic on an exclusive test connection
+    DFLASH_RPC_GPU_CONV = 15, // isolated dynamic convolution diagnostic
+    DFLASH_RPC_GPU_ATTENTION = 16, // isolated noncausal SWA attention diagnostic
+    DFLASH_RPC_GPU_DRAFT_PROBE = 17, // destructive full-draft parity diagnostic
 };
 
 #pragma pack(push, 1)

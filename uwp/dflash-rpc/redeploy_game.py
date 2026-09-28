@@ -61,11 +61,17 @@ def main():
 
     if events[-1]["setting"]["Value"].lower() != original.lower():
         raise RuntimeError("Xbox default UWP type was not restored")
-    install_state = next(event["reply"]["data"] for event in events if event["step"] == "install_state")
-    if not install_state["Success"]:
+    install_state = next(event["reply"] for event in events if event["step"] == "install_state")
+    if install_state["http_status"] == 204:
+        install_state = call(args.portal, "/api/app/packagemanager/state")
+        with args.log.open("a", encoding="utf-8") as log:
+            log.write(json.dumps({"step": "install_state_final", "reply": install_state}) + "\n")
+    if install_state["http_status"] == 204:
+        raise RuntimeError("Xbox deployment is still in progress; query /api/app/packagemanager/state")
+    if install_state["http_status"] != 200 or not isinstance(install_state["data"], dict) or not install_state["data"].get("Success"):
         raise RuntimeError(f"Xbox deployment failed: {install_state}")
     print(json.dumps({"setting_before": original, "setting_after": events[-1]["setting"]["Value"],
-                      "install_state": install_state, "log": str(args.log.resolve())}))
+                      "install_state": install_state["data"], "log": str(args.log.resolve())}))
 
 
 if __name__ == "__main__":

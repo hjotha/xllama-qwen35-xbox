@@ -22,6 +22,7 @@ def main():
     payload.add_argument("--json")
     payload.add_argument("--json-file", type=Path)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--timeout", type=float, default=60)
     args = parser.parse_args()
     if not args.route.startswith("/") or args.route.startswith("//"):
         parser.error("route must be an absolute Device Portal path")
@@ -57,7 +58,7 @@ def main():
         data = b""
     request = urllib.request.Request(base + args.route, data=data, headers=headers, method=args.method)
     try:
-        with client.open(request, timeout=60) as response:
+        with client.open(request, timeout=args.timeout) as response:
             body = response.read()
             status = response.status
     except urllib.error.HTTPError as error:

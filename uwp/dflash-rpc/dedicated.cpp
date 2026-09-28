@@ -1,6 +1,13 @@
 #include "dedicated.h"
 #include "dedicated_protocol.h"
 #include "dflash-gpu-probe.h"
+#include "dflash-gpu-kv-probe.h"
+#include "dflash-gpu-conv-probe.h"
+#include "gpu-attention-probe.h"
+#include "dflash-gpu-sync-probe.h"
+#include "dflash-gpu-draft-probe.h"
+#include "dflash-gpu-engine.h"
+#include "dflash-gpu-draft-engine.h"
 #include "dflash-dml.h"
 
 #include "llama.h"
@@ -14,6 +21,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -78,6 +86,14 @@ struct dflash_state {
     std::vector<recorded_draft> recorded;
     size_t replay_index = 0;
     bool mock = false;
+    std::string backend = "cpu";
+    std::string backend_reason;
+    std::unique_ptr<DflashGpuSyncEngine> gpu_sync;
+    std::unique_ptr<DflashGpuDraftEngine> gpu_draft;
+
+    bool gpu_selected() const {
+        return gpu_sync && gpu_draft;
+    }
 
     ~dflash_state() {
         if (inject.token || inject.embd) llama_batch_free(inject);
@@ -143,6 +159,44 @@ struct dflash_state {
         event(log_path, "{\"phase\":\"load\",\"status\":\"ready\",\"modelBytes\":" +
               std::to_string(model_bytes) + ",\"elapsedUs\":" + std::to_string(elapsed_us(start)) +
               ",\"contextTokens\":49152,\"kv\":\"q4_0\"}");
+
+        // Optional executor selection: LocalState\dflash-backend.txt with
+        // "cpu" (default) or "d3d12". GPU selection is opt-in and falls back
+        // to CPU before any sequence starts when initialization fails.
+        const size_t separator = log_path.find_last_of("\\/");
+        const std::string folder = separator == std::string::npos ? std::string()
+            : log_path.substr(0, separator + 1);
+        std::string requested = "cpu";
+        {
+            std::ifstream backend_file(folder + "dflash-backend.txt");
+            if (backend_file) {
+                std::getline(backend_file, requested);
+                while (!requested.empty() &&
+                       (requested.back() == '\r' || requested.back() == '\n' ||
+                        requested.back() == ' ')) requested.pop_back();
+            }
+        }
+        if (requested == "d3d12") {
+            const auto gpu_start = clock_type::now();
+            std::string gpu_error;
+            auto sync = std::make_unique<DflashGpuSyncEngine>();
+            auto draft = std::make_unique<DflashGpuDraftEngine>();
+            if (!sync->initialize(model_path, &gpu_error)) {
+                backend_reason = "sync_init_failed: " + gpu_error;
+            } else if (!draft->initialize(*sync, model_path, &gpu_error)) {
+                backend_reason = "draft_init_failed: " + gpu_error;
+            } else {
+                backend = "d3d12";
+                gpu_sync = std::move(sync);
+                gpu_draft = std::move(draft);
+            }
+            std::string message = "{\"phase\":\"backend\",\"requested\":\"d3d12\",\"effective\":\"" +
+                backend + "\",\"elapsedUs\":" + std::to_string(elapsed_us(gpu_start));
+            if (!backend_reason.empty()) message += ",\"reason\":\"" + backend_reason + "\"";
+            event(log_path, message + "}");
+        } else {
+            event(log_path, "{\"phase\":\"backend\",\"requested\":\"cpu\",\"effective\":\"cpu\"}");
+        }
         return true;
     }
 };
@@ -206,9 +260,71 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         output.assign(probe.json.begin(), probe.json.end());
         return probe.passed ? 0 : -6;
     }
+    if (req.op == DFLASH_RPC_GPU_KV_Q40) {
+        if (req.n_tokens || !input.empty()) return -1;
+        prepare_us = elapsed_us(prepare_start);
+        const auto compute_start = clock_type::now();
+        const auto probe = run_dflash_gpu_kv_probe();
+        compute_us = elapsed_us(compute_start);
+        output.assign(probe.json.begin(), probe.json.end());
+        return probe.passed ? 0 : -6;
+    }
+    if (req.op == DFLASH_RPC_GPU_CONV || req.op == DFLASH_RPC_GPU_ATTENTION) {
+        if (req.n_tokens || !input.empty()) return -1;
+        prepare_us = elapsed_us(prepare_start);
+        const auto compute_start = clock_type::now();
+        if (req.op == DFLASH_RPC_GPU_CONV) {
+            const auto probe = run_dflash_gpu_conv_probe(state.model_path);
+            compute_us = elapsed_us(compute_start);
+            output.assign(probe.json.begin(), probe.json.end());
+            return probe.passed ? 0 : -6;
+        }
+        const auto probe = run_dflash_gpu_attention_probe();
+        compute_us = elapsed_us(compute_start);
+        output.assign(probe.json.begin(), probe.json.end());
+        return probe.passed ? 0 : -6;
+    }
+    if (req.op == DFLASH_RPC_GPU_SYNC) {
+        const size_t row_bytes = sizeof(int32_t) +
+                                 size_t(state.enc_width) * sizeof(float);
+        if (state.mock || !req.n_tokens || req.n_tokens > 64 ||
+            input.size() != size_t(req.n_tokens) * row_bytes) return -1;
+        for (uint32_t i = 0; i < req.n_tokens; ++i) {
+            const uint8_t * row = input.data() + size_t(i) * row_bytes;
+            std::memcpy(&state.inject.pos[i], row, sizeof(int32_t));
+            std::memcpy(state.inject.embd + size_t(i) * state.enc_width,
+                        row + sizeof(int32_t), row_bytes - sizeof(int32_t));
+        }
+        prepare_us = elapsed_us(prepare_start);
+        const auto compute_start = clock_type::now();
+        const auto probe = run_dflash_gpu_sync_probe(state.model_path, state.ctx,
+            state.inject.pos, state.inject.embd, req.n_tokens);
+        compute_us = elapsed_us(compute_start);
+        output.assign(probe.json.begin(), probe.json.end());
+        return probe.passed ? 0 : -6;
+    }
+    if (req.op == DFLASH_RPC_GPU_DRAFT_PROBE) {
+        if (state.mock || req.n_tokens ||
+            (input.size() != 0 && input.size() != sizeof(uint32_t))) return -1;
+        uint32_t batch_mask = 0;
+        if (!input.empty()) std::memcpy(&batch_mask, input.data(), sizeof(batch_mask));
+        if (batch_mask & ~uint32_t(0x1f)) return -1;
+        const size_t last_separator = state.model_path.find_last_of("\\/");
+        if (last_separator == std::string::npos) return -1;
+        const std::string capture_path = state.model_path.substr(0, last_separator + 1) +
+                                         "reference.cap";
+        prepare_us = elapsed_us(prepare_start);
+        const auto compute_start = clock_type::now();
+        const auto probe = run_dflash_gpu_draft_probe(state.model_path,
+            capture_path, state.ctx, batch_mask);
+        compute_us = elapsed_us(compute_start);
+        output.assign(probe.json.begin(), probe.json.end());
+        return probe.passed ? 0 : -6;
+    }
     if (req.op == DFLASH_RPC_RESET) {
         if (req.n_tokens || !input.empty()) return -1;
         llama_memory_clear(llama_get_memory(state.ctx), false);
+        if (state.gpu_selected()) state.gpu_sync->reset();
         prepare_us = elapsed_us(prepare_start);
         return 0;
     }
@@ -236,7 +352,7 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
             state.inject.seq_id[i][0] = 0;
             state.inject.logits[i] = false;
         }
-        if (fused && !state.mock) {
+        if (fused && !state.mock && !state.gpu_selected()) {
             const auto kv_start = clock_type::now();
             if (trim.reset) {
                 llama_memory_clear(llama_get_memory(state.ctx), false);
@@ -247,6 +363,26 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         }
         prepare_us = elapsed_us(prepare_start);
         if (state.mock) return 0;
+        if (state.gpu_selected()) {
+            std::vector<int32_t> positions(req.n_tokens);
+            std::vector<float> features((size_t) req.n_tokens * state.enc_width);
+            for (uint32_t i = 0; i < req.n_tokens; ++i) {
+                const uint8_t * row = input.data() + prefix_bytes + (size_t) i * row_bytes;
+                std::memcpy(&positions[i], row, sizeof(int32_t));
+                std::memcpy(features.data() + (size_t) i * state.enc_width,
+                            row + sizeof(int32_t),
+                            (size_t) state.enc_width * sizeof(float));
+            }
+            const bool gpu_reset = fused && trim.reset;
+            const int32_t gpu_trim_to = fused && !trim.reset ? trim.pos0 : -1;
+            const auto compute_start = clock_type::now();
+            std::string gpu_error;
+            const bool ok = state.gpu_sync->sync(positions.data(), features.data(),
+                                                 req.n_tokens, gpu_reset, gpu_trim_to,
+                                                 &gpu_error);
+            compute_us = elapsed_us(compute_start);
+            return ok ? 0 : -2;
+        }
         const auto compute_start = clock_type::now();
         const int rc = llama_decode(state.ctx, state.inject);
         compute_us = elapsed_us(compute_start);
@@ -278,6 +414,25 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
             prepare_us = elapsed_us(prepare_start);
             return 0;
         }
+        if (state.gpu_selected()) {
+            if (!state.gpu_sync->sequence_valid() || !state.gpu_draft->sequence_valid())
+                return -4;
+            const float * embeddings =
+                reinterpret_cast<const float *>(input.data() + sizeof(params));
+            std::vector<float> hidden((size_t) req.n_tokens * state.dec_width);
+            prepare_us = elapsed_us(prepare_start);
+            const auto compute_start = clock_type::now();
+            std::string gpu_error;
+            const bool ok = state.gpu_draft->draft((uint32_t) params.pos0, embeddings,
+                                                   (uint32_t) params.n_max, hidden.data(),
+                                                   &gpu_error, nullptr);
+            compute_us = elapsed_us(compute_start);
+            if (!ok) return -2;
+            output.resize(hidden.size() * sizeof(float));
+            std::memcpy(output.data(), hidden.data(), output.size());
+            state.recorded.push_back({params.pos0, params.id_last, params.n_max, output});
+            return 0;
+        }
         // SYNC can include the anchor position. Replace that target-feature KV
         // with the draft anchor instead of decoding two tokens at the same pos.
         if (!llama_memory_seq_rm(llama_get_memory(state.ctx), 0, params.pos0, -1)) return -4;
@@ -301,6 +456,14 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         if (state.mock) {
             prepare_us = elapsed_us(prepare_start);
             return 0;
+        }
+        if (state.gpu_selected()) {
+            const auto kv_start = clock_type::now();
+            std::string gpu_error;
+            const bool ok = state.gpu_sync->trim((uint32_t) params.pos0, &gpu_error);
+            kv_us = elapsed_us(kv_start);
+            prepare_us = elapsed_us(prepare_start);
+            return ok ? 0 : -4;
         }
         const auto kv_start = clock_type::now();
         const bool ok = llama_memory_seq_rm(llama_get_memory(state.ctx), 0, params.pos0, -1);
@@ -353,6 +516,7 @@ void client_loop(SOCKET sock, dflash_state & state, const std::string & log_path
               ",\"kvUs\":" + std::to_string(kv_us) +
               ",\"postUs\":" + std::to_string(post_us) +
               ",\"responseUs\":" + std::to_string(previous_response_us) + "}");
+        if (req.op == DFLASH_RPC_GPU_DRAFT_PROBE) break;
     }
 }
 

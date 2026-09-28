@@ -1,0 +1,22 @@
+cmake_minimum_required(VERSION 3.20)
+project(dflash_q3k_q8k_ref C CXX)
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(GGML_CUDA OFF CACHE BOOL "" FORCE)
+set(GGML_VULKAN OFF CACHE BOOL "" FORCE)
+set(GGML_BLAS OFF CACHE BOOL "" FORCE)
+set(GGML_NATIVE OFF CACHE BOOL "" FORCE)
+set(GGML_CCACHE OFF CACHE BOOL "" FORCE)
+set(GGML_AVX OFF CACHE BOOL "" FORCE)
+set(GGML_AVX2 OFF CACHE BOOL "" FORCE)
+set(GGML_FMA OFF CACHE BOOL "" FORCE)
+set(GGML_F16C OFF CACHE BOOL "" FORCE)
+set(GGML_BMI2 OFF CACHE BOOL "" FORCE)
+set(GGML_AVX512 OFF CACHE BOOL "" FORCE)
+
+set(GGML_DIR "${CMAKE_CURRENT_LIST_DIR}/../../../../llama.cpp/ggml" CACHE PATH "GGML source")
+add_subdirectory("${GGML_DIR}" ggml)
+
+add_library(dflash_q3k_q8k_ref SHARED wrapper.cpp)
+target_include_directories(dflash_q3k_q8k_ref PRIVATE "${GGML_DIR}/src" "${GGML_DIR}/include")
+target_link_libraries(dflash_q3k_q8k_ref PRIVATE ggml-cpu ggml-base)

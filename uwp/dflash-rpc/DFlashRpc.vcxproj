@@ -52,6 +52,14 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="dedicated.cpp" />
     <ClCompile Include="dflash-gpu-probe.cpp" />
+    <ClCompile Include="dflash-gpu-kv.cpp" />
+    <ClCompile Include="dflash-gpu-kv-probe.cpp" />
+    <ClCompile Include="dflash-gpu-conv-probe.cpp" />
+    <ClCompile Include="gpu-attention-probe.cpp" />
+    <ClCompile Include="dflash-gpu-engine.cpp" />
+    <ClCompile Include="dflash-gpu-sync-probe.cpp" />
+    <ClCompile Include="dflash-gpu-draft-engine.cpp" />
+    <ClCompile Include="dflash-gpu-draft-probe.cpp" />
     <ClCompile Include="dflash-dml.cpp" />
     <ClCompile Include="..\..\src\bridge\gpugemv.cpp" />
     <ClCompile Include="..\..\llama.cpp\ggml\src\ggml-rpc\ggml-rpc.cpp" />
