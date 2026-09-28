@@ -2,7 +2,8 @@
 set -euo pipefail
 mode=$1
 nmax=${2:-4}
-draft=${3:-/home/hjotha/models/Qwen3.8-27B-DFlash2-Q3_K_M.gguf}
+draft=${3:-/home/hjotha/models/Qwen3.8-27B-DFlash2-Q8_0.gguf}
+pmin=${4:-0}
 prod=llama-server-root.service
 server=/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/llama-server
 target=/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf
@@ -24,7 +25,7 @@ DFLASH_XBOX_METRICS="/tmp/dflash-$mode-metrics.jsonl" \
 DFLASH_XBOX_CAPTURE=/tmp/dflash-$mode-capture.bin \
 DFLASH_XBOX_TRACE=1 GGML_MTP_PROF=1 \
     "$server" --model "$target" --spec-draft-model "$draft" \
-    --spec-type draft-dflash --spec-draft-n-max "$nmax" --draft-p-min 0 \
+    --spec-type draft-dflash --spec-draft-n-max "$nmax" --draft-p-min "$pmin" \
     --spec-draft-ngl 0 --spec-draft-device none \
     --device CUDA0 --n-gpu-layers 99 --fit off --load-mode none \
     --cache-type-k kvarn4 --cache-type-v kvarn4 \

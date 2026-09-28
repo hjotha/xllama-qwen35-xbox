@@ -1,0 +1,19 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 1164.039600000251,
+  "status": -6,
+  "response_bytes": 222,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 9,
+  "xbox_compute_us": 1150011,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "passed": false,
+    "stage": "gpu_sync_init",
+    "error": "CreateCommittedResource KV: 0x8007000E",
+    "captureBytes": 131419032,
+    "captureSha256": "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f",
+    "cpuContextMutated": true
+  }
+}

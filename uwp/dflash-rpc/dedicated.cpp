@@ -524,7 +524,19 @@ void client_loop(SOCKET sock, dflash_state & state, const std::string & log_path
 
 void serve_dflash_dedicated(const std::string & local_folder) {
     const std::string log_path = local_folder + "\\dflash-dedicated.jsonl";
-    const std::string model_path = local_folder + "\\dflash-q3.gguf";
+    std::string model_name = "dflash-q3.gguf";
+    {
+        std::ifstream model_file(local_folder + "\\dflash-model.txt");
+        if (model_file) {
+            std::string line;
+            if (std::getline(model_file, line)) {
+                while (!line.empty() && (line.back() == '\r' || line.back() == '\n' || line.back() == ' '))
+                    line.pop_back();
+                if (!line.empty()) model_name = line;
+            }
+        }
+    }
+    const std::string model_path = local_folder + "\\" + model_name;
     static std::string core_log_path = local_folder + "\\dflash-core.log";
     llama_log_set(core_log, &core_log_path);
     dflash_state state;

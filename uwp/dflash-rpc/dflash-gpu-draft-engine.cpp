@@ -2,6 +2,8 @@
 
 #include "dflash_q3k_q8k_dxil.h"
 #include "dflash_draft_quant_q8_dxil.h"
+#include "dflash_q6k_q8k_dxil.h"
+#include "dflash_q8_0_q8k_dxil.h"
 #include "dflash_sync_ops_dxil.h"
 #include "dflash_draft_ops_dxil.h"
 #include "dflash_hadamard128_dxil.h"
@@ -279,6 +281,10 @@ bool DflashGpuDraftEngine::create_pipelines(std::string * error) {
              &quant_dot_psos_[1]) ||
         !pso(matmul_root_.Get(), kDflashDraftQ5kQ8kDotDxil, kDflashDraftQ5kQ8kDotDxilSize,
              &quant_dot_psos_[2]) ||
+        !pso(matmul_root_.Get(), kDflashQ6kQ8kDotDxil, kDflashQ6kQ8kDotDxilSize,
+             &quant_dot_psos_[3]) ||
+        !pso(matmul_root_.Get(), kDflashQ8_0Q8kDotDxil, kDflashQ8_0Q8kDotDxilSize,
+             &quant_dot_psos_[4]) ||
         !pso(ops_root_.Get(), kDflashDraftRmsNormDxil, kDflashDraftRmsNormDxilSize, &norm_pso_) ||
         !pso(ops_root_.Get(), kDflashDraftRope128Dxil, kDflashDraftRope128DxilSize, &rope_pso_) ||
         !pso(ops_root_.Get(), kDflashDraftScaleAddDxil, kDflashDraftScaleAddDxilSize,
@@ -382,7 +388,8 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
         const auto type = gguf_get_tensor_type(gguf.get(), id);
         if (f32_only ? type != GGML_TYPE_F32 :
             (type != GGML_TYPE_F32 && type != GGML_TYPE_Q3_K &&
-             type != GGML_TYPE_Q4_K && type != GGML_TYPE_Q5_K))
+             type != GGML_TYPE_Q4_K && type != GGML_TYPE_Q5_K &&
+             type != GGML_TYPE_Q6_K && type != GGML_TYPE_Q8_0))
             return fail(error, "unsupported tensor type " + name);
         const int64_t * ne = gguf_get_tensor_ne(gguf.get(), id);
         const bool shape_ok = ne && ne[0] == cols && ne[3] == 1 &&
@@ -394,7 +401,8 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
             return fail(error, "quantized tensor row misaligned " + name);
         const uint64_t bytes = gguf_get_tensor_size(gguf.get(), id);
         const uint64_t block_bytes = type == GGML_TYPE_Q3_K ? 110u :
-            type == GGML_TYPE_Q4_K ? 144u : type == GGML_TYPE_Q5_K ? 176u : 0u;
+            type == GGML_TYPE_Q4_K ? 144u : type == GGML_TYPE_Q5_K ? 176u :
+            type == GGML_TYPE_Q6_K ? 210u : type == GGML_TYPE_Q8_0 ? 272u : 0u;
         const uint64_t expected = type == GGML_TYPE_F32 ?
             uint64_t(cols) * rows * 4u : uint64_t(cols / 256) * rows * block_bytes;
         const uint64_t tensor_offset = gguf_get_tensor_offset(gguf.get(), id);
@@ -631,6 +639,8 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
         if (weight.type == GGML_TYPE_Q3_K) type_index = 0;
         else if (weight.type == GGML_TYPE_Q4_K) type_index = 1;
         else if (weight.type == GGML_TYPE_Q5_K) type_index = 2;
+        else if (weight.type == GGML_TYPE_Q6_K) type_index = 3;
+        else if (weight.type == GGML_TYPE_Q8_0) type_index = 4;
         else return fail(error, "unsupported DRAFT weight type");
         if (weight.columns % 256) return fail(error, "Q8_K input width misaligned");
         const uint32_t constants[4] = {weight.rows, weight.columns,

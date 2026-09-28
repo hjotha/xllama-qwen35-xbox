@@ -4,6 +4,8 @@
 #include "dflash_q3k_t8_dxil.h"
 #include "dflash_q3k_q8k_dxil.h"
 #include "dflash_draft_quant_q8_dxil.h"
+#include "dflash_q6k_q8k_dxil.h"
+#include "dflash_q8_0_q8k_dxil.h"
 #include "dflash_q4k_t2_dxil.h"
 #include "dflash_q4k_t8_dxil.h"
 #include "dflash_q5k_t1_dxil.h"
@@ -73,6 +75,7 @@ DflashGpuSyncEngine::~DflashGpuSyncEngine() {
             for (auto & pso : row) hold(pso.Get());
         hold(q8_pack_pso_.Get()); hold(q3q8_pso_.Get());
         hold(q4q8_pso_.Get()); hold(q5q8_pso_.Get());
+        hold(q6q8_pso_.Get()); hold(q8_0q8_pso_.Get());
         hold(norm_pso_.Get()); hold(key_pso_.Get()); hold(scale_pso_.Get());
         hold(hadamard_pso_.Get());
         auto hold_buffer = [&](Buffer & buffer) { hold(buffer.resource.Get()); };
@@ -259,6 +262,8 @@ bool DflashGpuSyncEngine::create_pipelines(std::string * error) {
         !pso(matmul_root_.Get(), kDflashQ3kQ8kDotDxil, kDflashQ3kQ8kDotDxilSize, &q3q8_pso_) ||
         !pso(matmul_root_.Get(), kDflashDraftQ4kQ8kDotDxil, kDflashDraftQ4kQ8kDotDxilSize, &q4q8_pso_) ||
         !pso(matmul_root_.Get(), kDflashDraftQ5kQ8kDotDxil, kDflashDraftQ5kQ8kDotDxilSize, &q5q8_pso_) ||
+        !pso(matmul_root_.Get(), kDflashQ6kQ8kDotDxil, kDflashQ6kQ8kDotDxilSize, &q6q8_pso_) ||
+        !pso(matmul_root_.Get(), kDflashQ8_0Q8kDotDxil, kDflashQ8_0Q8kDotDxilSize, &q8_0q8_pso_) ||
         !pso(matmul_root_.Get(), kDflashHadamard128Dxil, kDflashHadamard128DxilSize, &hadamard_pso_) ||
         !pso(ops_root_.Get(), kDflashSyncF32MatmulDxil, kDflashSyncF32MatmulDxilSize, &matmul_psos_[3][0]) ||
         !pso(ops_root_.Get(), kDflashSyncFcNormDxil, kDflashSyncFcNormDxilSize, &norm_pso_) ||
@@ -327,7 +332,8 @@ bool DflashGpuSyncEngine::load_weights(const std::string & model_path,
         const auto type = gguf_get_tensor_type(gguf.get(), id);
         if (norm ? type != GGML_TYPE_F32 :
             (type != GGML_TYPE_Q3_K && type != GGML_TYPE_Q4_K &&
-             type != GGML_TYPE_Q5_K && type != GGML_TYPE_F32))
+             type != GGML_TYPE_Q5_K && type != GGML_TYPE_Q6_K &&
+             type != GGML_TYPE_Q8_0 && type != GGML_TYPE_F32))
             return fail(error, ("unsupported tensor type " + name).c_str());
         const int64_t * ne = gguf_get_tensor_ne(gguf.get(), id);
         if (!ne || ne[0] != cols || ne[1] != rows || ne[2] != 1 || ne[3] != 1)
@@ -335,7 +341,8 @@ bool DflashGpuSyncEngine::load_weights(const std::string & model_path,
         const uint64_t bytes = gguf_get_tensor_size(gguf.get(), id);
         const uint64_t expected = norm || type == GGML_TYPE_F32 ? uint64_t(cols) * rows * 4 :
             uint64_t(cols) * rows / 256 *
-            (type == GGML_TYPE_Q3_K ? 110 : type == GGML_TYPE_Q4_K ? 144 : 176);
+            (type == GGML_TYPE_Q3_K ? 110 : type == GGML_TYPE_Q4_K ? 144 :
+             type == GGML_TYPE_Q5_K ? 176 : type == GGML_TYPE_Q6_K ? 210 : 272);
         if (!bytes || bytes != expected) return fail(error, ("tensor byte count mismatch " + name).c_str());
         const uint64_t relative = gguf_get_tensor_offset(gguf.get(), id);
         if (relative > std::numeric_limits<uint64_t>::max() - data_offset)
@@ -539,7 +546,8 @@ bool DflashGpuSyncEngine::matmul(const Weight & weight, Buffer & input,
     transition(input, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     transition(output, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     if ((weight.type == GGML_TYPE_Q3_K || weight.type == GGML_TYPE_Q4_K ||
-         weight.type == GGML_TYPE_Q5_K) &&
+         weight.type == GGML_TYPE_Q5_K || weight.type == GGML_TYPE_Q6_K ||
+         weight.type == GGML_TYPE_Q8_0) &&
         activation_mode_ == ActivationMode::GgmlQ8K) {
         Buffer * q8 = nullptr;
         bool * packed = nullptr;
@@ -561,7 +569,9 @@ bool DflashGpuSyncEngine::matmul(const Weight & weight, Buffer & input,
         cmd_->SetComputeRootSignature(matmul_root_.Get());
         ID3D12PipelineState * dot_pso = weight.type == GGML_TYPE_Q3_K ? q3q8_pso_.Get() :
                                         weight.type == GGML_TYPE_Q4_K ? q4q8_pso_.Get() :
-                                                                        q5q8_pso_.Get();
+                                        weight.type == GGML_TYPE_Q5_K ? q5q8_pso_.Get() :
+                                        weight.type == GGML_TYPE_Q6_K ? q6q8_pso_.Get() :
+                                                                        q8_0q8_pso_.Get();
         cmd_->SetPipelineState(dot_pso);
         cmd_->SetComputeRoot32BitConstants(0, 4, constants, 0);
         cmd_->SetComputeRootShaderResourceView(1, weight.buffer.resource->GetGPUVirtualAddress());

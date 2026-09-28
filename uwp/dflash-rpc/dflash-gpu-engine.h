@@ -127,6 +127,8 @@ private:
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q3q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q4q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q5q8_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> q6q8_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> q8_0q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> norm_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> key_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> scale_pso_;
