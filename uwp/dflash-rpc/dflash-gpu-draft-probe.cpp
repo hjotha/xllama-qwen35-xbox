@@ -71,6 +71,20 @@ bool cpu_trace_callback(ggml_tensor * tensor, bool ask, void * user_data) {
             }
         }
     }
+    if (!selected) {
+        // The Q2 path can amplify a small accumulated activation error. Keep
+        // the last layer's inputs/QKV visible so that the first divergent
+        // operation is distinguishable from attention itself.
+        for (const char * prefix : {"noise_norm-", "attn_conv_in-", "Qcur-",
+                                    "Kcur-", "Vcur-"}) {
+            const size_t length = std::strlen(prefix);
+            if (std::strncmp(name, prefix, length) == 0 &&
+                name[length] == '4' && name[length + 1] == '\0') {
+                selected = true;
+                break;
+            }
+        }
+    }
     if (!selected && !hadamard) return false;
     if (ask) return true;
     if (tensor->type != GGML_TYPE_F32 || !ggml_is_contiguous(tensor) ||
@@ -336,7 +350,7 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     std::error_code file_error;
     capture_bytes = std::filesystem::file_size(
         std::filesystem::path(capture_path), file_error);
-    if (file_error || capture_bytes != 131419032u)
+    if (file_error || (capture_bytes != 131419032u && capture_bytes != 2048844u))
         return failed("capture_size", file_error ? "capture stat failed" :
                       "capture size differs from reference");
     const auto capture_mtime = std::filesystem::last_write_time(
@@ -344,8 +358,13 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     if (file_error) return failed("capture_mtime", "capture mtime stat failed");
     if (!dflash_draft_sha256_file(capture_path, &capture_sha256, &error))
         return failed("capture_sha256", error);
-    if (capture_sha256 !=
-        "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f")
+    // Trusted CPU fixtures: original Q3 and the same requests rerecorded on Q2.
+    const bool trusted_capture =
+        (capture_bytes == 131419032u && capture_sha256 ==
+         "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f") ||
+        (capture_bytes == 2048844u && capture_sha256 ==
+         "5e85f0e76ee4fc99730cf9becbf733cd922c7f190ca65767ebcc19edac3c64dc");
+    if (!trusted_capture)
         return failed("capture_sha256", "capture SHA-256 differs from reference");
     CapturedSequence captured;
     if (!read_sequence(capture_path, &captured, &error))

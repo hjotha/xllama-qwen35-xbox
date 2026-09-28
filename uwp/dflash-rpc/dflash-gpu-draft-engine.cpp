@@ -1,5 +1,6 @@
 #include "dflash-gpu-draft-engine.h"
 
+#include "dflash_q2k_q8k_dxil.h"
 #include "dflash_q3k_q8k_dxil.h"
 #include "dflash_draft_quant_q8_dxil.h"
 #include "dflash_q6k_q8k_dxil.h"
@@ -275,6 +276,8 @@ bool DflashGpuDraftEngine::create_pipelines(std::string * error) {
              &q8_quantize_pso_) ||
         !pso(matmul_root_.Get(), kDflashHadamard128Dxil, kDflashHadamard128DxilSize,
              &hadamard_pso_) ||
+        !pso(matmul_root_.Get(), kDflashQ2kQ8kDotDxil, kDflashQ2kQ8kDotDxilSize,
+             &quant_dot_psos_[5]) ||
         !pso(matmul_root_.Get(), kDflashQ3kQ8kDotDxil, kDflashQ3kQ8kDotDxilSize,
              &quant_dot_psos_[0]) ||
         !pso(matmul_root_.Get(), kDflashDraftQ4kQ8kDotDxil, kDflashDraftQ4kQ8kDotDxilSize,
@@ -387,7 +390,7 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
         if (id < 0) return optional ? true : fail(error, "missing tensor " + name);
         const auto type = gguf_get_tensor_type(gguf.get(), id);
         if (f32_only ? type != GGML_TYPE_F32 :
-            (type != GGML_TYPE_F32 && type != GGML_TYPE_Q3_K &&
+            (type != GGML_TYPE_F32 && type != GGML_TYPE_Q2_K && type != GGML_TYPE_Q3_K &&
              type != GGML_TYPE_Q4_K && type != GGML_TYPE_Q5_K &&
              type != GGML_TYPE_Q6_K && type != GGML_TYPE_Q8_0))
             return fail(error, "unsupported tensor type " + name);
@@ -400,7 +403,7 @@ bool DflashGpuDraftEngine::load_weights(const std::string & path,
         if (type != GGML_TYPE_F32 && cols % 256)
             return fail(error, "quantized tensor row misaligned " + name);
         const uint64_t bytes = gguf_get_tensor_size(gguf.get(), id);
-        const uint64_t block_bytes = type == GGML_TYPE_Q3_K ? 110u :
+        const uint64_t block_bytes = type == GGML_TYPE_Q2_K ? 84u : type == GGML_TYPE_Q3_K ? 110u :
             type == GGML_TYPE_Q4_K ? 144u : type == GGML_TYPE_Q5_K ? 176u :
             type == GGML_TYPE_Q6_K ? 210u : type == GGML_TYPE_Q8_0 ? 272u : 0u;
         const uint64_t expected = type == GGML_TYPE_F32 ?
@@ -641,6 +644,7 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
         else if (weight.type == GGML_TYPE_Q5_K) type_index = 2;
         else if (weight.type == GGML_TYPE_Q6_K) type_index = 3;
         else if (weight.type == GGML_TYPE_Q8_0) type_index = 4;
+        else if (weight.type == GGML_TYPE_Q2_K) type_index = 5;
         else return fail(error, "unsupported DRAFT weight type");
         if (weight.columns % 256) return fail(error, "Q8_K input width misaligned");
         const uint32_t constants[4] = {weight.rows, weight.columns,
@@ -961,11 +965,17 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
         if (il == 0 && !snapshot("noise_norm-0", Norm, kHidden)) {
             invalidate(); return false;
         }
+        if (il == 4 && !layer_snapshot("noise_norm", il, Norm, kHidden)) {
+            invalidate(); return false;
+        }
         if (!matmul(layer.attn_conv_proj, Norm, ConvCoeff, batch, error)) {
             invalidate(); return false;
         }
         conv(Norm, ConvCoeff, layer.attn_conv_base, ConvIn, batch, 0);
         if (il == 0 && !snapshot("attn_conv_in-0", ConvIn, kHidden)) {
+            invalidate(); return false;
+        }
+        if (il == 4 && !layer_snapshot("attn_conv_in", il, ConvIn, kHidden)) {
             invalidate(); return false;
         }
         if (!matmul(layer.q, ConvIn, Q, batch, error) ||
@@ -980,6 +990,11 @@ bool DflashGpuDraftEngine::draft(uint32_t pos0, const float * embeddings,
         if (il == 0 && (!snapshot("Qcur-0", QRope, kQHeads * kHead) ||
                         !snapshot("Kcur-0", KRope, kKvHeads * kHead) ||
                         !snapshot("Vcur-0", V, kKvHeads * kHead))) {
+            invalidate(); return false;
+        }
+        if (il == 4 && (!layer_snapshot("Qcur", il, QRope, kQHeads * kHead) ||
+                        !layer_snapshot("Kcur", il, KRope, kKvHeads * kHead) ||
+                        !layer_snapshot("Vcur", il, V, kKvHeads * kHead))) {
             invalidate(); return false;
         }
         // GGML's Q4_0 KV cache rotates K and Q with H128, but V with H64

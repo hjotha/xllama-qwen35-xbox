@@ -124,6 +124,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> ops_root_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> matmul_psos_[4][2];
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q8_pack_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> q2q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q3q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q4q8_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q5q8_pso_;

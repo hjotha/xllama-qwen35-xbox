@@ -129,7 +129,7 @@ private:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> attention_root_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> f32_matmul_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> q8_quantize_pso_, hadamard_pso_;
-    Microsoft::WRL::ComPtr<ID3D12PipelineState> quant_dot_psos_[5];
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> quant_dot_psos_[6];
     Microsoft::WRL::ComPtr<ID3D12PipelineState> norm_pso_, rope_pso_,
         scale_add_pso_, swiglu_pso_, conv_pso_, attention_pso_;
     std::array<Buffer, Count> buffers_;

@@ -1,9 +1,8 @@
 """Measure the experimental DFL2 DFlash RPC server without changing its state format.
 
-The current Xbox server runs GGML on CPU. Each sample resets the draft KV,
-injects synthetic target features, and runs one draft block. Three RPC calls
-per sample make this a baseline for the implementation, not the planned
-one-request speculative cycle or a GPU benchmark.
+Each sample resets the draft KV, injects synthetic target features, and runs
+one draft block using the server's selected backend. --fused uses one RPC;
+--compare checks bitwise output parity against the three-call split path.
 """
 
 import argparse
@@ -18,11 +17,12 @@ from pathlib import Path
 
 MAGIC = 0x324C4644  # DFL2 on little-endian x64
 VERSION = 2
-HELLO, RESET, SYNC, DRAFT, TRIM = 1, 2, 3, 4, 5
+HELLO, RESET, SYNC, DRAFT, TRIM, SYNC_TRIM, SYNC_AND_DRAFT = 1, 2, 3, 4, 5, 7, 18
 REQUEST = struct.Struct("<IHHQII")
 RESPONSE = struct.Struct("<IHHQiIQQQQ")
 HELLO_PAYLOAD = struct.Struct("<IIIIiIIQ")
 DRAFT_PAYLOAD = struct.Struct("<iii")
+SYNC_TRIM_PAYLOAD = struct.Struct("<iI")
 
 
 def read_exact(sock, size):
@@ -85,11 +85,18 @@ def stats(values):
 
 
 def benchmark(args):
-    phases = {name: [] for name in (
-        "reset_rtt_us", "sync_rtt_us", "draft_rtt_us", "cycle_rtt_us",
-        "sync_xbox_compute_us", "draft_xbox_compute_us", "sync_xbox_prepare_us",
-        "draft_xbox_prepare_us", "sync_xbox_receive_us", "draft_xbox_receive_us",
-    )}
+    fused_mode = getattr(args, "fused", False)
+    if fused_mode:
+        phases = {name: [] for name in (
+            "cycle_rtt_us", "fused_rtt_us", "fused_xbox_compute_us",
+            "fused_xbox_prepare_us", "fused_xbox_receive_us",
+        )}
+    else:
+        phases = {name: [] for name in (
+            "reset_rtt_us", "sync_rtt_us", "draft_rtt_us", "cycle_rtt_us",
+            "sync_xbox_compute_us", "draft_xbox_compute_us", "sync_xbox_prepare_us",
+            "draft_xbox_prepare_us", "sync_xbox_receive_us", "draft_xbox_receive_us",
+        )}
     first_hash = None
     differing_outputs = 0
     cycle_rows = []
@@ -112,12 +119,22 @@ def benchmark(args):
         # Synthetic logical target embeddings exercise the split backbone only.
         embeddings = struct.pack("<f", 0.03125) * ((args.drafts + 1) * dec_width)
         draft_payload = DRAFT_PAYLOAD.pack(args.sync_tokens, args.anchor_token, args.drafts) + embeddings
+        fused_payload = SYNC_TRIM_PAYLOAD.pack(0, 1) + sync_payload + draft_payload if fused_mode else None
         expected_draft_bytes = (args.drafts + 1) * dec_width * 4
         first_cycle = None
         for cycle in range(1, args.warmup + args.iterations + 1):
-            _, reset_t = call(sock, RESET, cycle)
-            _, sync_t = call(sock, SYNC, cycle, args.sync_tokens, sync_payload)
-            output, draft_t = call(sock, DRAFT, cycle, args.drafts + 1, draft_payload)
+            if fused_mode:
+                output, fused_t = call(sock, SYNC_AND_DRAFT, cycle, args.sync_tokens, fused_payload)
+                total = fused_t["rtt_us"]
+                if cycle == 1:
+                    first_cycle = {"cycle_rtt_us": total, "fused": fused_t}
+            else:
+                _, reset_t = call(sock, RESET, cycle)
+                _, sync_t = call(sock, SYNC, cycle, args.sync_tokens, sync_payload)
+                output, draft_t = call(sock, DRAFT, cycle, args.drafts + 1, draft_payload)
+                total = reset_t["rtt_us"] + sync_t["rtt_us"] + draft_t["rtt_us"]
+                if cycle == 1:
+                    first_cycle = {"cycle_rtt_us": total, "reset": reset_t, "sync": sync_t, "draft": draft_t}
             if len(output) != expected_draft_bytes:
                 raise ValueError(f"cycle {cycle}: {len(output)} draft bytes; expected {expected_draft_bytes}")
             digest = hashlib.sha256(output).hexdigest()
@@ -125,23 +142,29 @@ def benchmark(args):
                 first_hash = digest
             elif digest != first_hash:
                 differing_outputs += 1
-            total = reset_t["rtt_us"] + sync_t["rtt_us"] + draft_t["rtt_us"]
-            if cycle == 1:
-                first_cycle = {"cycle_rtt_us": total, "reset": reset_t, "sync": sync_t, "draft": draft_t}
             if cycle <= args.warmup:
                 continue
-            samples = {
-                "reset_rtt_us": reset_t["rtt_us"],
-                "sync_rtt_us": sync_t["rtt_us"],
-                "draft_rtt_us": draft_t["rtt_us"],
-                "cycle_rtt_us": total,
-                "sync_xbox_compute_us": sync_t["xbox_compute_us"],
-                "draft_xbox_compute_us": draft_t["xbox_compute_us"],
-                "sync_xbox_prepare_us": sync_t["xbox_prepare_us"],
-                "draft_xbox_prepare_us": draft_t["xbox_prepare_us"],
-                "sync_xbox_receive_us": sync_t["xbox_receive_us"],
-                "draft_xbox_receive_us": draft_t["xbox_receive_us"],
-            }
+            if fused_mode:
+                samples = {
+                    "cycle_rtt_us": total,
+                    "fused_rtt_us": total,
+                    "fused_xbox_compute_us": fused_t["xbox_compute_us"],
+                    "fused_xbox_prepare_us": fused_t["xbox_prepare_us"],
+                    "fused_xbox_receive_us": fused_t["xbox_receive_us"],
+                }
+            else:
+                samples = {
+                    "reset_rtt_us": reset_t["rtt_us"],
+                    "sync_rtt_us": sync_t["rtt_us"],
+                    "draft_rtt_us": draft_t["rtt_us"],
+                    "cycle_rtt_us": total,
+                    "sync_xbox_compute_us": sync_t["xbox_compute_us"],
+                    "draft_xbox_compute_us": draft_t["xbox_compute_us"],
+                    "sync_xbox_prepare_us": sync_t["xbox_prepare_us"],
+                    "draft_xbox_prepare_us": draft_t["xbox_prepare_us"],
+                    "sync_xbox_receive_us": sync_t["xbox_receive_us"],
+                    "draft_xbox_receive_us": draft_t["xbox_receive_us"],
+                }
             for name, value in samples.items():
                 phases[name].append(value)
             cycle_rows.append({
@@ -154,10 +177,11 @@ def benchmark(args):
                 "serialize_us": None,
                 "send_us": None,
                 "network_rtt_us": None,
-                "xbox_receive_us": sync_t["xbox_receive_us"] + draft_t["xbox_receive_us"],
-                "xbox_prepare_us": sync_t["xbox_prepare_us"] + draft_t["xbox_prepare_us"],
-                "xbox_gpu_us": 0,
-                "xbox_cpu_compute_us": sync_t["xbox_compute_us"] + draft_t["xbox_compute_us"],
+                "xbox_receive_us": fused_t["xbox_receive_us"] if fused_mode else sync_t["xbox_receive_us"] + draft_t["xbox_receive_us"],
+                "xbox_prepare_us": fused_t["xbox_prepare_us"] if fused_mode else sync_t["xbox_prepare_us"] + draft_t["xbox_prepare_us"],
+                "xbox_gpu_us": None,
+                "xbox_cpu_compute_us": None,
+                "xbox_compute_us": fused_t["xbox_compute_us"] if fused_mode else sync_t["xbox_compute_us"] + draft_t["xbox_compute_us"],
                 "xbox_sync_us": None,
                 "xbox_response_us": None,
                 "target_verify_us": None,
@@ -168,8 +192,9 @@ def benchmark(args):
             })
 
     result = {
-        "kind": "dflash2_xbox_cpu_dedicated_rpc_baseline",
-        "limitations": "CPU GGML; synthetic features and embeddings; RESET+SYNC+DRAFT are three round trips; no target verification or acceptance",
+        "kind": "dflash2_xbox_dedicated_rpc_fused" if fused_mode else "dflash2_xbox_dedicated_rpc_baseline",
+        "mode": "fused" if fused_mode else "split",
+        "limitations": "Synthetic features and embeddings; no target verification or acceptance; backend must be verified from server logs",
         "host": args.host,
         "port": args.port,
         "model": {"bytes": model_bytes, "n_ctx": n_ctx, "encoder_width": enc_width,
@@ -198,12 +223,26 @@ def main():
     parser.add_argument("--sync-tokens", type=int, default=1)
     parser.add_argument("--drafts", type=int, default=3)
     parser.add_argument("--anchor-token", type=int, default=1)
+    parser.add_argument("--fused", action="store_true", help="Use fused DFLASH_RPC_SYNC_AND_DRAFT opcode (single round-trip)")
+    parser.add_argument("--compare", action="store_true", help="Run split and fused paths and require identical deterministic outputs")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--cycles-output", type=Path)
     args = parser.parse_args()
     if args.warmup < 0 or args.iterations < 1 or args.timeout <= 0:
         parser.error("warmup >= 0, iterations >= 1, timeout > 0 are required")
-    result, cycle_rows = benchmark(args)
+    if args.compare:
+        args.fused = False
+        split, split_rows = benchmark(args)
+        args.fused = True
+        fused, fused_rows = benchmark(args)
+        if (split["differing_outputs"] or fused["differing_outputs"] or
+                split["first_output_sha256"] != fused["first_output_sha256"]):
+            raise AssertionError("split/fused outputs differ or are not deterministic")
+        result = {"parity_passed": True, "split": split, "fused": fused}
+        cycle_rows = [dict(row, mode=mode) for mode, rows in
+                      (("split", split_rows), ("fused", fused_rows)) for row in rows]
+    else:
+        result, cycle_rows = benchmark(args)
     encoded = json.dumps(result, ensure_ascii=False, indent=2)
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

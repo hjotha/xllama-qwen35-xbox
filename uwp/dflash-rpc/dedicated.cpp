@@ -341,8 +341,10 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         dflash_rpc_sync_trim_request trim{};
         if (fused) {
             std::memcpy(&trim, input.data(), sizeof(trim));
-            if (trim.pos0 < 0 || trim.reset > 1 || (trim.reset && trim.pos0 != 0)) return -1;
+            if (trim.pos0 < 0 || trim.pos0 > 49152 || trim.reset > 1 || (trim.reset && trim.pos0 != 0)) return -1;
         }
+        if (!dflash_rpc_valid_sync(input.data() + prefix_bytes, req.n_tokens,
+                                   state.enc_width, 49152)) return -1;
         state.inject.n_tokens = (int32_t) req.n_tokens;
         for (uint32_t i = 0; i < req.n_tokens; ++i) {
             const uint8_t * row = input.data() + prefix_bytes + (size_t) i * row_bytes;
@@ -393,8 +395,11 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         dflash_rpc_draft_request params;
         std::memcpy(&params, input.data(), sizeof(params));
         if (params.pos0 < 0 || params.n_max < 1 || params.n_max > 7 ||
+            params.pos0 > INT_MAX - params.n_max ||
             req.n_tokens != (uint32_t) (params.n_max + 1) ||
             input.size() != sizeof(params) + (size_t) req.n_tokens * state.dec_width * sizeof(float)) return -1;
+        if (!dflash_rpc_valid_draft(params, input.data() + sizeof(params),
+                                    state.dec_width, 49152)) return -1;
         state.draft.n_tokens = params.n_max + 1;
         for (int32_t i = 0; i <= params.n_max; ++i) {
             state.draft.token[i] = i == 0 ? params.id_last : state.mask;
@@ -448,6 +453,155 @@ int handle_request(dflash_state & state, const dflash_rpc_request & req,
         state.recorded.push_back({params.pos0, params.id_last, params.n_max, output});
         return 0;
     }
+    if (req.op == DFLASH_RPC_SYNC_AND_DRAFT) {
+        if (req.n_tokens == 0 && input.empty()) {
+            prepare_us = elapsed_us(prepare_start);
+            return 0; // Capability probe: do not mutate sequence or replay state.
+        }
+        const size_t sync_prefix_bytes = sizeof(dflash_rpc_sync_trim_request);
+        const size_t sync_row_bytes = sizeof(int32_t) + (size_t) state.enc_width * sizeof(float);
+        if (req.n_tokens > 64) return -1;
+        const size_t sync_bytes = sync_prefix_bytes + (size_t) req.n_tokens * sync_row_bytes;
+        if (input.size() < sync_bytes + sizeof(dflash_rpc_draft_request)) return -1;
+
+        dflash_rpc_sync_trim_request trim{};
+        std::memcpy(&trim, input.data(), sizeof(trim));
+        if (trim.pos0 < -1 || trim.pos0 > 49152 || trim.reset > 1 || (trim.reset && trim.pos0 != 0)) return -1;
+
+        dflash_rpc_draft_request draft_params{};
+        std::memcpy(&draft_params, input.data() + sync_bytes, sizeof(draft_params));
+        if (draft_params.pos0 < 0 || draft_params.n_max < 1 || draft_params.n_max > 7 ||
+            draft_params.pos0 > INT_MAX - draft_params.n_max) return -1;
+
+        const uint32_t n_draft_tokens = (uint32_t) (draft_params.n_max + 1);
+        const size_t expected_total_bytes = sync_bytes + sizeof(draft_params) +
+            (size_t) n_draft_tokens * state.dec_width * sizeof(float);
+        if (input.size() != expected_total_bytes) return -1;
+        if (!dflash_rpc_valid_sync(input.data() + sync_prefix_bytes, req.n_tokens,
+                                   state.enc_width, 49152) ||
+            !dflash_rpc_valid_draft(draft_params, input.data() + sync_bytes + sizeof(draft_params),
+                                    state.dec_width, 49152)) return -1;
+
+        if (req.n_tokens > 0) {
+            state.inject.n_tokens = (int32_t) req.n_tokens;
+            for (uint32_t i = 0; i < req.n_tokens; ++i) {
+                const uint8_t * row = input.data() + sync_prefix_bytes + (size_t) i * sync_row_bytes;
+                std::memcpy(&state.inject.pos[i], row, sizeof(int32_t));
+                if (state.inject.pos[i] < 0) return -1;
+                std::memcpy(state.inject.embd + (size_t) i * state.enc_width,
+                            row + sizeof(int32_t),
+                            sync_row_bytes - sizeof(int32_t));
+                state.inject.n_seq_id[i] = 1;
+                state.inject.seq_id[i][0] = 0;
+                state.inject.logits[i] = false;
+            }
+        }
+
+        state.draft.n_tokens = (int32_t) n_draft_tokens;
+        for (int32_t i = 0; i <= draft_params.n_max; ++i) {
+            state.draft.token[i] = i == 0 ? draft_params.id_last : state.mask;
+            state.draft.pos[i] = draft_params.pos0 + i;
+            state.draft.n_seq_id[i] = 1;
+            state.draft.seq_id[i][0] = 0;
+            state.draft.logits[i] = false;
+        }
+        const uint8_t * draft_embd_src = input.data() + sync_bytes + sizeof(draft_params);
+        std::memcpy(state.draft.embd, draft_embd_src,
+                    (size_t) n_draft_tokens * state.dec_width * sizeof(float));
+
+        if (!state.mock && !state.gpu_selected()) {
+            const auto kv_start = clock_type::now();
+            if (trim.reset) {
+                llama_memory_clear(llama_get_memory(state.ctx), false);
+            } else if (trim.pos0 >= 0) {
+                if (!llama_memory_seq_rm(llama_get_memory(state.ctx), 0, trim.pos0, -1)) {
+                    return -4;
+                }
+            }
+            kv_us = elapsed_us(kv_start);
+        }
+
+        prepare_us = elapsed_us(prepare_start);
+
+        if (state.mock) {
+            if (state.replay_index >= state.recorded.size()) return -5;
+            const auto & saved = state.recorded[state.replay_index++];
+            if (saved.pos0 != draft_params.pos0 || saved.id_last != draft_params.id_last ||
+                saved.n_max != draft_params.n_max) return -5;
+            output = saved.output;
+            return 0;
+        }
+
+        if (state.gpu_selected()) {
+            if (!state.gpu_sync->sequence_valid() || !state.gpu_draft->sequence_valid())
+                return -4;
+
+            std::vector<int32_t> positions(req.n_tokens);
+            std::vector<float> features((size_t) req.n_tokens * state.enc_width);
+            for (uint32_t i = 0; i < req.n_tokens; ++i) {
+                const uint8_t * row = input.data() + sync_prefix_bytes + (size_t) i * sync_row_bytes;
+                std::memcpy(&positions[i], row, sizeof(int32_t));
+                std::memcpy(features.data() + (size_t) i * state.enc_width,
+                            row + sizeof(int32_t),
+                            (size_t) state.enc_width * sizeof(float));
+            }
+            const bool gpu_reset = trim.reset != 0;
+            const int32_t gpu_trim_to = !gpu_reset && trim.pos0 >= 0 ? trim.pos0 : -1;
+            const auto compute_start = clock_type::now();
+            std::string gpu_error;
+            if (req.n_tokens > 0) {
+                const bool ok = state.gpu_sync->sync(positions.data(), features.data(),
+                                                     req.n_tokens, gpu_reset, gpu_trim_to,
+                                                     &gpu_error);
+                if (!ok) {
+                    compute_us = elapsed_us(compute_start);
+                    return -2;
+                }
+            } else if (gpu_reset) {
+                state.gpu_sync->reset();
+            } else if (gpu_trim_to >= 0) {
+                if (!state.gpu_sync->trim((uint32_t) gpu_trim_to, &gpu_error)) {
+                    compute_us = elapsed_us(compute_start);
+                    return -4;
+                }
+            }
+
+            const float * embeddings =
+                reinterpret_cast<const float *>(draft_embd_src);
+            std::vector<float> hidden((size_t) n_draft_tokens * state.dec_width);
+            const bool ok_draft = state.gpu_draft->draft((uint32_t) draft_params.pos0, embeddings,
+                                                         (uint32_t) draft_params.n_max, hidden.data(),
+                                                         &gpu_error, nullptr);
+            compute_us = elapsed_us(compute_start);
+            if (!ok_draft) return -2;
+            output.resize(hidden.size() * sizeof(float));
+            std::memcpy(output.data(), hidden.data(), output.size());
+            state.recorded.push_back({draft_params.pos0, draft_params.id_last, draft_params.n_max, output});
+            return 0;
+        }
+
+        const auto compute_start = clock_type::now();
+        if (req.n_tokens > 0) {
+            const int rc = llama_decode(state.ctx, state.inject);
+            if (rc) {
+                compute_us = elapsed_us(compute_start);
+                return -2;
+            }
+        }
+        if (!llama_memory_seq_rm(llama_get_memory(state.ctx), 0, draft_params.pos0, -1)) {
+            compute_us = elapsed_us(compute_start);
+            return -4;
+        }
+        const int rc_draft = llama_decode(state.ctx, state.draft);
+        compute_us = elapsed_us(compute_start);
+        if (rc_draft) return -2;
+        const float * hidden = llama_get_embeddings(state.ctx);
+        if (!hidden) return -3;
+        output.resize((size_t) n_draft_tokens * state.dec_width * sizeof(float));
+        std::memcpy(output.data(), hidden, output.size());
+        state.recorded.push_back({draft_params.pos0, draft_params.id_last, draft_params.n_max, output});
+        return 0;
+    }
     if (req.op == DFLASH_RPC_TRIM) {
         if (req.n_tokens || input.size() != sizeof(dflash_rpc_trim_request)) return -1;
         dflash_rpc_trim_request params;
@@ -483,8 +637,11 @@ void client_loop(SOCKET sock, dflash_state & state, const std::string & log_path
         dflash_rpc_request req{};
         if (!recv_all(sock, &req, sizeof(req))) break;
         const uint64_t idle_us = elapsed_us(start);
+        static constexpr uint32_t MAX_PAYLOAD =
+            sizeof(dflash_rpc_sync_trim_request) + 64u * (4u + 25600u * 4u) +
+            sizeof(dflash_rpc_draft_request) + 8u * (5120u * 4u);
         if (req.magic != DFLASH_RPC_MAGIC || req.version != DFLASH_RPC_VERSION ||
-                req.payload_bytes > sizeof(dflash_rpc_sync_trim_request) + 64u * (4u + 25600u * 4u)) break;
+                req.payload_bytes > MAX_PAYLOAD) break;
         std::vector<uint8_t> input(req.payload_bytes);
         const auto receive_start = clock_type::now();
         if (!recv_all(sock, input.data(), input.size())) break;

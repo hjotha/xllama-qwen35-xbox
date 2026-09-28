@@ -1,4 +1,4 @@
-"""Compile DFlash Q6_K and Q8_0 x GGML Q8_K HLSL shaders."""
+"""Compile DFlash Q2_K, Q6_K and Q8_0 x GGML Q8_K HLSL shaders."""
 
 import hashlib
 import shutil
@@ -11,6 +11,7 @@ SOURCES = ROOT / "shaders" / "dflash"
 GENERATED = ROOT / "shaders" / "generated"
 
 TARGETS = [
+    ("q2k_q8k_matmul.hlsl", "CSDot", "kDflashQ2kQ8kDotDxil", "dflash_q2k_q8k_dxil.h"),
     ("q6k_q8k_matmul.hlsl", "CSDot", "kDflashQ6kQ8kDotDxil", "dflash_q6k_q8k_dxil.h"),
     ("q8_0_q8k_matmul.hlsl", "CSDot", "kDflashQ8_0Q8kDotDxil", "dflash_q8_0_q8k_dxil.h"),
 ]
