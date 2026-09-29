@@ -37,7 +37,7 @@
       <ExceptionHandling>Sync</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <Optimization>MaxSpeed</Optimization>
-      <AdditionalIncludeDirectories>$(USERPROFILE)\.nuget\packages\microsoft.ai.directml\1.15.4\include;$(ProjectDir)..\..\include;$(ProjectDir)..\..\shaders\generated;$(ProjectDir)..\..\llama.cpp\include;$(ProjectDir)..\..\llama.cpp\src;$(ProjectDir)..\..\llama.cpp\ggml\include;$(ProjectDir)..\..\llama.cpp\ggml\src;$(ProjectDir)..\..\llama.cpp\ggml\src\ggml-rpc;$(ProjectDir)..\generated;$(WindowsSdkDir)Include\$(WindowsTargetPlatformVersion)\cppwinrt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(USERPROFILE)\.nuget\packages\microsoft.ai.directml\1.15.4\include;$(ProjectDir)..\..\include;$(ProjectDir)..\..\shaders\generated;$(ProjectDir)..\..\beellama.cpp\include;$(ProjectDir)..\..\beellama.cpp\src;$(ProjectDir)..\..\beellama.cpp\ggml\include;$(ProjectDir)..\..\beellama.cpp\ggml\src;$(ProjectDir)..\..\beellama.cpp\ggml\src\ggml-rpc;$(ProjectDir)..\generated;$(WindowsSdkDir)Include\$(WindowsTargetPlatformVersion)\cppwinrt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;GGML_USE_CPU;GGML_STATIC;GGML_SCHED_MAX_COPIES=4;XLLAMA_DFLASH_HARDWARE_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>/arch:AVX2 /utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
       <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
@@ -51,6 +51,7 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="dedicated.cpp" />
+    <ClCompile Include="remote-attn.cpp" />
     <ClCompile Include="dflash-gpu-probe.cpp" />
     <ClCompile Include="dflash-gpu-kv.cpp" />
     <ClCompile Include="dflash-gpu-kv-probe.cpp" />
@@ -62,12 +63,12 @@
     <ClCompile Include="dflash-gpu-draft-probe.cpp" />
     <ClCompile Include="dflash-dml.cpp" />
     <ClCompile Include="..\..\src\bridge\gpugemv.cpp" />
-    <ClCompile Include="..\..\llama.cpp\ggml\src\ggml-rpc\ggml-rpc.cpp" />
-    <ClCompile Include="..\..\llama.cpp\ggml\src\ggml-rpc\transport.cpp" />
+    <ClCompile Include="..\..\beellama.cpp\ggml\src\ggml-rpc\ggml-rpc.cpp" />
+    <ClCompile Include="..\..\beellama.cpp\ggml\src\ggml-rpc\transport.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ggml-uwp.vcxproj">
-      <Project>{B7E11D2A-4C63-4A0E-9D1F-2A6C58F0AA31}</Project>
+    <ProjectReference Include="..\ggml-dflash-uwp.vcxproj">
+      <Project>{F285782C-2876-4B41-ADF4-1B1A067458DC}</Project>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <SetConfiguration>Configuration=$(Configuration)</SetConfiguration>

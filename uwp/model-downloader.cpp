@@ -39,14 +39,16 @@ bool ModelDownloader::IsComplete(std::wstring const& local_dir) {
     return std::filesystem::exists(p);
 }
 
-void ModelDownloader::Invalidate(std::wstring const& local_dir) {
-    std::filesystem::path p(local_dir);
-    p /= kCompleteMarker;
-    std::error_code ec;
-    std::filesystem::remove(p, ec);
+ModelWriteGate& ModelDownloader::WriterGate() {
+    static ModelWriteGate gate;
+    return gate;
 }
 
 namespace {
+
+// Await resume_foreground directly in the caller coroutine. Awaiting an
+// IAsyncAction wrapper preserves the caller's apartment and undoes the switch.
+// A null dispatcher denotes the API worker; it must stay on that worker.
 
 // RSA public key pinned for the Store catalogue. The private half lives only in
 // the GitHub Actions secret and is never committed or included in an artifact.
@@ -251,12 +253,35 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                                             std::vector<ModelFile> files, CoreDispatcher dispatcher,
                                             std::function<void(uint64_t, uint64_t)> on_progress,
                                             std::function<void(bool, std::wstring)> on_done) {
+    ModelWriteOperation writer(WriterGate(), std::filesystem::path(local_dir));
+    auto done = [&writer, &on_done](bool ok, std::wstring error) {
+        writer.release();
+        on_done(ok, std::move(error));
+    };
+    if (!writer.owns_lock()) {
+        log_output("[downloader] writer busy: no files changed\n");
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, kBusyError);
+        co_return;
+    }
+    // Filesystem callers can supply forward slashes; WinRT StorageFolder
+    // requires a native Windows path even when the directory already exists.
+    local_dir = std::filesystem::path(local_dir).make_preferred().wstring();
     // Compute total bytes for progress display.
     uint64_t total_bytes = 0;
     for (auto const& f : files)
         total_bytes += f.approx_bytes;
 
     co_await resume_background();
+    std::error_code begin_ec;
+    if (!writer.begin(begin_ec)) {
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, L"Cannot prepare model write: " + utf8_to_wstring(begin_ec.message()));
+        co_return;
+    }
+    log_output("[downloader] writer acquired: download\n");
 
     HttpBaseProtocolFilter filter;
     filter.AllowAutoRedirect(true);
@@ -282,7 +307,8 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                            .c_str());
             auto snap_done = bytes_done;
             auto snap_total = total_bytes;
-            co_await resume_foreground(dispatcher);
+            if (dispatcher)
+                co_await winrt::resume_foreground(dispatcher);
             on_progress(snap_done, snap_total);
             co_await resume_background();
             continue;
@@ -322,8 +348,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
             if (net_failed) {
                 if (attempt < kMaxAttempts)
                     continue;
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -332,8 +359,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                 last_err = L"HTTP " + std::to_wstring(code) + L" for " + f.filename;
                 if (http_status_retryable(code) && attempt < kMaxAttempts)
                     continue;
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -366,8 +394,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                 create_failed = true;
             }
             if (create_failed) {
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -380,8 +409,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                 open_failed = true;
             }
             if (open_failed) {
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -415,7 +445,8 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                 if (bytes_done % (512 * 1024) < kBufSize) {
                     auto snap_done = bytes_done;
                     auto snap_total = total_bytes;
-                    co_await resume_foreground(dispatcher);
+                    if (dispatcher)
+                        co_await winrt::resume_foreground(dispatcher);
                     on_progress(snap_done, snap_total);
                     co_await resume_background();
                 }
@@ -436,8 +467,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                 }
                 if (attempt < kMaxAttempts)
                     continue;
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -453,8 +485,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                     co_await out_file.DeleteAsync();
                 } catch (...) {
                 }
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -474,8 +507,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                         co_await out_file.DeleteAsync();
                     } catch (...) {
                     }
-                    co_await resume_foreground(dispatcher);
-                    on_done(false, last_err);
+                    if (dispatcher)
+                        co_await winrt::resume_foreground(dispatcher);
+                    done(false, last_err);
                     co_return;
                 }
             }
@@ -492,8 +526,9 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
                     co_await out_file.DeleteAsync();
                 } catch (...) {
                 }
-                co_await resume_foreground(dispatcher);
-                on_done(false, last_err);
+                if (dispatcher)
+                    co_await winrt::resume_foreground(dispatcher);
+                done(false, last_err);
                 co_return;
             }
 
@@ -504,44 +539,44 @@ IAsyncAction ModelDownloader::DownloadAsync(std::wstring hf_repo_url, std::wstri
         }
 
         if (!file_ok) {
-            co_await resume_foreground(dispatcher);
-            on_done(false, last_err.empty() ? L"Download failed for " + f.filename : last_err);
+            if (dispatcher)
+                co_await winrt::resume_foreground(dispatcher);
+            done(false, last_err.empty() ? L"Download failed for " + f.filename : last_err);
             co_return;
         }
     }
 
-    // Write .complete marker.
-    {
-        bool marker_ok = true;
-        StorageFolder mfolder{nullptr};
-        StorageFile marker{nullptr};
-        try {
-            mfolder = co_await StorageFolder::GetFolderFromPathAsync(local_dir);
-            marker = co_await mfolder.CreateFileAsync(kCompleteMarker,
-                                                      CreationCollisionOption::ReplaceExisting);
-        } catch (...) {
-            marker_ok = false;
-        }
-        if (marker_ok && marker) {
-            try {
-                co_await FileIO::WriteTextAsync(marker, L"ok");
-            } catch (...) {
-                marker_ok = false;
-            }
-        }
-        if (!marker_ok) {
-            // Non-fatal: worst case we re-download next time.
-            log_output("[downloader] WARNING: could not write .complete marker");
-        }
+    std::vector<std::wstring> expected;
+    for (const auto& file : files)
+        expected.push_back(file.filename);
+    std::error_code complete_ec;
+    if (!writer.complete(expected, complete_ec)) {
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, L"Cannot complete model write: " + utf8_to_wstring(complete_ec.message()));
+        co_return;
     }
 
-    co_await resume_foreground(dispatcher);
-    on_done(true, L"");
+    if (dispatcher)
+        co_await winrt::resume_foreground(dispatcher);
+    done(true, L"");
 }
 
 IAsyncAction ModelDownloader::RollbackAsync(std::wstring local_dir, std::vector<ModelFile> files,
                                             CoreDispatcher dispatcher,
                                             std::function<void(bool, std::wstring)> on_done) {
+    ModelWriteOperation writer(WriterGate(), std::filesystem::path(local_dir));
+    auto done = [&writer, &on_done](bool ok, std::wstring error) {
+        writer.release();
+        on_done(ok, std::move(error));
+    };
+    if (!writer.owns_lock()) {
+        log_output("[downloader] writer busy: no files changed\n");
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, kBusyError);
+        co_return;
+    }
     co_await resume_background();
     const std::filesystem::path root(local_dir);
     std::vector<std::pair<std::filesystem::path, std::filesystem::path>> moves;
@@ -550,36 +585,43 @@ IAsyncAction ModelDownloader::RollbackAsync(std::wstring local_dir, std::vector<
         const auto previous = std::filesystem::path(current.wstring() + L".previous");
         std::error_code ec;
         if (!std::filesystem::is_regular_file(previous, ec)) {
-            co_await resume_foreground(dispatcher);
-            on_done(false, L"No rollback generation for " + file.filename);
+            if (dispatcher)
+                co_await winrt::resume_foreground(dispatcher);
+            done(false, L"No rollback generation for " + file.filename);
             co_return;
         }
         moves.emplace_back(current, previous);
     }
 
+    std::error_code begin_ec;
+    if (!writer.begin(begin_ec)) {
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, L"Cannot prepare rollback: " + utf8_to_wstring(begin_ec.message()));
+        co_return;
+    }
     for (const auto& [current, previous] : moves) {
         std::error_code ec;
         if (std::filesystem::is_regular_file(current, ec))
             std::filesystem::remove(current, ec);
         std::filesystem::rename(previous, current, ec);
         if (ec) {
-            co_await resume_foreground(dispatcher);
-            on_done(false, L"Cannot restore rollback generation");
+            if (dispatcher)
+                co_await winrt::resume_foreground(dispatcher);
+            done(false, L"Cannot restore rollback generation");
             co_return;
         }
     }
     std::error_code marker_ec;
-    std::filesystem::remove(root / kCompleteMarker, marker_ec);
-    std::ofstream marker(root / kCompleteMarker, std::ios::binary);
-    if (!marker) {
-        co_await resume_foreground(dispatcher);
-        on_done(false, L"Cannot write rollback marker");
+    if (!writer.complete({}, marker_ec)) {
+        if (dispatcher)
+            co_await winrt::resume_foreground(dispatcher);
+        done(false, L"Cannot write rollback marker");
         co_return;
     }
-    marker << "ok";
-    marker.close();
-    co_await resume_foreground(dispatcher);
-    on_done(true, L"");
+    if (dispatcher)
+        co_await winrt::resume_foreground(dispatcher);
+    done(true, L"");
 }
 
 // ---------------------------------------------------------------------------
@@ -764,7 +806,7 @@ bool IsModelProvisioned(std::wstring const& model_name,
     return false;
 }
 
-std::vector<ManifestEntry> LoadModelManifest(ManifestTrust* trust) {
+std::vector<ManifestEntry> LoadModelManifest(ManifestTrust* trust, bool include_local_override) {
     // 1. Bundled catalogue (base).
     auto pkg = winrt::Windows::ApplicationModel::Package::Current();
     ManifestTrust bundled_trust;
@@ -797,9 +839,12 @@ std::vector<ManifestEntry> LoadModelManifest(ManifestTrust* trust) {
     // mention — a stale override used to shadow the whole catalogue (found
     // 2026-07-10: an Exp-2-era single-entry override made sd-turbo-fp16 and
     // the GGUF entries invisible after the catalogue grew).
-    auto local = winrt::Windows::Storage::ApplicationData::Current().LocalFolder();
-    auto override_entries =
-        read_manifest_file(std::wstring(local.Path().c_str()) + L"\\manifest.json");
+    std::vector<ManifestEntry> override_entries;
+    if (include_local_override) {
+        auto local = winrt::Windows::Storage::ApplicationData::Current().LocalFolder();
+        override_entries =
+            read_manifest_file(std::wstring(local.Path().c_str()) + L"\\manifest.json");
+    }
     #ifdef XLLAMA_STORE_SKU
     (void)override_entries;
     override_entries.clear();

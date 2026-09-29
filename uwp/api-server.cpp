@@ -20,6 +20,7 @@
     #include "inference-bridge.h"
     #include "model-downloader.h"
     #include "xllama/api_policy.h"
+    #include "xllama/api_pull_policy.h"
     #include "xllama/chat_prompt.h"
     #include "xllama/model_provision.h"
     #include "xllama/path_utils.h"
@@ -34,6 +35,8 @@
 
     #include <algorithm>
     #include <cctype>
+    #include <charconv>
+    #include <chrono>
     #include <cstdio>
     #include <ctime>
     #include <filesystem>
@@ -84,6 +87,10 @@ uint64_t g_generation = 0; // invalidates callbacks accepted by an older listene
 // Settings and autopilot can request lifecycle changes from separate worker
 // threads. Serialize bind/close so only one transition owns the listener.
 std::mutex g_control_mtx;
+
+// Pulls share one writer/staging directory per model. Reject a second request
+// rather than allowing overlapping writes to the same .part files.
+::xllama::ApiPullGate g_pull_gate;
 
 // Keep the listener alive for the process lifetime (callbacks fire on the WinRT
 // thread pool, not on run_server's thread).
@@ -230,6 +237,73 @@ void write_response(StreamSocket const& socket, const char* status, const std::s
     write_raw(socket, out);
 }
 
+class PullJsonStream {
+  public:
+    explicit PullJsonStream(StreamSocket const& socket) {
+        write_raw(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/x-ndjson\r\n"
+                          "Transfer-Encoding: chunked\r\nConnection: close\r\n"
+                          "Access-Control-Allow-Origin: *\r\n\r\n");
+        m_writer = DataWriter(socket.OutputStream());
+        m_writer.UnicodeEncoding(UnicodeEncoding::Utf8);
+    }
+
+    bool write_line(const std::string& json) {
+        if (m_finished)
+            return false;
+        const std::string payload = json + "\n";
+        char size_hex[32]{};
+        const auto converted =
+            std::to_chars(size_hex, size_hex + sizeof(size_hex), payload.size(), 16);
+        if (converted.ec != std::errc{})
+            return false;
+        std::string frame(size_hex, converted.ptr);
+        frame += "\r\n";
+        frame += payload;
+        frame += "\r\n";
+        try {
+            m_writer.WriteString(winrt::to_hstring(frame));
+            m_writer.StoreAsync().get();
+            m_writer.FlushAsync().get();
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+    void finish() {
+        if (m_finished)
+            return;
+        m_finished = true;
+        try {
+            m_writer.WriteString(L"0\r\n\r\n");
+            m_writer.StoreAsync().get();
+            m_writer.FlushAsync().get();
+            m_writer.DetachStream();
+        } catch (...) {
+        }
+    }
+
+  private:
+    DataWriter m_writer{nullptr};
+    bool m_finished = false;
+};
+
+std::string pull_event_json(const std::string& status, uint64_t completed = 0, uint64_t total = 0) {
+    JsonObject root;
+    root.Insert(L"status", JsonValue::CreateStringValue(winrt::to_hstring(status)));
+    if (total > 0) {
+        root.Insert(L"completed", JsonValue::CreateNumberValue(static_cast<double>(completed)));
+        root.Insert(L"total", JsonValue::CreateNumberValue(static_cast<double>(total)));
+    }
+    return winrt::to_string(root.Stringify());
+}
+
+std::string ollama_error_json(const std::string& message) {
+    JsonObject root;
+    root.Insert(L"error", JsonValue::CreateStringValue(winrt::to_hstring(message)));
+    return winrt::to_string(root.Stringify());
+}
+
 // CORS preflight: browsers OPTIONS non-simple requests before the real POST.
 void write_cors_preflight(StreamSocket const& socket) {
     write_raw(socket, "HTTP/1.1 204 No Content\r\n"
@@ -266,6 +340,7 @@ struct CatalogueSessionPolicy {
     int n_ctx = ::xllama::kDefaultNCtx;
     bool coding = false;
     bool gguf = false;
+    bool embedding = false;
 };
 
 CatalogueSessionPolicy catalogue_session_policy(const std::string& model) {
@@ -280,6 +355,7 @@ CatalogueSessionPolicy catalogue_session_policy(const std::string& model) {
     if (entry) {
         p.n_ctx = ::xllama::resolve_n_ctx(entry->n_ctx);
         p.coding = ::xllama::role_is_coding(::xllama::wstring_to_utf8(entry->role));
+        p.embedding = ::xllama::role_is_embedding(::xllama::wstring_to_utf8(entry->role));
         p.gguf = entry->kind == L"gguf";
     }
     return p;
@@ -362,6 +438,15 @@ std::string handle_chat_locked(const std::string& body, const char*& status) {
     {
         std::string err;
         const CatalogueSessionPolicy policy = catalogue_session_policy(model);
+
+        // Embedding models must not be used for chat completion.
+        if (policy.embedding) {
+            status = "400 Bad Request";
+            return error_json("model '" + model +
+                              "' is an embedding model and cannot be used for chat completions; "
+                              "use /api/embed or /v1/embeddings instead");
+        }
+
         model_is_coding = policy.coding;
         policy_n_ctx = policy.n_ctx;
         ::xllama::SessionParams sp;
@@ -555,6 +640,264 @@ std::string tags_json() {
     JsonObject root;
     root.Insert(L"models", models);
     return winrt::to_string(root.Stringify());
+}
+
+enum class EmbeddingApi { Ollama, Legacy, OpenAI };
+
+std::string embedding_error_json(EmbeddingApi api, const std::string& message) {
+    // Native Ollama errors expose a string; OpenAI exposes a typed object.
+    return api == EmbeddingApi::OpenAI ? error_json(message) : ollama_error_json(message);
+}
+
+// Conservative GGUF preflight based on the console gate used for xllama's
+// catalogue scouting: model weight bytes × the measured 1.12 load overhead.
+// This runs before Session::create so a known oversized embedding model cannot
+// pressure the process past its working-set budget during a load attempt.
+uint64_t estimate_gguf_peak_mb(const std::string& model) {
+    const std::filesystem::path path(::xllama::resolve_model_path(model));
+    std::error_code ec;
+    uint64_t weight_bytes = 0;
+    const auto add_gguf = [&](const std::filesystem::path& file) {
+        if (file.extension() != ".gguf" || file.filename() == "adapter.gguf")
+            return;
+        const uint64_t size = std::filesystem::file_size(file, ec);
+        if (!ec)
+            weight_bytes += size;
+        ec.clear();
+    };
+    if (std::filesystem::is_regular_file(path, ec)) {
+        add_gguf(path);
+    } else if (std::filesystem::is_directory(path, ec)) {
+        for (const auto& entry : std::filesystem::directory_iterator(path, ec)) {
+            if (ec)
+                break;
+            add_gguf(entry.path());
+        }
+    }
+    if (weight_bytes == 0)
+        return 0; // Let normal model loading report missing/unreadable files.
+    const double peak_bytes = static_cast<double>(weight_bytes) * 1.12;
+    return static_cast<uint64_t>(peak_bytes / (1024.0 * 1024.0) + 0.5);
+}
+
+std::string handle_embedding_locked(const std::string& body, const char*& status,
+                                    EmbeddingApi api) {
+    JsonObject root{nullptr};
+    if (!JsonObject::TryParse(winrt::to_hstring(body), root) || root == nullptr) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, "invalid JSON body");
+    }
+    std::string model = winrt::to_string(root.GetNamedString(L"model", L""));
+    if (model.empty())
+        model = read_local_text("model.txt");
+    if (model.empty()) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, "missing 'model' (and no LocalState\\model.txt fallback)");
+    }
+
+    model = ::xllama::resolve_pull_model_name(model);
+
+    std::vector<std::string> inputs;
+    const wchar_t* input_key = api == EmbeddingApi::Legacy ? L"prompt" : L"input";
+    if (!root.HasKey(input_key)) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, api == EmbeddingApi::Legacy ? "missing 'prompt'"
+                                                                     : "missing 'input'");
+    }
+    const IJsonValue input_value = root.GetNamedValue(input_key);
+    if (input_value.ValueType() == JsonValueType::String) {
+        inputs.push_back(winrt::to_string(input_value.GetString()));
+    } else if (api != EmbeddingApi::Legacy && input_value.ValueType() == JsonValueType::Array) {
+        const JsonArray arr = input_value.GetArray();
+        for (uint32_t i = 0; i < arr.Size(); ++i) {
+            const IJsonValue v = arr.GetAt(i);
+            if (v.ValueType() != JsonValueType::String) {
+                status = "400 Bad Request";
+                return embedding_error_json(api, "every input array item must be a string");
+            }
+            inputs.push_back(winrt::to_string(v.GetString()));
+        }
+    } else {
+        status = "400 Bad Request";
+        return embedding_error_json(api, api == EmbeddingApi::Legacy
+                                             ? "prompt must be a string"
+                                             : "input must be a string or array of strings");
+    }
+    if (inputs.empty() || inputs.size() > 128) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, inputs.empty() ? "input array must not be empty"
+                                                        : "input batch is limited to 128 items");
+    }
+    for (const auto& input : inputs) {
+        if (input.empty()) {
+            status = "400 Bad Request";
+            return embedding_error_json(api, "input items must not be empty");
+        }
+    }
+
+    int dimensions = 0;
+    if (root.HasKey(L"dimensions")) {
+        const double raw = root.GetNamedNumber(L"dimensions");
+        if (raw < 0 || raw > 32768 || raw != static_cast<int>(raw)) {
+            status = "400 Bad Request";
+            return embedding_error_json(api, "dimensions must be a non-negative integer");
+        }
+        dimensions = static_cast<int>(raw);
+    }
+    // BGE-M3 is not Matryoshka-trained: prefix truncation is not its
+    // catalogue contract. Keep its native vector width on every adapter.
+    if (model == "embed-bge-m3" && dimensions != 0 && dimensions != 1024) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, "BGE-M3 dimensions must be 0 or 1024");
+    }
+    bool truncate = true;
+    if (root.HasKey(L"truncate"))
+        truncate = root.GetNamedBoolean(L"truncate");
+
+    std::string encoding = "float";
+    if (api == EmbeddingApi::OpenAI && root.HasKey(L"encoding_format")) {
+        encoding = winrt::to_string(root.GetNamedString(L"encoding_format"));
+        if (encoding != "float" && encoding != "base64") {
+            status = "400 Bad Request";
+            return embedding_error_json(api, "encoding_format must be 'float' or 'base64'");
+        }
+    }
+
+    const CatalogueSessionPolicy policy = catalogue_session_policy(model);
+    if (!policy.embedding || !policy.gguf) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, "model is not a catalogue embedding GGUF");
+    }
+    const auto started = std::chrono::steady_clock::now();
+    if (::xllama::model_uses_llama_backend(model)) {
+        constexpr uint64_t kEmbeddingPeakGateMb = 3584;
+        const uint64_t estimated_peak_mb = estimate_gguf_peak_mb(model);
+        if (estimated_peak_mb > kEmbeddingPeakGateMb) {
+            status = "400 Bad Request";
+            return embedding_error_json(api, "estimated GGUF peak memory is " +
+                                                 std::to_string(estimated_peak_mb) +
+                                                 " MB, above the Xbox embedding "
+                                                 "gate of 3584 MB; choose a smaller GGUF model");
+        }
+    }
+    ::xllama::Session* session = nullptr;
+    std::string err;
+    ::xllama::SessionParams sp;
+    sp.model_path = model;
+    sp.n_ctx = policy.n_ctx;
+    if (policy.gguf)
+        sp.backend = ::xllama::Backend::LlamaCpp;
+    if (root.HasKey(L"options") &&
+        root.GetNamedValue(L"options").ValueType() != JsonValueType::Object) {
+        status = "400 Bad Request";
+        return embedding_error_json(api, "options must be an object");
+    }
+    if (root.HasKey(L"options")) {
+        const JsonObject options = root.GetNamedObject(L"options");
+        if (options.HasKey(L"num_ctx")) {
+            const double raw = options.GetNamedNumber(L"num_ctx");
+            if (raw < 32 || raw > policy.n_ctx || raw != static_cast<int>(raw)) {
+                status = "400 Bad Request";
+                return embedding_error_json(
+                    api, "options.num_ctx must be an integer from 32 to the configured "
+                         "model context limit (" +
+                             std::to_string(policy.n_ctx) + ")");
+            }
+            sp.n_ctx = static_cast<int>(raw);
+        }
+    }
+    auto& hub = ::xllama::session_hub();
+    if (hub.session && hub.model == model && hub.session->context_length() != sp.n_ctx)
+        hub.reset_locked();
+    session = hub.ensure_locked(model, sp, &err);
+    if (!session) {
+        status = "500 Internal Server Error";
+        return embedding_error_json(api, "session create failed: " + err);
+    }
+    const auto loaded = std::chrono::steady_clock::now();
+
+    JsonArray embeddings;
+    int prompt_tokens = 0;
+    size_t embedding_width = 0;
+    for (uint32_t i = 0; i < inputs.size(); ++i) {
+        ::xllama::EmbeddingParams params;
+        params.input = inputs[i];
+        params.dimensions = dimensions;
+        params.truncate = truncate;
+        const ::xllama::EmbeddingResult result = session->embed(params);
+        if (!result.success) {
+            const bool client_error =
+                result.error_msg.find("not supported") != std::string::npos ||
+                result.error_msg.find("do not provide") != std::string::npos ||
+                result.error_msg.find("input") != std::string::npos ||
+                result.error_msg.find("dimension") != std::string::npos ||
+                result.error_msg.find("ranking") != std::string::npos ||
+                result.error_msg.find("encoder-only") != std::string::npos;
+            status = client_error ? "400 Bad Request" : "500 Internal Server Error";
+            return embedding_error_json(api, result.error_msg);
+        }
+        prompt_tokens += result.n_tokens;
+        embedding_width = result.embedding.size();
+        if (api == EmbeddingApi::OpenAI) {
+            JsonObject item;
+            item.Insert(L"object", JsonValue::CreateStringValue(L"embedding"));
+            item.Insert(L"index", JsonValue::CreateNumberValue(i));
+            if (encoding == "base64") {
+                item.Insert(L"embedding", JsonValue::CreateStringValue(winrt::to_hstring(
+                                              ::xllama::embedding_base64(result.embedding))));
+            } else {
+                JsonArray vector;
+                for (float x : result.embedding)
+                    vector.Append(JsonValue::CreateNumberValue(x));
+                item.Insert(L"embedding", vector);
+            }
+            embeddings.Append(item);
+        } else {
+            JsonArray vector;
+            for (float x : result.embedding)
+                vector.Append(JsonValue::CreateNumberValue(x));
+            embeddings.Append(vector);
+        }
+    }
+    const auto finished = std::chrono::steady_clock::now();
+    ::xllama::log_output(
+        ("[embedding] model=" + model + " inputs=" + std::to_string(inputs.size()) +
+         " tokens=" + std::to_string(prompt_tokens) + " width=" + std::to_string(embedding_width) +
+         " peak_ws_mb=" + std::to_string(::xllama::peak_working_set_mb()) + " total_ms=" +
+         std::to_string(
+             std::chrono::duration_cast<std::chrono::milliseconds>(finished - started).count()) +
+         "\n")
+            .c_str());
+    const auto duration_ns = [](auto a, auto b) {
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(b - a).count();
+    };
+    const std::string json_model = api == EmbeddingApi::Legacy ? std::string{} : model;
+    if (api == EmbeddingApi::Legacy) {
+        JsonObject out;
+        out.Insert(L"embedding", embeddings.GetAt(0).GetArray());
+        status = "200 OK";
+        return winrt::to_string(out.Stringify());
+    }
+    if (api == EmbeddingApi::OpenAI) {
+        JsonObject usage;
+        usage.Insert(L"prompt_tokens", JsonValue::CreateNumberValue(prompt_tokens));
+        usage.Insert(L"total_tokens", JsonValue::CreateNumberValue(prompt_tokens));
+        JsonObject out;
+        out.Insert(L"object", JsonValue::CreateStringValue(L"list"));
+        out.Insert(L"data", embeddings);
+        out.Insert(L"model", JsonValue::CreateStringValue(winrt::to_hstring(json_model)));
+        out.Insert(L"usage", usage);
+        status = "200 OK";
+        return winrt::to_string(out.Stringify());
+    }
+    JsonObject out;
+    out.Insert(L"model", JsonValue::CreateStringValue(winrt::to_hstring(json_model)));
+    out.Insert(L"embeddings", embeddings);
+    out.Insert(L"total_duration", JsonValue::CreateNumberValue(duration_ns(started, finished)));
+    out.Insert(L"load_duration", JsonValue::CreateNumberValue(duration_ns(started, loaded)));
+    out.Insert(L"prompt_eval_count", JsonValue::CreateNumberValue(prompt_tokens));
+    status = "200 OK";
+    return winrt::to_string(out.Stringify());
 }
 
 // ---------------------------------------------------------------------------
@@ -762,6 +1105,232 @@ std::string handle_images_locked(const std::string& body, const char*& status) {
     return winrt::to_string(out.Stringify());
 }
 
+bool same_pull_manifest_entry(const ::xllama::ManifestEntry& a, const ::xllama::ManifestEntry& b) {
+    if (a.name != b.name || a.kind != b.kind || a.role != b.role ||
+        a.hf_base_url != b.hf_base_url || a.n_ctx != b.n_ctx || a.files.size() != b.files.size())
+        return false;
+    for (size_t i = 0; i < a.files.size(); ++i) {
+        const auto& x = a.files[i];
+        const auto& y = b.files[i];
+        if (x.filename != y.filename || x.remote != y.remote || x.approx_bytes != y.approx_bytes ||
+            x.sha256 != y.sha256)
+            return false;
+    }
+    return true;
+}
+
+void handle_pull(StreamSocket const& socket, const std::string& body, uint64_t generation) {
+    JsonObject request{nullptr};
+    if (!JsonObject::TryParse(winrt::to_hstring(body), request) || request == nullptr) {
+        write_response(socket, "400 Bad Request", ollama_error_json("invalid JSON body"));
+        return;
+    }
+
+    std::string requested_name;
+    bool stream = true;
+    try {
+        if (request.HasKey(L"model")) {
+            const auto value = request.GetNamedValue(L"model");
+            if (value.ValueType() != JsonValueType::String) {
+                write_response(socket, "400 Bad Request",
+                               ollama_error_json("'model' must be a string"));
+                return;
+            }
+            requested_name = winrt::to_string(value.GetString());
+        }
+        if (request.HasKey(L"stream")) {
+            const auto value = request.GetNamedValue(L"stream");
+            if (value.ValueType() != JsonValueType::Boolean) {
+                write_response(socket, "400 Bad Request",
+                               ollama_error_json("'stream' must be boolean"));
+                return;
+            }
+            stream = value.GetBoolean();
+        }
+    } catch (...) {
+        write_response(socket, "400 Bad Request", ollama_error_json("malformed pull request"));
+        return;
+    }
+    if (requested_name.empty()) {
+        write_response(socket, "400 Bad Request", ollama_error_json("missing 'model'"));
+        return;
+    }
+
+    const std::string model_name = ::xllama::resolve_pull_model_name(requested_name);
+    ::xllama::ManifestTrust catalogue_trust;
+    const auto manifest = ::xllama::LoadModelManifest(&catalogue_trust, false);
+    const auto* entry =
+        ::xllama::FindManifestEntry(manifest, ::xllama::utf8_to_wstring(model_name));
+    if (!entry) {
+        write_response(socket, "404 Not Found",
+                       ollama_error_json("model is not in the bundled catalogue"));
+        return;
+    }
+
+    // A bundled entry is part of the publisher-signed MSIX. Store additionally
+    // requires the catalogue's detached RSA signature. Device Portal overrides
+    // are excluded above and can never supply a pull URL or checksum.
+    bool package_catalogue_trusted = true;
+    #ifdef XLLAMA_STORE_SKU
+    package_catalogue_trusted = catalogue_trust.trusted;
+    #else
+    (void)catalogue_trust;
+    #endif
+
+    ::xllama::PullModelDescriptor descriptor;
+    descriptor.name = model_name;
+    descriptor.kind = ::xllama::wstring_to_utf8(entry->kind);
+    descriptor.role = ::xllama::wstring_to_utf8(entry->role);
+    descriptor.source_url = ::xllama::wstring_to_utf8(entry->hf_base_url);
+    descriptor.trusted_catalogue = package_catalogue_trusted;
+    for (const auto& file : entry->files)
+        descriptor.sha256_pins.push_back(::xllama::wstring_to_utf8(file.sha256));
+    if (!::xllama::api_pull_model_allowed(descriptor)) {
+        write_response(
+            socket, "403 Forbidden",
+            ollama_error_json("model is not a trusted, pinned chat or embedding download"));
+        return;
+    }
+
+    // Chat and embedding inference use the merged runtime manifest. Reject a
+    // same-name LocalState override that would change backend, role, URL, or
+    // pinned files, so a successfully pulled model is loaded with these settings.
+    const auto effective_manifest = ::xllama::LoadModelManifest();
+    const auto* effective_entry =
+        ::xllama::FindManifestEntry(effective_manifest, ::xllama::utf8_to_wstring(model_name));
+    if (!effective_entry || !same_pull_manifest_entry(*entry, *effective_entry)) {
+        write_response(socket, "403 Forbidden",
+                       ollama_error_json("model is shadowed by a LocalState catalogue override"));
+        return;
+    }
+
+    auto pull_guard = g_pull_gate.try_acquire();
+    if (!pull_guard.owns_lock()) {
+        write_response(socket, "409 Conflict",
+                       ollama_error_json("another model pull is in progress"));
+        return;
+    }
+
+    {
+        std::lock_guard<std::mutex> state_lock(g_state_mtx);
+        if (g_status.state != ServerState::Running || generation != g_generation) {
+            write_response(socket, "503 Service Unavailable", ollama_error_json("server stopped"));
+            return;
+        }
+    }
+
+    std::unique_ptr<PullJsonStream> output;
+    if (stream) {
+        output = std::make_unique<PullJsonStream>(socket);
+        (void)output->write_line(pull_event_json("pulling manifest"));
+        (void)output->write_line(pull_event_json("pulling model"));
+    }
+
+    const std::string model_dir = ::xllama::resolve_local_path("models/" + model_name);
+    bool download_ok = false;
+    std::wstring download_error;
+    {
+        const std::wstring local_dir = ::xllama::utf8_to_wstring(model_dir);
+        try {
+            auto* output_stream = output.get();
+            ::xllama::ModelDownloader::DownloadAsync(
+                entry->hf_base_url, local_dir, entry->files,
+                winrt::Windows::UI::Core::CoreDispatcher{nullptr},
+                [output_stream](uint64_t done, uint64_t total) {
+                    if (output_stream)
+                        (void)output_stream->write_line(
+                            pull_event_json("pulling model", done, total));
+                },
+                [&download_ok, &download_error](bool ok, std::wstring error) {
+                    download_ok = ok;
+                    download_error = std::move(error);
+                })
+                .get();
+        } catch (winrt::hresult_error const& error) {
+            download_ok = false;
+            download_error = L"download failed (0x" +
+                             std::to_wstring(static_cast<uint32_t>(error.code().value)) + L")";
+        } catch (...) {
+            download_ok = false;
+            download_error = L"download failed";
+        }
+    }
+    if (!download_ok) {
+        const std::string message = ::xllama::wstring_to_utf8(download_error);
+        if (output) {
+            (void)output->write_line(ollama_error_json(message));
+            output->finish();
+        } else {
+            write_response(socket,
+                           download_error == ::xllama::ModelDownloader::kBusyError
+                               ? "409 Conflict"
+                               : "500 Internal Server Error",
+                           ollama_error_json(message));
+        }
+        return;
+    }
+
+    if (output)
+        (void)output->write_line(pull_event_json("loading model"));
+
+    bool server_active = false;
+    {
+        std::lock_guard<std::mutex> state_lock(g_state_mtx);
+        server_active = g_status.state == ServerState::Running && generation == g_generation;
+    }
+    if (!server_active) {
+        const std::string message = "server stopped before model load";
+        if (output) {
+            (void)output->write_line(ollama_error_json(message));
+            output->finish();
+        } else {
+            write_response(socket, "503 Service Unavailable", ollama_error_json(message));
+        }
+        return;
+    }
+
+    std::string load_error;
+    ::xllama::Session* loaded = nullptr;
+    {
+        auto& hub = ::xllama::session_hub();
+        std::lock_guard<std::mutex> hub_lock(hub.mtx); // let active inference finish, then swap
+        ::xllama::SessionParams params;
+        params.model_path = model_name;
+        params.n_ctx = ::xllama::resolve_n_ctx(entry->n_ctx);
+        if (entry->kind == L"gguf")
+            params.backend = ::xllama::Backend::LlamaCpp;
+        // Recheck after waiting for inference: stop/rebind may have invalidated
+        // the listener while this pull was blocked on the resident session.
+        {
+            std::lock_guard<std::mutex> state_lock(g_state_mtx);
+            server_active = g_status.state == ServerState::Running && generation == g_generation;
+        }
+        if (server_active)
+            loaded = hub.ensure_locked(model_name, params, &load_error);
+        else
+            load_error = "server stopped before model load";
+    }
+    if (!loaded) {
+        const std::string message = "model downloaded but could not load: " + load_error;
+        if (output) {
+            (void)output->write_line(ollama_error_json(message));
+            output->finish();
+        } else {
+            write_response(socket,
+                           server_active ? "500 Internal Server Error" : "503 Service Unavailable",
+                           ollama_error_json(message));
+        }
+        return;
+    }
+
+    if (output) {
+        (void)output->write_line(pull_event_json("success"));
+        output->finish();
+    } else {
+        write_response(socket, "200 OK", pull_event_json("success"));
+    }
+}
+
 void handle_connection(StreamSocket const& socket, uint64_t generation) {
     try {
         const HttpRequest req = read_request(socket);
@@ -799,6 +1368,11 @@ void handle_connection(StreamSocket const& socket, uint64_t generation) {
             return;
         }
 
+        if (req.method == "POST" && req.path == "/api/pull") {
+            handle_pull(socket, req.body, generation);
+            return;
+        }
+
         if (req.method == "POST" && req.path == "/v1/chat/completions") {
             std::unique_lock<std::mutex> lk = acquire_hub_or_busy();
             if (!lk.owns_lock()) {
@@ -827,6 +1401,42 @@ void handle_connection(StreamSocket const& socket, uint64_t generation) {
             } catch (...) {
                 status = "400 Bad Request";
                 json = error_json("malformed request body");
+            }
+            write_response(socket, status, json);
+            return;
+        }
+
+        EmbeddingApi embedding_api;
+        const bool is_embedding_route =
+            req.method == "POST" && (req.path == "/api/embed" || req.path == "/api/embeddings" ||
+                                     req.path == "/v1/embeddings");
+        if (is_embedding_route) {
+            embedding_api = req.path == "/api/embed"        ? EmbeddingApi::Ollama
+                            : req.path == "/api/embeddings" ? EmbeddingApi::Legacy
+                                                            : EmbeddingApi::OpenAI;
+            std::unique_lock<std::mutex> lk = acquire_hub_or_busy();
+            if (!lk.owns_lock()) {
+                write_response(socket, "503 Service Unavailable",
+                               embedding_error_json(embedding_api, "busy"));
+                return;
+            }
+            bool active = false;
+            {
+                std::lock_guard<std::mutex> state_lock(g_state_mtx);
+                active = g_status.state == ServerState::Running && generation == g_generation;
+            }
+            if (!active) {
+                write_response(socket, "503 Service Unavailable",
+                               embedding_error_json(embedding_api, "server stopped"));
+                return;
+            }
+            const char* status = "200 OK";
+            std::string json;
+            try {
+                json = handle_embedding_locked(req.body, status, embedding_api);
+            } catch (...) {
+                status = "400 Bad Request";
+                json = embedding_error_json(embedding_api, "malformed embedding request");
             }
             write_response(socket, status, json);
             return;
