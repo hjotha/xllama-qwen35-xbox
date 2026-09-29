@@ -75,6 +75,7 @@
         GGML_USE_CPU;
         GGML_USE_CPU_REPACK;
         GGML_STATIC;
+        GGML_SCHED_MAX_COPIES=4;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
