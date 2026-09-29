@@ -97,6 +97,11 @@ private:
     bool record_checkpoint(const char * name, Slot slot, uint32_t batch,
                            uint32_t width, std::string * error);
     void transition(Buffer & buffer, D3D12_RESOURCE_STATES next);
+    void transition(Buffer & b1, D3D12_RESOURCE_STATES s1,
+                    Buffer & b2, D3D12_RESOURCE_STATES s2);
+    void transition(Buffer & b1, D3D12_RESOURCE_STATES s1,
+                    Buffer & b2, D3D12_RESOURCE_STATES s2,
+                    Buffer & b3, D3D12_RESOURCE_STATES s3);
     void barrier(Buffer & buffer);
     bool matmul(const Weight & weight, Slot input, Slot output,
                 uint32_t batch, std::string * error);

@@ -75,6 +75,7 @@ def server_command(args, n_max, p_min):
            "--device", "CUDA0", "--n-gpu-layers", "99", "--fit", "off",
            "--load-mode", "none", "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
            "--flash-attn", "on", "--ctx-size", "8192", "--parallel", "1",
+           "--batch-size", "64", "--ubatch-size", "64",
            "--host", "127.0.0.1", "--port", str(TEST_PORT)]
     env = os.environ.copy()
     env.pop("DFLASH_SUDO_PASSWORD", None)
@@ -84,7 +85,8 @@ def server_command(args, n_max, p_min):
     if args.spec_type != "none":
         cmd += ["--spec-draft-model", args.draft_model, "--spec-draft-n-max", str(n_max),
                 "--draft-p-min", str(p_min), "--spec-draft-ngl", "0", "--spec-draft-device", "none"]
-        env.update(DFLASH_XBOX_RPC=RPC_ENDPOINT, DFLASH_XBOX_TRACE="1")
+        pipeline = os.environ.get("DFLASH_XBOX_PIPELINE", "1")
+        env.update(DFLASH_XBOX_RPC=RPC_ENDPOINT, DFLASH_XBOX_TRACE="1", DFLASH_XBOX_PIPELINE=pipeline)
         if os.environ.get("DFLASH_XBOX_SEPARATE_DRAFT") == "1":
             env["DFLASH_XBOX_SEPARATE_DRAFT"] = "1"
     env["GGML_MTP_PROF"] = "1"

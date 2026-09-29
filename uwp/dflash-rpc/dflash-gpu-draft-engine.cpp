@@ -124,6 +124,59 @@ void DflashGpuDraftEngine::transition(Buffer & buffer, D3D12_RESOURCE_STATES nex
     buffer.state = next;
 }
 
+void DflashGpuDraftEngine::transition(Buffer & b1, D3D12_RESOURCE_STATES s1,
+                                     Buffer & b2, D3D12_RESOURCE_STATES s2) {
+    D3D12_RESOURCE_BARRIER items[2];
+    uint32_t count = 0;
+    if (b1.state != s1) {
+        items[count] = {};
+        items[count].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        items[count].Transition.pResource = b1.resource.Get();
+        items[count].Transition.StateBefore = b1.state;
+        items[count].Transition.StateAfter = s1;
+        items[count].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        b1.state = s1;
+        ++count;
+    }
+    if (b2.state != s2) {
+        items[count] = {};
+        items[count].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+        items[count].Transition.pResource = b2.resource.Get();
+        items[count].Transition.StateBefore = b2.state;
+        items[count].Transition.StateAfter = s2;
+        items[count].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+        b2.state = s2;
+        ++count;
+    }
+    if (count > 0) {
+        cmd_->ResourceBarrier(count, items);
+    }
+}
+
+void DflashGpuDraftEngine::transition(Buffer & b1, D3D12_RESOURCE_STATES s1,
+                                     Buffer & b2, D3D12_RESOURCE_STATES s2,
+                                     Buffer & b3, D3D12_RESOURCE_STATES s3) {
+    D3D12_RESOURCE_BARRIER items[3];
+    uint32_t count = 0;
+    Buffer * bufs[3] = {&b1, &b2, &b3};
+    D3D12_RESOURCE_STATES states[3] = {s1, s2, s3};
+    for (int i = 0; i < 3; ++i) {
+        if (bufs[i]->state != states[i]) {
+            items[count] = {};
+            items[count].Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+            items[count].Transition.pResource = bufs[i]->resource.Get();
+            items[count].Transition.StateBefore = bufs[i]->state;
+            items[count].Transition.StateAfter = states[i];
+            items[count].Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+            bufs[i]->state = states[i];
+            ++count;
+        }
+    }
+    if (count > 0) {
+        cmd_->ResourceBarrier(count, items);
+    }
+}
+
 void DflashGpuDraftEngine::barrier(Buffer & buffer) {
     D3D12_RESOURCE_BARRIER item = {};
     item.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
@@ -624,8 +677,8 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
                            init_zero.resource.Get(), 0, max_bytes);
     cmd_->CopyBufferRegion(buffers_[NoSink].resource.Get(), 0,
                            init_sink.resource.Get(), 0, kQHeads * 4u + sizeof(dflash_exp::kUcrtExpTable));
-    transition(buffers_[Zero], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(buffers_[NoSink], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    transition(buffers_[Zero], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               buffers_[NoSink], D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     pending_uploads_.push_back(init_zero.resource);
     pending_uploads_.push_back(init_sink.resource);
     if (!submit(error)) return false;
@@ -647,8 +700,8 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
     Buffer & x = buffers_[input];
     Buffer & y = buffers_[destination];
     if (&x == &y) return fail(error, "in-place DRAFT matmul unsupported");
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     if (weight.type == GGML_TYPE_F32) {
         const uint32_t constants[8] = {batch, weight.rows, weight.columns,
             bits(1.0f), bits(epsilon_), bits(rope_base_), bits(1.0f), 0};
@@ -712,8 +765,8 @@ void DflashGpuDraftEngine::norm(Slot input, const Weight & weight, Slot output,
                                 uint32_t rows, uint32_t width, float scale) {
     Buffer & x = buffers_[input];
     Buffer & y = buffers_[output];
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[8] = {rows, width, weight.columns, 0,
         bits(scale), bits(epsilon_), bits(rope_base_), 0};
     cmd_->SetComputeRootSignature(ops_root_.Get());
@@ -734,8 +787,8 @@ void DflashGpuDraftEngine::rope(Slot input, Slot output,
                                 uint32_t batch, uint32_t width) {
     Buffer & x = buffers_[input];
     Buffer & y = buffers_[output];
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[8] = {batch, width, kHead, kMaxTokens * 4,
         bits(1.0f), bits(epsilon_), bits(rope_base_), 0};
     cmd_->SetComputeRootSignature(ops_root_.Get());
@@ -757,8 +810,8 @@ void DflashGpuDraftEngine::hadamard(Slot input, Slot output,
                                     uint32_t transform_width) {
     Buffer & x = buffers_[input];
     Buffer & y = buffers_[output];
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[4] = {batch, heads, transform_width, 0};
     cmd_->SetComputeRootSignature(matmul_root_.Get());
     cmd_->SetPipelineState(hadamard_pso_.Get());
@@ -777,9 +830,9 @@ void DflashGpuDraftEngine::conv(Slot input, Slot coeff, const Weight & base,
     Buffer & x = buffers_[input];
     Buffer & c = buffers_[coeff];
     Buffer & y = buffers_[output];
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(c, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               c, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[4] = {batch, 1, side, 0};
     cmd_->SetComputeRootSignature(conv_root_.Get());
     cmd_->SetPipelineState(conv_pso_.Get());
@@ -799,9 +852,9 @@ void DflashGpuDraftEngine::scale_add(Slot input, Slot residual, Slot output,
     Buffer & x = buffers_[input];
     Buffer & r = buffers_[residual];
     Buffer & y = buffers_[output];
-    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(r, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(x, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               r, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[8] = {batch, width, 0, 0,
         bits(scale), bits(epsilon_), bits(rope_base_), 0};
     cmd_->SetComputeRootSignature(ops_root_.Get());
@@ -822,9 +875,9 @@ void DflashGpuDraftEngine::swiglu(Slot gate, Slot up, Slot output,
     Buffer & g = buffers_[gate];
     Buffer & u = buffers_[up];
     Buffer & y = buffers_[output];
-    transition(g, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(u, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(g, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               u, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint32_t constants[8] = {batch, kFfn, 0, 0,
         bits(1.0f), bits(epsilon_), bits(rope_base_), 0};
     cmd_->SetComputeRootSignature(ops_root_.Get());
@@ -844,8 +897,8 @@ bool DflashGpuDraftEngine::pack_kv(uint32_t layer, uint32_t pos0,
                                    uint32_t batch, std::string * error) {
     Buffer & k = buffers_[KRot];
     Buffer & v = buffers_[VRot];
-    transition(k, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(v, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    transition(k, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               v, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     for (uint32_t row = 0; row < batch; ++row) {
         const uint64_t offset = uint64_t(row) * kKvHeads * kHead * 4;
         if (!kv_->record_pack(cmd_.Get(), layer, pos0 + row,
@@ -890,8 +943,8 @@ bool DflashGpuDraftEngine::attention(uint32_t layer, uint32_t pos0,
     if (!kv_->record_prepare_read(cmd_.Get(), error)) return false;
     Buffer & q = buffers_[QRot];
     Buffer & y = buffers_[AttentionRot];
-    transition(q, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(q, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE,
+               y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     const uint64_t layer_offset = uint64_t(layer) * kContext * 1280u;
     if (layer_offset > UINT32_MAX) return fail(error, "KV layer address overflow");
     const uint32_t constants[4] = {batch, static_cast<uint32_t>(active.size()),
