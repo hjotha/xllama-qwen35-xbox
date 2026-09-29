@@ -15,8 +15,12 @@ float ggml_round_f32(double value) {
 }
 
 float ggml_fma_f32(float a, float b, float c) {
+#if defined(DFLASH_EXACT_FP64_EMULATION)
     precise double value = (double)a * (double)b + (double)c;
     return ggml_round_f32(value);
+#else
+    return mad(a, b, c);
+#endif
 }
 
 // ggml-cpu/vec.h AVX2 SiLU uses this polynomial, not the shader exp intrinsic.

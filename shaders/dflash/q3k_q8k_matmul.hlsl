@@ -19,6 +19,7 @@ groupshared float lane_sum[8 * 8];
 groupshared uint s_w3[28];        // 28 uint32s = 112 bytes (covers full 110 bytes of Q3_K block)
 groupshared uint s_q8[512];
 groupshared float s_d8[8];
+groupshared float s_q3_d;
 groupshared int scaled_weights[256];
 
 uint load_shared_q3_u8(uint offset, uint shift) {
@@ -41,7 +42,7 @@ int q3_scaled_integer(uint element, uint shift) {
                            >> (half * 4u + quarter)) & 1u;
     const int quant = int(low2) - (high_bit == 0u ? 4 : 0);
 
-    const uint scale_index = half * 8u + quarter * 2u + (lane32 >> 4u);
+    const uint scale_index = element >> 4u;
     const uint scale_byte = load_shared_q3_u8(96u + (scale_index & 7u), shift);
     const uint high_byte = load_shared_q3_u8(104u + (scale_index & 3u), shift);
     const uint low4 = (scale_byte >> (scale_index >= 8u ? 4u : 0u)) & 15u;
@@ -81,16 +82,21 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
             s_d8[lane] = asfloat(X.Load(((batch_start + lane) * nb + block) * 292u));
         }
         for (uint load = lane; load < total_q8_vec4; load += 64u) {
-            const uint b = load >> 4u;
+            const uint b_idx = load >> 4u;
             const uint q = load & 15u;
-            const uint4 v = X.Load4(((batch_start + b) * nb + block) * 292u + 4u + q * 16u);
-            const uint dst = b * 64u + q * 4u;
+            const uint4 v = X.Load4(((batch_start + b_idx) * nb + block) * 292u + 4u + q * 16u);
+            const uint dst = b_idx * 64u + q * 4u;
             s_q8[dst + 0u] = v.x;
             s_q8[dst + 1u] = v.y;
             s_q8[dst + 2u] = v.z;
             s_q8[dst + 3u] = v.w;
         }
         GroupMemoryBarrierWithGroupSync();
+
+        if (lane == 0u) {
+            s_q3_d = f16tof32(load_shared_q3_u16(108u, shift));
+        }
+
         [unroll] for (uint part = 0u; part < 4u; ++part) {
             const uint element = lane + part * 64u;
             scaled_weights[element] = q3_scaled_integer(element, shift);
@@ -102,12 +108,16 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
             [unroll] for (uint segment = 0u; segment < 8u; ++segment) {
                 const uint first = segment * 32u + avx_lane * 4u;
                 const uint packed = s_q8[b * 64u + first / 4u];
-                [unroll] for (uint j = 0u; j < 4u; ++j) {
-                    const int q8 = int((packed >> (j * 8u)) << 24u) >> 24;
-                    integer_sum += scaled_weights[first + j] * q8;
-                }
+                const int q0 = int(packed << 24u) >> 24;
+                const int q1 = int((packed >> 8u) << 24u) >> 24;
+                const int q2 = int((packed >> 16u) << 24u) >> 24;
+                const int q3 = int(packed) >> 24;
+                integer_sum += scaled_weights[first + 0u] * q0 +
+                               scaled_weights[first + 1u] * q1 +
+                               scaled_weights[first + 2u] * q2 +
+                               scaled_weights[first + 3u] * q3;
             }
-            precise float d = s_d8[b] * f16tof32(load_shared_q3_u16(108u, shift));
+            precise float d = s_d8[b] * s_q3_d;
             accum = ggml_fma_f32(d, float(integer_sum), accum);
         }
         GroupMemoryBarrierWithGroupSync();

@@ -19,6 +19,8 @@ groupshared float lane_sum[8 * 8]; // batch item x AVX2 accumulator
 groupshared uint s_w2[21];        // 21 uint32s = 84 bytes; blocks are DWORD aligned
 groupshared uint s_q8[512];
 groupshared float s_d8[8];
+groupshared float s_q2_d;
+groupshared float s_q2_dmin;
 groupshared int scaled_weights[256];
 
 uint load_shared_q2_u8(uint offset, uint shift) {
@@ -60,22 +62,37 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
         const uint start_u32 = q2_base & ~3u;
         const uint shift = q2_base & 3u;
 
-        if (lane < 21u)
-            s_w2[lane] = W.Load(start_u32 + lane * 4u);
+        if (lane < 5u) {
+            const uint4 v = W.Load4(start_u32 + lane * 16u);
+            const uint base_idx = lane * 4u;
+            s_w2[base_idx + 0u] = v.x;
+            s_w2[base_idx + 1u] = v.y;
+            s_w2[base_idx + 2u] = v.z;
+            s_w2[base_idx + 3u] = v.w;
+        } else if (lane == 5u) {
+            s_w2[20u] = W.Load(start_u32 + 80u);
+        }
+
         if (lane < n_batch_in_group) {
             s_d8[lane] = asfloat(X.Load(((batch_start + lane) * nb + block) * 292u));
         }
         for (uint load = lane; load < total_q8_vec4; load += 64u) {
-            const uint b = load >> 4u;
+            const uint b_idx = load >> 4u;
             const uint q = load & 15u;
-            const uint4 v = X.Load4(((batch_start + b) * nb + block) * 292u + 4u + q * 16u);
-            const uint dst = b * 64u + q * 4u;
+            const uint4 v = X.Load4(((batch_start + b_idx) * nb + block) * 292u + 4u + q * 16u);
+            const uint dst = b_idx * 64u + q * 4u;
             s_q8[dst + 0u] = v.x;
             s_q8[dst + 1u] = v.y;
             s_q8[dst + 2u] = v.z;
             s_q8[dst + 3u] = v.w;
         }
         GroupMemoryBarrierWithGroupSync();
+
+        if (lane == 0u) {
+            s_q2_d = f16tof32(load_shared_q2_u16(80u, shift));
+            s_q2_dmin = f16tof32(load_shared_q2_u16(82u, shift));
+        }
+
         // Reuse each decoded weight across tokens; retain CPU FMA ordering.
         [unroll] for (uint part = 0u; part < 4u; ++part) {
             const uint element = lane + part * 64u;
@@ -100,8 +117,8 @@ void CSDot(uint lane : SV_GroupIndex, uint3 gid : SV_GroupID) {
             const int minimum = sum0 * int(load_shared_q2_u8(avx_lane * 2u, shift) >> 4u)
                               + sum1 * int(load_shared_q2_u8(avx_lane * 2u + 1u, shift) >> 4u);
             const float d8 = s_d8[b];
-            precise float d = d8 * f16tof32(load_shared_q2_u16(80u, shift));
-            precise float dmin = -d8 * f16tof32(load_shared_q2_u16(82u, shift));
+            precise float d = d8 * s_q2_d;
+            precise float dmin = -d8 * s_q2_dmin;
             // HLSL mad splits the rounding on both Xbox and WARP. F64 keeps
             // the product until the single F32 rounding required by AVX2 FMA.
             accum = ggml_fma_f32(dmin, float(minimum), accum);

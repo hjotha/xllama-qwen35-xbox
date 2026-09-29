@@ -467,7 +467,8 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
     // Trusted CPU fixtures: original Q3 and the same requests rerecorded on Q2.
     const bool trusted_capture =
         (capture_bytes == 131419032u && capture_sha256 ==
-         "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f") ||
+         "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f" ||
+          capture_sha256 == "5ff0aeb6e85c4deb4b473905513a2e166480cb9033deeb0589033a5aa835508e") ||
         (capture_bytes == 2048844u && capture_sha256 ==
          "5e85f0e76ee4fc99730cf9becbf733cd922c7f190ca65767ebcc19edac3c64dc");
     if (!trusted_capture)

@@ -690,7 +690,7 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
         cmd_->SetComputeRootUnorderedAccessView(3, y.resource->GetGPUVirtualAddress());
         cmd_->Dispatch(weight.rows, (batch + 7) / 8, 1);
     }
-    barrier(y);
+    if (destination != output) barrier(y);
     if (destination != output)
         scale_add(destination, Zero, output, batch, weight.rows, weight.scale);
     if (quant_source_ == output || quant_source_ == destination)
