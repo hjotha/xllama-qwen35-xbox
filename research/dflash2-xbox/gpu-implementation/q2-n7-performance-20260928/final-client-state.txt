@@ -1,0 +1,7 @@
+bda17a8cb9beee2bb7de875d11401374f3cff538fc8bf7b1ecbac2b5388d3585  build-dflash-xbox-dl/bin/llama-server
+b46f159fe6170bcf76f3e4aa4a3642fd7d0943d3eb6038acff8ed381944db0c9  build-dflash-xbox-dl/bin/libllama-common.so.0.4.7
+625f2b0d4af7bcf92b0f2e741a6ca677ae78bf677edb1dbac926500c8c53a9ff  build-dflash-xbox-dl/bin/libggml-cuda.so.0.23.0
+active
+{"status":"ok"}{"status":"ok"}version: 0.4.7-dev (build 12304, commit 12231b55e)
+built with GNU 16.2.1 for Linux x86_64
+ggml op count: 106

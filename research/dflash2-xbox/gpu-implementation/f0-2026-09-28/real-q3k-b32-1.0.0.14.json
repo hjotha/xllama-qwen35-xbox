@@ -1,0 +1,94 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 71241.46889999975,
+  "status": 0,
+  "response_bytes": 1311,
+  "xbox_receive_us": 3,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 71227878,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "tensor": "fc.weight",
+    "type": "q3_K",
+    "k": 25600,
+    "n": 5120,
+    "batch": 32,
+    "weightBytes": 56320000,
+    "ggufOffset": 10969440,
+    "warmup": 50,
+    "iterations": 200,
+    "cpuThreads": 4,
+    "cpuRepetitions": [
+      {
+        "run": 1,
+        "correct": true,
+        "medianMs": 67.473594,
+        "p95Ms": 67.813278,
+        "referenceChecked": false,
+        "maxAbsErr": 0.0
+      },
+      {
+        "run": 2,
+        "correct": true,
+        "medianMs": 67.522776,
+        "p95Ms": 67.842315,
+        "referenceChecked": false,
+        "maxAbsErr": 0.0
+      },
+      {
+        "run": 3,
+        "correct": true,
+        "medianMs": 67.461095,
+        "p95Ms": 67.750453,
+        "referenceChecked": false,
+        "maxAbsErr": 0.0
+      }
+    ],
+    "repetitions": [
+      {
+        "run": 1,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 11.846617,
+        "gpuP95Ms": 12.17207,
+        "dispatchMedianMs": 11.903744,
+        "dispatchP95Ms": 12.236603,
+        "withCopyMedianMs": 11.956707,
+        "withCopyP95Ms": 12.294126,
+        "maxAbsErr": 4e-05,
+        "coldAndRunMs": 6816.829187,
+        "error": ""
+      },
+      {
+        "run": 2,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 11.897504,
+        "gpuP95Ms": 12.194767,
+        "dispatchMedianMs": 11.962289,
+        "dispatchP95Ms": 12.260427,
+        "withCopyMedianMs": 12.021296,
+        "withCopyP95Ms": 12.318061,
+        "maxAbsErr": 4e-05,
+        "coldAndRunMs": 6825.822605,
+        "error": ""
+      },
+      {
+        "run": 3,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 11.908411,
+        "gpuP95Ms": 12.17612,
+        "dispatchMedianMs": 11.968693,
+        "dispatchP95Ms": 12.240992,
+        "withCopyMedianMs": 12.026186,
+        "withCopyP95Ms": 12.294084,
+        "maxAbsErr": 4e-05,
+        "coldAndRunMs": 6827.092559,
+        "error": ""
+      }
+    ],
+    "passed": true
+  }
+}

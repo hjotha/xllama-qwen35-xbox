@@ -1,0 +1,36 @@
+{
+  "passed": true,
+  "cases": [
+    {
+      "case": "first_pos_5",
+      "bitwise_equal": true,
+      "sha256": "53942d03f47181e96e4371413213a9e249ce81d5268805d441aa03e84a4eab20"
+    },
+    {
+      "case": "first_pos_8",
+      "bitwise_equal": true,
+      "sha256": "b0ee0301d6810a37b0177f64368eac15fcefce2cf29dee42c5a80676265318a2"
+    },
+    {
+      "case": "first_pos_10",
+      "bitwise_equal": true,
+      "sha256": "dedad63a8922f8044837c40306182ea403189c40e0f9409de9ee721c7114186f"
+    },
+    {
+      "case": "first_pos_0",
+      "bitwise_equal": true,
+      "sha256": "550fc6370d8dde6e0c63595c57cdb6ece4bd3134ba89a3cda93c3d88ab4c8b1c"
+    },
+    {
+      "case": "max_64_rows_reset",
+      "bitwise_equal": true
+    },
+    {
+      "case": "five_invalid_requests_and_probe_preserve_kv",
+      "bitwise_equal": true
+    }
+  ],
+  "package": "1.0.0.75",
+  "backend": "d3d12",
+  "model": "dflash-q3.gguf"
+}

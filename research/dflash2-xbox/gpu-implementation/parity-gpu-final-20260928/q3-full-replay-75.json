@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "records": 369,
+  "capture_sha256": "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f",
+  "package": "1.0.0.75",
+  "backend": "d3d12",
+  "model": "dflash-q3.gguf"
+}

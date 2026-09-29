@@ -1,0 +1,91 @@
+{
+  "kind": "dflash2_persistent_synthetic_smoke",
+  "model_bytes": 916702560,
+  "n_ctx": 49152,
+  "mask_id": 248070,
+  "kv_bits": [
+    4,
+    4
+  ],
+  "cycles_per_pass": 4,
+  "n_max": 4,
+  "one_connection": true,
+  "resets": 2,
+  "trims": 8,
+  "same_output_after_reset": true,
+  "rows": [
+    {
+      "cycle_id": 1,
+      "target_position": 0,
+      "output_sha256": "4ca17ec3e713a5c163fccb0d8ac44c71b0a8a527bd7eeff032d357cbafeaf86b",
+      "sync_rtt_us": 6427.6,
+      "draft_rtt_us": 70286.2,
+      "trim_rtt_us": 971.2,
+      "draft_xbox_cpu_us": 65771
+    },
+    {
+      "cycle_id": 2,
+      "target_position": 1,
+      "output_sha256": "e074d3643dc58dbfc455f82ae29b272cc424467be7f5ce2278bf498a2af8d54b",
+      "sync_rtt_us": 5917.6,
+      "draft_rtt_us": 68294.7,
+      "trim_rtt_us": 593.0,
+      "draft_xbox_cpu_us": 64603
+    },
+    {
+      "cycle_id": 3,
+      "target_position": 2,
+      "output_sha256": "1563f60c731251788ee5e122b4478a48d82d48f302d2ae6cb50c6f527d0f0311",
+      "sync_rtt_us": 5528.2,
+      "draft_rtt_us": 67518.7,
+      "trim_rtt_us": 610.1,
+      "draft_xbox_cpu_us": 64565
+    },
+    {
+      "cycle_id": 4,
+      "target_position": 3,
+      "output_sha256": "3d401b777f40ef8376f1fd6a78b83ae2bbcaf93629b7af740c5d32255568ce07",
+      "sync_rtt_us": 5513.3,
+      "draft_rtt_us": 67810.0,
+      "trim_rtt_us": 597.6,
+      "draft_xbox_cpu_us": 64603
+    },
+    {
+      "cycle_id": 5,
+      "target_position": 0,
+      "output_sha256": "4ca17ec3e713a5c163fccb0d8ac44c71b0a8a527bd7eeff032d357cbafeaf86b",
+      "sync_rtt_us": 5412.1,
+      "draft_rtt_us": 67800.0,
+      "trim_rtt_us": 537.9,
+      "draft_xbox_cpu_us": 64503
+    },
+    {
+      "cycle_id": 6,
+      "target_position": 1,
+      "output_sha256": "e074d3643dc58dbfc455f82ae29b272cc424467be7f5ce2278bf498a2af8d54b",
+      "sync_rtt_us": 5586.6,
+      "draft_rtt_us": 67789.3,
+      "trim_rtt_us": 562.0,
+      "draft_xbox_cpu_us": 64557
+    },
+    {
+      "cycle_id": 7,
+      "target_position": 2,
+      "output_sha256": "1563f60c731251788ee5e122b4478a48d82d48f302d2ae6cb50c6f527d0f0311",
+      "sync_rtt_us": 5565.4,
+      "draft_rtt_us": 67744.3,
+      "trim_rtt_us": 1079.1,
+      "draft_xbox_cpu_us": 64550
+    },
+    {
+      "cycle_id": 8,
+      "target_position": 3,
+      "output_sha256": "3d401b777f40ef8376f1fd6a78b83ae2bbcaf93629b7af740c5d32255568ce07",
+      "sync_rtt_us": 5426.8,
+      "draft_rtt_us": 67642.5,
+      "trim_rtt_us": 597.3,
+      "draft_xbox_cpu_us": 64551
+    }
+  ],
+  "limitations": "Synthetic features/embeddings; no target verification or acceptance"
+}

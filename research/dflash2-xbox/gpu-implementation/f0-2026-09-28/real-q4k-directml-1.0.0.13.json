@@ -1,0 +1,123 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 1354.139999999461,
+  "status": 0,
+  "response_bytes": 1833,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 1342678,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "probe": "directml_q4_k_to_fp16_gemv",
+    "tensor": "blk.0.ffn_down.weight",
+    "sourceType": "Q4_K",
+    "computeType": "FP16",
+    "accumulation": "DirectML default",
+    "adapter": "SraKmd_arden",
+    "software": false,
+    "rows": 5120,
+    "columns": 17408,
+    "packedBytes": 50135040,
+    "fp16WeightBytes": 178257920,
+    "ggufOffset": 154985824,
+    "warmup": 50,
+    "iterations": 200,
+    "repetitions": 3,
+    "accuracyGateSet": false,
+    "fp16ConversionVsQ4": {
+      "finite": true,
+      "maxAbs": 0.001394689083,
+      "maxRelative": 0.8673288173,
+      "nmse": 8.778573716e-08,
+      "cosine": 0.9999999561
+    },
+    "cold": {
+      "ggufReadMs": 111.58538,
+      "dequantAndCpuReferenceMs": 968.381051,
+      "dmlSetupAndCompileMs": 172.038786,
+      "uploadAndInitMs": 18.072161,
+      "readyMs": 1270.077378
+    },
+    "memory": {
+      "gpuWeightBytes": 178257920,
+      "gpuInputBytes": 34816,
+      "gpuOutputBytes": 10240,
+      "temporaryBytes": 0,
+      "persistentBytes": 0,
+      "localUsageBeforeBytes": 1028096,
+      "localUsageReadyBytes": 180195328,
+      "cpuPackedBytes": 50135040,
+      "cpuConvertedWeightBytes": 178257920
+    },
+    "runs": [
+      {
+        "run": 1,
+        "finite": true,
+        "boundaryMedianMs": 0.062335,
+        "boundaryP95Ms": 0.066914,
+        "gpuMedianMs": 4.010025063e-05,
+        "gpuP95Ms": 4.010025063e-05,
+        "vsQ4": {
+          "finite": true,
+          "maxAbs": 1.827344537,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        },
+        "vsConvertedFP16": {
+          "finite": true,
+          "maxAbs": 1.827510834,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        }
+      },
+      {
+        "run": 2,
+        "finite": true,
+        "boundaryMedianMs": 0.062224,
+        "boundaryP95Ms": 0.071776,
+        "gpuMedianMs": 4.010025063e-05,
+        "gpuP95Ms": 4.010025063e-05,
+        "vsQ4": {
+          "finite": true,
+          "maxAbs": 1.827344537,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        },
+        "vsConvertedFP16": {
+          "finite": true,
+          "maxAbs": 1.827510834,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        }
+      },
+      {
+        "run": 3,
+        "finite": true,
+        "boundaryMedianMs": 0.062405,
+        "boundaryP95Ms": 0.067146,
+        "gpuMedianMs": 4.010025063e-05,
+        "gpuP95Ms": 4.010025063e-05,
+        "vsQ4": {
+          "finite": true,
+          "maxAbs": 1.827344537,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        },
+        "vsConvertedFP16": {
+          "finite": true,
+          "maxAbs": 1.827510834,
+          "maxRelative": 1,
+          "nmse": 1,
+          "cosine": 0
+        }
+      }
+    ],
+    "passed": true
+  }
+}

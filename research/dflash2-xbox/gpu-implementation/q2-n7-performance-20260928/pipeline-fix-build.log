@@ -1,0 +1,82 @@
+625f2b0d4af7bcf92b0f2e741a6ca677ae78bf677edb1dbac926500c8c53a9ff  build-dflash-xbox-dl/bin/libggml-cuda.so.0.23.0
+[0/1] Re-running CMake...
+-- llama.cpp version: 0.4.7-dev
+-- CMAKE_SYSTEM_PROCESSOR: x86_64
+-- GGML_SYSTEM_ARCH: x86
+-- Including CPU backend
+-- x86 detected
+-- Adding CPU backend variant ggml-cpu:
+-- Using RPC backend
+--   RDMA transport disabled
+-- Including RPC backend
+-- ggml version: 0.23.0
+-- ggml commit:  7720d9f34
+-- OpenSSL found: 3.6.3
+-- Generating embedded license file for target: llama-app
+-- Configuring done (0.5s)
+-- Generating done (0.2s)
+-- Build files have been written to: /home/hjotha/beellama.cpp/build-dflash-xbox-dl
+[1/14] Provisioning UI assets
+-- UI: HF stamp matches 'ggml-org/llama-ui|b12303', skipping HF fetch
+-- UI: assets unchanged, skipping embedding
+[2/11] Building CXX object tests/CMakeFiles/test-dflash-pipeline-candidate.dir/test-dflash-pipeline-candidate.cpp.o
+[3/11] Building CXX object common/CMakeFiles/llama-common-base.dir/build-info.cpp.o
+[4/11] Linking CXX static library common/libllama-common-base.a
+[5/11] Building CXX object common/CMakeFiles/llama-common.dir/speculative.cpp.o
+/home/hjotha/beellama.cpp/common/speculative.cpp: In constructor 'common_speculative_impl_draft_dspark::common_speculative_impl_draft_dspark(const common_params_speculative&, uint32_t)':
+/home/hjotha/beellama.cpp/common/speculative.cpp:337:87: warning: possibly dangling reference to a temporary [-Wdangling-reference]
+  337 |                            std::make_pair("DSPARK_CORRECTION_ROWS", &correction_rows) }) {
+      |                                                                                       ^
+/home/hjotha/beellama.cpp/common/speculative.cpp:336:66: note: 'int*' temporary created here
+  336 |         for (auto item : { std::make_pair("DSPARK_FORWARD_ROWS", &draft_rows),
+      |                                                                  ^~~~~~~~~~~
+/home/hjotha/beellama.cpp/common/speculative.cpp:337:87: warning: possibly dangling reference to a temporary [-Wdangling-reference]
+  337 |                            std::make_pair("DSPARK_CORRECTION_ROWS", &correction_rows) }) {
+      |                                                                                       ^
+/home/hjotha/beellama.cpp/common/speculative.cpp:337:69: note: 'int*' temporary created here
+  337 |                            std::make_pair("DSPARK_CORRECTION_ROWS", &correction_rows) }) {
+      |                                                                     ^~~~~~~~~~~~~~~~
+/home/hjotha/beellama.cpp/common/speculative.cpp: At global scope:
+/home/hjotha/beellama.cpp/common/speculative.cpp:5804:6: warning: no previous declaration for 'bool common_speculative_set_state(common_speculative*, llama_seq_id, const std::vector<unsigned char>&)' [-Wmissing-declarations]
+ 5804 | bool common_speculative_set_state(common_speculative * spec, llama_seq_id seq_id, const std::vector<uint8_t> & data) {
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/hjotha/beellama.cpp/common/speculative.cpp:5897:6: warning: no previous declaration for 'bool common_speculative_need_embd_capture(common_speculative*)' [-Wmissing-declarations]
+ 5897 | bool common_speculative_need_embd_capture(common_speculative * spec) {
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/16/memory:71,
+                 from /home/hjotha/beellama.cpp/src/../include/llama-cpp.h:7,
+                 from /home/hjotha/beellama.cpp/common/common.h:5,
+                 from /home/hjotha/beellama.cpp/build-dflash-xbox-dl/common/CMakeFiles/llama-common.dir/cmake_pch.hxx:5,
+                 from <command-line>:
+In function '_ForwardIterator std::uninitialized_copy(_InputIterator, _InputIterator, _ForwardIterator) [with _InputIterator = const common_sampler_type*; _ForwardIterator = common_sampler_type*]',
+    inlined from 'constexpr _ForwardIterator std::__uninitialized_copy_a(_InputIterator, _Sentinel, _ForwardIterator, allocator<_Tp>&) [with _InputIterator = const common_sampler_type*; _Sentinel = const common_sampler_type*; _ForwardIterator = common_sampler_type*; _Tp = common_sampler_type]' at /usr/include/c++/16/bits/stl_uninitialized.h:659:32,
+    inlined from 'constexpr void std::vector<_Tp, _Alloc>::_M_assign_aux(_ForwardIterator, _ForwardIterator, std::forward_iterator_tag) [with _ForwardIterator = const common_sampler_type*; _Tp = common_sampler_type; _Alloc = std::allocator<common_sampler_type>]' at /usr/include/c++/16/bits/vector.tcc:356:35,
+    inlined from 'constexpr std::vector<_Tp, _Alloc>& std::vector<_Tp, _Alloc>::operator=(std::initializer_list<_Tp>) [with _Tp = common_sampler_type; _Alloc = std::allocator<common_sampler_type>]' at /usr/include/c++/16/bits/stl_vector.h:847:21,
+    inlined from 'common_speculative_impl_draft_dflash::common_speculative_impl_draft_dflash(const common_params_speculative&, uint32_t, common_speculative_type)' at /home/hjotha/beellama.cpp/common/speculative.cpp:2470:60:
+/usr/include/c++/16/bits/stl_uninitialized.h:294:31: warning: 'void* __builtin_memcpy(void*, const void*, long unsigned int)' writing 4 bytes into a region of size 0 overflows the destination [-Wstringop-overflow=]
+  294 |               __builtin_memcpy(std::__niter_base(__result),
+      |               ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  295 |                                std::__niter_base(__first),
+      |                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  296 |                                __n * sizeof(_ValT));
+      |                                ~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/c++/16/x86_64-pc-linux-gnu/bits/c++allocator.h:33,
+                 from /usr/include/c++/16/bits/allocator.h:46,
+                 from /usr/include/c++/16/memory:67:
+In member function 'constexpr _Tp* std::__new_allocator<_Tp>::allocate(size_type, const void*) [with _Tp = common_sampler_type]',
+    inlined from 'constexpr _Tp* std::allocator< <template-parameter-1-1> >::allocate(std::size_t) [with _Tp = common_sampler_type]' at /usr/include/c++/16/bits/allocator.h:206:40,
+    inlined from 'static constexpr _Tp* std::allocator_traits<std::allocator<_Up> >::allocate(allocator_type&, size_type) [with _Tp = common_sampler_type]' at /usr/include/c++/16/bits/alloc_traits.h:638:28,
+    inlined from 'constexpr std::_Vector_base<_Tp, _Alloc>::pointer std::_Vector_base<_Tp, _Alloc>::_M_allocate(std::size_t) [with _Tp = common_sampler_type; _Alloc = std::allocator<common_sampler_type>]' at /usr/include/c++/16/bits/stl_vector.h:389:33,
+    inlined from 'constexpr void std::vector<_Tp, _Alloc>::_M_range_initialize_n(_Iterator, _Sentinel, size_type) [with _Iterator = const common_sampler_type*; _Sentinel = const common_sampler_type*; _Tp = common_sampler_type; _Alloc = std::allocator<common_sampler_type>]' at /usr/include/c++/16/bits/stl_vector.h:1975:23,
+    inlined from 'constexpr std::vector<_Tp, _Alloc>::vector(std::initializer_list<_Tp>, const allocator_type&) [with _Tp = common_sampler_type; _Alloc = std::allocator<common_sampler_type>]' at /usr/include/c++/16/bits/stl_vector.h:702:23,
+    inlined from 'common_params_sampling::common_params_sampling()' at /home/hjotha/beellama.cpp/common/common.h:228:8,
+    inlined from 'common_speculative_impl_draft_dflash::common_speculative_impl_draft_dflash(const common_params_speculative&, uint32_t, common_speculative_type)' at /home/hjotha/beellama.cpp/common/speculative.cpp:2467:36:
+/usr/include/c++/16/bits/new_allocator.h:162:75: note: at offset 36 into destination object of size 36 allocated by 'operator new'
+  162 |           return static_cast<_Tp*>(_GLIBCXX_OPERATOR_NEW(__n * sizeof(_Tp)));
+      |                                                                           ^
+[6/11] Linking CXX shared library bin/libllama-common.so.0.4.7
+[7/11] Creating library symlink bin/libllama-common.so.0 bin/libllama-common.so
+[8/11] Linking CXX executable bin/test-dflash-pipeline-candidate
+[9/11] Linking CXX shared library bin/libllama-server-impl.so
+[10/11] Linking CXX executable bin/llama-server
+CMAKE_BUILD_TYPE=Release
