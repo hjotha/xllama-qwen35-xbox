@@ -186,6 +186,23 @@
     <ClCompile Include="..\llama.cpp\src\unicode-data.cpp" />
   </ItemGroup>
 
+  <!-- beellama additions (bj): KVarN, paged/tail KV-cache, scheduler, block
+       manager, state-q4 — CPU-only, safe for the UWP AppContainer. Sourced from
+       the beellama fork; keep in sync with check-uwp-sources.sh. -->
+  <ItemGroup>
+    <ClCompile Include="..\llama.cpp\src\llama-block-manager.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kvarn.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-kvarn.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-paged.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-placement.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-tail.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-kv-tail-request.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-memory-hybrid-paged.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-paged-scheduler.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-paged-scheduler-impl.cpp" />
+    <ClCompile Include="..\llama.cpp\src\llama-state-q4.cpp" />
+  </ItemGroup>
+
   <!-- llama per-architecture model implementations (src/models/, one cpp per arch) -->
   <ItemGroup>
     <!-- Wildcard: every src/models/*.cpp (one per architecture) is picked up
