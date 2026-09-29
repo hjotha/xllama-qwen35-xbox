@@ -74,26 +74,38 @@ No loop do engine C++ (`dflash-gpu-draft-engine.cpp`), transições de recursos 
 
 ### Resultados Comparativos
 
-| Configuração | `p_min` | Throughput (tok/s) | Wall Time (s) | Tokens Propostos | Tokens Aceitos | Taxa de Aceitação (%) | Tokens / Ciclo |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Target Baseline (Sem especulativo)** | — | **35,506** | 14,58 | 0 | 0 | 0,00% | 1,00 |
-| **DFlash2 Q2 n7 (p_min = 0.25)** | 0,25 | 30,521 | 16,95 | 1069 | 356 | 33,30% | 3,28 |
-| **DFlash2 Q2 n7 (p_min = 0.30)** | 0,30 | 31,628 | 16,38 | 942 | 367 | 38,96% | 3,53 |
-| **DFlash2 Q2 n7 (p_min = 0.35)** | 0,35 | 31,666 | 16,37 | 903 | 366 | 40,53% | 3,51 |
-| **DFlash2 Q2 n7 (p_min = 0.40) [ÓTIMO]** | **0,40** | **32,184** | **16,06** | **781** | **363** | **46,48%** | **3,44** |
-| **DFlash2 Q2 n7 (p_min = 0.45)** | 0,45 | 32,061 | 16,16 | 778 | 358 | 46,02% | 3,32 |
+| Configuração | `n_max` | `p_min` | Throughput (tok/s) | Wall Time (s) | Tokens Propostos | Tokens Aceitos | Taxa de Aceitação (%) | Tokens / Ciclo |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Target Baseline (Sem especulativo)** | — | — | **35,506** | 14,58 | 0 | 0 | 0,00% | 1,00 |
+| **DFlash2 Q2 n7** | 7 | 0,25 | 30,521 | 16,95 | 1069 | 356 | 33,30% | 3,28 |
+| **DFlash2 Q2 n7** | 7 | 0,30 | 31,628 | 16,38 | 942 | 367 | 38,96% | 3,53 |
+| **DFlash2 Q2 n7** | 7 | 0,35 | 31,666 | 16,37 | 903 | 366 | 40,53% | 3,51 |
+| **DFlash2 Q2 n7 [ÓTIMO n7]** | 7 | **0,40** | **32,184** | **16,06** | **781** | **363** | **46,48%** | **3,44** |
+| **DFlash2 Q2 n7** | 7 | 0,45 | 32,061 | 16,16 | 778 | 358 | 46,02% | 3,32 |
+| **DFlash2 Q2 n4** | 4 | 0,20 | 34,889 | 14,89 | 680 | 340 | 50,00% | 2,98 |
+| **DFlash2 Q2 n4 [RECORDE ABSOLUTO]** | **4** | **0,25** | **35,421** | **14,69** | **643** | **348** | **54,12%** | **3,12** |
+| **DFlash2 Q2 n4** | 4 | 0,30 | 34,321 | 15,10 | 658 | 337 | 51,22% | 2,93 |
+| **DFlash2 Q2 n4** | 4 | 0,35 | 34,763 | 14,94 | 632 | 340 | 53,80% | 2,98 |
+| **DFlash2 Q2 n4** | 4 | 0,40 | 34,146 | 15,20 | 577 | 337 | 58,41% | 2,93 |
+| **DFlash2 Q2 n4** | 4 | 0,45 | 33,374 | 15,54 | 555 | 332 | 59,82% | 2,84 |
 
 ---
 
 ## 5. Conclusões e Síntese dos Ganhos
 
-1. **Evolução do Pipeline Especulativo:**
-   - O melhor throughput anterior registrado para `n7` no branch (`status-2026-09-28.md`) era **28,468 tok/s** (`p_min=0.30`, pacote 1.0.0.75).
-   - Com o pacote **1.0.0.82** (transições em lote D3D12) e calibração de seletor para **`draft-p-min = 0.40`**, o pipeline especulativo atingiu **32,184 tok/s**.
-   - **Ganho líquido de throughput:** **+13,05%** (de 28,47 tok/s para 32,18 tok/s).
-   - **Salto na taxa de aceitação:** De 33,30% (`p_min=0.25`) para **46,48%** (`p_min=0.40`).
-2. **Gap em relação ao Target Sozinho:**
-   - Anteriormente, o pipeline especulativo era **19,78% mais lento** que a RTX 4070 rodando sozinha (28,47 vs 35,49 tok/s).
-   - Agora, o pipeline especulativo está a apenas **9,35% de paridade** (32,18 vs 35,51 tok/s), tornando o drafter remoto muito mais viável e com 46,5% dos tokens validados vindo diretamente do Xbox.
+1. **Impacto Decisivo de `n_max = 4`:**
+   - Todas as configurações avaliadas com `n_max = 4` superaram categoricamente todas as configurações de `n_max = 7`.
+   - Com `p_min = 0.40` (ponto ótimo de n7), `n_max = 4` elevou o throughput de **32,184 tok/s** para **34,146 tok/s** (+6,09%) e a aceitação de 46,48% para **58,41%**.
+   - Na varredura de `p_min`, o ponto ótimo para `n_max = 4` deslocou-se para **`p_min = 0.25`**, alcançando **35,421 tok/s** (+10,06% sobre o melhor n7 e +16,05% sobre n7 no mesmo p_min).
+   - **Causa raiz da superioridade de `n_max = 4`:**
+     - Menor sobrecarga no target (RTX 4070) ao validar lotes de até 4 tokens por ciclo em vez de 7.
+     - Como a aceitação física no RTT da rede e modelo fica em ~3 tokens por ciclo, propor 7 tokens causava a rejeição contínua de 3 a 4 tokens por ciclo, sobrecarregando o loop de verificação.
+     - `n_max = 4` gera propostas enxutas e de alta densidade (643 propostas vs 1069 em n7 no p25), mantendo 54,12% de aceitação sem saturar o ciclo de verificação.
+
+2. **Paridade Prática com o Target Sozinho (RTX 4070):**
+   - O target isolado na RTX 4070 atinge **35,506 tok/s** (14,58 s).
+   - O pipeline especulativo DFlash2 Q2 com `n_max = 4` e `p_min = 0.25` atingiu **35,421 tok/s** (14,69 s).
+   - O gap em relação ao target rodando 100% isolado na RTX 4070 encolheu para apenas **0,24% (virtualmente 100% de paridade)**, com 54% dos tokens validados sendo gerados pela APU do Xbox Series X.
+
 3. **Serviço de Produção na .57:**
    - O serviço `llama-server-root.service` foi mantido 100% íntegro e restaurado ao estado `active` após as baterias de testes.
