@@ -52,6 +52,7 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="dedicated.cpp" />
     <ClCompile Include="remote-attn.cpp" />
+    <ClCompile Include="remote-attn-engine.cpp" />
     <ClCompile Include="dflash-gpu-probe.cpp" />
     <ClCompile Include="dflash-gpu-kv.cpp" />
     <ClCompile Include="dflash-gpu-kv-probe.cpp" />

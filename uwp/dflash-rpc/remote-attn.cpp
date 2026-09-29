@@ -11,6 +11,7 @@
 // client, strict request/response ordering, jsonl event log, TCP_NODELAY.
 
 #include "remote-attn.h"
+#include "remote-attn-engine.h"
 #include "remote-attn-protocol.h"
 
 #ifndef NOMINMAX
@@ -25,6 +26,7 @@
 #include <cstring>
 #include <fstream>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -45,6 +47,22 @@ void event(const std::string& path, const std::string& message) {
     if (out) {
         out << message << "\n";
     }
+}
+
+// Log path for the active connection, so handle_request (which has no path
+// argument) can record engine/GPU errors.
+std::string g_log_path;
+
+void event_engine_error(const std::string& message) {
+    std::string safe;
+    safe.reserve(message.size());
+    for (char c : message) {
+        if (c == '"' || c == '\\') {
+            safe += '\\';
+        }
+        safe += (c == '\n' || c == '\r') ? ' ' : c;
+    }
+    event(g_log_path, "{\"phase\":\"engine_error\",\"error\":\"" + safe + "\"}");
 }
 
 bool recv_all(SOCKET sock, void* dst, size_t size) {
@@ -90,16 +108,21 @@ struct remote_state {
     bool hello_done = false;
     rkva_hello geo {};
     std::map<uint32_t, remote_session> sessions;
+    std::unique_ptr<RemoteAttnEngine> engine;
+    bool engine_f16 = false;   // cache_bits 0/16 -> F16 path; 2..8 -> KVarN (pending)
     std::mutex mutex;
 };
 
-// Ops this skeleton actually serves. ATTN_DECODE/ATTN_PREFILL are intentionally
-// omitted until the D3D12 KVarN kernels land (host then fails fast at HELLO).
+// Ops this server actually serves. The F16 attention path is live; the KVarN
+// native path (cache_bits 2..8) advertises ATTN too but returns UNSUPPORTED at
+// call time until its D3D12 kernels land, so a KVarN host fails fast rather
+// than consuming wrong output.
 constexpr uint32_t supported_ops_mask() {
     return (1u << RKVA_HELLO) | (1u << RKVA_CREATE_SESSION) |
            (1u << RKVA_DESTROY_SESSION) | (1u << RKVA_RESET) |
            (1u << RKVA_TRIM) | (1u << RKVA_REWIND) |
-           (1u << RKVA_PING) | (1u << RKVA_GET_STATS);
+           (1u << RKVA_PING) | (1u << RKVA_GET_STATS) |
+           (1u << RKVA_ATTN_DECODE) | (1u << RKVA_ATTN_PREFILL);
 }
 
 int handle_request(remote_state& state, const rkva_request& req,
@@ -123,9 +146,40 @@ int handle_request(remote_state& state, const rkva_request& req,
             state.geo = hello;
             state.hello_done = true;
 
+            // cache_bits 0 or 16 -> F16 bring-up path; 2..8 -> KVarN (pending).
+            state.engine_f16 = (hello.cache_bits_k == 0 || hello.cache_bits_k >= 16);
+
+            RemoteAttnEngine::Geometry g {};
+            g.n_head        = hello.n_head;
+            g.n_head_kv     = hello.n_head_kv;
+            g.head_dim      = hello.head_dim;
+            g.head_slices   = hello.head_dim / 128;
+            g.cache_bits_k  = state.engine_f16 ? 16 : hello.cache_bits_k;
+            g.cache_bits_v  = state.engine_f16 ? 16 : hello.cache_bits_v;
+            g.group_tokens  = hello.group_tokens ? hello.group_tokens : 128;
+            g.sinkhorn_iters = hello.sinkhorn_iters;
+            g.tail_tokens   = hello.tail_tokens;
+            g.tail_groups   = hello.tail_groups ? hello.tail_groups : 2;
+            g.stage_groups  = g.tail_groups + 1;
+            g.domain        = hello.domain;
+            g.kq_scale      = hello.kq_scale;
+            g.max_ctx       = hello.max_ctx;
+            g.n_layers      = hello.n_layer_remote;
+
+            state.engine = std::make_unique<RemoteAttnEngine>();
+            std::string engine_error;
+            if (!state.engine->initialize(g, &engine_error)) {
+                state.engine.reset();
+                state.hello_done = false;
+                event_engine_error(engine_error);
+                return RKVA_ERR_GPU;
+            }
+
             rkva_hello_ack ack {};
             ack.supported_ops = supported_ops_mask();
-            ack.chosen_wire = (hello.proto_flags & (1u << 0)) ? RKVA_WIRE_F16 : RKVA_WIRE_F32;
+            // Bring-up runs the F32 wire so the engine receives exact Q/K/V and
+            // stores F16 itself; KVarN may negotiate F16 later.
+            ack.chosen_wire = RKVA_WIRE_F32;
             ack.max_sessions = 64;
             ack.server_version = 1;  // bumped with the UWP package
             // ~5 GiB game heap; leave headroom for the D3D12 runtime + buffers.
@@ -143,18 +197,26 @@ int handle_request(remote_state& state, const rkva_request& req,
             }
             rkva_session_req sr {};
             std::memcpy(&sr, input.data(), sizeof(sr));
-            if (!state.hello_done) {
+            if (!state.hello_done || !state.engine) {
                 return RKVA_ERR_STATE;
             }
             remote_session s;
             s.session_id = sr.session_id;
             s.seq_id = sr.seq_id;
             s.capacity = sr.capacity ? sr.capacity : state.geo.max_ctx;
+            std::string engine_error;
+            if (!state.engine->create_session(sr.session_id, s.capacity, &engine_error)) {
+                event_engine_error(engine_error);
+                return RKVA_ERR_MEMORY;
+            }
             state.sessions[sr.session_id] = s;
             return RKVA_OK;
         }
         case RKVA_DESTROY_SESSION: {
             state.sessions.erase(req.session_id);
+            if (state.engine) {
+                state.engine->destroy_session(req.session_id);
+            }
             return RKVA_OK;
         }
         case RKVA_RESET: {
@@ -164,7 +226,11 @@ int handle_request(remote_state& state, const rkva_request& req,
             }
             it->second.high_water = -1;
             it->second.resets++;
-            // engine.reset(session) lands with the D3D12 phase.
+            std::string engine_error;
+            if (state.engine && !state.engine->reset_session(req.session_id, &engine_error)) {
+                event_engine_error(engine_error);
+                return RKVA_ERR_GPU;
+            }
             return RKVA_OK;
         }
         case RKVA_TRIM:
@@ -186,7 +252,12 @@ int handle_request(remote_state& state, const rkva_request& req,
                 it->second.high_water = tr.pos0 - 1;
             }
             it->second.trims++;
-            // engine.trim(session, pos0) lands with the D3D12 phase.
+            std::string engine_error;
+            if (state.engine &&
+                !state.engine->trim_session(req.session_id, tr.pos0, &engine_error)) {
+                event_engine_error(engine_error);
+                return RKVA_ERR_GPU;
+            }
             return RKVA_OK;
         }
         case RKVA_GET_STATS: {
@@ -195,21 +266,85 @@ int handle_request(remote_state& state, const rkva_request& req,
                 trims += kv.second.trims;
                 resets += kv.second.resets;
             }
-            char buf[512];
+            const unsigned long long engine_bytes =
+                state.engine ? (unsigned long long) state.engine->allocated_bytes() : 0ull;
+            char buf[640];
             snprintf(buf, sizeof(buf),
                 "{\"service\":\"rkva\",\"hello\":%s,\"sessions\":%zu,\"trims\":%llu,"
-                "\"resets\":%llu,\"attn_engine\":\"pending-d3d12-kvarn\"}",
+                "\"resets\":%llu,\"engine\":\"%s\",\"engine_kv_bytes\":%llu}",
                 state.hello_done ? "true" : "false", state.sessions.size(),
-                (unsigned long long) trims, (unsigned long long) resets);
+                (unsigned long long) trims, (unsigned long long) resets,
+                state.engine_f16 ? "d3d12-f16" : "d3d12-kvarn-pending", engine_bytes);
             const size_t n = std::strlen(buf);
             output.assign(buf, buf + n);
             return RKVA_OK;
         }
         case RKVA_ATTN_DECODE:
-        case RKVA_ATTN_PREFILL:
+        case RKVA_ATTN_PREFILL: {
+            if (!state.hello_done || !state.engine) {
+                return RKVA_ERR_STATE;
+            }
+            // KVarN native kernels are not implemented yet; fail fast so a
+            // kvarn4 host does not consume wrong attention. F16 path is live.
+            if (!state.engine_f16) {
+                return RKVA_ERR_UNSUPPORTED_OP;
+            }
+            if (state.sessions.find(req.session_id) == state.sessions.end()) {
+                return RKVA_ERR_BAD_SESSION;
+            }
+            const uint32_t n_tokens = req.n_tokens;
+            const uint32_t n_head = state.geo.n_head;
+            const uint32_t n_head_kv = state.geo.n_head_kv;
+            const uint32_t head_dim = state.geo.head_dim;
+            if (n_tokens == 0) {
+                return RKVA_ERR_BAD_PAYLOAD;
+            }
+            const uint64_t q_elems = uint64_t(n_tokens) * n_head * head_dim;
+            const uint64_t kv_elems = uint64_t(n_tokens) * n_head_kv * head_dim;
+            const uint64_t expected = sizeof(rkva_attn_req) + uint64_t(n_tokens) * 4 +
+                                      (q_elems + 2 * kv_elems) * 4;  // F32 wire
+            if (req.payload_bytes != expected) {
+                return RKVA_ERR_BAD_PAYLOAD;
+            }
+            rkva_attn_req areq {};
+            std::memcpy(&areq, input.data(), sizeof(areq));
+            if (areq.wire != RKVA_WIRE_F32) {
+                return RKVA_ERR_UNSUPPORTED_OP;  // bring-up serves F32 only
+            }
+            const uint8_t* p = input.data() + sizeof(rkva_attn_req);
+            const int32_t* positions = reinterpret_cast<const int32_t*>(p);
+            p += uint64_t(n_tokens) * 4;
+            const float* q = reinterpret_cast<const float*>(p);
+            p += q_elems * 4;
+            const float* k = reinterpret_cast<const float*>(p);
+            p += kv_elems * 4;
+            const float* v = reinterpret_cast<const float*>(p);
+
+            output.resize(q_elems * 4);
+            float* out = reinterpret_cast<float*>(output.data());
+
+            const auto compute_start = clock_type::now();
+            std::string engine_error;
+            const bool ok = state.engine->attend(req.session_id, req.layer_id, n_tokens,
+                                                 positions, q, k, v, out, &engine_error);
+            compute_us = elapsed_us(compute_start);
+            if (!ok) {
+                output.clear();
+                event_engine_error(engine_error);
+                // A failed GPU mutation invalidates the session; do not let the
+                // host continue on corrupt KV.
+                auto it = state.sessions.find(req.session_id);
+                if (it != state.sessions.end()) {
+                    it->second.valid = false;
+                }
+                return RKVA_ERR_GPU;
+            }
+            prepare_us = elapsed_us(t0);
+            return RKVA_OK;
+        }
         case RKVA_PROBE:
         default:
-            // Not advertised in HELLO; explicit failure rather than wrong output.
+            // Parity harness lands with the KVarN kernels; explicit failure now.
             (void) compute_us;
             prepare_us = elapsed_us(t0);
             return RKVA_ERR_UNSUPPORTED_OP;
@@ -274,6 +409,7 @@ void client_loop(SOCKET sock, remote_state& state, const std::string& log_path) 
 
 void serve_remote_attn(const std::string& local_folder) {
     const std::string log_path = local_folder + "\\remote-attn.jsonl";
+    g_log_path = log_path;
     constexpr uint16_t port = 50054;
 
     WSADATA wsa {};
@@ -321,6 +457,8 @@ void serve_remote_attn(const std::string& local_folder) {
             std::lock_guard<std::mutex> lock(state.mutex);
             state.hello_done = false;
             state.sessions.clear();
+            state.engine.reset();       // freed and re-created at the next HELLO
+            state.engine_f16 = false;
         }
         client_loop(client, state, log_path);
         closesocket(client);
