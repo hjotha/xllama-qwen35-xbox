@@ -802,7 +802,7 @@ DflashGpuDraftProbeResult run_dflash_gpu_draft_probe(
              std::to_string(prefix_frames.back().record_index) : "")
          << ",\"comparison\":\"cpu_llama_decode_hidden_f32\""
          << ",\"tolerance\":\"provisional: abs<=1e-3+1e-3*max(abs(cpu),abs(gpu))\""
-         << ",\"fullPipelineParityGate\":false"
+         << ",\"fullPipelineParityGate\":false" << ",\"barrierMode\":\"" << (gpu_draft.barrier_mode() == DflashGpuDraftEngine::BarrierMode::Strict ? "strict" : "minimal") << "\""
          << ",\"firstBlockTrace\":" << trace_json
          << ",\"comparisons\":" << comparisons << ",\"cases\":"
          << cases.str() << '}';

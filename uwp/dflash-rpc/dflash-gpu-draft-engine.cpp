@@ -540,6 +540,16 @@ bool DflashGpuDraftEngine::initialize(DflashGpuSyncEngine & sync,
     kv_ = sync.mutable_kv();
     device_ = sync.device();
     queue_ = sync.queue();
+    barrier_mode_ = BarrierMode::Minimal;
+    {
+        const auto parent = model_path.parent_path();
+        std::ifstream bm_file(parent / "dflash-barrier-mode.txt");
+        if (bm_file) {
+            std::string mode_str;
+            std::getline(bm_file, mode_str);
+            if (mode_str.find("strict") != std::string::npos) barrier_mode_ = BarrierMode::Strict;
+        }
+    }
     HRESULT hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(&allocator_));
     if (FAILED(hr)) return fail(error, "CreateCommandAllocator", hr);
@@ -675,7 +685,7 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
             cmd_->SetComputeRootShaderResourceView(2, x.resource->GetGPUVirtualAddress());
             cmd_->SetComputeRootUnorderedAccessView(3, q8.resource->GetGPUVirtualAddress());
             cmd_->Dispatch(weight.columns / 256, batch, 1);
-            barrier(q8);
+            if (barrier_mode_ == BarrierMode::Strict) barrier(q8);
             quant_source_ = input;
             quant_width_ = weight.columns;
             quant_batch_ = batch;
@@ -690,7 +700,7 @@ bool DflashGpuDraftEngine::matmul(const Weight & weight, Slot input,
         cmd_->SetComputeRootUnorderedAccessView(3, y.resource->GetGPUVirtualAddress());
         cmd_->Dispatch(weight.rows, (batch + 7) / 8, 1);
     }
-    if (destination != output) barrier(y);
+    if (destination != output && barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (destination != output)
         scale_add(destination, Zero, output, batch, weight.rows, weight.scale);
     if (quant_source_ == output || quant_source_ == destination)
@@ -716,7 +726,7 @@ void DflashGpuDraftEngine::norm(Slot input, const Weight & weight, Slot output,
         buffers_[Positions].resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(4, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch(rows, 1, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -738,7 +748,7 @@ void DflashGpuDraftEngine::rope(Slot input, Slot output,
         buffers_[Positions].resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(4, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch(width / kHead, batch, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -758,7 +768,7 @@ void DflashGpuDraftEngine::hadamard(Slot input, Slot output,
         buffers_[Zero].resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(3, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch(heads, batch, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -780,7 +790,7 @@ void DflashGpuDraftEngine::conv(Slot input, Slot coeff, const Weight & base,
         base.buffer.resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(4, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch((batch * kHidden + 63) / 64, 1, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -803,7 +813,7 @@ void DflashGpuDraftEngine::scale_add(Slot input, Slot residual, Slot output,
         buffers_[Positions].resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(4, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch((batch * width + 127) / 128, 1, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -826,7 +836,7 @@ void DflashGpuDraftEngine::swiglu(Slot gate, Slot up, Slot output,
         buffers_[Positions].resource->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(4, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch((batch * kFfn + 127) / 128, 1, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == output) quant_source_ = Count;
 }
 
@@ -900,7 +910,7 @@ bool DflashGpuDraftEngine::attention(uint32_t layer, uint32_t pos0,
          buffers_[NoSink].resource.Get())->GetGPUVirtualAddress());
     cmd_->SetComputeRootUnorderedAccessView(6, y.resource->GetGPUVirtualAddress());
     cmd_->Dispatch(kQHeads, batch, 1);
-    barrier(y);
+    if (barrier_mode_ == BarrierMode::Strict) barrier(y);
     if (quant_source_ == AttentionRot) quant_source_ = Count;
     return true;
 }

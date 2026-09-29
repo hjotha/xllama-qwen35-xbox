@@ -37,6 +37,7 @@ public:
         double gpu_ms = -1.0; // since the preceding checkpoint copy completed
     };
 
+    enum class BarrierMode { Strict, Minimal };
     bool initialize(DflashGpuSyncEngine & sync, const std::string & gguf_path,
                     std::string * error);
     // input/output are token-major F32 [n_max+1,5120]; input is the host's
@@ -46,6 +47,8 @@ public:
                std::vector<Checkpoint> * checkpoints = nullptr);
     bool ready() const { return ready_; }
     bool sequence_valid() const { return sequence_valid_; }
+    BarrierMode barrier_mode() const { return barrier_mode_; }
+    void set_barrier_mode(BarrierMode mode) { barrier_mode_ = mode; }
 
 private:
     struct Buffer {
@@ -147,4 +150,5 @@ private:
     Slot quant_source_ = Count;
     uint32_t quant_batch_ = 0;
     uint32_t quant_width_ = 0;
+    BarrierMode barrier_mode_ = BarrierMode::Minimal;
 };
