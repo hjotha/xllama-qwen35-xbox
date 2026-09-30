@@ -132,11 +132,15 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12RootSignature> wht_root_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> store_root_;
     Microsoft::WRL::ComPtr<ID3D12RootSignature> attn_root_;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> store_kvarn_root_;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> attn_kvarn_root_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> wht_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> store_k_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> store_v_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> store_kvarn_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> attn_decode_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> attn_prefill_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> attn_kvarn_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> materialize_pso_;
 
     // Shared scratch (Q/K/V upload ring, output readback, WHT workspace).
@@ -144,6 +148,7 @@ class RemoteAttnEngine {
     Buffer pos_upload_;
     Buffer out_readback_;
     Buffer wht_workspace_;
+    Buffer q_rotated_;       // DEFAULT UAV: WHT(Q) input to the kvarn attention
 
     // Absolute model layer index -> dense KV slot (assigned on first use).
     std::map<uint32_t, uint32_t> layer_slot_;

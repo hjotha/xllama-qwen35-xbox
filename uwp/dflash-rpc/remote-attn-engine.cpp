@@ -12,6 +12,9 @@
 
 #include "rkva_flash_attn_dxil.h"
 #include "rkva_store_f16_dxil.h"
+#include "rkva_wht_dxil.h"
+#include "rkva_store_kvarn4_dxil.h"
+#include "rkva_flash_attn_kvarn4_dxil.h"
 #include "xllama/d3d12_dyn.h"
 
 #include <dxgi1_4.h>
@@ -45,7 +48,11 @@ bool fail(std::string* error, const char* stage, HRESULT hr = S_OK) {
 }  // namespace
 
 // Per-session KV storage. One DEFAULT buffer holds every remote layer's K and
-// V as F16: layout [slot][kind: 0=K,1=V][capacity][n_head_kv][head_dim].
+// V. F16 path: [slot][kind: 0=K,1=V][capacity][n_head_kv][head_dim].
+// KVarN path (cache_bits 2..8): per layer slot the buffer is laid out as
+// [records K][stage K][records V][stage V], where a record group covers 128
+// positions (KVAR_N_GROUP) and the stage holds stage_groups*128 positions of
+// F16 (group 0 sink + tail_groups live groups).
 struct RemoteAttnEngine::Session {
     uint32_t id = 0;
     uint32_t capacity = 0;
@@ -54,7 +61,16 @@ struct RemoteAttnEngine::Session {
     Buffer kv;                // DEFAULT, ALLOW_UNORDERED_ACCESS
     uint64_t kv_bytes = 0;
     uint64_t layer_stride = 0;  // bytes per (slot) covering K+V
-    uint64_t half_stride = 0;   // bytes per K or V plane (capacity*n_head_kv*head_dim*2)
+    uint64_t half_stride = 0;   // bytes per K or V plane (F16 path)
+    // KVarN path sizes (bits>8 none; cache_bits 2..8).
+    uint64_t record_words = 0;   // per record group, u32 words
+    uint64_t records_bytes = 0;  // per layer per kind (K or V)
+    uint64_t stage_bytes = 0;    // per layer per kind (K or V)
+    uint64_t groups_per_stream = 0;
+    uint64_t rec_off = 0;        // byte offset of records K within a layer slot
+    uint64_t stg_off = 0;        // byte offset of stage K within a layer slot
+    uint64_t rec_v_off = 0;      // byte offset of records V within a layer slot
+    uint64_t stg_v_off = 0;      // byte offset of stage V within a layer slot
 };
 
 RemoteAttnEngine::RemoteAttnEngine() = default;
@@ -289,6 +305,18 @@ bool RemoteAttnEngine::create_pipelines(std::string* error) {
     if (!make_root(4, 2, 1, store_root_.GetAddressOf())) {
         return false;
     }
+    // KVarN WHT: 3 constants + SRV t0 (1) + UAV u0 (1).
+    if (!make_root(3, 1, 1, wht_root_.GetAddressOf())) {
+        return false;
+    }
+    // KVarN store: 11 constants + SRV t0..t1 (2) + UAV u0..u1 (2).
+    if (!make_root(11, 2, 2, store_kvarn_root_.GetAddressOf())) {
+        return false;
+    }
+    // KVarN attention: 13 constants + SRV t0..t5 (6) + UAV u0 (1).
+    if (!make_root(13, 6, 1, attn_kvarn_root_.GetAddressOf())) {
+        return false;
+    }
 
     D3D12_COMPUTE_PIPELINE_STATE_DESC pso = {};
     pso.pRootSignature = attn_root_.Get();
@@ -306,6 +334,27 @@ bool RemoteAttnEngine::create_pipelines(std::string* error) {
         return fail(error, "CreateComputePipelineState store", hr);
     }
     store_v_pso_ = store_k_pso_;
+
+    pso.pRootSignature = wht_root_.Get();
+    pso.CS = {kRkvaWhtDxil, kRkvaWhtDxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&wht_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState wht", hr);
+    }
+
+    pso.pRootSignature = store_kvarn_root_.Get();
+    pso.CS = {kRkvaStoreKvarn4Dxil, kRkvaStoreKvarn4DxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&store_kvarn_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState store kvarn", hr);
+    }
+
+    pso.pRootSignature = attn_kvarn_root_.Get();
+    pso.CS = {kRkvaFlashAttnKvarn4Dxil, kRkvaFlashAttnKvarn4DxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&attn_kvarn_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState attn kvarn", hr);
+    }
     return true;
 }
 
@@ -357,8 +406,29 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
     session->id = session_id;
     session->capacity = cap;
     const uint32_t n_layers = geo_.n_layers ? geo_.n_layers : 1;
-    session->half_stride = uint64_t(cap) * geo_.n_head_kv * geo_.head_dim * 2;  // F16
-    session->layer_stride = session->half_stride * 2;                            // K + V
+    const bool kvarn = geo_.cache_bits_k >= 2 && geo_.cache_bits_k <= 8;
+    if (kvarn) {
+        // KVarN4 layout per layer slot:
+        //   records K: groups_per_stream * n_heads * record_words * 4
+        //   stage   K: stage_groups*128 * n_heads * 64 * 4  (F16 packed pairs)
+        //   records V / stage V: same sizes
+        const uint32_t bits = geo_.cache_bits_k;
+        const uint32_t n_heads = geo_.n_head_kv * geo_.head_slices;
+        session->groups_per_stream = (uint64_t) (cap + 127) / 128;
+        session->record_words = (uint64_t) bits * 512 + 192;
+        session->records_bytes = session->groups_per_stream * n_heads *
+                                 session->record_words * 4;
+        session->stage_bytes = (uint64_t) geo_.stage_groups * 128 * n_heads * 64 * 4;
+        session->rec_off = 0;
+        session->stg_off = session->records_bytes;
+        session->rec_v_off = session->stg_off + session->stage_bytes;
+        session->stg_v_off = session->rec_v_off + session->records_bytes;
+        session->layer_stride = session->stg_v_off + session->stage_bytes;
+        session->half_stride = 0;
+    } else {
+        session->half_stride = uint64_t(cap) * geo_.n_head_kv * geo_.head_dim * 2;  // F16
+        session->layer_stride = session->half_stride * 2;                            // K + V
+    }
     session->kv_bytes = session->layer_stride * n_layers;
     if (!create_buffer(session->kv_bytes, D3D12_HEAP_TYPE_DEFAULT,
                        D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
@@ -428,6 +498,7 @@ bool RemoteAttnEngine::ensure_scratch(uint32_t n_tokens, std::string* error) {
 
     qkv_upload_ = Buffer{};
     wht_workspace_ = Buffer{};   // DEFAULT UAV: attention output before readback
+    q_rotated_ = Buffer{};       // DEFAULT UAV: WHT(Q) input / inverse-WHT output
     out_readback_ = Buffer{};    // READBACK: CPU-visible copy of the output
 
     if (!create_buffer(upload_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
@@ -436,6 +507,10 @@ bool RemoteAttnEngine::ensure_scratch(uint32_t n_tokens, std::string* error) {
     }
     if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &wht_workspace_, error)) {
+        return false;
+    }
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &q_rotated_, error)) {
         return false;
     }
     if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
@@ -520,63 +595,165 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
     // Ensure KV is in UAV state for the store.
     transition(s->kv, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
-    // Store K and V (F32 upload -> packed F16 KV at positions). The store
-    // kernel packs two F16 dims per thread, so the element count is halved.
-    const uint32_t store_pairs = n_tokens * geo_.n_head_kv * (geo_.head_dim / 2);
-    const uint32_t store_groups = (store_pairs + 255) / 256;
-    {
-        cmd_->SetComputeRootSignature(store_root_.Get());
-        cmd_->SetPipelineState(store_k_pso_.Get());
-        cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);
-        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 1);
-        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 2);
-        cmd_->SetComputeRoot32BitConstant(0, s->capacity, 3);
-        cmd_->SetComputeRootShaderResourceView(1, upload_addr + pos_off);
-        cmd_->SetComputeRootShaderResourceView(2, upload_addr + k_off);
-        cmd_->SetComputeRootUnorderedAccessView(3, k_plane);
-        cmd_->Dispatch(store_groups, 1, 1);
-        uav_barrier(s->kv);
-
-        cmd_->SetComputeRootShaderResourceView(2, upload_addr + v_off);
-        cmd_->SetComputeRootUnorderedAccessView(3, v_plane);
-        cmd_->Dispatch(store_groups, 1, 1);
-        uav_barrier(s->kv);
-    }
-
     s->high_water = max_pos;
     const uint32_t active_count = (uint32_t) (s->high_water + 1);
 
-    // Attention: KV transitions to SRV; out buffer (wht_workspace_) is UAV.
-    transition(s->kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-    transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-    {
-        cmd_->SetComputeRootSignature(attn_root_.Get());
-        cmd_->SetPipelineState(n_tokens == 1 ? attn_decode_pso_.Get() : attn_prefill_pso_.Get());
-        cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);       // query_count
-        cmd_->SetComputeRoot32BitConstant(0, active_count, 1);   // active_count
-        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 2);
-        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 3);
-        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 4);
-        cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*) &geo_.kq_scale, 5);
-        cmd_->SetComputeRoot32BitConstant(0, s->capacity, 6);
-        cmd_->SetComputeRoot32BitConstant(0, 0u, 7);
-        cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);   // queries
-        cmd_->SetComputeRootShaderResourceView(2, k_plane);               // keys
-        cmd_->SetComputeRootShaderResourceView(3, v_plane);               // values
-        cmd_->SetComputeRootShaderResourceView(4, upload_addr + pos_off); // query_positions
-        cmd_->SetComputeRootUnorderedAccessView(5,
+    const bool kvarn = geo_.cache_bits_k >= 2 && geo_.cache_bits_k <= 8;
+    Buffer* readback_src = &wht_workspace_;
+    if (kvarn) {
+        // KVarN path: WHT(Q) -> store K/V (records + stage) -> attention over
+        // records -> inverse WHT(out). All buffers are DEFAULT UAV; SRV reads
+        // happen after UAV barriers (the data is already ordered).
+        const uint64_t rec_k = k_plane + s->rec_off;
+        const uint64_t stg_k = k_plane + s->stg_off;
+        const uint64_t rec_v = k_plane + s->rec_v_off;
+        const uint64_t stg_v = k_plane + s->stg_v_off;
+        const uint32_t n_heads_phys = geo_.n_head_kv * geo_.head_slices;
+        const uint32_t gqa = geo_.n_head / geo_.n_head_kv;
+        const uint32_t gqa_group_size = std::min(gqa, 4u);
+        const uint32_t gqa_groups = (gqa + gqa_group_size - 1) / gqa_group_size;
+
+        // 1) Rotate Q: rows = n_tokens * n_head, F32 in -> F32 out (q_rotated_).
+        transition(q_rotated_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_->SetComputeRootSignature(wht_root_.Get());
+        cmd_->SetPipelineState(wht_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens * geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
+        cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
+        cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);
+        cmd_->SetComputeRootUnorderedAccessView(2,
+            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
+        uav_barrier(q_rotated_);
+
+        // 2) Store K and V (separate dispatches; `value` flips orientation).
+        cmd_->SetComputeRootSignature(store_kvarn_root_.Get());
+        cmd_->SetPipelineState(store_kvarn_pso_.Get());
+        for (uint32_t pass = 0; pass < 2; ++pass) {
+            const bool is_v = pass == 1;
+            cmd_->SetComputeRoot32BitConstant(0, n_heads_phys, 0);
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 1);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->groups_per_stream, 2);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->record_words, 3);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 4);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.sinkhorn_iters, 5);
+            cmd_->SetComputeRoot32BitConstant(0, is_v ? 1u : 0u, 6);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_slices, 7);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.stage_groups, 8);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.tail_groups, 9);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 10);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + pos_off);
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + (is_v ? v_off : k_off));
+            cmd_->SetComputeRootUnorderedAccessView(3, is_v ? stg_v : stg_k);
+            cmd_->SetComputeRootUnorderedAccessView(4, is_v ? rec_v : rec_k);
+            cmd_->Dispatch(geo_.n_head_kv, 1, 1);
+            uav_barrier(s->kv);
+        }
+
+        // 3) Attention over records+stage (rotated domain). Records/stage and
+        // the rotated Q are read as SRVs: transition out of UAV first.
+        transition(s->kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(q_rotated_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_->SetComputeRootSignature(attn_kvarn_root_.Get());
+        cmd_->SetPipelineState(attn_kvarn_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 1);
+        cmd_->SetComputeRoot32BitConstant(0, n_heads_phys, 2);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 3);
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens, 4);
+        cmd_->SetComputeRoot32BitConstant(0, active_count, 5);
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->groups_per_stream, 6);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 7);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_slices, 8);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.stage_groups, 9);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.tail_groups, 10);
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->record_words, 11);
+        cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*) &geo_.kq_scale, 12);
+        cmd_->SetComputeRootShaderResourceView(1,
+            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootShaderResourceView(2, rec_k);
+        cmd_->SetComputeRootShaderResourceView(3, stg_k);
+        cmd_->SetComputeRootShaderResourceView(4, rec_v);
+        cmd_->SetComputeRootShaderResourceView(5, stg_v);
+        cmd_->SetComputeRootShaderResourceView(6, upload_addr + pos_off);
+        cmd_->SetComputeRootUnorderedAccessView(7,
             wht_workspace_.resource->GetGPUVirtualAddress());
-        cmd_->Dispatch(geo_.n_head, n_tokens, 1);
+        cmd_->Dispatch(n_tokens, geo_.n_head_kv * gqa_groups, 1);
         uav_barrier(wht_workspace_);
+
+        // 4) Inverse WHT on the output (rotated -> original domain); the WHT is
+        // self-inverse, so the same kernel rotates out back into q_rotated_.
+        transition(wht_workspace_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(q_rotated_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_->SetComputeRootSignature(wht_root_.Get());
+        cmd_->SetPipelineState(wht_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens * geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
+        cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
+        cmd_->SetComputeRootShaderResourceView(1,
+            wht_workspace_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(2,
+            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
+        uav_barrier(q_rotated_);
+        readback_src = &q_rotated_;
+    } else {
+        // Store K and V (F32 upload -> packed F16 KV at positions). The store
+        // kernel packs two F16 dims per thread, so the element count is halved.
+        const uint32_t store_pairs = n_tokens * geo_.n_head_kv * (geo_.head_dim / 2);
+        const uint32_t store_groups = (store_pairs + 255) / 256;
+        {
+            cmd_->SetComputeRootSignature(store_root_.Get());
+            cmd_->SetPipelineState(store_k_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 1);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 2);
+            cmd_->SetComputeRoot32BitConstant(0, s->capacity, 3);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + pos_off);
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + k_off);
+            cmd_->SetComputeRootUnorderedAccessView(3, k_plane);
+            cmd_->Dispatch(store_groups, 1, 1);
+            uav_barrier(s->kv);
+
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + v_off);
+            cmd_->SetComputeRootUnorderedAccessView(3, v_plane);
+            cmd_->Dispatch(store_groups, 1, 1);
+            uav_barrier(s->kv);
+        }
+
+        // Attention: KV transitions to SRV; out buffer (wht_workspace_) is UAV.
+        transition(s->kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        {
+            cmd_->SetComputeRootSignature(attn_root_.Get());
+            cmd_->SetPipelineState(n_tokens == 1 ? attn_decode_pso_.Get() : attn_prefill_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);       // query_count
+            cmd_->SetComputeRoot32BitConstant(0, active_count, 1);   // active_count
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 2);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 3);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 4);
+            cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*) &geo_.kq_scale, 5);
+            cmd_->SetComputeRoot32BitConstant(0, s->capacity, 6);
+            cmd_->SetComputeRoot32BitConstant(0, 0u, 7);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);   // queries
+            cmd_->SetComputeRootShaderResourceView(2, k_plane);               // keys
+            cmd_->SetComputeRootShaderResourceView(3, v_plane);               // values
+            cmd_->SetComputeRootShaderResourceView(4, upload_addr + pos_off); // query_positions
+            cmd_->SetComputeRootUnorderedAccessView(5,
+                wht_workspace_.resource->GetGPUVirtualAddress());
+            cmd_->Dispatch(geo_.n_head, n_tokens, 1);
+            uav_barrier(wht_workspace_);
+        }
     }
 
     // Readback out (DEFAULT UAV -> READBACK).
-    transition(wht_workspace_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    transition(*readback_src, D3D12_RESOURCE_STATE_COPY_SOURCE);
     transition(out_readback_, D3D12_RESOURCE_STATE_COPY_DEST);
-    cmd_->CopyBufferRegion(out_readback_.resource.Get(), 0, wht_workspace_.resource.Get(), 0,
+    cmd_->CopyBufferRegion(out_readback_.resource.Get(), 0, readback_src->resource.Get(), 0,
                            q_bytes);
     // Restore states for the next call.
-    transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(*readback_src, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
     transition(s->kv, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     if (!submit(error)) {

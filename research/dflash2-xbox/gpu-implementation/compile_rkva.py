@@ -26,9 +26,11 @@ KERNELS = [
     # F16 bring-up / correctness path (also the KVarN materialize fallback).
     ("rkva_flash_attn.hlsl",  "CSFlashAttn", "rkva_flash_attn_dxil.h",  "kRkvaFlashAttnDxil"),
     ("rkva_store_f16.hlsl",   "CSStore",     "rkva_store_f16_dxil.h",   "kRkvaStoreF16Dxil"),
-    # KVarN native path (lands with the bit-exact port; skipped until present).
+    # KVarN native path: 256-WHT, Sinkhorn store, attention over records.
     ("rkva_wht.hlsl",         "CSWht",         "rkva_wht_dxil.h",         "kRkvaWhtDxil"),
-    ("rkva_store.hlsl",       "CSStore",       "rkva_store_dxil.h",       "kRkvaStoreDxil"),
+    ("rkva_store_kvarn4.hlsl", "CSStore",      "rkva_store_kvarn4_dxil.h","kRkvaStoreKvarn4Dxil"),
+    ("rkva_flash_attn_kvarn4.hlsl", "CSFlashAttnKvarn", "rkva_flash_attn_kvarn4_dxil.h",
+                                                                          "kRkvaFlashAttnKvarn4Dxil"),
     ("rkva_materialize.hlsl", "CSMaterialize", "rkva_materialize_dxil.h", "kRkvaMaterializeDxil"),
 ]
 

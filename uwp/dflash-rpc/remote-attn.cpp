@@ -146,7 +146,7 @@ int handle_request(remote_state& state, const rkva_request& req,
             state.geo = hello;
             state.hello_done = true;
 
-            // cache_bits 0 or 16 -> F16 bring-up path; 2..8 -> KVarN (pending).
+            // cache_bits 0 or 16 -> F16 bring-up path; 2..8 -> KVarN native.
             state.engine_f16 = (hello.cache_bits_k == 0 || hello.cache_bits_k >= 16);
 
             RemoteAttnEngine::Geometry g {};
@@ -274,7 +274,7 @@ int handle_request(remote_state& state, const rkva_request& req,
                 "\"resets\":%llu,\"engine\":\"%s\",\"engine_kv_bytes\":%llu}",
                 state.hello_done ? "true" : "false", state.sessions.size(),
                 (unsigned long long) trims, (unsigned long long) resets,
-                state.engine_f16 ? "d3d12-f16" : "d3d12-kvarn-pending", engine_bytes);
+                state.engine_f16 ? "d3d12-f16" : "d3d12-kvarn", engine_bytes);
             const size_t n = std::strlen(buf);
             output.assign(buf, buf + n);
             return RKVA_OK;
@@ -284,11 +284,7 @@ int handle_request(remote_state& state, const rkva_request& req,
             if (!state.hello_done || !state.engine) {
                 return RKVA_ERR_STATE;
             }
-            // KVarN native kernels are not implemented yet; fail fast so a
-            // kvarn4 host does not consume wrong attention. F16 path is live.
-            if (!state.engine_f16) {
-                return RKVA_ERR_UNSUPPORTED_OP;
-            }
+            // KVarN (cache_bits 2..8) and F16 paths both run the D3D12 engine.
             if (state.sessions.find(req.session_id) == state.sessions.end()) {
                 return RKVA_ERR_BAD_SESSION;
             }
