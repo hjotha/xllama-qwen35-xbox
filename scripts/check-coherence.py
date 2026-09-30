@@ -544,7 +544,9 @@ def main() -> int:
         # t6 asset, t6-shipped-confirm.csv).
         # 2026-08-26: LFM 94.9 -> 89.7 (latest Series S capture,
         # phase17-console-2026-08-26.csv).
-        for num in ("89.7", "37.9", "18.4", "74.8", "44.4", "20.6", "35.1", "236.7"):
+        # 2026-09-30: LFM 89.7 -> 101.6 and 1.2B 37.9 -> 40.0 (QAD Q4_0 ripin,
+        # 2026-09-30-catalogue-gates.csv, #270).
+        for num in ("101.6", "40.0", "18.4", "74.8", "44.4", "20.6", "35.1", "236.7"):
             if num not in block:
                 err(f"generated table missing {num}")
             if num not in rec and num not in ("236.7",):
@@ -698,7 +700,6 @@ def main() -> int:
         "CHANGELOG.md",
     }
     stale = [
-        (r"(?<![0-9.])219 MB|(?<![0-9.])218 MB", "LFM350 size understated"),
         (r"697 MB", "LFM1.2 size understated"),
         (r"1\.46 GB", "LFM2.6 size understated"),
     ]
@@ -715,10 +716,10 @@ def main() -> int:
     for path, needles in [
         (
             "docs/model-selection.md",
-            ["~229 MB", "~731 MB", "~1.56 GB", "~533 MB", "~421 MB"],
+            ["~219 MB", "~696 MB", "~1.56 GB", "~533 MB", "~421 MB"],
         ),
-        ("docs/using-the-app.md", ["~229 MB", "~421 MB"]),
-        ("README.md", ["~229 MB"]),
+        ("docs/using-the-app.md", ["~219 MB", "~421 MB"]),
+        ("README.md", ["~219 MB"]),
     ]:
         text = (ROOT / path).read_text(encoding="utf-8")
         for n in needles:
@@ -728,8 +729,8 @@ def main() -> int:
 
     # size vs manifest numerical closeness for LFM/Qwen
     for name, claimed_mb in [
-        ("lfm25-350m", 229),
-        ("lfm25-1.2b-instruct", 731),
+        ("lfm25-350m", 219),
+        ("lfm25-1.2b-instruct", 696),
         ("qwen35-0.8b", 533),
         ("smollm2-360m-cpu-int4", 421),
     ]:
@@ -765,6 +766,8 @@ def main() -> int:
         # which is the canonical combined source this check reads.
         "lfm25-230m": (2, 8),
         "gemma3-270m": (3, 8),
+        # 2026-09-30 catalogue gates (#268): phi4-mini T3 H9.
+        "phi4-mini": (6, 8),
     }
     for model, (a, b) in expect_h9.items():
         s, n = sum(h9[model]), len(h9[model])

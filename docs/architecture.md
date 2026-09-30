@@ -562,9 +562,10 @@ in [training-architecture.md §11](training-architecture.md). Pad steps:
 
 ## Inference surfaces: in scope vs deferred
 
-The shipping product is **multi-turn chat** (UI + optional LAN OpenAI-compat
-chat) on a **single resident session**. The following are **not** implemented
-and must not be half-added:
+The shipping inference surfaces are **multi-turn generate** (demo chat UI +
+optional LAN OpenAI-compat) on a **single resident session**. Chat is the
+showcase shell, not the product thesis — [positioning.md](positioning.md).
+The following are **not** implemented and must not be half-added:
 
 | Surface                                          | Status          | Why deferred / rule                                                                                                                                               |
 | ------------------------------------------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -622,7 +623,7 @@ host Release smoke (quality + peak)
 ## Unit test map (host suite)
 
 Every `include/xllama/X.h` has a corresponding `tests/test_X.cpp`. The suite
-is **264 test cases / 4435 assertions** (doctest, without opt-in model checks).
+is **264 test cases / 4437 assertions** (doctest, without opt-in model checks).
 
 | Test file                     | Tests | Header under test                  |
 | ----------------------------- | ----- | ---------------------------------- |

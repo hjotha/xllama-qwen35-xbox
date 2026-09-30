@@ -1,0 +1,14 @@
+{
+  "package": "1.0.0.75",
+  "msix_sha256": "152ac96bc784b3fd0a1aa85e59288d49df500ce3c5b6488f17dab9408bce0337",
+  "base_commit": "8b3faa7",
+  "source_hashes": {
+    "shaders\\dflash\\kv_q4_0.hlsl": "25cb105410be35ef75b9a6351632e7283a6c597fcd91ec8c0d5299782d3a4fcd",
+    "shaders\\dflash\\dflash_draft_quant_q8.hlsl": "e01adff0ea01b5b322513e754fed9879d7f2295fcf994608bb2e9409ed989489",
+    "shaders\\dflash\\ggml_float.hlsli": "99b245a2e1d16c19cdf234801c9917edee965b9825217d11499fc70a28dafc2f",
+    "uwp\\dflash-rpc\\dflash-gpu-sync-probe.cpp": "903fc9ffdcb158b81d82c60207bbe736c8f0580d8f285cb37e6dc7536b9ab02d"
+  },
+  "comparison": "complete request/response sequence; timing fields excluded; no numeric tolerance",
+  "q3_reference_sha256": "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f",
+  "q2_reference_sha256": "5ff0aeb6e85c4deb4b473905513a2e166480cb9033deeb0589033a5aa835508e"
+}

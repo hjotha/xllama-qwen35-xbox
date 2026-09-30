@@ -22,6 +22,7 @@ Technical notes and design decisions for xllama.
 
 | Concern                                                                                | Authoritative home                                                                                                                                                                                                                                        |
 | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product intent (games + assistants; chat = demo; honest limits)                        | [positioning.md](./positioning.md)                                                                                                                                                                                                                        |
 | System structure (modules, backends, KV, routing, provisioning, LAN, training surface) | [architecture.md](./architecture.md)                                                                                                                                                                                                                      |
 | Public C++ header API reference (no tok/s, no catalogue status)                        | [sdk/](./sdk/) (numbers stay in [benchmarks.md](./benchmarks.md) / [model-matrix.md](./model-matrix.md))                                                                                                                                                  |
 | Training pillar (RE, capability matrix, lanes A/B/C, hybrid loop, Phase 11 in-app arc) | [training-architecture.md](./training-architecture.md)                                                                                                                                                                                                    |
@@ -39,7 +40,7 @@ Technical notes and design decisions for xllama.
 | Runtime NuGet pins                                                                     | [recommended-config.md](./recommended-config.md) (narrative) + [`../uwp/packages.config`](../uwp/packages.config) (data)                                                                                                                                  |
 | Patched-DLL lifecycle                                                                  | [vendor-lifecycle-plan.md](./vendor-lifecycle-plan.md)                                                                                                                                                                                                    |
 | LAN HTTP protocol                                                                      | [api-endpoint.md](./api-endpoint.md)                                                                                                                                                                                                                      |
-| App gamepad UI (chat, settings, personalize, images)                                   | [using-the-app.md](./using-the-app.md)                                                                                                                                                                                                                    |
+| App gamepad UI (demo shell: chat, settings, personalize, images)                       | [using-the-app.md](./using-the-app.md)                                                                                                                                                                                                                    |
 | Version / current product state                                                        | [`../CHANGELOG.md`](../CHANGELOG.md) + [`../ROADMAP.md`](../ROADMAP.md)                                                                                                                                                                                   |
 | Package identity / install & migration path                                            | [install-release.md](./install-release.md) (user) + `AGENTS.md` Versioning (dev)                                                                                                                                                                          |
 | Xbox Store retail readiness (dual SKU, licence matrix, App vs Game gate)               | [store-readiness.md](./store-readiness.md)                                                                                                                                                                                                                |
@@ -64,7 +65,8 @@ reports preserve interpretation and history; they are not current metric stores.
 The ownership table above is the SSOT for _where facts live_. Below is only a
 path checklist for discovery — descriptions are not repeated.
 
-**Structure / product:** [architecture.md](./architecture.md) ·
+**Structure / product:** [positioning.md](./positioning.md) ·
+[architecture.md](./architecture.md) ·
 [training-architecture.md](./training-architecture.md) ·
 [using-the-app.md](./using-the-app.md) · [api-endpoint.md](./api-endpoint.md) ·
 [model-selection.md](./model-selection.md) ·
@@ -101,6 +103,7 @@ path checklist for discovery — descriptions are not repeated.
 
 | Kind of content                       | Allowed outside SSOT                                                                                                                              | Forbidden                                                                                                                                   |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Product intent (games + assistants)   | One-liners that link [positioning.md](./positioning.md)                                                                                           | Claiming Store / Microsoft affiliation / AAA SDK; inventing tok/s                                                                           |
 | Role / status one-liners              | Yes (e.g. README “default chat is LFM2.5-350M”)                                                                                                   | Second full catalogue or perf table                                                                                                         |
 | Exact tok/s, peak RAM, speedups       | Only [benchmarks.md](./benchmarks.md) (generated) + raw `bench/results/`                                                                          | Restating figures in README / UI guide without linking                                                                                      |
 | Download / catalogue size             | Sum of `approx_bytes` in `uwp/models/manifest.json`                                                                                               | Invented MB that drift from the manifest                                                                                                    |
@@ -129,15 +132,15 @@ original 2026-07-24 matrix seeded the script):
 
 Spot-checked against code + evidence:
 
-| Fact                                                | SSOT                                                      | Status                                                           |
-| --------------------------------------------------- | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| Default chat `lfm25-350m` (unified)                 | `MainPage.cpp` `DefaultChatModelId`                       | OK                                                               |
-| `token_threshold` 1550                              | `routing_policy.h`                                        | OK                                                               |
-| GPU allowlist `-v2` only                            | `dml_text_model_ok`                                       | OK                                                               |
-| NuGet 0.14.1 / 1.24.4 / DML 1.15.4                  | `packages.config`                                         | OK                                                               |
-| Decode table (89.7 / 37.9 / 18.4 / 74.8 / 44.4 / …) | `generate-benchmark-summary.py --check`                   | OK (2026-08-26: latest Series S LFM capture, ORT CPU shipped-t6) |
-| Package identity `GianlucaMazza.xllama` (1.6.0.0)   | `uwp/AppxManifest.xml`; migration in `install-release.md` | OK (in-place from 1.5.x; breaking vs ≤1.4.x)                     |
-| One resident Session (GUI+API)                      | `include/xllama/session_hub.h`                            | OK (PR #161/#164)                                                |
-| H9 6/8 · 7/8 · 4/8 · 5/8                            | `phase7-h9.jsonl`                                         | OK                                                               |
-| Lane B peak_ws 1195 MB, wall 446 s                  | `phase10-console-devtrain-result.json`                    | OK                                                               |
-| Catalogue download sizes                            | `manifest.json` `approx_bytes`                            | Docs corrected to match (was 218/697/1.46 stale)                 |
+| Fact                                                 | SSOT                                                      | Status                                                                |
+| ---------------------------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------- |
+| Default chat `lfm25-350m` (unified)                  | `MainPage.cpp` `DefaultChatModelId`                       | OK                                                                    |
+| `token_threshold` 1550                               | `routing_policy.h`                                        | OK                                                                    |
+| GPU allowlist `-v2` only                             | `dml_text_model_ok`                                       | OK                                                                    |
+| NuGet 0.14.1 / 1.24.4 / DML 1.15.4                   | `packages.config`                                         | OK                                                                    |
+| Decode table (101.6 / 40.0 / 18.4 / 74.8 / 44.4 / …) | `generate-benchmark-summary.py --check`                   | OK (2026-09-30: LFM2.5 QAD Q4_0 Series S capture, ORT CPU shipped-t6) |
+| Package identity `GianlucaMazza.xllama` (1.6.0.0)    | `uwp/AppxManifest.xml`; migration in `install-release.md` | OK (in-place from 1.5.x; breaking vs ≤1.4.x)                          |
+| One resident Session (GUI+API)                       | `include/xllama/session_hub.h`                            | OK (PR #161/#164)                                                     |
+| H9 6/8 · 7/8 · 4/8 · 5/8                             | `phase7-h9.jsonl`                                         | OK                                                                    |
+| Lane B peak_ws 1195 MB, wall 446 s                   | `phase10-console-devtrain-result.json`                    | OK                                                                    |
+| Catalogue download sizes                             | `manifest.json` `approx_bytes`                            | Docs corrected to match (was 218/697/1.46 stale)                      |

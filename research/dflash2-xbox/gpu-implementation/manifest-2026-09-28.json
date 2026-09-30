@@ -1,0 +1,50 @@
+{
+  "date": "2026-09-28",
+  "host": "HPBEATS 192.168.1.193",
+  "xbox": "192.168.1.26",
+  "target_host": "192.168.1.57",
+  "beellama_commit": "892d916e1723ef4b0b6a9dbe59f73b407ebf1d75",
+  "app_package": {
+    "name": "HJotha.XboxDFlashRpc",
+    "version": "1.0.0.17",
+    "signed_msix_sha256": "AD0C0AABF74BF11A2141597A0DC39AFD23C4BDD8CCF678AAEA2F039BCB803713",
+    "inference_backend": "ggml CPU",
+    "gpu_usage": "opt-in matrix diagnostics only",
+    "installed": true,
+    "device_portal_install_success": true
+  },
+  "gguf": {
+    "bytes": 916702560,
+    "sha256": "72809a53e89cb959a3149c9b3752ad181b640164b51a3b9f445712520beec5dc",
+    "tensor_inventory": "f0-2026-09-28/tensor-inventory.json"
+  },
+  "reference_capture": {
+    "records": 369,
+    "sha256": "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f",
+    "committed": false
+  },
+  "toolchain": {
+    "msbuild": "17.14.60+43b635718",
+    "windows_sdk": "10.0.26100.0",
+    "dxc": "dxcompiler.dll 1.8.2502.11",
+    "shader_profile": "cs_6_0",
+    "directml_nuget": "1.15.4"
+  },
+  "validation": {
+    "cpu_replay_records_passed": 369,
+    "trim_protocol_cases_passed": 6,
+    "persistent_smoke_cycles": 4,
+    "cpu_rpc_512_tokens_tps": 12.7656638,
+    "cpu_rpc_512_tokens_seconds": 40.029254,
+    "cpu_rpc_cycles": 182,
+    "cpu_rpc_proposals": 728,
+    "cpu_rpc_accepted": 329,
+    "cpu_rpc_dfl2_payload_parity": true,
+    "gpu_matrix_types_passed": ["Q3_K", "Q4_K", "Q5_K"],
+    "gpu_sync_complete": false,
+    "gpu_draft_complete": false,
+    "gpu_inference_tps_measured": false,
+    "run_level_csv": "f0-2026-09-28/benchmark-runs.csv",
+    "run_level_csv_sha256": "9B6054F374ABC863FFEA939459FACD366D7E5483875092811AEE3B2E0536A3DC"
+  }
+}

@@ -13,10 +13,15 @@ ids, templates, licenses, and campaign notes** — not runtime contracts.
 | Catalogue data                                                 | [`../uwp/models/manifest.json`](../uwp/models/manifest.json) |
 | Tok/s tables                                                   | [benchmarks.md](./benchmarks.md) only                        |
 
-Last updated: **2026-08-20**. Newest entries: §F MiniCPM5 renderer shipped /
-T3 not booked, WS-E closed (no consumer); then §A1 `lfm25-230m` shipped as the
-floor tier and `gemma3-270m`'s H9 measured (2026-08-10), §A3 H2 MoE FAIL
-(2026-07-30), §D per-arch `can_shift` (2026-07-29), §A2 phase14 (2026-07-27).
+Last updated: **2026-09-30**. Newest entries: Series S catalogue gates
+(`2026-09-30-catalogue-gates`): §A1 `phi4-mini` T3 PASS (#268), LFM2.5 QAD
+Q4_0 PASS for `lfm25-350m` / `lfm25-1.2b-instruct` and FAIL for `lfm25-230m`
+(reverted to Q4_K_M, #270); §F MiniCPM5-1B (#267) and Gemma-3-1B (#269)
+rejected — measured; §I arch-watch reopen gates
+(#273 MoE, #274 BitNet, #275 SSM/RWKV + mm), then §F MiniCPM5 renderer shipped / T3 not booked (2026-08-10), WS-E
+closed (no consumer); then §A1 `lfm25-230m` shipped as the floor tier and
+`gemma3-270m`'s H9 measured (2026-08-10), §A3 H2 MoE FAIL (2026-07-30), §D
+per-arch `can_shift` (2026-07-29), §A2 phase14 (2026-07-27).
 
 ## How to read the columns
 
@@ -42,27 +47,36 @@ and thermal). They only prove _load + generate + template_.
 Headline metrics match the generated table in [benchmarks.md](./benchmarks.md).
 All rows below are **CPU-bound decode** unless backend says DirectML.
 
-| Model                 |                  Catalogue |  Params | Quant  | Backend   |   Prefill |    Decode | Peak MB | H9      | Template          | Role | n_ctx | Evidence                                        |
-| --------------------- | -------------------------: | ------: | ------ | --------- | --------: | --------: | ------: | ------- | ----------------- | ---- | ----: | ----------------------------------------------- |
-| LFM2.5-230M           |               `lfm25-230m` |    230M | Q4_K_M | llama.cpp | **741.9** | **119.2** |     241 | 2/8     | ChatML            | —    |  2048 | `phase16-gguf` · **H16.1c PASS** · floor        |
-| LFM2.5-350M           |               `lfm25-350m` |    350M | Q4_K_M | llama.cpp | **441.0** |  **89.7** |     320 | 4/8     | ChatML            | —    |  2048 | `phase17-console-2026-08-26` · **default chat** |
-| Gemma-3-270M          |              `gemma3-270m` |    270M | Q4_K_M | llama.cpp |     395.0 |      76.8 |     368 | 3/8     | Gemma             | —    |  2048 | `phase6-gemma` · H9 `phase7-h9.jsonl`           |
-| SmolLM2-360M          |    `smollm2-360m-cpu-int4` |    360M | int4   | ORT CPU   |     262.4 |      74.8 |     708 | —       | ChatML            | —    |  2048 | `t6-shipped-confirm`                            |
-| SmolLM2-360M          |              (same family) |    360M | Q4_K_M | llama.cpp |     141.5 |      62.9 |     402 | —       | ChatML            | —    |  2048 | `phase35-llamacpp-scaling`                      |
-| SmolLM2-360M DML v2   | `smollm2-360m-dml-fp16-v2` |    360M | fp16   | ORT DML   |     236.7 |      44.4 |    1268 | —       | ChatML            | —    |  2048 | `phase2-dml` · #91 parity OK                    |
-| LFM2.5-1.2B Instruct  |      `lfm25-1.2b-instruct` |    1.2B | Q4_K_M | llama.cpp |      76.2 |  **37.9** |     811 | **6/8** | ChatML            | —    |  2048 | `phase7-lfm` · H1 PASS balanced                 |
-| Qwen3.5-0.8B          |              `qwen35-0.8b` |    0.8B | Q4_K_M | llama.cpp |      98.1 |      35.1 |     718 | —       | ChatML + no-think | —    |  2048 | `phase5-gguf`                                   |
-| SmolLM2-1.7B          |    `smollm2-1.7b-cpu-int4` |    1.7B | int4   | ORT CPU   |      54.9 |      20.6 |    2423 | —       | ChatML            | —    |  2048 | `phase35-1b-cpu`                                |
-| LFM2-2.6B             |                `lfm2-2.6b` |    2.6B | Q4_K_M | llama.cpp |      32.0 |  **18.4** |    1623 | **7/8** | ChatML            | —    |  2048 | `phase7-lfm` · H1 PASS quality                  |
-| Gemma-4-E2B           |               `gemma4-e2b` | ~2B eff | Q3_K_S | llama.cpp |      26.1 |      15.3 |    2742 | 6/8     | Gemma             | —    |  2048 | `phase6-gemma`                                  |
-| Llama-3.2-3B Instruct |               `llama32-3b` |      3B | Q3_K_S | llama.cpp |      19.5 |  **14.2** |    1824 | 5/8     | Llama-3           | —    |  2048 | `phase7-scale` · H4 preferred                   |
-| Phi-3.5-mini          |                          — |    3.8B | Q3_K_S | llama.cpp |      15.3 |      11.3 |    2453 | —       | Phi-3             | —    |  2048 | `phase7-scale` · H4 PASS, loses A/B             |
-| Gemma-4-E2B IQ2       |            (upgraded away) | ~2B eff | IQ2_M  | llama.cpp |      13.5 |       9.9 |    2534 | —       | Gemma             | —    |  2048 | historical; EOG on long prompts                 |
-| SmolLM2-360M DML int4 |                          — |    360M | int4   | ORT DML   |     0–153 |   **8.8** |     999 | —       | ChatML            | —    |  2048 | **rejected** wrong logits / slow                |
+| Model                 |                  Catalogue |  Params | Quant    | Backend   |   Prefill |    Decode | Peak MB | H9      | Template          | Role | n_ctx | Evidence                                        |
+| --------------------- | -------------------------: | ------: | -------- | --------- | --------: | --------: | ------: | ------- | ----------------- | ---- | ----: | ----------------------------------------------- |
+| LFM2.5-230M           |               `lfm25-230m` |    230M | Q4_K_M   | llama.cpp | **741.9** | **119.2** |     241 | 2/8     | ChatML            | —    |  2048 | `phase16-gguf` · **H16.1c PASS** · floor        |
+| LFM2.5-350M           |               `lfm25-350m` |    350M | Q4_0 QAD | llama.cpp | **374.4** | **101.6** |     311 | 4/8     | ChatML            | —    |  2048 | `2026-09-30-catalogue-gates` · **default chat** |
+| Gemma-3-270M          |              `gemma3-270m` |    270M | Q4_K_M   | llama.cpp |     395.0 |      76.8 |     368 | 3/8     | Gemma             | —    |  2048 | `phase6-gemma` · H9 `phase7-h9.jsonl`           |
+| SmolLM2-360M          |    `smollm2-360m-cpu-int4` |    360M | int4     | ORT CPU   |     262.4 |      74.8 |     708 | —       | ChatML            | —    |  2048 | `t6-shipped-confirm`                            |
+| SmolLM2-360M          |              (same family) |    360M | Q4_K_M   | llama.cpp |     141.5 |      62.9 |     402 | —       | ChatML            | —    |  2048 | `phase35-llamacpp-scaling`                      |
+| SmolLM2-360M DML v2   | `smollm2-360m-dml-fp16-v2` |    360M | fp16     | ORT DML   |     236.7 |      44.4 |    1268 | —       | ChatML            | —    |  2048 | `phase2-dml` · #91 parity OK                    |
+| LFM2.5-1.2B Instruct  |      `lfm25-1.2b-instruct` |    1.2B | Q4_0 QAD | llama.cpp |     109.7 |  **40.0** |     783 | **6/8** | ChatML            | —    |  2048 | `2026-09-30-catalogue-gates` · H1 PASS balanced |
+| Qwen3.5-0.8B          |              `qwen35-0.8b` |    0.8B | Q4_K_M   | llama.cpp |      98.1 |      35.1 |     718 | —       | ChatML + no-think | —    |  2048 | `phase5-gguf`                                   |
+| SmolLM2-1.7B          |    `smollm2-1.7b-cpu-int4` |    1.7B | int4     | ORT CPU   |      54.9 |      20.6 |    2423 | —       | ChatML            | —    |  2048 | `phase35-1b-cpu`                                |
+| LFM2-2.6B             |                `lfm2-2.6b` |    2.6B | Q4_K_M   | llama.cpp |      32.0 |  **18.4** |    1623 | **7/8** | ChatML            | —    |  2048 | `phase7-lfm` · H1 PASS quality                  |
+| Gemma-4-E2B           |               `gemma4-e2b` | ~2B eff | Q3_K_S   | llama.cpp |      26.1 |      15.3 |    2742 | 6/8     | Gemma             | —    |  2048 | `phase6-gemma`                                  |
+| Llama-3.2-3B Instruct |               `llama32-3b` |      3B | Q3_K_S   | llama.cpp |      19.5 |  **14.2** |    1824 | 5/8     | Llama-3           | —    |  2048 | `phase7-scale` · H4 preferred                   |
+| Phi-3.5-mini          |                          — |    3.8B | Q3_K_S   | llama.cpp |      15.3 |      11.3 |    2453 | —       | Phi-3             | —    |  2048 | `phase7-scale` · H4 PASS, loses A/B             |
+| Phi-4-mini            |                `phi4-mini` |    3.8B | Q4_K_M   | llama.cpp |      33.1 |      11.2 |    2765 | **6/8** | Phi-3             | —    |  2048 | `2026-09-30-catalogue-gates` · **T3 PASS** peer |
+| Gemma-4-E2B IQ2       |            (upgraded away) | ~2B eff | IQ2_M    | llama.cpp |      13.5 |       9.9 |    2534 | —       | Gemma             | —    |  2048 | historical; EOG on long prompts                 |
+| SmolLM2-360M DML int4 |                          — |    360M | int4     | ORT DML   |     0–153 |   **8.8** |     999 | —       | ChatML            | —    |  2048 | **rejected** wrong logits / slow                |
 
 Notes:
 
 - Hybrid LFM: KV tail-rewind unsupported (#170a); front-drop context shift OK (#169).
+- **QAD Q4_0 ripin** (#270, console regression 2026-09-30,
+  `2026-09-30-catalogue-gates`): `lfm25-350m` and `lfm25-1.2b-instruct` pin
+  Liquid [QAD Q4_0](https://www.liquid.ai/blog/qad) and passed the
+  no-regression bar (same H9, higher decode, lower peak). Prefill is lower on
+  the 350M (374 vs 441 on Q4_K_M) and higher on the 1.2B (110 vs 76).
+  `lfm25-230m` **failed** (H9 1/8 < 2/8, lost `constrained_summary`) and is
+  back on Liquid Q4_K_M; its row keeps the Q4_K_M figures. `lfm2-2.6b` stays
+  LFM2 Q4_K_M, since no QAD was published for that generation.
 - Qwen3.5 (`qwen35`): `can_shift` false (imrope) — overflow fail-fast + trim, no
   RoPE shift. Qwen3 (`qwen3`) is a different arch and **does** shift — measured, see §D.
 - DML text routing allowlist: only `smollm2-360m-dml-fp16-v2` (`dml_text_model_ok`).
@@ -160,6 +174,17 @@ on record before the run: the ~4.0 GB estimate **breaks the 3.5 GB product gate*
 even though it clears H2's 4 GB one, and the model reasons on every turn without
 saying so in its name, so it is wired as a thinking model.
 
+### A4. Catalogued, console T3 pending
+
+These ids are in [`../uwp/models/manifest.json`](../uwp/models/manifest.json)
+(in-app download, Device Portal `provision-models.sh`, Ollama `POST /api/pull`)
+but have **no Series S bench**. Host smoke is not a console claim. Measurement
+harness: [console-validation-runbook.md](./console-validation-runbook.md)
+(Campaign T3 — MiniCPM5-1B).
+
+None. The 2026-09-30 gates (`2026-09-30-catalogue-gates`) closed every row:
+`phi4-mini` moved to §A1, MiniCPM5-1B and Gemma-3-1B to §F.
+
 ---
 
 ## B. Diffusion
@@ -191,14 +216,18 @@ measured per GGUF arch instead of inferred from the family name. Measured
 Qwen3.5 and said **no** for both — wrong, and it under-sold `qwen3-1.7b`, which
 shifts.
 
-| Arch class                                 | Examples in tree                                       | KV shift         | KV tail rewind | ORT     | GGUF           | Notes              |
-| ------------------------------------------ | ------------------------------------------------------ | ---------------- | -------------- | ------- | -------------- | ------------------ |
-| Dense standard (`llama`, `qwen2`, `qwen3`) | Llama-3.2, Qwen2.5-Coder, SmolLM2 GGUF, **Qwen3-1.7B** | yes\*            | yes            | if ONNX | yes            | \*if not SWA       |
-| Hybrid attn+recurrent (`lfm2`)             | LFM2 / LFM2.5 / Thinking                               | yes (front-drop) | **no**         | no      | yes            | #170a degrade      |
-| imrope / mrope (`qwen35`)                  | Qwen3.5                                                | **no**           | N/A            | no      | yes            | #169 fail-fast     |
-| SWA                                        | some modern                                            | **no**           | careful        | —       | if arch in pin | `n_swa==0` gate    |
-| MoE small active                           | `lfm25-8b-a1b` (§A3, not shipping)                     | TBD              | TBD            | no      | **H2 FAIL**    | need ≤~3.5 GB GGUF |
-| BitNet 1.58                                | —                                                      | —                | —              | no      | H5 desk        | not shipping       |
+| Arch class                                 | Examples in tree                                       | KV shift         | KV tail rewind | ORT     | GGUF           | Notes                  |
+| ------------------------------------------ | ------------------------------------------------------ | ---------------- | -------------- | ------- | -------------- | ---------------------- |
+| Dense standard (`llama`, `qwen2`, `qwen3`) | Llama-3.2, Qwen2.5-Coder, SmolLM2 GGUF, **Qwen3-1.7B** | yes\*            | yes            | if ONNX | yes            | \*if not SWA           |
+| Hybrid attn+recurrent (`lfm2`)             | LFM2 / LFM2.5 / Thinking                               | yes (front-drop) | **no**         | no      | yes            | #170a degrade          |
+| imrope / mrope (`qwen35`)                  | Qwen3.5                                                | **no**           | N/A            | no      | yes            | #169 fail-fast         |
+| SWA                                        | some modern                                            | **no**           | careful        | —       | if arch in pin | `n_swa==0` gate        |
+| MoE small active                           | `lfm25-8b-a1b` (§A3, not shipping)                     | TBD              | TBD            | no      | **H2 FAIL**    | need ≤~3.5 GB GGUF; §I |
+| BitNet 1.58                                | —                                                      | —                | —              | no      | H5 desk        | not shipping; §I       |
+
+Reopen gates for MoE, BitNet, and SSM/RWKV + small multimodal live in [§I](#i-arch-watch),
+not in this capability table. Those watches do not reopen the rejected H2 / H5
+models.
 
 ---
 
@@ -221,30 +250,31 @@ shifts.
 
 ## F. Survey rejected / deferred (desk 2026-07-27)
 
-| Candidate                  | Decision           | Reason                                |
-| -------------------------- | ------------------ | ------------------------------------- |
-| Qwen3-Coder-30B-A3B GGUF   | reject for console | weight size                           |
-| Devstral Small             | reject             | weight size                           |
-| DeepSeek-Coder-V2-Lite     | reject             | weight size                           |
-| Qwen2.5-Coder-7B           | defer              | interactive decode too low            |
-| StarCoder2-3B              | defer              | weaker than Qwen2.5-Coder-3B          |
-| Phi-4-mini                 | defer (chat peer)  | not coding; re-open if H9 peer needed |
-| Qwen3-1.7B/4B general      | defer              | chat upgrade, not coding              |
-| Granite 3.1 2B / 4.0 micro | defer              | generalist; lower priority            |
+| Candidate                  | Decision           | Reason                                                                       |
+| -------------------------- | ------------------ | ---------------------------------------------------------------------------- |
+| Qwen3-Coder-30B-A3B GGUF   | reject for console | weight size                                                                  |
+| Devstral Small             | reject             | weight size                                                                  |
+| DeepSeek-Coder-V2-Lite     | reject             | weight size                                                                  |
+| Qwen2.5-Coder-7B           | defer              | interactive decode too low                                                   |
+| StarCoder2-3B              | defer              | weaker than Qwen2.5-Coder-3B                                                 |
+| Phi-4-mini                 | shipped — T3 PASS  | `phi4-mini` (#268): H9 6/8 vs `llama32-3b` 5/8, 11.2 tok/s, 2765 MB, see §A1 |
+| Qwen3-1.7B/4B general      | defer              | chat upgrade, not coding                                                     |
+| Granite 3.1 2B / 4.0 micro | defer              | generalist; lower priority                                                   |
 
 **Phase 16 (desk + measured, 2026-08-10)** — campaign SSOT:
 [phase16-model-scouting.md](phase16-model-scouting.md).
 
-| Candidate                        | Decision                 | Reason                                                                                                                       |
-| -------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
-| Qwen3.5-2B (`unsloth` Q4_K_M)    | reject — measured        | H16.1a FAIL on both halves: `peak_ws_mb` 1421 > 1398 and decode 19.25 < 19.6 (`phase16-gguf`)                                |
-| Maincoder-1B (`Maincode` Q4_K_M) | reject — measured        | H16.1b: memory passes (843 ≤ 900) but decode 33.49 < the card's 33.9 (1.283× vs a 1.3× bar) (`phase16-gguf`)                 |
-| MiniCPM5-1B (`openbmb`)          | defer — T3 not booked    | H16.1d renderer shipped 2026-08-10 (15 lines: `<s>` BOS + no-think). Host T1 PASS. No console session spent this campaign    |
-| SmolLM3-3B GGUF (ggml-org)       | reject — cost not bought | WS-A's ≤4 slots allocated; loses the 4th head-to-head to MiniCPM5-1B; self-set PASS bar of H9 8/8 (catalogue best is 7/8)    |
-| EmbeddingGemma-300M (ggml-org)   | reject — licence         | Origin repo `gated: manual` (anon HEAD 401), so a console download is impossible; the ungated mirror ships no licence/notice |
-| Supra2-100M-Instruct             | reject — duplicate bet   | Same floor role as `lfm25-230m`; ~30 MB of projected gain needs an in-house quant, a re-host and a name-matched stop token   |
-| granite-embedding-english-r2     | reject — duplicate bet   | Same WS-E slot as nomic-embed-text-v1.5 at +15 MB and new-renderer cost; its own FAIL branch concedes to nomic               |
-| multilingual-e5-small            | reject — duplicate bet   | Same WS-E slot; the multilingual axis has no named consumer, and its GGUF tokenizer is SPM over an XLM-R Unigram vocabulary  |
+| Candidate                        | Decision                 | Reason                                                                                                                                                                                            |
+| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Qwen3.5-2B (`unsloth` Q4_K_M)    | reject — measured        | H16.1a FAIL on both halves: `peak_ws_mb` 1421 > 1398 and decode 19.25 < 19.6 (`phase16-gguf`)                                                                                                     |
+| Maincoder-1B (`Maincode` Q4_K_M) | reject — measured        | H16.1b: memory passes (843 ≤ 900) but decode 33.49 < the card's 33.9 (1.283× vs a 1.3× bar) (`phase16-gguf`)                                                                                      |
+| MiniCPM5-1B (`openbmb`)          | reject — measured        | T3 2026-09-30 (#267): decode 39.7 ≥ 34.1 and peak 804 ≤ 811 pass, but H9 **3/8** < 6/8 (wrong answers, no `<think>` leak). Removed from the catalogue (`2026-09-30-catalogue-gates`)              |
+| Gemma-3-1B (ggml-org)            | reject — measured        | T3 2026-09-30 (#269): dominated by `lfm25-1.2b-instruct`: H9 5/8, decode 35.1, peak 929 MB (all worse than 6/8 / 40.0 / 783); early EOG on the 512-token bench prompt. Removed from the catalogue |
+| SmolLM3-3B GGUF (ggml-org)       | reject — cost not bought | WS-A's ≤4 slots allocated; loses the 4th head-to-head to MiniCPM5-1B; self-set PASS bar of H9 8/8 (catalogue best is 7/8)                                                                         |
+| EmbeddingGemma-300M (ggml-org)   | reject — licence         | Origin repo `gated: manual` (anon HEAD 401), so a console download is impossible; the ungated mirror ships no licence/notice                                                                      |
+| Supra2-100M-Instruct             | reject — duplicate bet   | Same floor role as `lfm25-230m`; ~30 MB of projected gain needs an in-house quant, a re-host and a name-matched stop token                                                                        |
+| granite-embedding-english-r2     | reject — duplicate bet   | Same WS-E slot as nomic-embed-text-v1.5 at +15 MB and new-renderer cost; its own FAIL branch concedes to nomic                                                                                    |
+| multilingual-e5-small            | reject — duplicate bet   | Same WS-E slot; the multilingual axis has no named consumer, and its GGUF tokenizer is SPM over an XLM-R Unigram vocabulary                                                                       |
 
 ## G. Embedding API catalogue (host and Series S validated)
 
@@ -290,6 +320,86 @@ Model SHA-256 pins: BGE-M3 `950f4a8e5e19477a6d3c26d2f162233c20002c601f75e4b002e3
    (see §G); dedicated throughput/retrieval-quality measurements remain open. WS-F (ASR) still needs a headset (#241).
 7. ~~**W3 gpubw** (#211)~~ — **closed PASS** Series S **119.07 GB/s** STREAM;
    H6 eng **#228** (`docs/phase15-re-opt.md`).
+8. ~~**MiniCPM5-1B Series S T3**~~ — **closed** 2026-09-30: reject — measured
+   (H9 3/8), see §F (#267).
+9. **Arch-watch** — desk-only reopen gates in [§I](#i-arch-watch) (#273 MoE,
+   #274 BitNet, #275 SSM/RWKV + mm). Not a catalogue seed.
+
+---
+
+## I. Arch-watch
+
+Standing desk watches for architectures that were measured or surveyed and
+**must not re-enter a product tier** unless every listed gate holds. These are
+not catalogue seeds and do **not** reopen the rejected H2 / H5 models. A
+candidate that appears still follows the ladder in
+[architecture.md](./architecture.md) (host smoke, then console bench, then
+manifest). No new catalogue id without a Series S PASS.
+
+Tracking: [#273](https://github.com/gianlucamazza/xllama/issues/273) MoE,
+[#274](https://github.com/gianlucamazza/xllama/issues/274) BitNet 1.58,
+[#275](https://github.com/gianlucamazza/xllama/issues/275) SSM/RWKV + small
+multimodal. Verdicts: [phase7-hypotheses.md](./phase7-hypotheses.md) H2 / H5.
+
+### I1. MoE (post H2 FAIL)
+
+Closed: H2 “decode scales with active weights” **FAIL** on Series S
+(2026-07-30). `lfm25-8b-a1b` matched the dense 3B on decode, paid +~1.4 GB, and
+was ~4× worse in perceived latency. Result stays in §A3. Do not re-argue that
+run. Gate: #273.
+
+**Do not reopen unless all hold:**
+
+- Official (or pin-compatible) GGUF on the current llama.cpp pin — **no fork**.
+- Peak working set **≤ ~3.5 GB** at product `n_ctx` (Series S Dev Mode envelope).
+- Decode **strictly above** the shipping dense peer at the same quality bar
+  (Llama-3.2-3B / Phi-4-mini class), not “≈ active-param dense”.
+- Prefill / perceived TTFT not several× worse than the dense peer for typical
+  chat turns.
+- Speculative draft, if any, must be a real catalogue draft with matching vocab
+  — H2+H3 do not compose on orphan MoEs.
+
+Out of scope: lowering quant on 8B-A1B to “make H2 pass” (would indict quant,
+not the arch claim). granite-3.1-3b-a800m already rejected on the same pass.
+
+### I2. BitNet 1.58 (post H5 NO-GO)
+
+Closed: H5 **NO-GO** on absence of artefact, not on measured merit (2026-08-10,
+Phase 15 M8). The pin already carries `bitnet`. No downloadable sub-4B weights
+trained at ≤2 bits. Gate: #274.
+
+**Do not reopen unless all hold:**
+
+- Public weights for a **sub-4B** model **trained** at ≤2 bits (not PTQ of
+  BF16, and not post-hoc IQ2).
+- GGUF loads on the **current product pin** — not a bitnet.cpp / custom fork.
+- Envelope target from H5: roughly 400–800 MB class aiming ≥20 tok/s on
+  Series S (re-measure; those numbers are hypotheses).
+- Host smoke + console T-gate before any catalogue id.
+
+Out of scope: 8B–20B ternary MoE, robotics VLA, diffusion LMs with custom
+runtimes, recipe-only papers. Post-hoc IQ2 on a normal model is a different
+(discouraged) bet — IQ2_M garbage precedent.
+
+### I3. SSM/RWKV + small multimodal (desk)
+
+Track non-Transformer / hybrid and small multimodal options that might fit
+Series S without repeating closed kills. **Do not reopen unless** the arch is
+on the UWP llama.cpp pin, a GGUF exists, and the Series S envelope holds.
+Diffusion **text** and custom runtimes stay out (WS-D closed; image SD-Turbo
+remains product). Gate: #275.
+
+| Class                      | Interest            | Do not reopen unless                                                                 |
+| -------------------------- | ------------------- | ------------------------------------------------------------------------------------ |
+| SSM / Mamba-class          | Long-ctx efficiency | Arch in UWP llama.cpp pin + GGUF ≤ envelope                                          |
+| RWKV                       | RNN-ish decode      | Same — pin + GGUF + console                                                          |
+| Gemma-3-4B + mmproj        | Vision              | Peak + mmproj often breaks Series S; text-only 1B rejected — measured, see §F (#269) |
+| Diffusion LM (byte / mask) | Novelty             | Custom runtime ≠ product pin — reject unless llama.cpp path                          |
+
+No catalogue ids without a console PASS vs LFM / MiniCPM5 peers. Nearby
+closed kills (do not re-argue): diffusion **image** SD-Turbo remains product;
+diffusion **text** WS-D closed; ORT DML int4 text reject; speculative default
+FAIL (opt-in only).
 
 ---
 
@@ -300,3 +410,4 @@ Model SHA-256 pins: BGE-M3 `950f4a8e5e19477a6d3c26d2f162233c20002c601f75e4b002e3
 - Selection / add-your-own → [model-selection.md](./model-selection.md)
 - Phase 7 research → [phase7-hypotheses.md](./phase7-hypotheses.md)
 - Runtime structure → [architecture.md](./architecture.md)
+- Arch-watch issues → #273 · #274 · #275

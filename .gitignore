@@ -29,6 +29,13 @@ uwp/models/*
 *.VC.db
 *.VC.opendb
 AppPackages/
+/uwp/dflash-rpc/DFlashRpc/
+/uwp/dflash-rpc/x64/
+/uwp/dflash-rpc/*.log
+/uwp/dflash-rpc/*.jsonl
+/uwp/dflash-rpc/portal-*
+/uwp/ggml-uwp/
+/uwp/x64/
 
 # CMake
 CMakeCache.txt

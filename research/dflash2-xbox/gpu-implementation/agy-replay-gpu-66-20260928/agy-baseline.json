@@ -1,0 +1,24 @@
+{
+  "source": "C:\\Users\\hjotha\\.gemini\\antigravity-cli\\brain\\4c44ecef-58b1-417f-ae20-bc2b95be9565\\.system_generated\\logs\\transcript_full.jsonl",
+  "sha256": "2ef8369336e699a5c28308b15e8ef4983763e55a23fe5b12a9205efe09170454",
+  "steps": [
+    1415,
+    1416,
+    1421,
+    1430,
+    1452,
+    1501
+  ],
+  "xbox_package_at_setup": "1.0.0.47",
+  "xbox_model": "dflash-q3.gguf",
+  "host_draft_model": "Qwen3.8-27B-DFlash2-Q8_0.gguf",
+  "n_max": 4,
+  "p_min": 0.3,
+  "temperature": 0.0,
+  "tokens": 512,
+  "tps": 30.109,
+  "tokens_per_cycle_reported": 3.282,
+  "cycle_ms_reported": 108.8,
+  "cycles_reported": 156,
+  "status": "historical transcript; replay on package 1.0.0.66 uses current host commit and shaders"
+}

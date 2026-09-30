@@ -1,0 +1,235 @@
+{
+  "kind": "dflash2_persistent_synthetic_smoke",
+  "model_bytes": 916702560,
+  "n_ctx": 49152,
+  "mask_id": 248070,
+  "kv_bits": [
+    4,
+    4
+  ],
+  "cycles_per_pass": 12,
+  "n_max": 6,
+  "one_connection": true,
+  "resets": 2,
+  "trims": 24,
+  "same_output_after_reset": true,
+  "rows": [
+    {
+      "cycle_id": 1,
+      "target_position": 0,
+      "output_sha256": "c0044def124dfc71eeafcd5a2654a9663189fbd55cbfbdf0f6b63b20789982a2",
+      "sync_rtt_us": 6646.9,
+      "draft_rtt_us": 89840.9,
+      "trim_rtt_us": 519.9,
+      "draft_xbox_cpu_us": 84139
+    },
+    {
+      "cycle_id": 2,
+      "target_position": 1,
+      "output_sha256": "333d9e3157833058b552981c773f06cd1d4bfa16bb1fde5af4f5ba588356f20c",
+      "sync_rtt_us": 5305.9,
+      "draft_rtt_us": 87496.5,
+      "trim_rtt_us": 598.8,
+      "draft_xbox_cpu_us": 83649
+    },
+    {
+      "cycle_id": 3,
+      "target_position": 2,
+      "output_sha256": "8e4f9cdbfd93af5a9744158defc8ce0da18d14d7e3e7738182918dbdde680f35",
+      "sync_rtt_us": 5572.8,
+      "draft_rtt_us": 87729.6,
+      "trim_rtt_us": 541.8,
+      "draft_xbox_cpu_us": 83695
+    },
+    {
+      "cycle_id": 4,
+      "target_position": 3,
+      "output_sha256": "66a493b46167de25adedda1861b4a69ce9f55cf421013f8be776cc3b9558dc13",
+      "sync_rtt_us": 5216.2,
+      "draft_rtt_us": 87255.7,
+      "trim_rtt_us": 572.3,
+      "draft_xbox_cpu_us": 83649
+    },
+    {
+      "cycle_id": 5,
+      "target_position": 4,
+      "output_sha256": "f1f4fa5194e89f55d50a0e1bb148f84894d843e964caa99465f4cc7a363ab8b0",
+      "sync_rtt_us": 5474.6,
+      "draft_rtt_us": 87318.1,
+      "trim_rtt_us": 623.7,
+      "draft_xbox_cpu_us": 83665
+    },
+    {
+      "cycle_id": 6,
+      "target_position": 5,
+      "output_sha256": "33f426f387412accbdb71353850df2b394ffb4aff38402b449e912fb9af3c773",
+      "sync_rtt_us": 5267.0,
+      "draft_rtt_us": 87401.6,
+      "trim_rtt_us": 633.4,
+      "draft_xbox_cpu_us": 83652
+    },
+    {
+      "cycle_id": 7,
+      "target_position": 6,
+      "output_sha256": "689ba0151f400b385be1626269757cae4378998d374084b2ff015792d71ee754",
+      "sync_rtt_us": 5528.4,
+      "draft_rtt_us": 87415.6,
+      "trim_rtt_us": 618.3,
+      "draft_xbox_cpu_us": 83620
+    },
+    {
+      "cycle_id": 8,
+      "target_position": 7,
+      "output_sha256": "bc0fbd60b9a95d644c3bfc68291d0e3662820b2c0b846e20d055da2b471ec4f0",
+      "sync_rtt_us": 5579.9,
+      "draft_rtt_us": 87572.4,
+      "trim_rtt_us": 692.6,
+      "draft_xbox_cpu_us": 83698
+    },
+    {
+      "cycle_id": 9,
+      "target_position": 8,
+      "output_sha256": "66ab527a3dcba7e001d8207877dfecd78f99c51601cc7d305d64b55f71e7ba26",
+      "sync_rtt_us": 5390.6,
+      "draft_rtt_us": 87245.0,
+      "trim_rtt_us": 731.3,
+      "draft_xbox_cpu_us": 83682
+    },
+    {
+      "cycle_id": 10,
+      "target_position": 9,
+      "output_sha256": "2eb19c725b11f8621ea5393fef6b8f332a579d08c65ef13c62017c514e31242b",
+      "sync_rtt_us": 5511.7,
+      "draft_rtt_us": 87771.8,
+      "trim_rtt_us": 690.5,
+      "draft_xbox_cpu_us": 83710
+    },
+    {
+      "cycle_id": 11,
+      "target_position": 10,
+      "output_sha256": "51af6a244e1d77955be1a3505887dced75ea44ed5a924984225f40fec045a636",
+      "sync_rtt_us": 5386.2,
+      "draft_rtt_us": 87243.7,
+      "trim_rtt_us": 683.6,
+      "draft_xbox_cpu_us": 83665
+    },
+    {
+      "cycle_id": 12,
+      "target_position": 11,
+      "output_sha256": "5fe576aead4b72a9fbb678eef04ddc674842296e8a7bf91db6e92eeb53355149",
+      "sync_rtt_us": 5618.8,
+      "draft_rtt_us": 87287.7,
+      "trim_rtt_us": 664.9,
+      "draft_xbox_cpu_us": 83657
+    },
+    {
+      "cycle_id": 13,
+      "target_position": 0,
+      "output_sha256": "c0044def124dfc71eeafcd5a2654a9663189fbd55cbfbdf0f6b63b20789982a2",
+      "sync_rtt_us": 5386.6,
+      "draft_rtt_us": 87385.0,
+      "trim_rtt_us": 562.7,
+      "draft_xbox_cpu_us": 83597
+    },
+    {
+      "cycle_id": 14,
+      "target_position": 1,
+      "output_sha256": "333d9e3157833058b552981c773f06cd1d4bfa16bb1fde5af4f5ba588356f20c",
+      "sync_rtt_us": 5466.6,
+      "draft_rtt_us": 87468.7,
+      "trim_rtt_us": 737.7,
+      "draft_xbox_cpu_us": 83616
+    },
+    {
+      "cycle_id": 15,
+      "target_position": 2,
+      "output_sha256": "8e4f9cdbfd93af5a9744158defc8ce0da18d14d7e3e7738182918dbdde680f35",
+      "sync_rtt_us": 5543.9,
+      "draft_rtt_us": 87304.1,
+      "trim_rtt_us": 666.1,
+      "draft_xbox_cpu_us": 83586
+    },
+    {
+      "cycle_id": 16,
+      "target_position": 3,
+      "output_sha256": "66a493b46167de25adedda1861b4a69ce9f55cf421013f8be776cc3b9558dc13",
+      "sync_rtt_us": 5484.1,
+      "draft_rtt_us": 87395.2,
+      "trim_rtt_us": 549.4,
+      "draft_xbox_cpu_us": 83600
+    },
+    {
+      "cycle_id": 17,
+      "target_position": 4,
+      "output_sha256": "f1f4fa5194e89f55d50a0e1bb148f84894d843e964caa99465f4cc7a363ab8b0",
+      "sync_rtt_us": 5486.7,
+      "draft_rtt_us": 87258.8,
+      "trim_rtt_us": 730.2,
+      "draft_xbox_cpu_us": 83637
+    },
+    {
+      "cycle_id": 18,
+      "target_position": 5,
+      "output_sha256": "33f426f387412accbdb71353850df2b394ffb4aff38402b449e912fb9af3c773",
+      "sync_rtt_us": 5544.2,
+      "draft_rtt_us": 87349.9,
+      "trim_rtt_us": 617.7,
+      "draft_xbox_cpu_us": 83661
+    },
+    {
+      "cycle_id": 19,
+      "target_position": 6,
+      "output_sha256": "689ba0151f400b385be1626269757cae4378998d374084b2ff015792d71ee754",
+      "sync_rtt_us": 5544.9,
+      "draft_rtt_us": 87449.1,
+      "trim_rtt_us": 612.5,
+      "draft_xbox_cpu_us": 83671
+    },
+    {
+      "cycle_id": 20,
+      "target_position": 7,
+      "output_sha256": "bc0fbd60b9a95d644c3bfc68291d0e3662820b2c0b846e20d055da2b471ec4f0",
+      "sync_rtt_us": 5419.9,
+      "draft_rtt_us": 87766.1,
+      "trim_rtt_us": 599.5,
+      "draft_xbox_cpu_us": 83649
+    },
+    {
+      "cycle_id": 21,
+      "target_position": 8,
+      "output_sha256": "66ab527a3dcba7e001d8207877dfecd78f99c51601cc7d305d64b55f71e7ba26",
+      "sync_rtt_us": 5306.2,
+      "draft_rtt_us": 87237.1,
+      "trim_rtt_us": 2312.3,
+      "draft_xbox_cpu_us": 83683
+    },
+    {
+      "cycle_id": 22,
+      "target_position": 9,
+      "output_sha256": "2eb19c725b11f8621ea5393fef6b8f332a579d08c65ef13c62017c514e31242b",
+      "sync_rtt_us": 10398.4,
+      "draft_rtt_us": 87484.8,
+      "trim_rtt_us": 777.0,
+      "draft_xbox_cpu_us": 83672
+    },
+    {
+      "cycle_id": 23,
+      "target_position": 10,
+      "output_sha256": "51af6a244e1d77955be1a3505887dced75ea44ed5a924984225f40fec045a636",
+      "sync_rtt_us": 5333.7,
+      "draft_rtt_us": 87205.5,
+      "trim_rtt_us": 664.6,
+      "draft_xbox_cpu_us": 83639
+    },
+    {
+      "cycle_id": 24,
+      "target_position": 11,
+      "output_sha256": "5fe576aead4b72a9fbb678eef04ddc674842296e8a7bf91db6e92eeb53355149",
+      "sync_rtt_us": 5369.4,
+      "draft_rtt_us": 87367.0,
+      "trim_rtt_us": 671.1,
+      "draft_xbox_cpu_us": 83643
+    }
+  ],
+  "limitations": "Synthetic features/embeddings; no target verification or acceptance"
+}

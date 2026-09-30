@@ -14,7 +14,8 @@ ends call it: `xllama-cli` on Linux, and the C++/WinRT UWP app in `uwp/`.
 Shipping inference is a **unified** build. At runtime, `*.gguf` goes through
 llama.cpp and everything else through ONNX Runtime GenAI + DirectML. The
 Linux CMake build is llama.cpp only (`XLLAMA_USE_LLAMA`). UWP ORT code stays
-under `#ifdef XLLAMA_USE_ORT`.
+under `#ifdef XLLAMA_USE_ORT` (`src/bridge/inference.cpp`), with RAII for the
+OGA handles in `include/xllama/ort_raii.h`.
 
 `llama.cpp/` is a git submodule. Do not commit edits inside it. AppContainer
 fixes belong in `patches/` and are applied by `scripts/apply-uwp-patches.sh`.
@@ -79,7 +80,7 @@ Where to put a change:
 - A new catalogue model is a `uwp/models/manifest.json` entry after the
   ladder in [docs/architecture.md](docs/architecture.md) (host smoke, then
   console bench, then manifest). `n_ctx` and `role` are session knobs, not a
-  second backend.
+  second backend. No Settings magic for system prompts.
 - Training job JSON goes in `training/jobs/` and must pass
   `xllama-cli --validate-train-job`.
 
@@ -101,7 +102,7 @@ One doctest case (wildcard, from the build directory's test binary):
 ./build/linux-test/tests/xllama-tests --test-case='*prompt_budget*'
 ```
 
-ASan (also the manual `workflow_dispatch` job on `build-linux.yml`):
+ASan:
 
 ```bash
 cmake --preset linux-asan
@@ -141,7 +142,7 @@ source ~/.config/xllama/xbox-env
 ./scripts/validate-console.sh <gate|all>
 # modes: serve|rate|lora-rt|device-train|all
 ./scripts/validate-console-training.sh <mode>
-./scripts/validate-api.sh <spike|chat|budget|embed|prefs|train|all>
+./scripts/validate-api.sh <spike|chat|budget|embed|pull|prefs|train|all>
 ```
 
 ## Code style
@@ -199,6 +200,7 @@ demo/               Capture scripts: what the demo video records, reviewable in 
 patches/            llama.cpp and vendor patches applied at UWP build time
 diffusion/          SD-Turbo → ONNX host toolchain (not inside the MSIX)
 paper/              Citable research package
+research/           DFlash2 Xbox RPC reports, implementation, and harnesses
 llama.cpp/          Submodule. Do not edit in place.
 vendor/             Patched ORT / GenAI DLL hashes (vendor/*/SHA256SUMS)
 cmake/              CMake helpers
@@ -220,7 +222,7 @@ Load-bearing headers agents usually touch:
 | `api_policy.h`                       | Rejects tool-execution fields on the LAN API         |
 | `training.h` / `device_train.h`      | Job validation and Lane B device train               |
 | `personalize.h`                      | In-app personalize helpers                           |
-| `json_utils.h`                       | JSON escape / parse (`src/bridge/json_utils.cpp`)    |
+| `json_utils.h`                       | JSON escape / parse (header-only)                    |
 | `catalog_trust.h`                    | UWP-only catalogue signature types                   |
 
 Sampler chains are not headers under `include/`: `src/bridge/sampler_chain.h`
@@ -229,8 +231,8 @@ Sampler chains are not headers under `include/`: `src/bridge/sampler_chain.h`
 
 ## Build and deployment
 
-Linux CI is `.github/workflows/build-linux.yml` on every pull request
-(feature-branch pushes do not build). It formats, shellchecks, runs the
+Linux CI is `.github/workflows/build-linux.yml` on every pull request and on
+pushes to `main` (feature-branch pushes do not build). It formats, shellchecks, runs the
 Python gates above, configures `linux-test`, builds, validates training jobs,
 and runs ctest.
 
@@ -264,7 +266,8 @@ source ~/.config/xllama/xbox-env
 ./scripts/install-latest-build.sh          # fresh install; uninstalls and wipes LocalState
 ```
 
-No model ships in the MSIX. First launch downloads the default chat model.
+No model ships in the MSIX. First launch downloads the default chat model:
+`lfm25-350m` in the unified build, `smollm2-360m-cpu-int4` in an ORT-only build.
 Vendor DLL lifecycle: [docs/vendor-lifecycle-plan.md](docs/vendor-lifecycle-plan.md).
 Poll with `scripts/check-vendor-nuget-status.sh`.
 
@@ -294,6 +297,11 @@ Branch from `main` as `feat/…`, `fix/…`, `docs/…`, `chore/…`, or `ci/…
 Commit subjects use those conventional prefixes. Keep a PR to one change;
 put unrelated infra in its own PR.
 
+`main` only changes through a squash-merged PR. Ruleset
+[ADR 0002](docs/adr/0002-main-branch-governance.md) requires `build (linux)`,
+both `build (…)` UWP variants and `analyze (c-cpp)` green on an up-to-date
+head. Renaming one of those jobs means updating the ruleset in the same PR.
+
 Fill `.github/pull_request_template.md`: **What & why** and **How verified**.
 Before pushing, run the Linux test build, ctest, and the formatters that
 touch your files. If you changed evidence or summary policy, run
@@ -308,6 +316,7 @@ If you change a contract, update the owning doc in the same PR
 
 | Change                                        | Update                                                       |
 | --------------------------------------------- | ------------------------------------------------------------ |
+| Product intent / public positioning           | `docs/positioning.md`                                        |
 | Module boundaries, routing, session ownership | `docs/architecture.md`                                       |
 | Training lanes or Phase 11                    | `docs/training-architecture.md` and `training/README.md`     |
 | User-facing UI steps                          | `docs/using-the-app.md`                                      |

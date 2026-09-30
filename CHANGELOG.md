@@ -7,6 +7,26 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+- **Series S catalogue gates** (2026-09-30, CI package 1.6.0.1072,
+  `bench/results/2026-09-30-catalogue-gates*`). Bars were fixed before the run.
+  - **Phi-4-mini** (`phi4-mini`, #268) joins the catalogue:
+    [unsloth/Phi-4-mini-instruct-GGUF](https://huggingface.co/unsloth/Phi-4-mini-instruct-GGUF)
+    Q4_K_M (MIT, ~2.49 GB, HF only), Phi-3 template. H9 6/8 against
+    `llama32-3b`'s 5/8, 11.2 tok/s decode, 2765 MB peak.
+  - **LFM2.5 QAD Q4_0** (#270): `lfm25-350m` (101.6 tok/s, 311 MB, H9 4/8)
+    and `lfm25-1.2b-instruct` (40.0 tok/s, 783 MB, H9 6/8) now pin Liquid
+    [QAD Q4_0](https://www.liquid.ai/blog/qad), with no H9 regression and
+    lower peak. `lfm25-230m` failed H9 (1/8 against 2/8) and stays on Liquid
+    Q4_K_M. `lfm2-2.6b` is unchanged (no QAD published).
+  - **Rejected, measured**: MiniCPM5-1B (#267, H9 3/8 against a 6/8 bar) and
+    Gemma-3-1B (#269, dominated by `lfm25-1.2b-instruct`) were catalogued for
+    the trial and removed again. Neither id ships.
+- **Positioning** (#280). Public docs lead with the local-inference stack
+  (games + assistants). Chat UI is the demo shell. Honest limits:
+  [docs/positioning.md](docs/positioning.md).
+- **Main branch governance** (#264, ADR 0002). Ruleset: PR required, four CI
+  checks strict, squash-only merges.
+
 ## [1.6.0.0] - 2026-09-28
 
 Local embeddings and catalogue-backed Ollama pulls, with one resident session

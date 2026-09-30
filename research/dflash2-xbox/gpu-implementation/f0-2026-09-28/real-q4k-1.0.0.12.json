@@ -1,0 +1,66 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 2361.757900000157,
+  "status": 0,
+  "response_bytes": 928,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 2345337,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "tensor": "blk.0.ffn_down.weight",
+    "type": "Q4_K",
+    "k": 17408,
+    "n": 5120,
+    "weightBytes": 50135040,
+    "ggufOffset": 154985824,
+    "warmup": 50,
+    "iterations": 200,
+    "repetitions": [
+      {
+        "run": 1,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 0.799398,
+        "gpuP95Ms": 0.808742,
+        "dispatchMedianMs": 0.84786,
+        "dispatchP95Ms": 0.870562,
+        "withCopyMedianMs": 0.890819,
+        "withCopyP95Ms": 0.917971,
+        "maxAbsErr": 1e-05,
+        "coldAndRunMs": 738.634472,
+        "error": ""
+      },
+      {
+        "run": 2,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 0.798877,
+        "gpuP95Ms": 0.808341,
+        "dispatchMedianMs": 0.847177,
+        "dispatchP95Ms": 0.866924,
+        "withCopyMedianMs": 0.890018,
+        "withCopyP95Ms": 0.915225,
+        "maxAbsErr": 1e-05,
+        "coldAndRunMs": 701.234439,
+        "error": ""
+      },
+      {
+        "run": 3,
+        "correct": true,
+        "gpuTimestamp": true,
+        "gpuMedianMs": 0.799278,
+        "gpuP95Ms": 0.80814,
+        "dispatchMedianMs": 0.847318,
+        "dispatchP95Ms": 0.870833,
+        "withCopyMedianMs": 0.890219,
+        "withCopyP95Ms": 0.920579,
+        "maxAbsErr": 1e-05,
+        "coldAndRunMs": 702.250387,
+        "error": ""
+      }
+    ],
+    "passed": true
+  }
+}

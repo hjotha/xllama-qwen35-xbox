@@ -209,6 +209,59 @@ Record raw CSV/JSONL output under `bench/results/`, update the appropriate
 research verdict or changelog entry, and let the generated summary own the
 comparison table.
 
+## Campaign T3 — new GGUF catalogue candidate
+
+A candidate enters the manifest with status `catalogue` after host T1, then a
+Series S session decides it. Use the CI MSVC unified package (`xllama-appx`) and
+`xbox-env`. Do not treat host tok/s as a Series S result. Fix the PASS bar in
+[model-matrix.md](model-matrix.md) before the run.
+
+```bash
+source ~/.config/xllama/xbox-env
+./scripts/install-latest-build.sh --provision   # clean LocalState, no stale GGUFs
+./scripts/provision-models.sh <candidate> <peer>
+export XLLAMA_EXPECTED_PFN="$(./scripts/deploy.sh pfn)"
+for m in <candidate> <peer>; do
+  ./scripts/bench-xbox-ort.sh "$m" --runs 4 --out bench/results/<date>-catalogue-gates.csv
+done
+# H9 goes through the LAN API: bench mode never binds the port.
+./scripts/validate-api.sh spike
+./scripts/eval-xbox-models.sh --models <candidate>,<peer> \
+  --out bench/results/<date>-catalogue-gates-h9.jsonl
+```
+
+- `eval-xbox-models.sh` truncates `--out` before writing, so never point it at
+  `phase7-h9.jsonl`. Only that file feeds the published H9 column. Append a
+  shipped candidate's rows to it and add the score to `check-coherence.py`.
+- Record the package next to the CSV as a JSON sidecar with `run_id`,
+  `head_sha`, `sha256` and `expected_pfn` (see
+  `bench/results/2026-09-30-catalogue-gates.json`).
+- PASS moves the row to §A1 and adds a `bench/benchmark-summary.json` row.
+  FAIL becomes `reject — measured` in §F and removes the manifest entry.
+- Candidates that use a reasoning template also fail on any visible
+  `<think>` / `</think>` in H9 output.
+
+Closed 2026-09-30: `phi4-mini` PASS (#268); MiniCPM5-1B (#267) and
+Gemma-3-1B (#269) rejected — measured.
+
+## Quant ripin regression (same catalogue id)
+
+Changing the GGUF behind an existing id (for example the LFM2.5 QAD Q4_0 ripin,
+#270) needs a no-regression run against the recorded rows in
+[model-matrix.md](model-matrix.md) §A1. Fix the bar first. #270 used H9 ≥ the
+old score, median decode ≥ 0.9×, and `peak_ws_mb` ≤ +10%. A FAIL reverts that
+id's pin.
+
+`provision-models.sh --force` uploads the new file but leaves the old one in
+place, and the app loads the first `.gguf` in directory order. Start from a
+clean install (as above), or delete the old file with
+`./scripts/deploy.sh delete-file <pfn> <old>.gguf 'models\<id>'`. Every bench
+row must report the new `quant`, and the default prompt (`n_prompt_tok` 298)
+keeps runs comparable.
+
+Closed 2026-09-30: `lfm25-350m` and `lfm25-1.2b-instruct` PASS on QAD Q4_0;
+`lfm25-230m` FAIL (H9 1/8 against 2/8), reverted to Q4_K_M.
+
 ## Troubleshooting
 
 - `./scripts/deploy.sh diagnose-startup` — process state, log and crash dumps.
@@ -245,7 +298,7 @@ and restores every tracked original byte before restarting the normal app.
 
 ```bash
 python scripts/validate-model-writer.py --out /private/writer-proof \
-  --model-backup /private/LFM2.5-350M-Q4_K_M.gguf \
+  --model-backup /private/LFM2.5-350M-QAD-Q4_0.gguf \
   --embedding-backup /private/bge-m3-Q8_0.gguf
 python scripts/validate-kv-fallback.py --out /private/kv-proof
 ```

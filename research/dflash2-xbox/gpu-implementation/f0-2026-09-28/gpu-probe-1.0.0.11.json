@@ -1,0 +1,61 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 454.0808999990986,
+  "status": 0,
+  "response_bytes": 807,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 432240,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "probe": "q4_k_gemv_5120x5120",
+    "adapter": "SraKmd_arden",
+    "vendorId": 5140,
+    "deviceId": 53248,
+    "software": false,
+    "featureLevelAtLeast11_0": true,
+    "shaderModel6": true,
+    "waveOps": true,
+    "waveLaneMin": 64,
+    "waveLaneMax": 64,
+    "localMemoryBudgetBytes": 4348654388,
+    "localMemoryUsageBytes": 1028096,
+    "runs": [
+      {
+        "run": 1,
+        "d3d12": true,
+        "checksumOk": true,
+        "gpuTimestamp": true,
+        "maxAbsErr": 0.000221,
+        "packedGBs": 104.5843,
+        "dispatchCpuGBs": 81.694433,
+        "withCopyCpuGBs": 66.408759,
+        "error": ""
+      },
+      {
+        "run": 2,
+        "d3d12": true,
+        "checksumOk": true,
+        "gpuTimestamp": true,
+        "maxAbsErr": 0.000221,
+        "packedGBs": 105.666207,
+        "dispatchCpuGBs": 82.872108,
+        "withCopyCpuGBs": 67.347806,
+        "error": ""
+      },
+      {
+        "run": 3,
+        "d3d12": true,
+        "checksumOk": true,
+        "gpuTimestamp": true,
+        "maxAbsErr": 0.000221,
+        "packedGBs": 104.022178,
+        "dispatchCpuGBs": 81.198685,
+        "withCopyCpuGBs": 64.609358,
+        "error": ""
+      }
+    ],
+    "passed": true
+  }
+}

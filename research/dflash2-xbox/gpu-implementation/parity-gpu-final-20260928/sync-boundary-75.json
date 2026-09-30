@@ -1,0 +1,1099 @@
+{
+  "passed": true,
+  "stage": "complete",
+  "error": null,
+  "cpuContextMutated": true,
+  "gpuBackend": "d3d12-hardware",
+  "q3ActivationMode": "ggml_q8_k",
+  "q4q5ValueActivationMode": "ggml_q8_k",
+  "gpuSequenceValid": true,
+  "comparison": "encoder_f32_all_rows",
+  "kvComparison": "actual_cpu_q4_physical_numeric_gate",
+  "toleranceRule": "abs(cpu-gpu)<=absTol+relTol*max(abs(cpu),abs(gpu))",
+  "absTol": 0.0010000000474974513,
+  "relTol": 0.0010000000474974513,
+  "stateCases": "trim_reinject_and_reset_reinject",
+  "kvPackRecords": 90,
+  "kvAllocatedBytes": 314572800,
+  "phases": [
+    {
+      "name": "initial",
+      "tokens": 5,
+      "elements": 25600,
+      "cpuMs": 24.225645,
+      "gpuSyncMs": 5.685585,
+      "readbackMs": 0.35477,
+      "exactBits": 25600,
+      "withinAbsolute": 25600,
+      "withinRelative": 25600,
+      "withinCombined": 25600,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "kvLogicalValidity": true,
+      "firstMismatch": null
+    },
+    {
+      "name": "trim_reinject",
+      "tokens": 3,
+      "elements": 15360,
+      "cpuMs": 11.0329,
+      "gpuSyncMs": 3.89561,
+      "readbackMs": 0.446501,
+      "exactBits": 15360,
+      "withinAbsolute": 15360,
+      "withinRelative": 15360,
+      "withinCombined": 15360,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "kvLogicalValidity": true,
+      "firstMismatch": null
+    },
+    {
+      "name": "reset_reinject",
+      "tokens": 1,
+      "elements": 5120,
+      "cpuMs": 4.822643,
+      "gpuSyncMs": 3.396957,
+      "readbackMs": 0.392416,
+      "exactBits": 5120,
+      "withinAbsolute": 5120,
+      "withinRelative": 5120,
+      "withinCombined": 5120,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "kvLogicalValidity": true,
+      "firstMismatch": null
+    }
+  ],
+  "intermediates": [
+    {
+      "name": "d3d12_fp64_support",
+      "querySucceeded": true,
+      "doublePrecisionFloatShaderOps": true
+    },
+    {
+      "name": "fc_activation_q8_k_byte_parity",
+      "bytes": 146000,
+      "exactBytes": 146000,
+      "mismatches": 0,
+      "mismatchedBlocks": 0,
+      "numericGatePassed": true,
+      "payloadMismatchedBlocks": 0,
+      "scaleBlocksBeyondOneUlp": 0,
+      "maxScaleUlp": 0,
+      "cpuFnv1a64": "06899d500b68acf7",
+      "gpuFnv1a64": "06899d500b68acf7",
+      "firstMismatch": null,
+      "fieldStats": {
+        "scale": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "qs": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "bsums": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        }
+      },
+      "scaleFloat": {
+        "mismatchedBlocks": 0,
+        "nonfinite": 0,
+        "maxAbs": 0,
+        "maxRel": 0
+      },
+      "mismatchByteIndexes": [],
+      "indexesTruncated": false,
+      "sampleCapPerField": 12,
+      "fieldSamples": {
+        "scale": [],
+        "qs": [],
+        "bsums": []
+      }
+    },
+    {
+      "name": "fc_activation_q8_scale_samples",
+      "samples": []
+    },
+    {
+      "name": "encoder_q8_cpu_encoder_vs_gpu",
+      "bytes": 29200,
+      "exactBytes": 29200,
+      "mismatches": 0,
+      "mismatchedBlocks": 0,
+      "numericGatePassed": true,
+      "payloadMismatchedBlocks": 0,
+      "scaleBlocksBeyondOneUlp": 0,
+      "maxScaleUlp": 0,
+      "cpuFnv1a64": "9d19df3804e5f9e2",
+      "gpuFnv1a64": "9d19df3804e5f9e2",
+      "firstMismatch": null,
+      "fieldStats": {
+        "scale": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "qs": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "bsums": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        }
+      },
+      "scaleFloat": {
+        "mismatchedBlocks": 0,
+        "nonfinite": 0,
+        "maxAbs": 0,
+        "maxRel": 0
+      },
+      "mismatchByteIndexes": [],
+      "indexesTruncated": false,
+      "sampleCapPerField": 12,
+      "fieldSamples": {
+        "scale": [],
+        "qs": [],
+        "bsums": []
+      }
+    },
+    {
+      "name": "encoder_q8_cpu_from_gpu_encoder_vs_gpu",
+      "bytes": 29200,
+      "exactBytes": 29200,
+      "mismatches": 0,
+      "mismatchedBlocks": 0,
+      "numericGatePassed": true,
+      "payloadMismatchedBlocks": 0,
+      "scaleBlocksBeyondOneUlp": 0,
+      "maxScaleUlp": 0,
+      "cpuFnv1a64": "9d19df3804e5f9e2",
+      "gpuFnv1a64": "9d19df3804e5f9e2",
+      "firstMismatch": null,
+      "fieldStats": {
+        "scale": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "qs": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        },
+        "bsums": {
+          "mismatches": 0,
+          "maxAbsByteDelta": 0
+        }
+      },
+      "scaleFloat": {
+        "mismatchedBlocks": 0,
+        "nonfinite": 0,
+        "maxAbs": 0,
+        "maxRel": 0
+      },
+      "mismatchByteIndexes": [],
+      "indexesTruncated": false,
+      "sampleCapPerField": 12,
+      "fieldSamples": {
+        "scale": [],
+        "qs": [],
+        "bsums": []
+      }
+    },
+    {
+      "name": "last_layer_k_h128_cpu_matrix_vs_gpu",
+      "elements": 5120,
+      "exactBits": 739,
+      "withinCombined": 5120,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 2.6226043701171875e-06,
+      "maxRel": 0.0035872194877784266,
+      "firstMismatch": null
+    },
+    {
+      "name": "last_layer_v_h64_cpu_matrix_vs_gpu",
+      "elements": 5120,
+      "exactBits": 982,
+      "withinCombined": 5120,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 5.7220458984375e-06,
+      "maxRel": 0.001671681711802073,
+      "firstMismatch": null
+    },
+    {
+      "name": "last_layer_k_q4_pack_from_gpu_hadamard",
+      "diagnosticOnly": true,
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0,
+      "scaleMismatchBytes": 0,
+      "paddingMismatchBytes": 0,
+      "qsMismatchBytes": 0,
+      "maxAbsByteDelta": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "last_layer_v_q4_pack_from_gpu_hadamard",
+      "diagnosticOnly": true,
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0,
+      "scaleMismatchBytes": 0,
+      "paddingMismatchBytes": 0,
+      "qsMismatchBytes": 0,
+      "maxAbsByteDelta": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "last_layer_k_q4_cpu_hadamard_from_gpu_pre_key",
+      "diagnosticOnly": true,
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0,
+      "scaleMismatchBytes": 0,
+      "paddingMismatchBytes": 0,
+      "qsMismatchBytes": 0,
+      "maxAbsByteDelta": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "last_layer_v_q4_cpu_hadamard_from_gpu_pre_value",
+      "diagnosticOnly": true,
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0,
+      "scaleMismatchBytes": 0,
+      "paddingMismatchBytes": 0,
+      "qsMismatchBytes": 0,
+      "maxAbsByteDelta": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "cpu_kv_geometry",
+      "memoryKind": "iswa",
+      "base": {
+        "name": "base",
+        "typeK": 144,
+        "typeV": 144,
+        "streams": 1,
+        "capacity": 49152,
+        "layers": [],
+        "slots": [
+          {
+            "position": 226,
+            "cells": [
+              0
+            ]
+          },
+          {
+            "position": 227,
+            "cells": [
+              1
+            ]
+          },
+          {
+            "position": 228,
+            "cells": [
+              2
+            ]
+          },
+          {
+            "position": 229,
+            "cells": [
+              3
+            ]
+          },
+          {
+            "position": 230,
+            "cells": [
+              4
+            ]
+          }
+        ]
+      },
+      "swa": {
+        "name": "swa",
+        "typeK": 2,
+        "typeV": 2,
+        "streams": 1,
+        "capacity": 49152,
+        "layers": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "slots": [
+          {
+            "position": 226,
+            "cells": [
+              0
+            ]
+          },
+          {
+            "position": 227,
+            "cells": [
+              1
+            ]
+          },
+          {
+            "position": 228,
+            "cells": [
+              2
+            ]
+          },
+          {
+            "position": 229,
+            "cells": [
+              3
+            ]
+          },
+          {
+            "position": 230,
+            "cells": [
+              4
+            ]
+          }
+        ]
+      },
+      "tensors": [
+        {
+          "layer": 0,
+          "group": "swa",
+          "key": {
+            "name": "k",
+            "type": 2,
+            "ne": [
+              1024,
+              49152,
+              1,
+              1
+            ],
+            "nb": [
+              18,
+              576,
+              28311552,
+              28311552
+            ],
+            "hasBuffer": true,
+            "hasData": true,
+            "hasViewSource": false
+          },
+          "value": {
+            "name": "v",
+            "type": 2,
+            "ne": [
+              128,
+              8,
+              49152,
+              1
+            ],
+            "nb": [
+              18,
+              72,
+              576,
+              28311552
+            ],
+            "hasBuffer": false,
+            "hasData": true,
+            "hasViewSource": true
+          }
+        },
+        {
+          "layer": 1,
+          "group": "swa",
+          "key": {
+            "name": "k",
+            "type": 2,
+            "ne": [
+              1024,
+              49152,
+              1,
+              1
+            ],
+            "nb": [
+              18,
+              576,
+              28311552,
+              28311552
+            ],
+            "hasBuffer": true,
+            "hasData": true,
+            "hasViewSource": false
+          },
+          "value": {
+            "name": "v",
+            "type": 2,
+            "ne": [
+              128,
+              8,
+              49152,
+              1
+            ],
+            "nb": [
+              18,
+              72,
+              576,
+              28311552
+            ],
+            "hasBuffer": false,
+            "hasData": true,
+            "hasViewSource": true
+          }
+        },
+        {
+          "layer": 2,
+          "group": "swa",
+          "key": {
+            "name": "k",
+            "type": 2,
+            "ne": [
+              1024,
+              49152,
+              1,
+              1
+            ],
+            "nb": [
+              18,
+              576,
+              28311552,
+              28311552
+            ],
+            "hasBuffer": true,
+            "hasData": true,
+            "hasViewSource": false
+          },
+          "value": {
+            "name": "v",
+            "type": 2,
+            "ne": [
+              128,
+              8,
+              49152,
+              1
+            ],
+            "nb": [
+              18,
+              72,
+              576,
+              28311552
+            ],
+            "hasBuffer": false,
+            "hasData": true,
+            "hasViewSource": true
+          }
+        },
+        {
+          "layer": 3,
+          "group": "swa",
+          "key": {
+            "name": "k",
+            "type": 2,
+            "ne": [
+              1024,
+              49152,
+              1,
+              1
+            ],
+            "nb": [
+              18,
+              576,
+              28311552,
+              28311552
+            ],
+            "hasBuffer": true,
+            "hasData": true,
+            "hasViewSource": false
+          },
+          "value": {
+            "name": "v",
+            "type": 2,
+            "ne": [
+              128,
+              8,
+              49152,
+              1
+            ],
+            "nb": [
+              18,
+              72,
+              576,
+              28311552
+            ],
+            "hasBuffer": false,
+            "hasData": true,
+            "hasViewSource": true
+          }
+        },
+        {
+          "layer": 4,
+          "group": "swa",
+          "key": {
+            "name": "k",
+            "type": 2,
+            "ne": [
+              1024,
+              49152,
+              1,
+              1
+            ],
+            "nb": [
+              18,
+              576,
+              28311552,
+              28311552
+            ],
+            "hasBuffer": true,
+            "hasData": true,
+            "hasViewSource": false
+          },
+          "value": {
+            "name": "v",
+            "type": 2,
+            "ne": [
+              128,
+              8,
+              49152,
+              1
+            ],
+            "nb": [
+              18,
+              72,
+              576,
+              28311552
+            ],
+            "hasBuffer": false,
+            "hasData": true,
+            "hasViewSource": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "cpu_kv_layer0_k_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer0_v_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer1_k_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer1_v_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer2_k_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer2_v_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer3_k_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer3_v_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer4_k_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "cpu_kv_layer4_v_vs_gpu",
+      "diagnosticOnly": true,
+      "source": "actual_cpu_q4_cache",
+      "rows": [
+        {
+          "position": 226,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 227,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 228,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 229,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        },
+        {
+          "position": 230,
+          "exactBytes": 640,
+          "mismatches": 0,
+          "maxAbsByteDelta": 0,
+          "firstMismatch": null
+        }
+      ],
+      "bytes": 3200,
+      "exactBytes": 3200,
+      "mismatches": 0
+    },
+    {
+      "name": "last_layer_v_q4_scale_boundary",
+      "firstScaleMismatch": null
+    },
+    {
+      "name": "kv_q4_numeric_gate",
+      "passed": true,
+      "scaleMismatchedBlocks": 0,
+      "payloadMismatchedBlocks": 0,
+      "nonfiniteScaleBlocks": 0,
+      "scaleBlocksBeyondOneUlp": 0,
+      "scaleBlocksWithoutMidpointEvidence": 0,
+      "maxMidpointDistanceF32Ulps": 0,
+      "firstFailure": null
+    },
+    {
+      "name": "fc_raw_cpu_matrix_vs_gpu",
+      "elements": 25600,
+      "exactBits": 25600,
+      "withinCombined": 25600,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "llama_encoder_vs_cpu_norm_from_cpu_fc",
+      "elements": 25600,
+      "exactBits": 25600,
+      "withinCombined": 25600,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "gpu_encoder_vs_cpu_norm_from_gpu_fc",
+      "elements": 25600,
+      "exactBits": 25600,
+      "withinCombined": 25600,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "llama_encoder_vs_cpu_norm_from_gpu_fc",
+      "elements": 25600,
+      "exactBits": 25600,
+      "withinCombined": 25600,
+      "mismatches": 0,
+      "nonfinite": 0,
+      "maxAbs": 0,
+      "maxRel": 0,
+      "firstMismatch": null
+    },
+    {
+      "name": "fc_norm_parameters",
+      "fcScale": 1,
+      "epsilon": 9.999999974752427e-07,
+      "gammaMin": 0.10791015625,
+      "gammaMax": 1.2421875
+    }
+  ]
+}
