@@ -40,7 +40,7 @@ Para ultrapassar os **$34,99\text{ tok/s}$** do Swift isolado, atacamos as duas 
 
 ### Objetivo
 
-Aumentar a média de tokens aceitos por ciclo de $2,81$ para $\ge 4,0$ (com $n_{\max} = 4$ ou $n_{\max} = 5$).\
+Aumentar a média de tokens aceitos por ciclo de $2,81$ para $\ge 4,0$ (com $n_{\max} = 4$ ou $n_{\max} = 5$).<br>
 Com aceitação em $4,0$ tokens/ciclo e o tempo atual de $109\text{ ms}$, o TPS salta automaticamente para:
 $$\text{TPS} = \frac{4,0}{0,109\text{ s}} = \mathbf{36,7\text{ tok/s}} \quad (\text{superando o Swift isolado de } 34,99\text{ tok/s}).$$
 

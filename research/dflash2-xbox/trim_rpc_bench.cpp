@@ -2,19 +2,22 @@
 #include <cstdlib>
 #include <iostream>
 
-int main(int argc, char ** argv) {
-    if (argc < 2) return 2;
+int main(int argc, char** argv) {
+    if (argc < 2)
+        return 2;
     try {
-        dflash_remote::client rpc(argv[1], argc > 2 ? (uint16_t) std::atoi(argv[2]) : 50053);
+        dflash_remote::client rpc(argv[1], argc > 2 ? (uint16_t)std::atoi(argv[2]) : 50053);
         std::vector<uint8_t> output;
         uint64_t id = 0;
-        rpc.call(dflash_remote::hello, ++id, 0, nullptr, 0, output, sizeof(dflash_remote::hello_data));
+        rpc.call(dflash_remote::hello, ++id, 0, nullptr, 0, output,
+                 sizeof(dflash_remote::hello_data));
 #ifdef TEST_FUSED_PROBE
         bool supported = true;
         try {
             rpc.call(dflash_remote::sync_trim, ++id, 0, nullptr, 0, output, 0);
-        } catch (const dflash_remote::server_error & e) {
-            if (e.status != -1) throw;
+        } catch (const dflash_remote::server_error& e) {
+            if (e.status != -1)
+                throw;
             supported = false;
         }
         std::cout << "{\"fused_supported\":" << (supported ? "true" : "false") << "}\n";
@@ -28,7 +31,7 @@ int main(int argc, char ** argv) {
                       << ",\"xbox_prepare_us\":" << t.server.xbox_prepare_us << "}\n";
         }
         return 0;
-    } catch (const std::exception & e) {
+    } catch (const std::exception& e) {
         std::cerr << e.what() << '\n';
         return 1;
     }

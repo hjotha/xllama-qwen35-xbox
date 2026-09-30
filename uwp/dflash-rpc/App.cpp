@@ -1,10 +1,11 @@
+#include "dedicated.h"
 #include "ggml-backend.h"
 #include "ggml-rpc.h"
-#include "dedicated.h"
 #include "llama.h"
+#include "remote-attn.h"
 
-#include <windows.h>
 #include <roapi.h>
+#include <windows.h>
 
 #include <winrt/Windows.ApplicationModel.Activation.h>
 #include <winrt/Windows.ApplicationModel.Core.h>
@@ -36,12 +37,12 @@ void log_memory(std::string path) {
         const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now).count();
         const auto process = winrt::Windows::System::MemoryManager::GetProcessMemoryReport();
         std::ofstream out(path, std::ios::app);
-        out << "{\"timestampMs\":" << ms
-            << ",\"serverState\":" << server_state.load()
-            << ",\"appMemoryUsageBytes\":" << winrt::Windows::System::MemoryManager::AppMemoryUsage()
-            << ",\"appMemoryUsageLimitBytes\":" << winrt::Windows::System::MemoryManager::AppMemoryUsageLimit()
-            << ",\"privateWorkingSetBytes\":" << process.PrivateWorkingSetUsage()
-            << "}\n";
+        out << "{\"timestampMs\":" << ms << ",\"serverState\":" << server_state.load()
+            << ",\"appMemoryUsageBytes\":"
+            << winrt::Windows::System::MemoryManager::AppMemoryUsage()
+            << ",\"appMemoryUsageLimitBytes\":"
+            << winrt::Windows::System::MemoryManager::AppMemoryUsageLimit()
+            << ",\"privateWorkingSetBytes\":" << process.PrivateWorkingSetUsage() << "}\n";
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }
@@ -59,7 +60,9 @@ void serve_rpc() {
 }
 
 struct App : implements<App, IFrameworkViewSource, IFrameworkView> {
-    IFrameworkView CreateView() { return *this; }
+    IFrameworkView CreateView() {
+        return *this;
+    }
 
     void Initialize(CoreApplicationView const& view) {
         view.Activated([](CoreApplicationView const&, IActivatedEventArgs const&) {
@@ -80,13 +83,16 @@ struct App : implements<App, IFrameworkViewSource, IFrameworkView> {
         std::thread(log_memory, path).detach();
         std::thread(serve_rpc).detach();
         std::thread(serve_dflash_dedicated, winrt::to_string(local)).detach();
+        std::thread(serve_remote_attn, winrt::to_string(local)).detach();
         auto dispatcher = CoreWindow::GetForCurrentThread().Dispatcher();
         while (!closing.load()) {
             dispatcher.ProcessEvents(CoreProcessEventsOption::ProcessOneAndAllPending);
         }
     }
 
-    void Uninitialize() { closing = true; }
+    void Uninitialize() {
+        closing = true;
+    }
 };
 
 } // namespace

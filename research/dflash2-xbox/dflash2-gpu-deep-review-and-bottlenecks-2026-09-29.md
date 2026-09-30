@@ -1,12 +1,12 @@
 # DFlash2 GPU no Xbox Series X — Revisão Técnica Profunda e Próximos Gargalos
 
-**Data:** 29 de setembro de 2026\
-**Ambiente:** Xbox Series X (Developer Mode / UWP Game Sandbox, `192.168.1.26:50053`)\
-**Adaptador:** `SraKmd_arden` (APU AMD RDNA 2, 52 CUs, Direct3D 12, Shader Model 6.0)\
-**Worktree:** `C:\Users\hjotha\worktrees\xllama-dflash-xbox`\
-**Branch:** `research/dflash-xbox-rpc` (sem merge no `main`)\
-**Pacote Base Anterior:** `1.0.0.78` (remoção da emulação FP64 via `mad()` nativo)\
-**Pacote Novo Validado:** `1.0.0.80` (`DFLASH_BARRIER_MODE=minimal`, eliminação de barreiras UAV redundantes)\
+**Data:** 29 de setembro de 2026<br>
+**Ambiente:** Xbox Series X (Developer Mode / UWP Game Sandbox, `192.168.1.26:50053`)<br>
+**Adaptador:** `SraKmd_arden` (APU AMD RDNA 2, 52 CUs, Direct3D 12, Shader Model 6.0)<br>
+**Worktree:** `C:\Users\hjotha\worktrees\xllama-dflash-xbox`<br>
+**Branch:** `research/dflash-xbox-rpc` (sem merge no `main`)<br>
+**Pacote Base Anterior:** `1.0.0.78` (remoção da emulação FP64 via `mad()` nativo)<br>
+**Pacote Novo Validado:** `1.0.0.80` (`DFLASH_BARRIER_MODE=minimal`, eliminação de barreiras UAV redundantes)<br>
 **Status da Produção (.57):** Preservada e intocada (`llama-server-root.service` ativo em 127.0.0.1:8090).
 
 ---

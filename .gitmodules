@@ -1,6 +1,6 @@
 [submodule "llama.cpp"]
 	path = llama.cpp
-	url = git@github.com:hjotha/beellama.cpp.git
+	url = https://github.com/ggml-org/llama.cpp.git
 	shallow = true
 	branch = master
 [submodule "beellama.cpp"]

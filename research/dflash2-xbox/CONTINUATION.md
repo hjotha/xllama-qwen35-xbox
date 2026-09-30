@@ -1,8 +1,8 @@
 # Guia Mestre de Continuação: DFlash2 Xbox GPU RPC & Decodificação Especulativa
 
-> **Data de Atualização:** 28 de Setembro de 2026\
-> **Status:** Compilado, testado no hardware real do Xbox Series X e validado em produção no host `.57`.\
-> **Branch Git:** `research/dflash-xbox-rpc` no worktree `C:\Users\hjotha\worktrees\xllama-dflash-xbox`\
+> **Data de Atualização:** 28 de Setembro de 2026<br>
+> **Status:** Compilado, testado no hardware real do Xbox Series X e validado em produção no host `.57`.<br>
+> **Branch Git:** `research/dflash-xbox-rpc` no worktree `C:\Users\hjotha\worktrees\xllama-dflash-xbox`<br>
 > **Repositório Privado (Push):** `git@github.com:hjotha/xllama-dflash-xbox.git` (remote `private`)
 
 Este documento é a referência única, completa e auto-suficiente para qualquer agente (Codex, Claude, AGY, OpenCode, Qwen) continuar o desenvolvimento, otimização e testes do sistema de decodificação especulativa distribuída DFlash2 entre a estação GOKAYA (.57) e o console Xbox Series X.
@@ -48,7 +48,7 @@ sequenceDiagram
   - AUMID para execução: `HJotha.XboxDFlashRpc_3hvcqmcd1t14m!App`
   - Limite de Memória: Partição Game (~5.0 GB de heap máximo)
 - **Host GOKAYA (.57):**
-  - IP: `192.168.1.57` (SSH: `hjotha@192.168.1.57`, credenciais SSH armazenadas fora do repositório; ponte se necessário: `192.168.1.157`)
+  - IP: `192.168.1.57` (SSH: `hjotha@192.168.1.57`, credencial mantida fora do repositório; ponte se necessário: `192.168.1.157`)
   - Serviço de Produção: `llama-server-root.service` (escuta em `127.0.0.1:8090`)
   - Binário com suporte DFlash RPC: `/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/llama-server`
 

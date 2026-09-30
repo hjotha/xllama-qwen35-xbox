@@ -233,18 +233,18 @@ void measure_gpugemv_each(int n, int k, int iterations, GpugemvKernel kernel,
 
 // Identical Q4_K shader and CPU reference, with unmodified GGUF tensor bytes.
 // warmup dispatches are excluded from the recorded rows.
-void measure_gpugemv_real_q4k_each(int n, int k, int warmup, int iterations,
-                                   GpugemvKernel kernel, const void* weights,
-                                   std::size_t weight_bytes, std::vector<GpugemvResult>* out);
+void measure_gpugemv_real_q4k_each(int n, int k, int warmup, int iterations, GpugemvKernel kernel,
+                                   const void* weights, std::size_t weight_bytes,
+                                   std::vector<GpugemvResult>* out);
 
 // The Q3_K/Q5_K variants and Q4_K batch variants are compiled only for the
 // dedicated Xbox RPC app. Q4_K batch=1 keeps the existing wave32 kernel.
-void measure_gpugemv_real_quant_each(GpugemvQuant quant, int n, int k, int warmup,
-                                     int iterations, GpugemvKernel kernel, const void* weights,
+void measure_gpugemv_real_quant_each(GpugemvQuant quant, int n, int k, int warmup, int iterations,
+                                     GpugemvKernel kernel, const void* weights,
                                      std::size_t weight_bytes, std::vector<GpugemvResult>* out);
 
-void measure_gpugemv_real_quant_batch_each(GpugemvQuant quant, int n, int k, int batch,
-                                           int warmup, int iterations, GpugemvKernel kernel,
+void measure_gpugemv_real_quant_batch_each(GpugemvQuant quant, int n, int k, int batch, int warmup,
+                                           int iterations, GpugemvKernel kernel,
                                            const void* weights, std::size_t weight_bytes,
                                            std::vector<GpugemvResult>* out);
 

@@ -37,7 +37,7 @@ Ler primeiro: research\dflash2-xbox\CONTINUATION.md e gpu-implementation\plan-ac
 
 Ambiente: worktree C:\Users\hjotha\worktrees\xllama-dflash-xbox (branch research/dflash-xbox-rpc;
 repo privado github.com/hjotha/xllama-dflash-xbox). Console Xbox 192.168.1.26 (Device Portal 11443);
-prod na .57 (.157 = ponte SSH; credenciais SSH armazenadas fora do repositório).
+prod na .57 (.157 = ponte SSH; credencial mantida fora do repositório).
 
 Próximos passos priorizados:
 1) Melhoria 1: Varredura de --draft-p-min (0.05 a 0.80) na .57 com n_max=4 e n_max=5

@@ -97,7 +97,7 @@ Xbox DFlash RPC
 
 Criar um executor específico para o DFlash usado pelo RPC, com uma interface interna pequena para carregar o modelo, resetar, cortar o sufixo, executar SYNC e executar DRAFT. Reusar o leitor GGUF/ggml disponível; não criar outro parser ou um framework genérico de inferência.
 
-Conservar o caminho CPU original como referência. A seleção de executor será feita antes de iniciar a sequência e permanecerá fixa durante a conexão. Uma configuração local proposta é `LocalState\dflash-backend.txt`, com `cpu` como padrão e `d3d12` como opção explícita. Esse arquivo e seus valores ainda precisam ser implementados; não são uma interface existente.
+Conservar o caminho CPU original como referência. A seleção de executor será feita antes de iniciar a sequência e permanecerá fixa durante a conexão. `LocalState\dflash-backend.txt` aceita `d3d12` (padrão) ou `cpu` como override explícito. Se a inicialização D3D12 falhar, usar CPU antes de iniciar a sequência.
 
 DirectML é uma opção interna do executor D3D12, inicialmente habilitada apenas no comparativo. A escolha de kernel por operação deve ser pequena, explícita e registrada no log. Não implementar um autotuner permanente antes de haver evidência de benefício.
 

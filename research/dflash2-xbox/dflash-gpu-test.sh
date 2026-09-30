@@ -8,7 +8,6 @@ prod=llama-server-root.service
 server=/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/llama-server
 target=/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf
 test_pid=
-sudo -v
 restore() {
     rc=$?
     trap - EXIT

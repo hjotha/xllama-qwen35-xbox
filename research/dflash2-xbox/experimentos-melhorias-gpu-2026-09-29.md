@@ -1,8 +1,8 @@
 # Relatório Técnico: Avaliação dos 3 Experimentos de Otimização DFlash2 GPU no Xbox Series X
 
-**Data:** 29 de setembro de 2026\
-**Ambiente:** Xbox Series X (Dev Mode `192.168.1.26`, D3D12, modelo `dflash-q2.gguf`) + Host RTX 4070 (`192.168.1.57`, Target `Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf`, Selector Q8_0)\
-**Branch:** `research/dflash-xbox-rpc` (Worktree: `C:\Users\hjotha\worktrees\xllama-dflash-xbox`)\
+**Data:** 29 de setembro de 2026<br>
+**Ambiente:** Xbox Series X (Dev Mode `192.168.1.26`, D3D12, modelo `dflash-q2.gguf`) + Host RTX 4070 (`192.168.1.57`, Target `Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf`, Selector Q8_0)<br>
+**Branch:** `research/dflash-xbox-rpc` (Worktree: `C:\Users\hjotha\worktrees\xllama-dflash-xbox`)
 
 ---
 

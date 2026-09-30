@@ -7,8 +7,8 @@ on TCP 50052.
 
 ## Build
 
-Clone the repository with its `llama.cpp` submodule, which points to the matching
-beellama fork commit. On the HPBEATS build host, run
+Run `git submodule update --init --recursive`. The `llama.cpp` path remains upstream for xllama; `beellama.cpp` is pinned to the
+commit that provides the RPC API. The DFlash app uses a separate `ggml-dflash-uwp.vcxproj`. On the HPBEATS build host, run
 `research/dflash2-xbox/build-dflash-rpc.cmd` with Visual Studio 2022,
 `C:\BuildTools` C++ tools, Windows SDK 26100, and Microsoft.AI.DirectML 1.15.4
 in the local NuGet cache. The build produces an unsigned
@@ -19,9 +19,10 @@ not stored in Git.
 
 ## Execution and diagnostics
 
-Version 1.0.0.17 still runs SYNC and DRAFT through ggml CPU by default
-(`n_gpu_layers=0`, context 49152, Q4_0 KV). GPU operations are opt-in
-diagnostics and never change the DFL2 sequence:
+The target GGUF remains CPU-owned (`n_gpu_layers=0`, context 49152, Q4_0 KV),
+while DFL2 SYNC and DRAFT use the D3D12 executor by default. Set
+`LocalState\dflash-backend.txt` to `cpu` to override it; failed D3D12
+initialization falls back to CPU before the sequence starts.
 
 | Op  | Operation                                                        |
 | --- | ---------------------------------------------------------------- |
