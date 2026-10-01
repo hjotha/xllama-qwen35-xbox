@@ -52,7 +52,7 @@ O controle adicional n4/p0,25 com `DFLASH_XBOX_PIPELINE=0` mediu **35,222 tok/s*
 
 Os 12 resultados originais foram recuperados diretamente de `/tmp/dflash-sweep-results.jsonl` na .57. Os números publicados pelo AGY, incluindo **35,421 tok/s em n4/p0,25**, existem nos dados brutos.
 
-Porém, o baseline de **35,506 tok/s** usava **temperatura 1,0**, enquanto os candidatos usavam **0,0**, e cada configuração tinha apenas uma repetição. A origem está em `scratch/run_experiment3_sweep.py:24`, que não passa temperatura ao baseline; os candidatos passam `--temperature 0.0` na linha 40. O default do executor para baseline é 1,0. Portanto, a comparação de 99,8% não era um A/B com sampling igual.
+Porém, o baseline de **35,506 tok/s** usava **temperatura 1,0**, enquanto os candidatos usavam **0,0**, e cada configuração tinha apenas uma repetição. A origem está em `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/run_experiment3_sweep.py:24`, que não passa temperatura ao baseline; os candidatos passam `--temperature 0.0` na linha 40. O default do executor para baseline é 1,0. Portanto, a comparação de 99,8% não era um A/B com sampling igual.
 
 ## Achados de código e correção
 
@@ -62,12 +62,12 @@ Em `shaders/dflash/ggml_float.hlsli:17`, `ggml_fma_f32` passou a usar `mad(a,b,c
 
 O probe 17 foi executado novamente no Xbox instalado, sem trocar pacote ou tolerância:
 
-| Evidência                              | Resultado                   | Casos fora da tolerância | Maior erro absoluto |
-| -------------------------------------- | --------------------------- | -----------------------: | ------------------: |
-| Histórico `scratch/probe17_76.json`    | passed=true, status=0       |                     0/20 |                   0 |
-| Histórico `scratch/probe17_78.json`    | passed=false, status=-6     |                    18/20 |          2,38716412 |
-| Pacote .82, teste desta revisão        | **passed=false, status=-6** |                **18/20** |      **2,38716412** |
-| **Pacote .83, validação desta sessão** | **passed=true, status=0**   |                 **0/20** |               **0** |
+| Evidência                                                                                               | Resultado                   | Casos fora da tolerância | Maior erro absoluto |
+| ------------------------------------------------------------------------------------------------------- | --------------------------- | -----------------------: | ------------------: |
+| Histórico `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_76.json` | passed=true, status=0       |                     0/20 |                   0 |
+| Histórico `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_78.json` | passed=false, status=-6     |                    18/20 |          2,38716412 |
+| Pacote .82, teste desta revisão                                                                         | **passed=false, status=-6** |                **18/20** |      **2,38716412** |
+| **Pacote .83, validação desta sessão**                                                                  | **passed=true, status=0**   |                 **0/20** |               **0** |
 
 Todos os quatro casos de batch 5, correspondente a n_max=4 mais a âncora, falharam. Houve falhas também em trim parcial e reinjeção. Não houve NaN/Inf; isso não elimina os erros fora da tolerância. No batch 8 o cosseno mínimo foi 0,993429061. A tolerância permaneceu `abs<=1e-3+1e-3*max(abs(cpu),abs(gpu))`.
 
@@ -82,8 +82,8 @@ A documentação da Microsoft permite que `mad` seja implementado como operaçã
 1. Em `shaders/dflash/ggml_float.hlsli:17`, a guarda foi corrigida para definir a emulação FP64 exata como **padrão obrigatório**, exigindo a flag explícita `DFLASH_FAST_MAD` apenas para experimentos isolados com `mad()`.
 2. Todos os headers DXIL AOT afetados (`dflash_attention_dxil.h`, `dflash_draft_quant_q8_dxil.h`, `dflash_q2k_q8k_dxil.h`, `dflash_q3k_q8k_dxil.h`) foram regenerados via seus respectivos compiladores (`compile_dflash_attention.py`, `compile_q6k_q8_0.py`, etc.).
 3. O pacote `1.0.0.83` foi compilado, assinado e instalado no Xbox Series X (`192.168.1.26:50053`).
-4. A reexecução do Probe 17 (`scratch/probe17_83.json`) resultou em **status=0, passed=true, 20/20 casos aprovados, maior erro absoluto 0 e cosseno de similaridade 1,000000** em todos os lotes (2, 3, 5, 7 e 8).
-5. O Probe 17 com `--capture-draft 5` (`scratch/probe17_83_capture5.json`) confirmou `captureCpuExact: true` e `maxAbs: 0` em todos os 5 ordinais de rascunho, eliminando completamente a divergência em `kqv_out-0`.
+4. A reexecução do Probe 17 (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83.json`) resultou em **status=0, passed=true, 20/20 casos aprovados, maior erro absoluto 0 e cosseno de similaridade 1,000000** em todos os lotes (2, 3, 5, 7 e 8).
+5. O Probe 17 com `--capture-draft 5` (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83_capture5.json`) confirmou `captureCpuExact: true` e `maxAbs: 0` em todos os 5 ordinais de rascunho, eliminando completamente a divergência em `kqv_out-0`.
 
 ### P1 — SwiGLU embutido não corresponde à recompilação padrão do fonte
 
@@ -169,9 +169,9 @@ Não há sustentação para prometer 40 tok/s ou afirmar que a fase de benefíci
 
 - `python -B research\dflash2-xbox\test_sweep_acceptance.py`: passou. É teste local com mocks, sem controlar produção.
 - Probe 17 no hardware atual com pacote .82: executado na revisão inicial e **falhou** (18/20); preservado em `probe17-live.json`.
-- **Probe 17 no hardware atual com Pacote 1.0.0.83:** executado e **aprovado com 20/20 casos dentro da tolerância**, status 0, erro absoluto máximo zero e cosseno 1,000000 em todos os batches (`scratch/probe17_83.json`).
-- **Probe 17 com `--capture-draft 5` no Pacote 1.0.0.83:** executado e **aprovado**, com 5/5 ordinais de rascunho em paridade exata (`captureCpuExact: true`, `maxAbs: 0`), eliminando o desvio de atenção em `kqv_out-0` (`scratch/probe17_83_capture5.json`).
-- **Probes 8 (GEMV Q4_K) e 16 (Atenção Q4_0) no Pacote 1.0.0.83:** ambos executados e **aprovados** com status 0 (`scratch/probe8_83.json`, `scratch/probe16_83.json`).
+- **Probe 17 no hardware atual com Pacote 1.0.0.83:** executado e **aprovado com 20/20 casos dentro da tolerância**, status 0, erro absoluto máximo zero e cosseno 1,000000 em todos os batches (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83.json`).
+- **Probe 17 com `--capture-draft 5` no Pacote 1.0.0.83:** executado e **aprovado**, com 5/5 ordinais de rascunho em paridade exata (`captureCpuExact: true`, `maxAbs: 0`), eliminando o desvio de atenção em `kqv_out-0` (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83_capture5.json`).
+- **Probes 8 (GEMV Q4_K) e 16 (Atenção Q4_0) no Pacote 1.0.0.83:** ambos executados e **aprovados** com status 0 (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe8_83.json`, `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe16_83.json`).
 - Campanha de nove gerações comparáveis: concluiu com código 0, dados/logs/metrics coletados e restauração confirmada.
 - Controle adicional n4 sem pipeline: concluiu com código 0 e restauração confirmada.
 - Recompilação DXIL: todos os headers AOT regenerados com precisão FP64 padrão; SwiGLU compilado com 5900 bytes e hash coincidente byte a byte.
@@ -182,12 +182,12 @@ Estado final: `llama-server-root.service` **active** no host .57, `/health` de 8
 
 ## Evidências
 
-Diretório: `C:\Users\hjotha\worktrees\xllama-dflash-xbox\research\dflash2-xbox\gpu-implementation\codex-review-20260929` e `scratch/`.
+Diretórios: `research/dflash2-xbox/gpu-implementation/codex-review-20260929/` e `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/`.
 
-- `scratch/probe17_83.json`: resposta integral do Probe 17 no Xbox Series X com o pacote 1.0.0.83 (20/20 casos, status 0, erro 0).
-- `scratch/probe17_83_capture5.json`: traces por camada com 5 ordinais de draft e paridade CPU exata no pacote 1.0.0.83.
-- `scratch/probe8_83.json` e `scratch/probe16_83.json`: validação bem-sucedida de GEMV Q4_K e Atenção Q4_0 no pacote 1.0.0.83.
-- `scratch/redeploy_83.jsonl`: log de instalação e ativação do pacote 1.0.0.83 no Xbox.
+- `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83.json`: resposta integral do Probe 17 no Xbox Series X com o pacote 1.0.0.83 (20/20 casos, status 0, erro 0).
+- `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_83_capture5.json`: traces por camada com 5 ordinais de draft e paridade CPU exata no pacote 1.0.0.83.
+- `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe8_83.json` e `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe16_83.json`: validação bem-sucedida de GEMV Q4_K e Atenção Q4_0 no pacote 1.0.0.83.
+- `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/redeploy_83.jsonl`: log de instalação e ativação do pacote 1.0.0.83 no Xbox.
 - `agy-sweep-results.jsonl`: 12 resultados originais recuperados da .57; arquivos `agy-*-metrics.jsonl`: traces originais.
 - `agy-sweep-acceptance.py`: cópia do executor original remoto; hash igual ao fonte local revisado.
 - `probe17-live.json`: resposta integral do teste inicial do pacote .82 no Xbox.
@@ -206,11 +206,11 @@ Planos usados: `dflash-gpu-implementation-plan-2026-09-28.md`, especialmente F4�
 
 O AGY havia deixado uma variante `.84` que expande cada bloco Q2_K de 84 para 288 bytes no carregamento, entregando 256 inteiros `scale * quant`, 16 mínimos e os bits FP16 de `d`/`dmin` ao shader. O shader deixou de desempacotar Q2 em LDS e reduziu as barreiras por bloco de três para duas, mas ainda usa `s_scaled_w[64]` em LDS; `d` e `dmin` ainda são convertidos na GPU. Portanto, a proposta de carregamento direto em registradores e conversão FP32 na CPU não está implementada.
 
-O primeiro Probe 17 `.84` usou por engano a captura Q3 (`b55ef2a1…`). Recolocada e verificada no Xbox a captura Q2 completa (`5ff0aeb6…`), a `.84` continuou falhando com status `-6`, 18/20 casos fora da tolerância e erro absoluto máximo 2,38716412 (`scratch/probe17_84_q2_correct.json`). A causa reproduzida no código era `ggml_fma_f32` usando `mad` por padrão, pois nenhum gerador DXIL definia `DFLASH_EXACT_FP64_EMULATION`; isso havia desfeito a política numérica aprovada na `.83`.
+O primeiro Probe 17 `.84` usou por engano a captura Q3 (`b55ef2a1…`). Recolocada e verificada no Xbox a captura Q2 completa (`5ff0aeb6…`), a `.84` continuou falhando com status `-6`, 18/20 casos fora da tolerância e erro absoluto máximo 2,38716412 (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_84_q2_correct.json`). A causa reproduzida no código era `ggml_fma_f32` usando `mad` por padrão, pois nenhum gerador DXIL definia `DFLASH_EXACT_FP64_EMULATION`; isso havia desfeito a política numérica aprovada na `.83`.
 
 Na `.85`, `ggml_fma_f32` voltou a usar FP64 exato por padrão, com `DFLASH_FAST_MAD` apenas para experimento explícito. Os DXIL dependentes Q2, Q3, quantização Q8, atenção e draft ops foram regenerados; SwiGLU voltou a 5900 bytes. MSBuild Release x64 terminou com código 0 e produziu `DFlashRpc_1.0.0.85_x64.msix`, SHA-256 `5063f80768a1178e7b17c1f847ab6987454a47a8a930f74ac4528cdac59a770f`. O pacote foi assinado e o Device Portal confirmou `Success=true` e a instalação da versão `.85`. A verificação local `signtool verify /pa` recusou a cadeia autoassinada por não confiar na raiz neste Windows; a assinatura foi aceita pelo Xbox.
 
-Validação em hardware D3D12 com modelo e captura Q2: Probe 17 `.85` teve status `0`, 20/20 casos aprovados e erro absoluto máximo zero (`scratch/probe17_85_q2.json`). `--capture-draft 5` teve 5/5 ordinais exatos (`scratch/probe17_85_capture5.json`). O replay completo confirmou 369/369 frames com o hash de captura Q2 `5ff0aeb6…`. O RPC permaneceu acessível na porta 50053. A telemetria após o lançamento da `.85` registrou pico de 3,118 GiB de memória do aplicativo ante limite reportado de 5 GiB; essa contagem não representa toda a memória compartilhada do console.
+Validação em hardware D3D12 com modelo e captura Q2: Probe 17 `.85` teve status `0`, 20/20 casos aprovados e erro absoluto máximo zero (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_85_q2.json`). `--capture-draft 5` teve 5/5 ordinais exatos (`research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/probe17_85_capture5.json`). O replay completo confirmou 369/369 frames com o hash de captura Q2 `5ff0aeb6…`. O RPC permaneceu acessível na porta 50053. A telemetria após o lançamento da `.85` registrou pico de 3,118 GiB de memória do aplicativo ante limite reportado de 5 GiB; essa contagem não representa toda a memória compartilhada do console.
 
 No mesmo Probe 17 e com a mesma captura, a média dos dois casos `initial` de batch 8 foi 39,020 ms na `.83` salva e 31,988 ms na `.85` (−18,02%). No trace do primeiro bloco, o intervalo gate/up Q2 caiu de 2,028 para 1,524 ms por camada (−24,88%); `ffn_out` Q3 ficou em 1,237/1,236 ms. Estes são tempos observados em execuções de horários diferentes, sem rodadas A/B alternadas ou controle térmico. São indício de ganho localizado, não speedup ponta a ponta comprovado. O layout Q2 ocupa 3,429 vezes os bytes GGUF, custo a incluir em qualquer decisão de promoção.
 
@@ -230,8 +230,8 @@ A campanha B1–A1–B2–A2–B3 executou no Xbox Series X com a mesma captura 
 | Geração real, 128 tokens, greedy, n4/p0,25        | 32,619 tok/s | 35,442 tok/s |   **+8,66% de TPS** |
 | Geração real, 128 tokens, tempo de parede         |      3,965 s |      3,654 s | **−7,85% de tempo** |
 
-Cada fase do RPC sintético fez 20 aquecimentos e 100 ciclos medidos; os logs confirmaram `effective=d3d12` para os dois pacotes. O primeiro controle RPC havia usado `effective=cpu`: seus números foram descartados da comparação GPU e estão identificados assim em `scratch/q2-ab-20260929/summary.json`. No ensaio real, as cinco fases usaram o mesmo commit, binário e bibliotecas do target na `.57`, mesmo comando, modelo, prompt, contexto 8192, KV `kvarn4`, batch/ubatch 64, seed/amostragem, `n_max=4`, `p_min=0.25` e pipeline desligado. Os hashes de texto coincidiram em todas as fases de cada workload; propostas/aceites/ciclos foram respectivamente 647/346/163 e 149/88/38, sem falhas RPC. Cada fase parou temporariamente o serviço da `.57` e o script o restaurou; a checagem independente final encontrou `llama-server-root.service` ativo, `/health` com `{"status":"ok"}` e sem listener de teste em 59567.
+Cada fase do RPC sintético fez 20 aquecimentos e 100 ciclos medidos; os logs confirmaram `effective=d3d12` para os dois pacotes. O primeiro controle RPC havia usado `effective=cpu`: seus números foram descartados da comparação GPU e estão identificados assim em `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/q2-ab-20260929/summary.json`. No ensaio real, as cinco fases usaram o mesmo commit, binário e bibliotecas do target na `.57`, mesmo comando, modelo, prompt, contexto 8192, KV `kvarn4`, batch/ubatch 64, seed/amostragem, `n_max=4`, `p_min=0.25` e pipeline desligado. Os hashes de texto coincidiram em todas as fases de cada workload; propostas/aceites/ciclos foram respectivamente 647/346/163 e 149/88/38, sem falhas RPC. Cada fase parou temporariamente o serviço da `.57` e o script o restaurou; a checagem independente final encontrou `llama-server-root.service` ativo, `/health` com `{"status":"ok"}` e sem listener de teste em 59567.
 
 **Conclusão:** a reorganização Q2_K da `.85` entrega ganho real e repetido quando o RPC usa D3D12: cerca de 18% no draft isolado e 8–9% em tokens/s ponta a ponta neste prompt. A alternância limita deriva temporal, mas não houve leitura de temperatura/clock do Xbox, portanto não há controle térmico estrito nem garantia de mesmo ganho em outros contextos. O layout continua usando 3,429 vezes os bytes originais; conversão FP32 na CPU e eliminação total do LDS continuam pendentes. Este A/B compara `.83` com `.85` dentro do mesmo caminho GPU sequencial. Não resolve a divergência token/logit entre target e pipeline nem mede o benefício contra target sem DFlash; F6 permanece aberto.
 
-Estado após a campanha: a `.85` principal está instalada e responde na porta 50053, com `dflash-backend.txt` restaurado byte a byte ao valor original `cpu`. Assim, o ganho medido depende de selecionar D3D12 quando esse caminho for usado. A identidade temporária `.83` foi desinstalada; fontes e relatório seguem sem commit na branch `research/dflash-xbox-rpc`. Evidências locais: `scratch/q2-ab-20260929/summary.json`, `scratch/q2-ab-20260929/{bgpu1,agpu1,bgpu2,agpu2,bgpu3}-rpc-n{4,7}.json` e `scratch/q2-ab-20260929/f6/` (manifestos, respostas e métricas por fase).
+Estado após a campanha em 29/09: a `.85` principal estava instalada e respondia na porta 50053, com `dflash-backend.txt` restaurado byte a byte ao valor original `cpu`. Assim, o ganho medido depende de selecionar D3D12 quando esse caminho for usado. A identidade temporária `.83` foi desinstalada; naquele momento, fontes e relatório ainda não tinham sido commitados. O código e os relatórios foram depois integrados ao `main` local. Evidências completas: `research/dflash2-xbox/gpu-implementation/codex-review-20260929/campaign-raw/q2-ab-20260929/summary.json`, os arquivos `*-rpc-n*.json` e `f6/` (manifestos, respostas e métricas por fase).
