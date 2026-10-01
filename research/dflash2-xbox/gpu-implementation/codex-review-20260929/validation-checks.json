@@ -1,0 +1,54 @@
+{
+  "nine_matched_requests": true,
+  "hashes_stable_within_config": true,
+  "probe_gate_failed_18_of_20": true,
+  "probe_gate_pkg83_passed_20_of_20": true,
+  "pkg83_max_abs_error": 0.0,
+  "final_service_active_and_healthy": true,
+  "temporary_port_closed": true,
+  "campaign_metrics": {
+    "codex-review-20260929-n4p25-r1": {
+      "cycles": 163,
+      "pipeline_enabled_cycles": 76,
+      "pipeline_disabled_cycles": 87,
+      "pipeline_used": 7,
+      "rpc_failed": 0
+    },
+    "codex-review-20260929-n7p40-r1": {
+      "cycles": 148,
+      "pipeline_enabled_cycles": 45,
+      "pipeline_disabled_cycles": 103,
+      "pipeline_used": 3,
+      "rpc_failed": 0
+    },
+    "codex-review-20260929-n4p25-r2": {
+      "cycles": 163,
+      "pipeline_enabled_cycles": 76,
+      "pipeline_disabled_cycles": 87,
+      "pipeline_used": 7,
+      "rpc_failed": 0
+    },
+    "codex-review-20260929-n7p40-r2": {
+      "cycles": 148,
+      "pipeline_enabled_cycles": 45,
+      "pipeline_disabled_cycles": 103,
+      "pipeline_used": 3,
+      "rpc_failed": 0
+    },
+    "codex-review-20260929-n7p40-r3": {
+      "cycles": 148,
+      "pipeline_enabled_cycles": 45,
+      "pipeline_disabled_cycles": 103,
+      "pipeline_used": 3,
+      "rpc_failed": 0
+    },
+    "codex-review-20260929-n4p25-r3": {
+      "cycles": 163,
+      "pipeline_enabled_cycles": 76,
+      "pipeline_disabled_cycles": 87,
+      "pipeline_used": 7,
+      "rpc_failed": 0
+    }
+  },
+  "report_sha256": "685fc61ec7882ca6e296ccb621cea6ccc1470a4622bc309913eb264348debad4"
+}

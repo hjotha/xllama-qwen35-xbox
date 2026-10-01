@@ -12,7 +12,7 @@
 // SYNC half of the DFlash2 graph. This is an opt-in, hardware-only executor;
 // DRAFT is deliberately absent until its complete graph has GPU parity.
 class DflashGpuSyncEngine {
-public:
+  public:
     enum class ActivationMode { GgmlQ8K, OriginalF32 };
     static constexpr uint32_t kLayers = 5;
     static constexpr uint32_t kContext = 49152;
@@ -24,23 +24,23 @@ public:
 
     // The model path is the exact GGUF used by the CPU reference. A failed
     // initialize never enables the executor or a CPU fallback inside it.
-    bool initialize(const std::string & model_path, std::string * error,
+    bool initialize(const std::string& model_path, std::string* error,
                     ActivationMode mode = ActivationMode::GgmlQ8K);
 
     // Positions are absolute, unique and within [0, 49151]. Input rows are
     // position-major, 25600 F32 values each. SYNC_TRIM calls sync with
     // reset=true or trim_to >= 0; plain SYNC passes both defaults.
     // On any GPU/recording failure after mutation, sequence_valid() is false.
-    bool sync(const int32_t * positions, const float * features, uint32_t count,
-              bool reset = false, int32_t trim_to = -1, std::string * error = nullptr);
-    bool trim(uint32_t keep_positions, std::string * error);
+    bool sync(const int32_t* positions, const float* features, uint32_t count, bool reset = false,
+              int32_t trim_to = -1, std::string* error = nullptr);
+    bool trim(uint32_t keep_positions, std::string* error);
     void reset();
 
     // Explicit diagnostic only. No readback occurs during sync().
-    bool read_encoder(float * destination, uint32_t count, std::string * error);
-    bool read_fc(float * destination, uint32_t count, std::string * error);
-    bool read_input_q8(void * destination, uint32_t count, std::string * error);
-    bool read_encoder_q8(void * destination, uint32_t count, std::string * error);
+    bool read_encoder(float* destination, uint32_t count, std::string* error);
+    bool read_fc(float* destination, uint32_t count, std::string* error);
+    bool read_input_q8(void* destination, uint32_t count, std::string* error);
+    bool read_encoder_q8(void* destination, uint32_t count, std::string* error);
     struct KvSnapshot {
         std::vector<float> pre_key;
         std::vector<float> pre_value;
@@ -51,30 +51,53 @@ public:
     };
     // Diagnostic only: latest SYNC batch. Other layers recompute projections;
     // actual packed KV is unchanged, and normal SYNC has no readback.
-    bool read_layer_kv(const int32_t * positions, uint32_t count,
-                            KvSnapshot * snapshot, std::string * error, uint32_t layer = kLayers - 1);
+    bool read_layer_kv(const int32_t* positions, uint32_t count, KvSnapshot* snapshot,
+                       std::string* error, uint32_t layer = kLayers - 1);
     // Raw 20-byte Q4 blocks for every layer, K then V, each requested row.
     // Layout: ((layer * 2 + kind) * count + row) * 640 bytes.
-    bool read_kv_packed(const int32_t * positions, uint32_t count,
-                        std::vector<uint8_t> * destination, std::string * error);
+    bool read_kv_packed(const int32_t* positions, uint32_t count, std::vector<uint8_t>* destination,
+                        std::string* error);
 
-    bool ready() const { return ready_; }
-    bool sequence_valid() const { return sequence_valid_; }
+    bool ready() const {
+        return ready_;
+    }
+    bool sequence_valid() const {
+        return sequence_valid_;
+    }
     // F4 must call this after any failed external GPU mutation. Recovery
     // requires a new engine/sequence; RESET cannot resurrect a partial KV.
-    void invalidate_sequence() { sequence_valid_ = false; last_batch_ = 0; }
-    ActivationMode activation_mode() const { return activation_mode_; }
-    const std::string & model_path() const { return model_path_; }
-    uint64_t model_file_size() const { return model_file_size_; }
-    int64_t model_mtime_ticks() const { return model_mtime_ticks_; }
-    const DflashGpuKv & kv() const { return kv_; }
-    ID3D12Device * device() const { return device_.Get(); }
+    void invalidate_sequence() {
+        sequence_valid_ = false;
+        last_batch_ = 0;
+    }
+    ActivationMode activation_mode() const {
+        return activation_mode_;
+    }
+    const std::string& model_path() const {
+        return model_path_;
+    }
+    uint64_t model_file_size() const {
+        return model_file_size_;
+    }
+    int64_t model_mtime_ticks() const {
+        return model_mtime_ticks_;
+    }
+    const DflashGpuKv& kv() const {
+        return kv_;
+    }
+    ID3D12Device* device() const {
+        return device_.Get();
+    }
     // F4 may share these resources while this engine remains alive. Its work
     // must be fenced before the next SYNC, RESET or TRIM call. Calls are serial.
-    ID3D12CommandQueue * queue() const { return queue_.Get(); }
-    DflashGpuKv * mutable_kv() { return ready_ && sequence_valid_ ? &kv_ : nullptr; }
+    ID3D12CommandQueue* queue() const {
+        return queue_.Get();
+    }
+    DflashGpuKv* mutable_kv() {
+        return ready_ && sequence_valid_ ? &kv_ : nullptr;
+    }
 
-private:
+  private:
     struct Buffer {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
         D3D12_RESOURCE_STATES state = D3D12_RESOURCE_STATE_COMMON;
@@ -94,27 +117,25 @@ private:
         float value_scale = 1.0f;
     };
 
-    bool fail(std::string * error, const char * stage, HRESULT hr = S_OK);
-    bool create_buffer(uint64_t bytes, D3D12_HEAP_TYPE heap,
-                       D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES state,
-                       Buffer * out, std::string * error);
-    void transition(Buffer & buffer, D3D12_RESOURCE_STATES state);
-    void uav_barrier(Buffer & buffer);
-    bool begin(std::string * error);
-    bool submit(std::string * error);
-    bool load_weights(const std::string & model_path, std::string * error);
-    bool create_pipelines(std::string * error);
-    bool read_buffer(Buffer & source, void * destination, uint64_t bytes,
-                     const char * stage, std::string * error);
-    bool matmul(const Weight & weight, Buffer & input, Buffer & output,
-                uint32_t batch, std::string * error);
-    bool quantize_q8(Buffer & input, Buffer & output, uint32_t width,
-                     uint32_t batch, std::string * error);
-    bool project_kv(uint32_t layer, uint32_t count, std::string * error);
+    bool fail(std::string* error, const char* stage, HRESULT hr = S_OK);
+    bool create_buffer(uint64_t bytes, D3D12_HEAP_TYPE heap, D3D12_RESOURCE_FLAGS flags,
+                       D3D12_RESOURCE_STATES state, Buffer* out, std::string* error);
+    void transition(Buffer& buffer, D3D12_RESOURCE_STATES state);
+    void uav_barrier(Buffer& buffer);
+    bool begin(std::string* error);
+    bool submit(std::string* error);
+    bool load_weights(const std::string& model_path, std::string* error);
+    bool create_pipelines(std::string* error);
+    bool read_buffer(Buffer& source, void* destination, uint64_t bytes, const char* stage,
+                     std::string* error);
+    bool matmul(const Weight& weight, Buffer& input, Buffer& output, uint32_t batch,
+                std::string* error);
+    bool quantize_q8(Buffer& input, Buffer& output, uint32_t width, uint32_t batch,
+                     std::string* error);
+    bool project_kv(uint32_t layer, uint32_t count, std::string* error);
     void dispatch_norm(uint32_t batch);
-    void dispatch_key(uint32_t batch, const Layer & layer);
-    void dispatch_hadamard(Buffer & input, Buffer & output, uint32_t batch,
-                           uint32_t transform_width);
+    void dispatch_key(uint32_t batch, const Layer& layer);
+    void dispatch_hadamard(Buffer& input, Buffer& output, uint32_t batch, uint32_t transform_width);
 
     Microsoft::WRL::ComPtr<ID3D12Device> device_;
     Microsoft::WRL::ComPtr<ID3D12CommandQueue> queue_;
@@ -175,9 +196,9 @@ private:
     uint32_t last_batch_ = 0;
     int32_t last_positions_[kBatch] = {};
 
-public:
+  public:
     ~DflashGpuSyncEngine();
     DflashGpuSyncEngine() = default;
-    DflashGpuSyncEngine(const DflashGpuSyncEngine &) = delete;
-    DflashGpuSyncEngine & operator=(const DflashGpuSyncEngine &) = delete;
+    DflashGpuSyncEngine(const DflashGpuSyncEngine&) = delete;
+    DflashGpuSyncEngine& operator=(const DflashGpuSyncEngine&) = delete;
 };

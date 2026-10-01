@@ -15,7 +15,7 @@ float ggml_round_f32(double value) {
 }
 
 float ggml_fma_f32(float a, float b, float c) {
-#if defined(DFLASH_EXACT_FP64_EMULATION)
+#if !defined(DFLASH_FAST_MAD)
     precise double value = (double)a * (double)b + (double)c;
     return ggml_round_f32(value);
 #else

@@ -24,13 +24,13 @@ while DFL2 SYNC and DRAFT use the D3D12 executor by default. Set
 `LocalState\dflash-backend.txt` to `cpu` to override it; failed D3D12
 initialization falls back to CPU before the sequence starts.
 
-| Op | Operation |
-| -- | --------- |
-| 8 | Synthetic Q4_K D3D12 probe and adapter capabilities |
-| 9 | Real GGUF Q4_K FFN-down matrix, HLSL and ggml CPU |
-| 10 | Same Q4_K matrix converted once to FP16, DirectML GEMM |
-| 11 | Real GGUF Q3_K `fc.weight`, HLSL and ggml CPU, batch 1–64 |
-| 12 | Real GGUF Q5_K attention V matrix, HLSL and ggml CPU, batch 1–64 |
+| Op  | Operation                                                        |
+| --- | ---------------------------------------------------------------- |
+| 8   | Synthetic Q4_K D3D12 probe and adapter capabilities              |
+| 9   | Real GGUF Q4_K FFN-down matrix, HLSL and ggml CPU                |
+| 10  | Same Q4_K matrix converted once to FP16, DirectML GEMM           |
+| 11  | Real GGUF Q3_K `fc.weight`, HLSL and ggml CPU, batch 1–64        |
+| 12  | Real GGUF Q5_K attention V matrix, HLSL and ggml CPU, batch 1–64 |
 
 The real-matrix probes use 50 warmups and three sets of 200 measurements.
 They report GPU timestamps separately from host time including readback.

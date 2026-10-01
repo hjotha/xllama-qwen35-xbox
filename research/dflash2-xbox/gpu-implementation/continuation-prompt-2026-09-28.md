@@ -4,14 +4,14 @@ Todos os caminhos relativos a `C:\Users\hjotha\worktrees\xllama-dflash-xbox\rese
 
 ## Nucleo do plano GPU (F0-F7)
 
-| Arquivo | Conteudo |
-|---|---|
-| `dflash-gpu-implementation-plan-2026-09-28.md` | Plano F0-F7, arquitetura, criterios |
-| `gpu-implementation\f0-f2-results-2026-09-28.md` | F0-F2 (capacidades, kernels) |
-| `gpu-implementation\f3-f4-results-2026-09-28.md` | F3/F4 + causa raiz F4 (flip Q8, correlacao 0.999991) + F5 |
-| `gpu-implementation\f6-real-production-campaign-2026-09-28.md` | Campanha F6 real (21,26 vs 12,92 tok/s, saida identica) |
-| `gpu-implementation\f7-nmax-sweep-2026-09-28.md` | Sweep n_max (otimo=4; 7 = OOM no target) |
-| `gpu-implementation\f7-verdict-2026-09-28.md` | Veredito F7: limitado por banda de pesos (14,2 GB/s), condicoes de viabilidade |
+| Arquivo                                                        | Conteudo                                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `dflash-gpu-implementation-plan-2026-09-28.md`                 | Plano F0-F7, arquitetura, criterios                                            |
+| `gpu-implementation\f0-f2-results-2026-09-28.md`               | F0-F2 (capacidades, kernels)                                                   |
+| `gpu-implementation\f3-f4-results-2026-09-28.md`               | F3/F4 + causa raiz F4 (flip Q8, correlacao 0.999991) + F5                      |
+| `gpu-implementation\f6-real-production-campaign-2026-09-28.md` | Campanha F6 real (21,26 vs 12,92 tok/s, saida identica)                        |
+| `gpu-implementation\f7-nmax-sweep-2026-09-28.md`               | Sweep n_max (otimo=4; 7 = OOM no target)                                       |
+| `gpu-implementation\f7-verdict-2026-09-28.md`                  | Veredito F7: limitado por banda de pesos (14,2 GB/s), condicoes de viabilidade |
 
 ## Contexto/historico referenciado pelo plano
 
@@ -37,7 +37,7 @@ Ler primeiro: research\dflash2-xbox\CONTINUATION.md e gpu-implementation\plan-ac
 
 Ambiente: worktree C:\Users\hjotha\worktrees\xllama-dflash-xbox (branch research/dflash-xbox-rpc;
 repo privado github.com/hjotha/xllama-dflash-xbox). Console Xbox 192.168.1.26 (Device Portal 11443);
-prod na .57 (.157 = ponte SSH; senha amdk6x).
+prod na .57 (.157 = ponte SSH; autenticação SSH e sudo configurada fora do repositório).
 
 Próximos passos priorizados:
 1) Melhoria 1: Varredura de --draft-p-min (0.05 a 0.80) na .57 com n_max=4 e n_max=5
@@ -56,4 +56,3 @@ Ciclo de validação:
 
 Regras: não commitar no main; manter backend do Xbox em 'cpu' no repouso; garantir serviço .57 ativo.
 ```
-

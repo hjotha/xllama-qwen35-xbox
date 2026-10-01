@@ -1,0 +1,114 @@
+{
+  "target": {
+    "tps": [
+      35.216,
+      35.355,
+      35.32
+    ],
+    "mean_tps": 35.297,
+    "median_tps": 35.32,
+    "min_tps": 35.216,
+    "max_tps": 35.355,
+    "wall_s": [
+      14.702,
+      14.649,
+      14.651
+    ],
+    "wall_tps": [
+      34.825193851176714,
+      34.951191207590966,
+      34.94642003958774
+    ],
+    "content_hashes": [
+      "c83f1226da4ab3d2406a394c3120dc1d0ba6ae8f3b5e61ab30565bf730bc2f37"
+    ],
+    "median_wall_s": 14.651
+  },
+  "n4p25": {
+    "tps": [
+      35.589,
+      35.518,
+      35.423
+    ],
+    "mean_tps": 35.51,
+    "median_tps": 35.518,
+    "min_tps": 35.423,
+    "max_tps": 35.589,
+    "wall_s": [
+      14.524,
+      14.602,
+      14.648
+    ],
+    "wall_tps": [
+      35.251996695125314,
+      35.063689905492396,
+      34.95357728017477
+    ],
+    "content_hashes": [
+      "e7619405c720fcccc8774b23ae23d89db20b6c99b9746b6ec6e29ee5e4cb0737"
+    ],
+    "median_wall_s": 14.602,
+    "metrics_first_run": {
+      "cycles": 163,
+      "used": 7,
+      "attempts": 29,
+      "rpc_failures": 0,
+      "mean_ms": {
+        "xbox_compute_us": 32.36747852760736,
+        "draft_rpc_us": 39.02452760736196,
+        "selector_us": 4.858558282208589,
+        "target_verify_us": 43.56269938650307,
+        "total_cycle_us": 90.15468711656442
+      }
+    },
+    "first_text_difference": {
+      "char": 548,
+      "target": "r wavelengths (red, orange) \u2014 this is Rayleigh scattering\n- Blue scatters about 10x more than red\n- We perceive the sky as blue because blue light is scattered in all directions\n- We don't see violet as much because our ",
+      "candidate": "r wavelengths (red, orange) \u2014 this is Rayleigh scattering\n- The scattering is proportional to 1/\u03bb\u2074, so blue scatters much more than red\n- We see blue because that scattered light reaches our eyes from all directions\n- Vi"
+    }
+  },
+  "n7p40": {
+    "tps": [
+      30.409,
+      32.223,
+      32.121
+    ],
+    "mean_tps": 31.584333333333333,
+    "median_tps": 32.121,
+    "min_tps": 30.409,
+    "max_tps": 32.223,
+    "wall_s": [
+      16.976,
+      16.064,
+      16.128
+    ],
+    "wall_tps": [
+      30.160226201696513,
+      31.872509960159363,
+      31.746031746031747
+    ],
+    "content_hashes": [
+      "c9c0e748b28ba18fe824d42a6eb5657b15742a16ca873825690c0c93f2f9381a"
+    ],
+    "median_wall_s": 16.128,
+    "metrics_first_run": {
+      "cycles": 148,
+      "used": 3,
+      "attempts": 13,
+      "rpc_failures": 0,
+      "mean_ms": {
+        "xbox_compute_us": 41.63243243243243,
+        "draft_rpc_us": 51.17724324324324,
+        "selector_us": 6.668256756756756,
+        "target_verify_us": 52.5945,
+        "total_cycle_us": 112.3934527027027
+      }
+    },
+    "first_text_difference": {
+      "char": 1355,
+      "target": "rection across the sky, making the whole sky glow blue when you look away from the sun. We don't typically perceive the sky as violet, which scatters even more, because our eyes are less sensitive to violet light and a p",
+      "candidate": "rection across the sky, making the whole sky glow blue when we look up. We don't typically perceive the sky as violet, which scatters even more, because our eyes are less sensitive to violet light and a portion of it is "
+    }
+  },
+  "n4_median_gain_pct": 0.5605889014722587
+}

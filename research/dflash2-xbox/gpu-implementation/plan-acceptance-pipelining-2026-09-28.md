@@ -3,12 +3,14 @@
 ## 1. Contexto e Diagnóstico Atual
 
 Com as otimizações de kernel no app 1.0.0.45 (banda efetiva de pesos a $20,52\text{ GB/s}$ e tempo de DRAFT em $44,67\text{ ms}$), atingimos:
+
 - **Baseline CPU:** $12,92\text{ tok/s}$
 - **Baseline GPU D3D12 (1.0.0.42):** $21,26\text{ tok/s}$
 - **GPU D3D12 Otimizada (1.0.0.45):** **$25,75\text{ tok/s}$** com Q3_K_M e **$25,93\text{ tok/s}$** com Q8_0 no seletor.
 - **Swift isolado na RTX 4070 (.57):** **$34,99\text{ tok/s}$** (~$28,6\text{ ms/token}$).
 
 ### Anatomia do Ciclo de 109 ms (Adição Estrita)
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -28,6 +30,7 @@ sequenceDiagram
 ```
 
 Para ultrapassar os **$34,99\text{ tok/s}$** do Swift isolado, atacamos as duas frentes fundamentais:
+
 1. **Alavanca Algorítmica:** Elevar a taxa de aceitação ($n_{\text{accept}}$ de $2,81 \to \ge 4,0$).
 2. **Alavanca Arquitetural:** Pipelining assíncrono para eliminar a ociosidade alternada entre as GPUs.
 
@@ -36,6 +39,7 @@ Para ultrapassar os **$34,99\text{ tok/s}$** do Swift isolado, atacamos as duas 
 ## 2. Melhoria 1: Maximização da Taxa de Aceitação ($n_{\text{accept}} \ge 4,0$)
 
 ### Objetivo
+
 Aumentar a média de tokens aceitos por ciclo de $2,81$ para $\ge 4,0$ (com $n_{\max} = 4$ ou $n_{\max} = 5$).  
 Com aceitação em $4,0$ tokens/ciclo e o tempo atual de $109\text{ ms}$, o TPS salta automaticamente para:
 $$\text{TPS} = \frac{4,0}{0,109\text{ s}} = \mathbf{36,7\text{ tok/s}} \quad (\text{superando o Swift isolado de } 34,99\text{ tok/s}).$$
@@ -43,6 +47,7 @@ $$\text{TPS} = \frac{4,0}{0,109\text{ s}} = \mathbf{36,7\text{ tok/s}} \quad (\t
 ### Tarefas de Implementação
 
 #### Fase 1.1: Calibração Fina de Confiança e Amostragem (`draft-p-min` e Temperatura)
+
 - **Cenário Atual:** Os testes usam `draft-p-min = 0` e `temperature = 1.0`. Propostas de baixa probabilidade são geradas e rejeitadas pelo Target, desperdiçando slots de verificação.
 - **Ação:**
   - Implementar varredura de `draft-p-min` no intervalo $[0,05; 0,85]$ em passos de $0,05$.
@@ -50,6 +55,7 @@ $$\text{TPS} = \frac{4,0}{0,109\text{ s}} = \mathbf{36,7\text{ tok/s}} \quad (\t
 - **Métrica de Sucesso:** Aumento da proporção de tokens aceitos por proposta gerada ($\text{accept\_ratio} \ge 85\%$).
 
 #### Fase 1.2: Seleção e Alinhamento do Seletor
+
 - **Evidência dos Testes Hoje:**
   - Q8_0 no host acelerou a inferência do seletor para **$25,93\text{ tok/s}$** (reduzindo o tempo de predição em ~140 ms acumulados).
 - **Ação:**
@@ -62,6 +68,7 @@ $$\text{TPS} = \frac{4,0}{0,109\text{ s}} = \mathbf{36,7\text{ tok/s}} \quad (\t
 ## 3. Melhoria 2: Pipelining Assíncrono e Sobreposição de Execução
 
 ### Objetivo
+
 Quebrar a dependência síncrona estrita $T_{\text{ciclo}} = T_{\text{target}} + T_{\text{xbox}}$ através de **Double Buffering Especulativo**.
 
 ### Arquitetura Proposta: Pipeline Assíncrono de 2 Estágios
@@ -84,6 +91,7 @@ gantt
 ### Tarefas de Implementação
 
 #### Fase 2.1: Fusão de Protocolo RPC (Single Round-Trip)
+
 - **Problema Atual:** O cliente na `.57` hoje emite chamadas RPC separadas (RESET, SYNC e DRAFT), somando latência de socket e syscalls de rede (~$6,7\text{ ms}$).
 - **Ação:**
   - Criar o opcode RPC `DFLASH_RPC_SYNC_AND_DRAFT`: uma única requisição que envia os tokens validados para o KV cache e já dispara a execução do DRAFT na GPU do Xbox.
@@ -91,6 +99,7 @@ gantt
   - **Ganho Esperado:** Redução de $5\text{ a }7\text{ ms}$ direto no RTT do Xbox ($54,5\text{ ms} \to \sim 48\text{ ms}$).
 
 #### Fase 2.2: Rascunho Especulativo Antecipado (Speculative Pre-Draft)
+
 - **Problema Atual:** A RTX 4070 leva ~55 ms para verificar o batch. O Xbox fica ocioso esperando o Target confirmar quais tokens foram aceitos.
 - **Ação:**
   - Na `.57`, enquanto a RTX 4070 computa os forward passes de verificação do lote atual, o host despacha para o Xbox um rascunho condicional assumindo que o token de maior probabilidade (Top-1 do seletor anterior) será aceito.
@@ -102,11 +111,11 @@ gantt
 
 ## 4. Cronograma e Fases de Execução
 
-| Etapa | Foco | Ação Principal | Meta de Desempenho |
-|---|---|---|---|
-| **Sprint 1** | Amostragem & Calibração | Sweep de `draft-p-min` (0.0 a 0.8) e `n_max` (4 e 5) com seletor Q8_0 na `.57` | $n_{\text{accept}} \ge 3,5\text{ tok/ciclo}$ ($\approx 32\text{ tok/s}$) |
-| **Sprint 2** | Fusão RPC | Implementar opcode unificado `SYNC_AND_DRAFT` no UWP e no `speculative.cpp` | Ciclo Xbox $\le 48\text{ ms}$ ($\approx 34\text{ tok/s}$) |
-| **Sprint 3** | Pipelining Assíncrono | Executar pre-draft no Xbox enquanto a 4070 verifica o lote | Ciclo total $\le 75\text{ ms}$ (**$\ge 40\text{ tok/s}$**, batendo Swift) |
+| Etapa        | Foco                    | Ação Principal                                                                 | Meta de Desempenho                                                        |
+| ------------ | ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| **Sprint 1** | Amostragem & Calibração | Sweep de `draft-p-min` (0.0 a 0.8) e `n_max` (4 e 5) com seletor Q8_0 na `.57` | $n_{\text{accept}} \ge 3,5\text{ tok/ciclo}$ ($\approx 32\text{ tok/s}$)  |
+| **Sprint 2** | Fusão RPC               | Implementar opcode unificado `SYNC_AND_DRAFT` no UWP e no `speculative.cpp`    | Ciclo Xbox $\le 48\text{ ms}$ ($\approx 34\text{ tok/s}$)                 |
+| **Sprint 3** | Pipelining Assíncrono   | Executar pre-draft no Xbox enquanto a 4070 verifica o lote                     | Ciclo total $\le 75\text{ ms}$ (**$\ge 40\text{ tok/s}$**, batendo Swift) |
 
 ---
 

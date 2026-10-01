@@ -40,20 +40,20 @@ Build `Debug|x64` com MSBuild do VS2019 terminou com código 0 e produziu `DFlas
 
 `ping` direto: 20/20 respostas, mínimo/média/máximo **0,450 / 0,648 / 2,508 ms**. Cada linha TCP abaixo teve 100 warm-ups + **1.000 iterações aquecidas** numa conexão persistente. O probe faz SHA-256 do payload recebido e o cliente confere o hash a cada resposta. `full_cycle` inclui serialização Python, envio, leitura/hash no Xbox e resposta. O tempo `xbox_payload_read` inclui trânsito da LAN; não é uma cópia CPU isolada.
 
-| Entrada → saída | p50 `full_cycle` | p95 | p99 |
-| --- | ---: | ---: | ---: |
-| 0 → 72 B (PING) | 0,199 ms | 0,397 ms | 0,520 ms |
-| 4 KiB → 72 B | 0,391 ms | 0,467 ms | 0,602 ms |
-| 16 KiB → 72 B | 0,601 ms | 0,677 ms | 0,770 ms |
-| 64 KiB → 72 B | 1,005 ms | 1,196 ms | 1,304 ms |
-| 128 KiB → 72 B | 1,685 ms | 1,850 ms | 1,917 ms |
-| 256 KiB → 72 B | 2,967 ms | 3,115 ms | 3,160 ms |
-| 512 KiB → 72 B | 5,418 ms | 5,571 ms | 5,824 ms |
-| 1 MiB → 72 B | 10,363 ms | 10,529 ms | 32,322 ms |
-| 102.400 B → 72 B (1 token de features) | 1,433 ms | 1,587 ms | 1,670 ms |
-| 819.200 B → 72 B (8 tokens de features) | 8,213 ms | 8,400 ms | 20,259 ms |
-| **430.080 → 86.016 B (split, 3 drafts)** | **5,499 ms** | **5,639 ms** | **8,338 ms** |
-| **839.680 → 172.032 B (split, 7 drafts)** | **10,207 ms** | **10,377 ms** | **29,883 ms** |
+| Entrada → saída                           | p50 `full_cycle` |           p95 |           p99 |
+| ----------------------------------------- | ---------------: | ------------: | ------------: |
+| 0 → 72 B (PING)                           |         0,199 ms |      0,397 ms |      0,520 ms |
+| 4 KiB → 72 B                              |         0,391 ms |      0,467 ms |      0,602 ms |
+| 16 KiB → 72 B                             |         0,601 ms |      0,677 ms |      0,770 ms |
+| 64 KiB → 72 B                             |         1,005 ms |      1,196 ms |      1,304 ms |
+| 128 KiB → 72 B                            |         1,685 ms |      1,850 ms |      1,917 ms |
+| 256 KiB → 72 B                            |         2,967 ms |      3,115 ms |      3,160 ms |
+| 512 KiB → 72 B                            |         5,418 ms |      5,571 ms |      5,824 ms |
+| 1 MiB → 72 B                              |        10,363 ms |     10,529 ms |     32,322 ms |
+| 102.400 B → 72 B (1 token de features)    |         1,433 ms |      1,587 ms |      1,670 ms |
+| 819.200 B → 72 B (8 tokens de features)   |         8,213 ms |      8,400 ms |     20,259 ms |
+| **430.080 → 86.016 B (split, 3 drafts)**  |     **5,499 ms** |  **5,639 ms** |  **8,338 ms** |
+| **839.680 → 172.032 B (split, 7 drafts)** |    **10,207 ms** | **10,377 ms** | **29,883 ms** |
 
 O último par teve p50 de **0,064 ms** para serialização no host, **6,902 ms** no intervalo de leitura do payload no Xbox (inclui rede), e **0,629 ms** de SHA no Xbox. O p99 de 29,883 ms mostra cauda de latência que precisa ser considerada por ciclo. O SHA é custo do probe, não parte obrigatória do protocolo final; upload/compute/readback GPU e head/seletor na `.57` ainda acrescentariam tempo.
 

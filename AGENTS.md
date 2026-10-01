@@ -199,6 +199,7 @@ demo/               Capture scripts: what the demo video records, reviewable in 
 patches/            llama.cpp and vendor patches applied at UWP build time
 diffusion/          SD-Turbo → ONNX host toolchain (not inside the MSIX)
 paper/              Citable research package
+research/           DFlash2 GPU/RPC experiments, plans, and measured results
 llama.cpp/          Submodule. Do not edit in place.
 vendor/             Patched ORT / GenAI DLL hashes (vendor/*/SHA256SUMS)
 cmake/              CMake helpers

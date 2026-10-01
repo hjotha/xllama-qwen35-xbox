@@ -10,15 +10,15 @@
 ## Varredura curta no Swift
 
 | n_max | p_min | TPS final | ciclos | propostos | aceitos | aceitos/propostos | ciclos vazios | DRAFT RPC medio (ms) | ciclo medio (ms) | falhas RPC |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 2 | 0.0 | 9.78 | 29 | 58 | 34 | 58.6% | 0 | 99.2 | 221.8 | 0 |
-| 4 | 0.0 | **10.65** | 21 | 84 | 42 | 50.0% | 0 | 137.2 | 281.4 | 0 |
-| 6 | 0.0 | 6.81 | 25 | 150 | 38 | 25.3% | 0 | 196.9 | 369.5 | 0 |
-| 7 | 0.0 | 7.17 | 22 | 154 | 40 | 26.0% | 0 | 210.2 | 394.5 | 0 |
-| 4 | 0.3 | 10.22 | 22 | 73 | 41 | 56.2% | 1 | 139.6 | 275.5 | 0 |
-| 4 | 0.7 | 9.86 | 24 | 59 | 39 | 66.1% | 4 | 137.6 | 256.6 | 0 |
-| 7 | 0.3 | 8.78 | 20 | 76 | 43 | 56.6% | 2 | 209.7 | 351.4 | 0 |
-| 7 | 0.7 | 8.33 | 22 | 63 | 41 | 65.1% | 4 | 207.2 | 331.6 | 0 |
+| ----: | ----: | --------: | -----: | --------: | ------: | ----------------: | ------------: | -------------------: | ---------------: | ---------: |
+|     2 |   0.0 |      9.78 |     29 |        58 |      34 |             58.6% |             0 |                 99.2 |            221.8 |          0 |
+|     4 |   0.0 | **10.65** |     21 |        84 |      42 |             50.0% |             0 |                137.2 |            281.4 |          0 |
+|     6 |   0.0 |      6.81 |     25 |       150 |      38 |             25.3% |             0 |                196.9 |            369.5 |          0 |
+|     7 |   0.0 |      7.17 |     22 |       154 |      40 |             26.0% |             0 |                210.2 |            394.5 |          0 |
+|     4 |   0.3 |     10.22 |     22 |        73 |      41 |             56.2% |             1 |                139.6 |            275.5 |          0 |
+|     4 |   0.7 |      9.86 |     24 |        59 |      39 |             66.1% |             4 |                137.6 |            256.6 |          0 |
+|     7 |   0.3 |      8.78 |     20 |        76 |      43 |             56.6% |             2 |                209.7 |            351.4 |          0 |
+|     7 |   0.7 |      8.33 |     22 |        63 |      41 |             65.1% |             4 |                207.2 |            331.6 |          0 |
 
 `p_min=0.70` e uma configuracao do MTP em producao, nao um valor recomendado pelo card do DFlash2. Aqui ele aumentou a fracao de aceitos entre os tokens selecionados, mas reduziu o TPS: o Xbox ainda computa o bloco inteiro antes do seletor cortar as propostas. O melhor ponto **desta varredura curta** foi `n_max=4, p_min=0`.
 
@@ -26,10 +26,10 @@
 
 Mesmo prompt, seed e sampling, agora `n_predict=512` e `ignore_eos=true` para garantir 512 tokens:
 
-| Configuracao | Tokens | TPS final | Propostos | Aceitos | Ciclos | Falhas RPC |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| ISTA Swift sozinho | 512 | **34.99** | - | - | - | - |
-| ISTA Swift + DFlash2 Q3_K_M Xbox CPU, `n_max=4`, `p_min=0` | 512 | **9.53** | 728 | 329 | 182 | 0 |
+| Configuracao                                               | Tokens | TPS final | Propostos | Aceitos | Ciclos | Falhas RPC |
+| ---------------------------------------------------------- | -----: | --------: | --------: | ------: | -----: | ---------: |
+| ISTA Swift sozinho                                         |    512 | **34.99** |         - |       - |      - |          - |
+| ISTA Swift + DFlash2 Q3_K_M Xbox CPU, `n_max=4`, `p_min=0` |    512 |  **9.53** |       728 |     329 |    182 |          0 |
 
 O remoto ficou 3.67 vezes mais lento que o target sozinho nesta carga. No teste longo remoto, a aceitacao foi 45.2%; o DRAFT RPC medio foi 144.9 ms e o ciclo medio 294.4 ms. Um teste anterior de 512 sem `ignore_eos` encerrou por EOS apos 265 tokens (9.51 TPS) e nao atende ao workload de 512.
 

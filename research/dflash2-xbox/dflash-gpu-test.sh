@@ -12,14 +12,14 @@ restore() {
     rc=$?
     trap - EXIT
     if [[ -n "$test_pid" ]]; then kill "$test_pid" 2>/dev/null || true; wait "$test_pid" 2>/dev/null || true; fi
-    echo amdk6x | sudo -S systemctl start "$prod" || rc=1
+    sudo systemctl start "$prod" || rc=1
     curl -fsS --retry 90 --retry-delay 1 --retry-connrefused --retry-all-errors --max-time 5 http://127.0.0.1:8090/health -o /tmp/health-restore.json || rc=1
     systemctl is-active "$prod" || rc=1
     echo "RESTORE_EXIT=$rc"
     exit "$rc"
 }
 trap restore EXIT
-echo amdk6x | sudo -S systemctl stop "$prod"
+sudo systemctl stop "$prod"
 DFLASH_XBOX_RPC=192.168.1.26:50053 \
 DFLASH_XBOX_METRICS="/tmp/dflash-$mode-metrics.jsonl" \
 DFLASH_XBOX_CAPTURE=/tmp/dflash-$mode-capture.bin \

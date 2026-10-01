@@ -8,13 +8,14 @@
 - Benchmark **sintético de RPC dedicado, CPU Xbox**, 10 ciclos de aquecimento + 100 medidos por configuração, 1 posição `SYNC`, `RESET` por ciclo, mesmos floats de teste e conexão TCP persistente. p50 em ms:
 
   | `n_max` | ciclo RPC (`RESET+SYNC+DRAFT`) | DRAFT RPC | compute DRAFT CPU Xbox | saídas divergentes |
-  | ---: | ---: | ---: | ---: | ---: |
-  | 2 | 105,296 | 97,227 | 94,655 | 0/100 |
-  | 4 | 144,616 | 136,575 | 133,342 | 0/100 |
-  | 6 | 203,721 | 195,500 | 191,257 | 0/100 |
-  | 7 | 216,696 | 208,670 | 204,111 | 0/100 |
+  | ------: | -----------------------------: | --------: | ---------------------: | -----------------: |
+  |       2 |                        105,296 |    97,227 |                 94,655 |              0/100 |
+  |       4 |                        144,616 |   136,575 |                133,342 |              0/100 |
+  |       6 |                        203,721 |   195,500 |                191,257 |              0/100 |
+  |       7 |                        216,696 |   208,670 |                204,111 |              0/100 |
 
   JSON e JSONL: `evidence/dflash-dedicated-n{2,4,6,7}-100.*`. `n_max=8` não cabe no bloco treinado de 8 posições: o anchor ocupa uma, restando sete propostas. Essas latências **não** são TPS do target, acceptance ou comparação com DFlash local.
+
 - Durante esta sessão Game com inferência, 421 amostras de `rpc-memory.jsonl` desde a inicialização verificada do 1.0.0.7 registraram pico `AppMemoryUsage=1.348.149.248` bytes (1.285,7 MiB) e `PrivateWorkingSet=1.286.860.800` bytes, abaixo do limite de 5 GiB. Evidência: `evidence/rpc-memory-after-drafts-1.0.0.7.jsonl`.
 - Um snapshot do processo ativo após os drafts registrou `PageFileUsage=1.345.355.776`, `TotalCommit=1.346.109.440`, `PrivateWorkingSet=1.285.918.720` e `WorkingSetSize=1.312.935.936` bytes. `PageFileUsage` é o contador exposto pelo Device Portal e serve aqui como aproximação de private commit; DXGI LOCAL ainda não foi medido. Evidência: `evidence/xbox-processes-after-drafts-1.0.0.7.json`.
 - O teste `dflash_persistent_smoke.py` executou **duas passagens de quatro ciclos na mesma conexão**: um `RESET` por passagem, `SYNC → DRAFT → TRIM` a cada posição e replay determinístico. Foram oito `TRIM`; os hashes de saída das duas passagens foram idênticos. Isso confirma continuidade/rollback do protocolo com estados sintéticos sem reconstruir o modelo ou contexto por ciclo, mas não prova paridade nem aceitação com estados reais. Evidência: `evidence/dflash-persistent-smoke-1.0.0.7.json`.
@@ -37,11 +38,11 @@ Esta é uma auditoria do trabalho existente, não um benchmark de inferência. A
 
 ## Consolidação e limpeza
 
-| Worktree removida | Material preservado na worktree ativa | Verificação |
-| --- | --- | --- |
-| `xbox-dflash-architecture` | `research/dflash2-xbox/dflash2-remote-pipeline-audit-2026-09-27.md` | SHA-256 igual. |
-| `xbox-dflash-rpc-probe` | Relatório LAN, três JSONs de transporte, três evidências adicionais em `evidence/`, 13 arquivos fonte do probe UWP e scripts em `research/dflash2-xbox/` | Arquivos originais iguais por hash; `dflash_dedicated_bench.py` e `xbox_portal.py` na worktree ativa são revisões posteriores. Saídas `AppPackages/bin/obj` não foram promovidas. |
-| `xllama-dflash2-xbox` | Quatro edições de compatibilidade em `llama.cpp` e três logs em `research/dflash2-xbox/evidence/` | Quatro arquivos e três logs iguais por SHA-256; demais arquivos exclusivos eram saídas de build. |
+| Worktree removida          | Material preservado na worktree ativa                                                                                                                    | Verificação                                                                                                                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `xbox-dflash-architecture` | `research/dflash2-xbox/dflash2-remote-pipeline-audit-2026-09-27.md`                                                                                      | SHA-256 igual.                                                                                                                                                                    |
+| `xbox-dflash-rpc-probe`    | Relatório LAN, três JSONs de transporte, três evidências adicionais em `evidence/`, 13 arquivos fonte do probe UWP e scripts em `research/dflash2-xbox/` | Arquivos originais iguais por hash; `dflash_dedicated_bench.py` e `xbox_portal.py` na worktree ativa são revisões posteriores. Saídas `AppPackages/bin/obj` não foram promovidas. |
+| `xllama-dflash2-xbox`      | Quatro edições de compatibilidade em `llama.cpp` e três logs em `research/dflash2-xbox/evidence/`                                                        | Quatro arquivos e três logs iguais por SHA-256; demais arquivos exclusivos eram saídas de build.                                                                                  |
 
 As três branches vazias das worktrees removidas também foram apagadas. `xbox-memory-probe-game-debug` e `xbox-memory-probe-over5gb` pertencem à investigação de memória e foram preservadas.
 

@@ -20,7 +20,6 @@ inline constexpr uint64_t kUcrtExpTable[64] = {
     0x3ffae89f995ad3adull, 0x3ffb33a2b84f15fbull, 0x3ffb7f76f2fb5e47ull, 0x3ffbcc1e904bc1d2ull,
     0x3ffc199bdd85529cull, 0x3ffc67f12e57d14bull, 0x3ffcb720dcef9069ull, 0x3ffd072d4a07897cull,
     0x3ffd5818dcfba487ull, 0x3ffda9e603db3285ull, 0x3ffdfc97337b9b5full, 0x3ffe502ee78b3ff6ull,
-    0x3ffea4afa2a490daull, 0x3ffefa1bee615a27ull, 0x3fff50765b6e4540ull, 0x3fffa7c1819e90d8ull
-};
+    0x3ffea4afa2a490daull, 0x3ffefa1bee615a27ull, 0x3fff50765b6e4540ull, 0x3fffa7c1819e90d8ull};
 
 } // namespace dflash_exp
