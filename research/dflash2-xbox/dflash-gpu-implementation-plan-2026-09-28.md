@@ -138,7 +138,7 @@ Os nomes de novos arquivos abaixo são propostos. Criar somente os necessários 
 | `shaders/generated/`                               | Bytecode AOT gerado pelo fluxo de compilação, sem edição manual                 |
 | `include/xllama/d3d12_dyn.h`                       | Resolver o runtime D3D12 do sistema                                             |
 | `src/bridge/gpugemv.cpp` e `gpubw.cpp`             | Referência de criação de recursos, timers e verificação                         |
-| `llama.cpp/src/models/dflash.cpp`                  | Especificação executável do grafo e das operações; evitar mudanças semânticas   |
+| `beellama.cpp/src/models/dflash.cpp`               | Especificação executável do grafo e das operações; evitar mudanças semânticas   |
 | `research/dflash2-xbox/test_trim_protocol.py`      | Estender os testes existentes de estado e entradas inválidas                    |
 | `research/dflash2-xbox/dflash_persistent_smoke.py` | Smoke por conexão, reset e repetição                                            |
 | `research/dflash2-xbox/dflash_dedicated_bench.py`  | Base do benchmark de RPC; dados sintéticos não substituem replay real           |
@@ -404,7 +404,7 @@ A primeira entrega de implementação deve ser F0–F2: dados reproduzíveis, ex
 
 - [Relatório TRIM/rewind, versão 1.0.0.10](./trim-rewind-optimization-2026-09-28.md).
 - O manifesto de hashes `trim-optimization-2026-09-28/source-hashes.json` é gerado localmente e ignorado; a metodologia está resumida no relatório TRIM/rewind acima.
-- [Servidor dedicado](../../uwp/dflash-rpc/dedicated.cpp), [protocolo](../../uwp/dflash-rpc/dedicated_protocol.h) e [grafo DFlash](../../llama.cpp/src/models/dflash.cpp).
+- [Servidor dedicado](../../uwp/dflash-rpc/dedicated.cpp), [protocolo](../../uwp/dflash-rpc/dedicated_protocol.h) e [grafo DFlash](../../beellama.cpp/src/models/dflash.cpp).
 - [Infraestrutura GEMV D3D12](../../src/bridge/gpugemv.cpp) e [shader Q4_K](../../shaders/gpugemv_q4k_wave32.hlsl).
 - [Pesquisa GPU do xllama](../../docs/phase15-re-opt.md) e [restrições UWP](../../docs/uwp-constraints.md), lidas à luz do código e das ressalvas registradas acima.
 - [DirectML: recursos, command lists e integração D3D12](https://learn.microsoft.com/en-us/windows/ai/directml/dml).
