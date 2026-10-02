@@ -1,0 +1,9 @@
+# xllama-qwen35-xbox — fork notes
+
+- Upstream: `gianlucamazza/xllama` @ `83cac358f0cf0a314220a28cb37eaac1509c245c` (main, pushed 2026-10-01/02, commit "GGUF GPU decode D2b — opt-in d3d12 layers + product gate (#228) (#308)").
+- Por que repo novo: `hjotha/xllama` já existe (criado 2026-09-29, `fork:false`, pushed 2026-09-30) e ocupa o nome do fork; GitHub não permite segundo fork com o mesmo nome. Este repo é o espelho fiel do upstream (branches+tags; só refs `pull/*` rejeitadas pelo GitHub, esperado).
+- Xbox .26 (2026-10-02, verificado): `HJotha.XboxDFlashRpc_1.0.0.91` instalado; TCP 50053 (DFL2) aberto; porta 11434 (LAN API do xllama upstream) fechada — nenhum xllama upstream rodando no Xbox. DFlash preservado, nada desinstalado.
+- qwen35: catálogo upstream só tem `qwen35-0.8b` (Q4_K_M, pico 718 MB, 35.1 tok/s decode, console PASS). `Qwen3.5-2B` rejeitado medido; `Qwen3.5-4B` (2.6 GB Q4_K_M / 2.7 GB MTP na .57) não consta no catálogo: excede disco livre da Series S (~2.2 GB, docs upstream) e passa do maior pico validado (Phi-4-mini 3.8B, 2765 MB). Rodar o 4B no Xbox exige experimento fora do catálogo (manifest custom + gate de disco/RAM), não é o caminho suportado.
+- Build host .193 (verificado 2026-10-02): VS2022 Community presente, SDK 10.0.26100 instalado, ~49 GB livres em C:. `msbuild` fora do PATH do cmd (normal; usar `C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe` ou Developer prompt). `scripts/build-uwp.ps1` presente neste repo.
+- .57 (verificado): `Qwen3.5-4B-MTP-Q4_K_M.gguf` (2.7G) + `Qwen3.5-4B-Q4_K_M.gguf` (2.6G) em `/home/hjotha/models/`; `llama-server` qwen35-4B-mtp-vulkan ativo na porta 8092.
+- Próximos passos: (1) clonar este repo na .193; (2) `.\scripts\build-uwp.ps1 -Configuration Release -Platform x64`; (3) deploy do MSIX via Device Portal (colado com DFlash — decidir side-by-side vs substituição); (4) `POST /api/pull` do `qwen35-0.8b` e teste `POST /v1/chat/completions` na 11434.
