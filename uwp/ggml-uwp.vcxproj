@@ -130,6 +130,13 @@
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-backend-dl.cpp" />
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-backend-meta.cpp" />
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-backend-reg.cpp" />
+    <!-- ggml/src/CMakeLists.txt lists these two in the base ggml target, not
+         behind an optional backend flag, and llama-context.cpp calls them
+         unconditionally. The ..\ggml\src\*.cpp-style globs below are
+         non-recursive, so without an explicit entry the 13 ggml_backend_*
+         remote-attn / local-split entry points go missing at link time. -->
+    <ClCompile Include="..\llama.cpp\ggml\src\ggml-remote-attn\ggml-remote-attn.cpp" />
+    <ClCompile Include="..\llama.cpp\ggml\src\ggml-local-split\ggml-local-split.cpp" />
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-opt.cpp" />
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-quants.c" />
     <ClCompile Include="..\llama.cpp\ggml\src\ggml-threading.cpp" />
