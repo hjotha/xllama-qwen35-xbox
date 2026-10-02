@@ -37,7 +37,11 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		exit 1
 	fi
 	if git ls-files -u --error-unmatch src/llama-mmap.cpp >/dev/null 2>&1; then
-		python3 - <<'PYEOF'
+		# "python", not "python3": on Windows python3 is the Microsoft Store
+		# alias stub, which prints "Python was not found" and exits non-zero.
+		PY_BIN=python
+		command -v python >/dev/null 2>&1 || PY_BIN=python3
+		"$PY_BIN" - <<'PYEOF'
 import re
 p = "src/llama-mmap.cpp"
 s = open(p).read()
