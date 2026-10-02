@@ -67,6 +67,12 @@
         $(ProjectDir)..\llama.cpp\ggml\src\ggml-cpu;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
+      <!-- ggml/src/CMakeLists.txt adds this for every ggml TU; the UWP project
+           compiles the sources directly, so it has to be spelled out or
+           ggml-backend-meta.cpp cannot see it. Mirrors the CMake cache default
+           of 4 (ggml/CMakeLists.txt). The comment cannot sit inside
+           PreprocessorDefinitions: that element takes text nodes only, and an
+           XML comment there is silently dropped. -->
       <PreprocessorDefinitions>
         XLLAMA_UWP=1;
         NOMINMAX;
@@ -75,6 +81,7 @@
         GGML_USE_CPU;
         GGML_USE_CPU_REPACK;
         GGML_STATIC;
+        GGML_SCHED_MAX_COPIES=4;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard>
