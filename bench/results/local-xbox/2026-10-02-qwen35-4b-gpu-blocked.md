@@ -70,6 +70,32 @@ fork com D2b dentro.
 Instalou (`code=0 reason='Success'`), mas **não sobe**: `start-app` →
 `HTTP 400 {"ErrorCode":-2147024894}` = `0x80070002 ERROR_FILE_NOT_FOUND`.
 
+### 3.0-bis A hipótese do VCLibs foi refutada (2026-10-02, 15:2x–15:4x)
+
+O pacote de **upstream `1.6.0.1046`** roda nesse mesmo console, e ele é
+idêntico ao nosso em tudo que a Microsoft checa na ativação:
+
+| Comparação `xllama_1.6.0.2_x64.msix` (nosso, D3D12+Q5_K) vs `xllama_1.6.0.1046_x64.msix` | Resultado                                                                                                                                       |
+| ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lista de arquivos do pacote (22 arquivos)                                                | **diff vazio**                                                                                                                                  |
+| `AppxManifest.xml`                                                                       | **só muda `Version`** (`1.6.0.2` vs `1.6.0.1046`); mesmo `Publisher="CN=xllama-dev"`, mesmo `Microsoft.VCLibs.140.00 MinVersion="14.0.33519.0"` |
+| Tabela de imports PE (`objdump -p`)                                                      | **diff vazio** — nem `d3d12.dll` nem `dxgi.dll` são importadas (o backend usa `LoadLibraryExW` em `d3d12_dyn.h`)                                |
+| DLLs de CRT no pacote                                                                    | as mesmas 4 desktop (`MSVCP140*.dll`, `VCRUNTIME140*.dll`); ambos importam `*_APP.dll`                                                          |
+| `xllama.exe`                                                                             | 5 887 488 B (sem D3D12) vs **6 132 224 B** (com D3D12 + Q5_K)                                                                                   |
+| Launch no console                                                                        | release **sobe**; nosso falha com `0x80070002`                                                                                                  |
+
+O certificado do CI também foi instalado no console (`HTTP 200` em
+`/api/app/packagemanager/certificate`), e não há crash dump
+(`/api/debug/dump/usermode/dumps` → `{"CrashDumps": []}`): o app **não
+chega a rodar**, o que é falha de ativação, não de código em execução.
+
+**Consequência:** o bloqueio de launch é **pré-existente no `main` do fork**,
+não efeito do Q5_K — o run `36966362855` (`1.6.0.1`, sem o commit `d1c1790`)
+já falhava igual (§3.1). E o `apply_gguf_gpu_layers()` só chama
+`ggml_d3d12_register()` quando `requested > 0`, ou seja o backend nem roda no
+boot. Falta localizar o delta entre o fork e o upstream `1.6.0.0` que quebra a
+ativação.
+
 Causa, documentada no próprio manifest do pacote:
 
 ```xml
