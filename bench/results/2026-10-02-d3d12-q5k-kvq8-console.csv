@@ -6,3 +6,6 @@ local-1.6.0.4,f16,99,4096,41,48,2.60,18.46,3914.2,128.00,xbox-series-x,2026-10-0
 local-1.6.0.4,f16,99,4096,41,32,2.02,15.85,3914.2,128.00,xbox-series-x,2026-10-02,repeat
 local-1.6.0.4,f16,99,4096,41,34,2.07,16.40,3914.2,128.00,xbox-series-x,2026-10-02,repeat
 ci-1.6.0.2,f16,99,4096,41,40,2.23,17.94,2543.0,128.00,xbox-series-x,2026-10-02,previous build (no kv_q8 knob)
+local-1.6.0.3,q8_0,99,4096,41,48,2.47,19.43,3861.5,68.00,xbox-series-x,2026-10-02,llama.ini only (feat/llama-ini; no gguf_gpu_layers.txt / kv_q8.txt)
+local-1.6.0.3,q8_0,99,4096,41,40,2.12,18.84,3861.5,68.00,xbox-series-x,2026-10-02,llama.ini only
+local-1.6.0.3,q8_0,99,4096,41,36,1.96,18.38,3861.5,68.00,xbox-series-x,2026-10-02,llama.ini only
