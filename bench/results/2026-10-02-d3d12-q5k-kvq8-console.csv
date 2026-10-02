@@ -1,0 +1,8 @@
+build,kv_type,n_gpu_layers,ctx,prompt_tok,completion_tok,wall_s,decode_tok_s,private_working_set_mib,cpu_kv_buffer_mib,host,date,note
+local-1.6.0.4,q8_0,99,4096,41,43,2.31,18.65,3860.2,68.00,xbox-series-x,2026-10-02,rev 4 local (msix 84135a94), D3D12 + Q5_K HLSL
+local-1.6.0.4,q8_0,99,4096,41,37,2.01,18.45,3860.2,68.00,xbox-series-x,2026-10-02,repeat
+local-1.6.0.4,q8_0,99,4096,41,38,2.06,18.43,3860.2,68.00,xbox-series-x,2026-10-02,repeat
+local-1.6.0.4,f16,99,4096,41,48,2.60,18.46,3914.2,128.00,xbox-series-x,2026-10-02,same build kv_q8.txt=0
+local-1.6.0.4,f16,99,4096,41,32,2.02,15.85,3914.2,128.00,xbox-series-x,2026-10-02,repeat
+local-1.6.0.4,f16,99,4096,41,34,2.07,16.40,3914.2,128.00,xbox-series-x,2026-10-02,repeat
+ci-1.6.0.2,f16,99,4096,41,40,2.23,17.94,2543.0,128.00,xbox-series-x,2026-10-02,previous build (no kv_q8 knob)
