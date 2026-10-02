@@ -73,8 +73,8 @@ double emulate_rel_err(ggml_type t, int n, int k, int ncols, std::size_t x_pad, 
 TEST_CASE("ggml_d3d12: weight types") {
     CHECK(d3d12_weight_type_supported(GGML_TYPE_Q4_0));
     CHECK(d3d12_weight_type_supported(GGML_TYPE_Q4_K));
+    CHECK(d3d12_weight_type_supported(GGML_TYPE_Q5_K));
     CHECK(d3d12_weight_type_supported(GGML_TYPE_Q6_K));
-    CHECK_FALSE(d3d12_weight_type_supported(GGML_TYPE_Q5_K));
     CHECK_FALSE(d3d12_weight_type_supported(GGML_TYPE_Q8_0));
     CHECK_FALSE(d3d12_weight_type_supported(GGML_TYPE_F16));
     CHECK_FALSE(d3d12_weight_type_supported(GGML_TYPE_F32));
@@ -158,12 +158,17 @@ TEST_CASE("ggml_d3d12: kernel emulation matches ggml dequantizers") {
     const Case cases[] = {
         {GGML_TYPE_Q4_0, 13, 1024},
         {GGML_TYPE_Q4_K, 13, 1024},
+        {GGML_TYPE_Q5_K, 13, 1024},
         {GGML_TYPE_Q6_K, 13, 1024},
         // 9 super-blocks: 1890-byte rows, odd rows start 2-byte aligned.
         {GGML_TYPE_Q6_K, 6, 2304},
         // Coder-3B ffn_down width: 43 super-blocks, 9030-byte rows.
         {GGML_TYPE_Q6_K, 3, 11008},
         {GGML_TYPE_Q4_0, 5, 2304},
+        // Qwen3.5-4B attention and SSM projections: 2560 and 4096 wide.
+        {GGML_TYPE_Q5_K, 5, 2560},
+        {GGML_TYPE_Q5_K, 3, 4096},
+        {GGML_TYPE_Q5_K, 11, 5120},
     };
     for (const auto& c : cases) {
         CAPTURE(ggml_type_name(c.t));
@@ -172,6 +177,9 @@ TEST_CASE("ggml_d3d12: kernel emulation matches ggml dequantizers") {
         CHECK(emulate_rel_err(c.t, c.n, c.k, 7, 12, 3) <= 1e-4);
     }
     CHECK(ggml_row_size(GGML_TYPE_Q6_K, 11008) % 4 == 2); // the case the ld32 trick covers
+    // Q5_K blocks are 176 B, so every dword the shader reads stays inside a block
+    // and its loads need no alignment trick.
+    CHECK(ggml_row_size(GGML_TYPE_Q5_K, 2560) % 4 == 0);
 }
 
 TEST_CASE("ggml_d3d12: selftest CSV and non-Windows behaviour") {

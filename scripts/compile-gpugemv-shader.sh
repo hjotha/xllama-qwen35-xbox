@@ -6,10 +6,10 @@
 #   shaders/gpugemv_q4k_wave32.hlsl → gpugemv_q4k_wave32_dxil.h (H6.2 LDS-red)
 #   shaders/gpugemv_q4k_rows.hlsl   → gpugemv_q4k_rows_dxil.h   (H6.3 multi-row)
 #   shaders/gpugemv_q4k_dot4.hlsl   → gpugemv_q4k_dot4_dxil.h   (H6.3 int8 dot, cs_6_4)
-#   shaders/ggml_d3d12_mmv_{q4_0,q4_k,q6_k}.hlsl → ggml_d3d12_mmv_*_t{64,128}_dxil.h
+#   shaders/ggml_d3d12_mmv_{q4_0,q4_k,q5_k,q6_k}.hlsl → ggml_d3d12_mmv_*_t{64,128}_dxil.h
 #     (D2 backend; one blob per thread-group width, -D NUM_THREADS)
 #
-# Usage: compile-gpugemv-shader.sh [naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q6_k ...]
+# Usage: compile-gpugemv-shader.sh [naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k ...]
 #        (default: all)
 # A different dxc release emits different bytes: regenerate only the targets
 # you changed so measured blobs stay the ones the CSVs were recorded with.
@@ -89,7 +89,7 @@ compile_target() {
 	dot4) compile_one "$ROOT/shaders/gpugemv_q4k_dot4.hlsl" \
 		"$ROOT/shaders/generated/gpugemv_q4k_dot4_dxil.h" \
 		"shaders/gpugemv_q4k_dot4.hlsl" "kGpugemvQ4kDot4Dxil" cs_6_4 ;;
-	mmv_q4_0 | mmv_q4_k | mmv_q6_k)
+	mmv_q4_0 | mmv_q4_k | mmv_q5_k | mmv_q6_k)
 		local t="${1#mmv_}" w sym
 		for w in 64 128; do
 			sym="kGgmlD3d12Mmv$(echo "$t" | sed -e 's/_\(.\)/\U\1/g' -e 's/^./\U&/')T${w}Dxil"
@@ -100,14 +100,14 @@ compile_target() {
 		done
 		;;
 	*)
-		echo "unknown target: $1 (naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q6_k)" >&2
+		echo "unknown target: $1 (naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k)" >&2
 		exit 2
 		;;
 	esac
 }
 
 if [[ $# -eq 0 ]]; then
-	set -- naive wave32 rows dot4 mmv_q4_0 mmv_q4_k mmv_q6_k
+	set -- naive wave32 rows dot4 mmv_q4_0 mmv_q4_k mmv_q5_k mmv_q6_k
 fi
 for target in "$@"; do
 	compile_target "$target"

@@ -4,7 +4,7 @@
 // ggml backend "d3d12" — GGUF GPU decode D2 (docs/gguf-gpu-decode.md).
 //
 // A GPU-type ggml device, registered at runtime, that runs only MUL_MAT with
-// Q4_0 / Q4_K / Q6_K weights and f32 activations on our D3D12 compute shaders.
+// Q4_0 / Q4_K / Q5_K / Q6_K weights and f32 activations on our D3D12 compute shaders.
 // Two buffer types:
 //   D3D12_Weights  DEFAULT heap, holds matmul weights (exposed as an extra buft)
 //   D3D12_Host     CUSTOM WRITE_BACK heap, is_host — the device default buft, so
@@ -35,7 +35,7 @@ inline constexpr int kD3d12MmvRows = 4;
 inline constexpr int kD3d12MmvThreadsShort = 64;
 inline constexpr int kD3d12MmvThreadsLong = 128;
 inline constexpr int kD3d12LongKChunks = 16; // K >= 4096 → 128 threads
-// Every kernel walks K in 256-element chunks (one Q4_K/Q6_K super-block, eight
+// Every kernel walks K in 256-element chunks (one Q4_K/Q5_K/Q6_K super-block, eight
 // Q4_0 blocks).
 inline constexpr int kD3d12Chunk = 256;
 inline constexpr std::uint32_t kD3d12MaxGroups = 65535;
@@ -85,7 +85,7 @@ bool ggml_d3d12_register();
 // --- Console selftest (d3d12be.flag) ---
 
 struct D3d12SelftestRow {
-    std::string type; // q4_0 | q4_k | q6_k
+    std::string type; // q4_0 | q4_k | q5_k | q6_k
     int n = 0, k = 0, ncols = 0;
     double rel_err = 0.0; // max |gpu - ref| / max |ref|
     double gpu_ms = 0.0;  // GPU timestamp time of the last compute, ms

@@ -179,14 +179,15 @@ device registered with `ggml_backend_register()`:
   one round trip per split (the D1 zero-copy path). Weights go to the extra
   buft **`D3D12_Weights`** (DEFAULT heap, D1c).
 - **`supports_op`** accepts `MUL_MAT` only when the weight already lives in
-  `D3D12_Weights` (Q4_0 / Q4_K / Q6_K, K multiple of 256, contiguous, 2-D;
+  `D3D12_Weights` (Q4_0 / Q4_K / Q5_K / Q6_K, K multiple of 256, contiguous, 2-D;
   F32 activations). llama.cpp's per-weight buft probe therefore skips the host
   buft; norms, biases, short-conv, `token_embd` and other types fall back to the
   CPU list by themselves.
-- **Kernels** `shaders/ggml_d3d12_mmv_{q4_0,q4_k,q6_k}.hlsl`: the H6.3 `rows`
+- **Kernels** `shaders/ggml_d3d12_mmv_{q4_0,q4_k,q5_k,q6_k}.hlsl`: the H6.3 `rows`
   layout plus a column index for prefill; Q4_0 (18 B) and Q6_K (210 B) blocks
   are read with 2-byte-aligned dword loads (Coder-3B Q6_K `ffn_down` rows are
-  9030 B). Weight tensors get 16 B of padding: root descriptors have no bounds
+  9030 B), while Q4_K (144 B) and Q5_K (176 B) blocks are 4-byte aligned and load
+  whole dwords. Weight tensors get 16 B of padding: root descriptors have no bounds
   check. Two blobs per type, 64 or 128 threads per group,
   picked by K (`d3d12_mm_threads`: 128 from K = 4096): long-K `ffn_down`
   needs 8 chunks in flight, short K starves them (D2a runs 1 and 2).
