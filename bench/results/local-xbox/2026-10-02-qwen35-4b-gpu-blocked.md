@@ -300,3 +300,39 @@ O `dxc.exe` 1.8.2502.11 do Windows SDK na `.193` produz bytes diferentes
 **Falta o gate D2a** (`scripts/bench-d3d12-selftest.sh`): exige o MSIX com D3D12,
 ou seja §3.1 destravado. Nenhum tok/s de Q5_K foi medido e nada foi adicionado
 a `docs/benchmarks.md`.
+
+## 7. Gate D2a no hardware — PASS 16/16 (2026-10-02 15:5x)
+
+O mesmo pacote CI (`xllama_1.6.0.2_x64.msix`) foi reinstalado do zero e **subiu
+de primeira** (`Started …_1.6.0.2…`; `xllama.exe` PID 3756 em execução,
+memória subindo até ~254 MB). O `0x80070002` das tentativas anteriores não
+reapareceu numa instalação limpa — era estado de registro incompleto, não
+defeito do pacote.
+
+Com `gguf_gpu_layers.txt=99` o backend registrou e carregou os pesos na GPU
+(`[xllama] gguf gpu layers: 99 on D3D12`, `using device D3D12 (xllama D3D12
+compute (Q4_0/Q4_K/Q5_K/Q6_K matmul))`, `D3D12_Weights model buffer size =
+2595.90 MiB` para o `qwen35-4b`; os `MUL_MAT refused: q8_0 2560x32` ficam na
+CPU como manda a regra). Chat com `qwen35-4b` respondeu em português
+corretamente.
+
+Evidência: `bench/results/2026-10-02-d2a-d3d12-selftest-q5k.csv`.
+
+| Caso Q5_K                     | rel_err (vs ggml) | GPU       | packed GB/s |
+| ----------------------------- | ----------------- | --------- | ----------- |
+| `q5_k 11008 × 2048`, decode   | 1.62e-07          | 0.0723 ms | **214.25**  |
+| `q5_k 2048 × 11008`, decode   | 1.35e-07          | 0.0856 ms | **181.12**  |
+| `q5_k 1024 × 1024`, ncols 7   | 1.63e-07          | —         | 39.17       |
+| `q5_k 1024 × 1024`, ncols 512 | 1.64e-07          | —         | 0.75        |
+
+Gate D2a: **16/16 casos `ok=1` e `d3d12_ran=1`**; todos os decode (`ncols=1`)
+≥ 100 GB/s (Q5_K 214/181, Q4_K 219/199, Q6_K 200/228, Q4_0 163/166). Isso
+valida no hardware Series X: (a) o layout `qs/qh` e o índice de bit do
+`mmv_q5_k.hlsl`, (b) o blob DXIL 1.9.2609 despachado pelo `kPsoQ5K`, (c) a
+emulação host (paridade `< 1e-4` no Linux confirma a mesma álgebra).
+
+Estado deixado no console: `1.6.0.2` no ar, `manifest.json` + `api.flag` +
+`model.txt` + `models\qwen35-4b\Qwen3.5-4B-Q4_K_M.gguf` (sha `00fe7986…`)
+restaurados, `gguf_gpu_layers.txt=99`, `/v1/models` com `qwen35-4b` gerando.
+Rollback pronto em `/home/hjotha/artifacts/rollback/xllama_1.6.0.1046_x64.msix`
+(sha `84f7366f…`).
