@@ -31,7 +31,7 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		echo "apply-uwp-patches: ${name} does not apply (3-way failed); aborting." >&2
 		exit 1
 	fi
-	git apply -3 "$patch" || git apply -3 --reject "$patch"
+	git apply -3 "$patch"
 	if git ls-files -u --error-unmatch src/llama-mmap.cpp >/dev/null 2>&1; then
 		python3 - <<'PYEOF'
 import re
