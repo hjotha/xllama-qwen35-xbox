@@ -56,6 +56,11 @@ void run_d3d12_selftest();
 // for both front ends; experimental, no UI (docs/gguf-gpu-decode.md).
 int gguf_gpu_layers_knob();
 
+// #171: q8_0 KV cache (+ forced flash attention where supported) for
+// interactive GGUF sessions (GUI and LAN API) from LocalState\kv_q8.txt;
+// 0 (the default) when absent. Same one-home-per-knob pattern as above.
+int gguf_kv_q8_knob();
+
 // Heap-ceiling probe. Triggered by LocalFolder\ramceil.flag; writes
 // ramceil-result.csv (+ .done marker holding the stop reason) to LocalState.
 // Measures how much heap the process can actually commit under GameOS — the

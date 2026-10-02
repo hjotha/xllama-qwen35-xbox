@@ -160,6 +160,10 @@ void run_kv_bench(const std::string& model_name, const std::string& sys, const s
 int gguf_gpu_layers_knob() {
     return read_local_int("gguf_gpu_layers.txt", 0);
 }
+
+int gguf_kv_q8_knob() {
+    return read_local_int("kv_q8.txt", 0);
+}
 #endif // XLLAMA_UWP
 
 // ---------------------------------------------------------------------------
