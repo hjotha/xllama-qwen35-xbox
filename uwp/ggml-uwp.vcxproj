@@ -151,39 +151,12 @@
   </ItemGroup>
 
   <!-- llama -->
+  <!-- Wildcard, same rationale as src/models\*.cpp below: the fork splits the
+       KV cache into ~20 translation units (llama-kv-*, llama-kvarn, paged
+       scheduler), and a hardcoded list silently drops new ones until a link
+       error surfaces. Matches the Linux CMake glob. -->
   <ItemGroup>
-    <ClCompile Include="..\llama.cpp\src\llama.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-adapter.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-arch.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-batch.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-chat.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-context.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-cparams.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-grammar.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-graph.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-hparams.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-impl.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-io.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-dsa.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-dsa-iswa.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-dsv4.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-iswa.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-kv-cache-msa.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-memory.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-memory-hybrid.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-memory-hybrid-iswa.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-memory-hybrid-idx.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-memory-recurrent.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-mmap.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-model.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-model-loader.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-model-saver.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-quant.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-sampler.cpp" />
-    <ClCompile Include="..\llama.cpp\src\llama-vocab.cpp" />
-    <ClCompile Include="..\llama.cpp\src\unicode.cpp" />
-    <ClCompile Include="..\llama.cpp\src\unicode-data.cpp" />
+    <ClCompile Include="..\llama.cpp\src\*.cpp" />
   </ItemGroup>
 
   <!-- llama per-architecture model implementations (src/models/, one cpp per arch) -->
