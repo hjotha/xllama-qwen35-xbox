@@ -24,6 +24,7 @@ add_executable(xllama-tests
     test_chat_prompt.cpp
     test_prompt_budget.cpp
     test_manifest_merge.cpp
+    test_llama_ini.cpp
     test_membw.cpp
     test_diskbw.cpp
     test_gpubw.cpp

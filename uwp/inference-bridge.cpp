@@ -157,12 +157,41 @@ void run_kv_bench(const std::string& model_name, const std::string& sys, const s
 
 } // namespace
 
+LlamaIni read_llama_ini() {
+    return parse_llama_ini(read_local_file(kLlamaIniFile));
+}
+
 int gguf_gpu_layers_knob() {
-    return read_local_int("gguf_gpu_layers.txt", 0);
+    const std::string s = read_local_file("gguf_gpu_layers.txt");
+    if (!s.empty())
+        return std::atoi(s.c_str());
+    int v = 0;
+    return llama_ini_int(read_llama_ini(), "n_gpu_layers", v) ? v : 0;
 }
 
 int gguf_kv_q8_knob() {
-    return read_local_int("kv_q8.txt", 0);
+    const std::string s = read_local_file("kv_q8.txt");
+    if (!s.empty())
+        return std::atoi(s.c_str());
+    bool v = false;
+    return llama_ini_bool(read_llama_ini(), "kv_q8", v) ? (v ? 1 : 0) : 0;
+}
+
+void apply_llama_ini_session(SessionParams& sp) {
+    const LlamaIni ini = read_llama_ini();
+    if (ini.empty())
+        return;
+    // Positive values only; anything else leaves the catalogue default in
+    // place. n_gpu_layers and kv_q8 stay with their knobs above.
+    int v = 0;
+    if (llama_ini_int(ini, "n_ctx", v) && v > 0)
+        sp.n_ctx = v;
+    if (llama_ini_int(ini, "n_threads", v) && v > 0)
+        sp.n_threads = v;
+    if (llama_ini_int(ini, "n_batch", v) && v > 0)
+        sp.n_batch = v;
+    if (llama_ini_int(ini, "n_ubatch", v) && v > 0)
+        sp.n_ubatch = v;
 }
 #endif // XLLAMA_UWP
 

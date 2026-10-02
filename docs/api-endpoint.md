@@ -39,6 +39,12 @@ live XAML chat UI.
   sets `n_gpu_layers` on the d3d12 backend for GGUF sessions loaded by the GUI and
   by this API alike; a change reloads the resident session. Gate and verdict:
   [gguf-gpu-decode.md](gguf-gpu-decode.md).
+- **llama.cpp session defaults:** `LocalState\llama.ini` (`key = value` lines,
+  `#`/`;` comments, one optional `[llama]` header) carries `n_gpu_layers`,
+  `kv_q8`, `n_ctx`, `n_threads`, `n_batch` and `n_ubatch` for GUI and API
+  sessions alike, so one file replaces the per-knob `.txt` files and the
+  catalogue edit. An explicit `gguf_gpu_layers.txt` / `kv_q8.txt` still wins
+  over the `.ini`, which wins over the catalogue/compiled default.
 
 **Foreground only.** The endpoint dies when the app leaves the foreground (UWP Process
 Lifetime Management — no always-on system service). On Xbox this is stricter than on PC: if

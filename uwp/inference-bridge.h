@@ -6,6 +6,8 @@
 #include "xllama/device_train.h"
 #include "xllama/inference.h"
 #include "xllama/inference_params.h"
+#include "xllama/llama_ini.h"
+#include "xllama/session.h"
 #include "xllama/training_params.h"
 
 namespace xllama::bridge {
@@ -52,14 +54,25 @@ void run_gpustep(bool inproc);
 void run_d3d12_selftest();
 
 // GGUF GPU decode D2b: n_gpu_layers for interactive sessions (GUI and LAN API)
-// from LocalState\gguf_gpu_layers.txt; 0 (the default) when absent. One home
-// for both front ends; experimental, no UI (docs/gguf-gpu-decode.md).
+// from LocalState\gguf_gpu_layers.txt, else LocalState\llama.ini [n_gpu_layers],
+// else 0. One home for both front ends; experimental, no UI
+// (docs/gguf-gpu-decode.md).
 int gguf_gpu_layers_knob();
 
 // #171: q8_0 KV cache (+ forced flash attention where supported) for
-// interactive GGUF sessions (GUI and LAN API) from LocalState\kv_q8.txt;
-// 0 (the default) when absent. Same one-home-per-knob pattern as above.
+// interactive GGUF sessions (GUI and LAN API) from LocalState\kv_q8.txt,
+// else LocalState\llama.ini [kv_q8], else 0. Same one-home-per-knob pattern.
 int gguf_kv_q8_knob();
+
+// LocalState\llama.ini (xllama/llama_ini.h) as parsed session defaults.
+// Empty map when the file is absent.
+LlamaIni read_llama_ini();
+
+// Overwrite the SessionParams fields the llama.ini carries (n_ctx, n_threads,
+// n_batch, n_ubatch). n_gpu_layers and kv_q8 stay with their knobs above, so
+// the explicit single-purpose files keep overriding the .ini. No-op when the
+// file is absent.
+void apply_llama_ini_session(SessionParams& sp);
 
 // Heap-ceiling probe. Triggered by LocalFolder\ramceil.flag; writes
 // ramceil-result.csv (+ .done marker holding the stop reason) to LocalState.

@@ -254,7 +254,8 @@ columns run at ~3–5.5 µs per column at 1024 × 1024; the prefill gate is D2b'
   buffer types).
 - **How to enable (experimental):**
   - `LocalState\gguf_gpu_layers.txt` with a layer count (`99` = all) for GUI and
-    API sessions;
+    API sessions, or `LocalState\llama.ini` with `n_gpu_layers = 99` (the
+    single-purpose file wins when both exist);
   - `bench_gpu_layers.txt` via `scripts/bench-xbox-ort.sh --gpu-layers N`
     (host tag `-gN`, CSV `backend` = `d3d12`);
   - `xllama-cli --gpu-layers N` (no D3D12 on Linux → CPU).

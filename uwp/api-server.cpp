@@ -456,6 +456,7 @@ std::string handle_chat_locked(const std::string& body, const char*& status) {
             sp.backend = ::xllama::Backend::LlamaCpp;
             sp.n_gpu_layers = ::xllama::bridge::gguf_gpu_layers_knob(); // D2b, default 0
             sp.kv_q8 = ::xllama::bridge::gguf_kv_q8_knob() != 0;        // #171, default off
+            ::xllama::bridge::apply_llama_ini_session(sp); // llama.ini overrides catalogue defaults
         }
         session = ::xllama::session_hub().ensure_locked(model, sp, &err);
         if (!session) {
@@ -792,6 +793,7 @@ std::string handle_embedding_locked(const std::string& body, const char*& status
         sp.backend = ::xllama::Backend::LlamaCpp;
         sp.n_gpu_layers = ::xllama::bridge::gguf_gpu_layers_knob(); // D2b, default 0
         sp.kv_q8 = ::xllama::bridge::gguf_kv_q8_knob() != 0;        // #171, default off
+        ::xllama::bridge::apply_llama_ini_session(sp); // llama.ini overrides catalogue defaults
     }
     if (root.HasKey(L"options") &&
         root.GetNamedValue(L"options").ValueType() != JsonValueType::Object) {
@@ -1307,6 +1309,8 @@ void handle_pull(StreamSocket const& socket, const std::string& body, uint64_t g
             params.backend = ::xllama::Backend::LlamaCpp;
             params.n_gpu_layers = ::xllama::bridge::gguf_gpu_layers_knob(); // D2b, default 0
             params.kv_q8 = ::xllama::bridge::gguf_kv_q8_knob() != 0;        // #171, default off
+            ::xllama::bridge::apply_llama_ini_session(
+                params); // llama.ini overrides catalogue defaults
         }
         // Recheck after waiting for inference: stop/rebind may have invalidated
         // the listener while this pull was blocked on the resident session.
