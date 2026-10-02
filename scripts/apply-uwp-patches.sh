@@ -42,6 +42,93 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		PY_BIN=python
 		command -v python >/dev/null 2>&1 || PY_BIN=python3
 		"$PY_BIN" - <<'PYEOF'
+# Resolve the llama-mmap.cpp 3-way conflict without regex: the fork guards
+# the Windows branch with LLAMA_WINDOWS_DESKTOP, a macro it never defines,
+# while the patch uses the AppContainer-aware test that is correct on desktop
+# and on Xbox. Line-oriented so no escaping survives the shell heredoc.
+path = "src/llama-mmap.cpp"
+good = ("#if defined(_POSIX_MEMLOCK_RANGE) || (defined(_WIN32) && "
+        "(!defined(WINAPI_FAMILY) || WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)))")
+lines = open(path).read().splitlines(True)
+out = []
+i = 0
+fixed = 0
+while i < len(lines):
+    if (lines[i].startswith("<<<<<<<") and i + 4 < len(lines)
+            and lines[i + 1].startswith("#if") and "LLAMA_WINDOWS_DESKTOP" in lines[i + 1]
+            and lines[i + 2].startswith("=======") and lines[i + 3].startswith("#if")
+            and lines[i + 4].startswith(">>>>>>>")):
+        out.append(good + "\n")
+        fixed += 1
+        i += 5
+        continue
+    out.append(lines[i])
+    i += 1
+if any(l.startswith("<<<<<<<") for l in out):
+    raise SystemExit("apply-uwp-patches: unresolved conflict left in " + path)
+if fixed == 0:
+    raise SystemExit("apply-uwp-patches: no llama-mmap.cpp hunk matched in " + path)
+open(path, "w").write("".join(out))
+print("apply-uwp-patches: resolved %d llama-mmap.cpp hunk(s)" % fixed)
+PYEOF'
+import re
+
+path = "src/llama-mmap.cpp"
+text = open(path).read()
+
+# Keep the patch's AppContainer-aware test instead of the fork's
+# LLAMA_WINDOWS_DESKTOP, which the fork never defines anywhere.
+#
+# The pattern is built by concatenation on purpose: inside a raw string "\n"
+# is a backslash followed by "n" and would never match a newline, and a single
+# non-raw "\n" here would already be consumed one escaping level too early by
+# writing it through a shell heredoc.
+NL = chr(10)
+good = ("#if defined(_POSIX_MEMLOCK_RANGE) || (defined(_WIN32) && (!defined(WINAPI_FAMILY) || "
+        "WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)))")
+BS = chr(92)   # backslash, so "\n" can be written as BS+"n"
+ANY = "[^" + BS + "n]*"
+pattern = ("<<<<<<< ours" + NL + "#if" + ANY + "LLAMA_WINDOWS_DESKTOP" + ANY + NL +
+           "=======" + NL + "#if" + ANY + NL + ">>>>>>> theirs")
+]*LLAMA_WINDOWS_DESKTOP[^
+]*" + NL +
+           "=======" + NL + r"#if[^
+]*" + NL + ">>>>>>> theirs")
+text, n = re.subn(pattern, good, text)
+
+if "<<<<<<<" in text:
+    raise SystemExit("apply-uwp-patches: unresolved conflict left in " + path)
+if n == 0:
+    raise SystemExit("apply-uwp-patches: no llama-mmap.cpp hunk matched in " + path)
+open(path, "w").write(text)
+print("apply-uwp-patches: resolved %d llama-mmap.cpp hunk(s)" % n)
+PYEOF'
+import re
+
+path = "src/llama-mmap.cpp"
+text = open(path).read()
+
+# Keep the patch's AppContainer-aware test instead of the fork's
+# LLAMA_WINDOWS_DESKTOP, which the fork never defines anywhere. Non-raw regex:
+# Plain concatenated strings, not a raw string: the newlines in the pattern
+# have to be real \n escapes for re, and the heredoc is quoted so the shell
+# leaves them alone.
+good = ("#if defined(_POSIX_MEMLOCK_RANGE) || (defined(_WIN32) && (!defined(WINAPI_FAMILY) || "
+        "WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_DESKTOP)))")
+pattern = ("<<<<<<< ours" + chr(10) + r"#if[^
+]*LLAMA_WINDOWS_DESKTOP[^
+]*" + chr(10) +
+           "=======" + chr(10) + r"#if[^
+]*" + chr(10) + ">>>>>>> theirs")
+text, n = re.subn(pattern, good, text)
+
+if "<<<<<<<" in text:
+    raise SystemExit("apply-uwp-patches: unresolved conflict left in " + path)
+if n == 0:
+    raise SystemExit("apply-uwp-patches: no llama-mmap.cpp hunk matched in " + path)
+open(path, "w").write(text)
+print("apply-uwp-patches: resolved %d llama-mmap.cpp hunk(s)" % n)
+PYEOF'
 import re
 p = "src/llama-mmap.cpp"
 s = open(p).read()
