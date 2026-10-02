@@ -27,11 +27,15 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 	# conflicts — the fork guards the Windows branch with a LLAMA_WINDOWS_DESKTOP
 	# macro it never defines — so that one hunk is resolved in favour of the
 	# patch's AppContainer-aware test (correct on desktop and on Xbox alike).
-	if ! git apply -3 --check "$patch" 2>/dev/null; then
-		echo "apply-uwp-patches: ${name} does not apply (3-way failed); aborting." >&2
+	# git apply -3 returns non-zero both when the 3-way merge conflicts and when
+	# it cannot run at all (missing base blobs in a shallow clone), so the exit
+	# code alone cannot gate this. Apply, then decide from the index: unmerged
+	# entries mean "resolvable conflict", no entries and non-zero means the
+	# submodule is missing the base commit and the build must not continue.
+	if ! git apply -3 "$patch" 2>/dev/null && ! git ls-files -u | grep -q .; then
+		echo "apply-uwp-patches: ${name} does not apply (3-way could not run); aborting." >&2
 		exit 1
 	fi
-	git apply -3 "$patch"
 	if git ls-files -u --error-unmatch src/llama-mmap.cpp >/dev/null 2>&1; then
 		python3 - <<'PYEOF'
 import re
