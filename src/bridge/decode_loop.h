@@ -6,6 +6,7 @@
 
 #include "llama.h"
 #include "xllama/chat_prompt.h" // apply_stop_sequences
+#include "xllama/mtp_draft.h"   // MtpDrafter
 #include "xllama/platform.h"    // log_output
 #include "xllama/speculative.h" // prompt_lookup_draft (#210)
 
@@ -96,6 +97,12 @@ struct DecodeLoopParams {
     std::vector<llama_token>* token_history = nullptr;
     int spec_n_gram = kSpecNgramDefault;
     int spec_k = kSpecDraftKDefault;
+
+    // MTP drafting. When set and ready(), it replaces prompt-lookup as the draft
+    // source; both feed the same verify path below, so acceptance and the
+    // rewind rules are shared. Null leaves decoding exactly as it was.
+    class MtpDrafter* mtp = nullptr;
+    int mtp_n_embd = 0;
 
     // Bench only: keep decoding through end-of-generation so every run decodes
     // exactly n_predict tokens. Two backends whose arithmetic differs (CPU q8
@@ -248,7 +255,11 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
 // single-token decode of lead on this stack. Commit lead first, then speculate.
 inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& output_text) {
     DecodeLoopResult out;
-    bool spec_enabled = p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0;
+    const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
+    // The verify path only reads the two speculative counters, so whichever
+    // source produced the tokens, the numbers mean the same thing.
+    bool spec_enabled =
+        mtp_enabled || (p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0);
 
     while (out.n_generated < p.n_predict) {
         if (p.abort_flag && p.abort_flag->load())
@@ -282,7 +293,21 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // Lead is already in token_history via accept_token. Draft from that
         // alone (no extra lead argument).
         std::vector<int32_t> draft32;
-        if (p.token_history && static_cast<int>(p.token_history->size()) >= p.spec_n_gram) {
+        if (mtp_enabled) {
+            // MTP reads the target's hidden row for the lead token. The session
+            // enables nextn embeddings on the target when MTP is on; without
+            // them there is no row, MTP declines, and this degrades to
+            // single-token decoding rather than failing.
+            const float* h = llama_get_embeddings_nextn_ith(p.ctx, -1);
+            if (h) {
+                llama_memory_t mm = llama_get_memory(p.ctx);
+                const llama_pos next_pos = llama_memory_seq_pos_max(mm, 0) + 1;
+                const std::vector<llama_token> md = p.mtp->draft(token, next_pos, h, p.mtp_n_embd);
+                draft32.reserve(md.size());
+                for (llama_token t : md)
+                    draft32.push_back(static_cast<int32_t>(t));
+            }
+        } else if (p.token_history && static_cast<int>(p.token_history->size()) >= p.spec_n_gram) {
             std::vector<int32_t> hist;
             hist.reserve(p.token_history->size());
             for (llama_token t : *p.token_history)
@@ -290,7 +315,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             draft32 = prompt_lookup_draft(hist, p.spec_n_gram, p.spec_k);
         }
         if (draft32.empty())
-            continue; // decline: no n-gram evidence, no extra cost
+            continue; // decline: no draft evidence, no extra cost
 
         out.n_drafted += static_cast<int>(draft32.size());
 

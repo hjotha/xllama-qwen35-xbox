@@ -7,6 +7,7 @@
 #include "xllama/session.h"
 #include "xllama/chat_prompt.h"
 #include "xllama/inference_params.h"
+#include "xllama/mtp_draft.h"
 #include "xllama/path_utils.h"
 #include "xllama/platform.h"
 #include "xllama/routing_policy.h"
@@ -452,7 +453,15 @@ class LlamaSession final : public Session {
 
     bool m_kv_q8 = false;         // #171: q8_0 KV + forced flash attention
     bool m_prompt_lookup = false; // #210: draft-free speculative decoding
-    int m_gpu_layers = 0;         // layers on the d3d12 backend (llama_gpu.h)
+    bool m_mtp = false;           // MTP drafting against the beellama fork
+    int m_mtp_n_max = 4;
+    float m_mtp_p_min = 0.75f;
+    int m_gpu_layers = 0; // layers on the d3d12 backend (llama_gpu.h)
+
+    // MTP drafter, created lazily with the context. Owned here rather than
+    // passed into decode_loop so the draft context shares the session lifetime
+    // and is freed before the model it was built from.
+    std::unique_ptr<MtpDrafter> m_mtp_drafter;
 
     // #169: whether the resident KV supports front-drop eviction + RoPE shift.
     // Known once the lazy context exists. Gated on llama_memory_can_shift —
@@ -463,10 +472,12 @@ class LlamaSession final : public Session {
 
     explicit LlamaSession(LlamaModelPtr model, LlamaAdapterLoraPtr adapter, float lora_scale,
                           int n_ctx, int n_threads, int n_batch, int n_ubatch, bool kv_q8,
-                          bool prompt_lookup, int gpu_layers)
+                          bool prompt_lookup, int gpu_layers, bool mtp, int mtp_n_max,
+                          float mtp_p_min)
         : m_model(std::move(model)), m_adapter(std::move(adapter)), m_lora_scale(lora_scale),
           m_n_ctx(n_ctx), m_n_threads(n_threads), m_n_batch(n_batch), m_n_ubatch(n_ubatch),
-          m_kv_q8(kv_q8), m_prompt_lookup(prompt_lookup), m_gpu_layers(gpu_layers) {}
+          m_kv_q8(kv_q8), m_prompt_lookup(prompt_lookup), m_gpu_layers(gpu_layers), m_mtp(mtp),
+          m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min) {}
 
     // Lazy context creation, shared by generate() and the state-file entry
     // points (#170b needs a context before the first turn). Returns false and
@@ -511,6 +522,22 @@ class LlamaSession final : public Session {
                 cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO;
                 m_kv_q8 = false;
                 m_ctx.reset(llama_init_from_model(m_model.get(), cparams));
+            }
+            if (m_ctx && m_mtp) {
+                // The target has to expose nextn hidden rows; that is what the
+                // drafter reads to seed each step. Enabled only here so a
+                // session without MTP pays nothing for it.
+                llama_set_embeddings_nextn(m_ctx.get(), true, /*masked=*/false);
+                MtpDraftParams mp;
+                mp.n_max = m_mtp_n_max;
+                mp.p_min = m_mtp_p_min;
+                m_mtp_drafter = std::make_unique<MtpDrafter>();
+                if (!m_mtp_drafter->init(m_model.get(), cparams, mp,
+                                         llama_model_n_embd_out(m_model.get()))) {
+                    // Not fatal: MTP is an accelerator, so a failure here must
+                    // leave a working single-token session behind.
+                    m_mtp_drafter.reset();
+                }
             }
             m_cpu_pools.attach(m_gpu_layers, m_ctx.get(), m_n_threads, m_n_threads);
             if (!m_ctx) {
@@ -797,6 +824,10 @@ class LlamaSession final : public Session {
         // W2: seed + live history is m_kv_tokens (prefill already recorded above).
         dlp.prompt_lookup = m_prompt_lookup;
         dlp.token_history = &m_kv_tokens;
+        if (m_mtp_drafter) {
+            dlp.mtp = m_mtp_drafter.get();
+            dlp.mtp_n_embd = llama_model_n_embd_out(m_model.get());
+        }
         const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
         const int n_generated = dlr.n_generated;
         const bool stopped_by_seq = dlr.ended_with_stop;
@@ -1219,6 +1250,10 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
 
     llama_model_params mparams = llama_model_default_params();
     const int gpu_layers = apply_gguf_gpu_layers(sp.n_gpu_layers, mparams);
+    // MTP: the draft head lives in the same GGUF, so loading it costs context
+    // memory and draft compute but no second file and no second mmap. Requesting
+    // it on a GGUF without the head is harmless -- the loader just finds nothing.
+    mparams.load_mtp = sp.mtp;
 
     llama_model* raw_model = llama_model_load_from_file(abs_path.c_str(), mparams);
     if (!raw_model) {
@@ -1243,9 +1278,9 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
     int n_threads = sp.n_threads > 0 ? sp.n_threads : detect_threads_llama();
     int n_ctx = sp.n_ctx > 0 ? sp.n_ctx : kDefaultNCtx;
     log_output("[xllama] Session: GGUF model loaded via llama.cpp (persistent)\n");
-    return std::make_unique<LlamaSession>(LlamaModelPtr(raw_model), std::move(adapter),
-                                          sp.lora_scale, n_ctx, n_threads, sp.n_batch, sp.n_ubatch,
-                                          sp.kv_q8, sp.prompt_lookup, gpu_layers);
+    return std::make_unique<LlamaSession>(
+        LlamaModelPtr(raw_model), std::move(adapter), sp.lora_scale, n_ctx, n_threads, sp.n_batch,
+        sp.n_ubatch, sp.kv_q8, sp.prompt_lookup, gpu_layers, sp.mtp, sp.mtp_n_max, sp.mtp_p_min);
 }
 } // namespace detail
 

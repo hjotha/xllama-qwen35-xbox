@@ -57,6 +57,14 @@ struct SessionParams {
     // ORT sessions ignore this field. Hybrid caches that refuse tail rewind
     // disable speculation at runtime for that generation (no KV corruption).
     bool prompt_lookup = false;
+
+    // MTP (multi-token prediction) drafting against the beellama fork. Requires a
+    // model whose GGUF carries the MTP head (llama_model_params::load_mtp), which
+    // the session sets when this is on. Default OFF: the console measurement decides,
+    // and a model without an MTP head cannot use it at all.
+    bool mtp = false;
+    int mtp_n_max = 4;       // tokens proposed per step
+    float mtp_p_min = 0.75f; // stop drafting below this candidate probability
 };
 
 struct GenerateParams {

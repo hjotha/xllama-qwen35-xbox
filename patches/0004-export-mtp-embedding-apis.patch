@@ -1,0 +1,57 @@
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 792b8a8d9..00e9f15d1 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -6659,7 +6659,7 @@ float * llama_get_embeddings_seq(llama_context * ctx, llama_seq_id seq_id) {
+     return ctx->get_embeddings_seq(seq_id);
+ }
+ 
+-void llama_set_embeddings_nextn(llama_context * ctx, bool value, bool masked) {
++LLAMA_API void llama_set_embeddings_nextn(llama_context * ctx, bool value, bool masked) {
+     ctx->set_embeddings_nextn(value, masked);
+ }
+ 
+@@ -6693,7 +6693,7 @@ float * llama_get_embeddings_nextn(llama_context * ctx) {
+     return ctx->get_embeddings_nextn();
+ }
+ 
+-float * llama_get_embeddings_nextn_ith(llama_context * ctx, int32_t i) {
++LLAMA_API float * llama_get_embeddings_nextn_ith(llama_context * ctx, int32_t i) {
+     ctx->synchronize();
+ 
+     return ctx->get_embeddings_nextn_ith(i);
+@@ -7291,7 +7291,7 @@ llama_kv_memory_stats llama_get_kv_memory_stats(const struct llama_context * ctx
+     return memory ? memory->kv_memory_stats() : llama_kv_memory_stats{};
+ }
+ 
+-llama_context * llama_get_ctx_other(struct llama_context * ctx) {
++LLAMA_API llama_context * llama_get_ctx_other(struct llama_context * ctx) {
+     return ctx->get_cparams().ctx_other;
+ }
+ 
+diff --git a/src/llama-ext.h b/src/llama-ext.h
+index e5f858c2d..6c24195f8 100644
+--- a/src/llama-ext.h
++++ b/src/llama-ext.h
+@@ -12,6 +12,15 @@
+ #include <map>
+ #include <vector>
+ 
++// Everything below is declared with LLAMA_API, which only carries dllexport /
++// dllimport on Windows and expands to nothing on ELF. That makes the intent C
++// linkage, but on ELF it left the *definitions* with C++ mangling, so an
++// out-of-tree caller declaring them extern "C" (as any C API caller must)
++// linked against _Z26llama_set_embeddings_nextn... and failed. Wrapping the
++// header in extern "C" makes the definitions match the declarations, and is a
++// no-op on Windows where there was never a mismatch to begin with.
++extern "C" {
++
+ // Convert a q4_0 sequence state held in RAM straight into a caller-owned
+ // buffer (no temporary file on the critical path). Returns the converted byte
+ // count and fills `out`; tokens are copied to `tokens_out`.
+@@ -319,3 +328,5 @@ LLAMA_API size_t llama_state_seq_convert_file_rotated(
+     llama_context * ctx, const char * src, size_t offset, size_t size, uint64_t checksum,
+     const char * dst, llama_token * out, size_t capacity, size_t * count,
+     int32_t rotation_k, int32_t rotation_v);
++
++} // extern "C"

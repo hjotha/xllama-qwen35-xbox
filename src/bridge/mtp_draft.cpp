@@ -1,0 +1,208 @@
+// Copyright (c) 2024 Gianluca Mazza
+// SPDX-License-Identifier: MIT
+//
+// MTP draft generation, mirroring common_speculative_impl_draft_mtp in the
+// fork's common/speculative.cpp. Read that for the algorithm; this file keeps
+// only the part a single-session frontend needs.
+//
+// Two behaviours from the reference are load-bearing and kept verbatim:
+//
+//   * The draft batch carries embeddings, not tokens, after the first row.
+//     llama_batch_init(n, 0, 1) allocates only one of token/embd, so the token
+//     array is reallocated separately. Getting this wrong yields a batch the
+//     draft model reads as zeros.
+//   * Drafting stops at the first candidate below p_min. MTP on a 4B target is
+//     cheap but not free, and a low-confidence token costs a target decode to
+//     reject, so drafting past it is a net loss.
+
+#include "xllama/mtp_draft.h"
+
+#include "xllama/platform.h"
+
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
+
+namespace xllama {
+
+namespace {
+
+// Softmax probability of the drafted token, from the draft context's own logits
+// at |idx|. llama_sampler_get_candidates would do this, but it is declared in
+// the fork's common layer, which this frontend does not link.
+float top_prob(llama_context* ctx, int32_t idx) {
+    const int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx)));
+    const float* logits = llama_get_logits_ith(ctx, idx);
+    if (!logits || n_vocab <= 0)
+        return 0.0f;
+    float max_l = logits[0];
+    for (int i = 1; i < n_vocab; ++i)
+        if (logits[i] > max_l)
+            max_l = logits[i];
+    double sum = 0.0;
+    for (int i = 0; i < n_vocab; ++i)
+        sum += std::exp(static_cast<double>(logits[i] - max_l));
+    // exp of the largest logit is 1 by construction, so it contributes exactly 1.
+    return static_cast<float>(1.0 / sum);
+}
+
+} // namespace
+
+MtpDrafter::~MtpDrafter() {
+    if (m_smpl)
+        llama_sampler_free(m_smpl);
+    if (m_batch.token)
+        llama_batch_free(m_batch);
+    if (m_ctx)
+        llama_free(m_ctx);
+}
+
+bool MtpDrafter::init(llama_model* model, llama_context_params target_cparams,
+                      const MtpDraftParams& params, int n_embd) {
+    if (m_ctx)
+        return true;
+    if (!model) {
+        log_output("[xllama] mtp: no model, drafting disabled\n");
+        return false;
+    }
+
+    const int32_t dft_n_embd = llama_model_n_embd_out(model);
+    if (dft_n_embd != n_embd) {
+        // The draft head's input row width has to match the target's, otherwise
+        // the embeddings fed back in are silently reinterpreted.
+        log_output("[xllama] mtp: draft n_embd_out=" + std::to_string(dft_n_embd) + " != target " +
+                   std::to_string(n_embd) + "; drafting disabled\n");
+        return false;
+    }
+
+    m_params = params;
+    if (m_params.n_max < m_params.n_min)
+        m_params.n_max = m_params.n_min;
+
+    llama_context_params cparams = target_cparams;
+    // MTP needs its own KV reserve; the target's sizing does not account for
+    // the draft context.
+    cparams.mtp_reserve_enabled = true;
+
+    m_ctx = llama_init_from_model(model, cparams);
+    if (!m_ctx) {
+        log_output("[xllama] mtp: draft context creation failed; drafting disabled\n");
+        return false;
+    }
+
+    m_n_embd = n_embd;
+    m_pending_h.assign(static_cast<size_t>(n_embd), 0.0f);
+
+    const int32_t n_b = static_cast<int32_t>(llama_n_batch(m_ctx));
+    m_batch = llama_batch_init(n_b, /*embd=*/n_embd, /*n_seq_max=*/1);
+    // llama_batch_init allocates only one of token/embd; MTP needs both.
+    m_batch.token =
+        static_cast<llama_token*>(std::malloc(sizeof(llama_token) * static_cast<size_t>(n_b)));
+    if (m_batch.token)
+        std::memset(m_batch.token, 0, sizeof(llama_token) * static_cast<size_t>(n_b));
+
+    llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+    sparams.no_perf = true;
+    m_smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(m_smpl, llama_sampler_init_top_k(10));
+
+    // masked = false: the draft head sees the raw hidden row, not the selector
+    // lattice the target produces.
+    llama_set_embeddings_nextn(m_ctx, true, /*masked=*/true);
+
+    log_output("[xllama] mtp: draft ready, n_max=" + std::to_string(m_params.n_max) +
+               " p_min=" + std::to_string(m_params.p_min) + "\n");
+    return true;
+}
+
+std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos,
+                                           const float* h_row, int n_embd) {
+    std::vector<llama_token> out;
+    if (!m_ctx || !m_smpl || !h_row || n_embd != m_n_embd)
+        return out;
+
+    // The carry row must describe the token about to be predicted. A prompt
+    // rewrite or a KV rollback moves pos backwards without the row changing, so
+    // a stale carry would draft from the wrong prefix.
+    if (m_pending_valid && m_pending_pos != pos - 1) {
+        m_pending_valid = false;
+        std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
+    }
+    std::memcpy(m_pending_h.data(), h_row, static_cast<size_t>(n_embd) * sizeof(float));
+    m_pending_pos = pos - 1;
+
+    llama_sampler_reset(m_smpl);
+
+    // Shared-memory layouts (the reference calls this is_mem_shared, detected
+    // via llama_get_ctx_other) reuse one position for every draft row, which is
+    // what the Gemma-family assistants require. With a private context each row
+    // takes the next position.
+    const bool shared = llama_get_ctx_other(m_ctx) != nullptr;
+
+    m_batch.n_tokens = 0;
+    m_batch.token[m_batch.n_tokens] = last_token;
+    m_batch.pos[m_batch.n_tokens] = pos;
+    m_batch.n_seq_id[m_batch.n_tokens] = 1;
+    m_batch.seq_id[m_batch.n_tokens][0] = 0;
+    m_batch.logits[m_batch.n_tokens] = 1;
+    std::memcpy(m_batch.embd + static_cast<size_t>(m_batch.n_tokens) * n_embd, m_pending_h.data(),
+                static_cast<size_t>(n_embd) * sizeof(float));
+    const int i_last = m_batch.n_tokens;
+    m_batch.n_tokens += 1;
+
+    const int32_t n_max = m_params.n_max;
+    for (int depth = 0; depth < n_max; ++depth) {
+        if (llama_decode(m_ctx, m_batch) != 0) {
+            log_output("[xllama] mtp: draft decode failed at depth " + std::to_string(depth) +
+                       "\n");
+            m_batch.n_tokens = 0;
+            return {};
+        }
+        m_batch.n_tokens = 0;
+
+        {
+            const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
+            if (cand < 0)
+                break;
+            const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
+            if (!h_next)
+                break;
+
+            // Only draft while the candidate stays confident enough that the
+            // target is likely to accept it; a token below the threshold costs
+            // a target decode to reject, which is a net loss.
+            //
+            // The probability is computed here from the draft context's logits
+            // rather than through llama_sampler_get_candidates, which lives in
+            // the fork's common layer and is not part of the public C API this
+            // frontend links against.
+            if (top_prob(m_ctx, i_last) < m_params.p_min) {
+                // Stop drafting here. Anything already collected is still
+                // verified; the caller falls back to a single-token decode when
+                // the list comes back empty.
+                break;
+            }
+
+            out.push_back(cand);
+
+            if (static_cast<int>(out.size()) >= n_max)
+                break;
+
+            // Feed this row's embedding back with the token just sampled.
+            const int i = m_batch.n_tokens;
+            m_batch.token[i] = cand;
+            m_batch.pos[i] = shared ? pos : pos + depth + 1;
+            m_batch.n_seq_id[i] = 1;
+            m_batch.seq_id[i][0] = 0;
+            m_batch.logits[i] = 1;
+            std::memcpy(m_batch.embd + static_cast<size_t>(i) * n_embd, h_next,
+                        static_cast<size_t>(n_embd) * sizeof(float));
+            m_batch.n_tokens = static_cast<int32_t>(i + 1);
+        }
+    }
+
+    m_pending_valid = false;
+    return out;
+}
+
+} // namespace xllama
