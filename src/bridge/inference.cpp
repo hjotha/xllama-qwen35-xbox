@@ -457,6 +457,14 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         cparams.n_batch = static_cast<uint32_t>(params.n_batch);
     if (params.n_ubatch > 0)
         cparams.n_ubatch = static_cast<uint32_t>(params.n_ubatch);
+    // Speculative rollback window: derived from the MTP draft depth, not a knob.
+    // Without it the hybrid cache refuses tail rewind and any draft deeper than
+    // one token aborts the generation.
+    clamp_speculative_n_rs_seq(cparams, speculative_n_rs_seq(params.mtp, params.mtp_n_max));
+    if (params.mtp && cparams.n_rs_seq > 0)
+        log_output("[xllama] speculative: target n_rs_seq=" + std::to_string(cparams.n_rs_seq) +
+                   " n_ubatch=" + std::to_string(cparams.n_ubatch) + "\n");
+
     apply_gguf_gpu_context(gpu_layers, cparams);
     if (params.n_batch > 0 || params.n_ubatch > 0)
         log_output("[xllama] prefill batch override: n_batch=" + std::to_string(cparams.n_batch) +
@@ -500,6 +508,15 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         if (!mtp_drafter->init(model.get(), raw_ctx, cparams, mp,
                                llama_model_n_embd_out(model.get()))) {
             mtp_drafter.reset();
+        } else {
+            // The draft graph also splits CPU/D3D12 (attention, recurrence and
+            // norms stay on the CPU), so without this ggml-cpu builds and joins
+            // a disposable pool on every graph_compute. The pool is shared with
+            // the target: the two contexts are used strictly sequentially, never
+            // concurrently. mtp_drafter is declared after cpu_pools, so it is
+            // destroyed first and the pool outlives both contexts.
+            cpu_pools.attach(gpu_layers, mtp_drafter->ctx(), static_cast<int>(cparams.n_threads),
+                             static_cast<int>(cparams.n_threads_batch));
         }
     }
 

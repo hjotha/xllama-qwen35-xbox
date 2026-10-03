@@ -198,6 +198,12 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     std::memcpy(m_pending_h.data(), h_row, static_cast<size_t>(n_embd) * sizeof(float));
     m_pending_pos = pos - 1;
 
+    // Drop anything the previous round left at or above pos. The draft cache is
+    // rewritten one row at a time, so without this a rejected tail keeps
+    // attending to positions that have left the committed prefix, and the
+    // recurrent rows desynchronise from the accepted ones.
+    llama_memory_seq_rm(llama_get_memory(m_ctx), 0, pos, -1);
+
     // First draft on a real run, logged once. Everything downstream depends on
     // this row being the target's hidden state, and a wrong width, a stale
     // pointer or a non-finite value here surfaces only as an abort inside
@@ -245,21 +251,9 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     int i_last = m_batch.n_tokens - 1;
 
     const int32_t n_max = m_params.n_max;
-    log_output(
-        "[xllama] mtp: draft batch n_tokens=" + std::to_string(m_batch.n_tokens) + " pos=" +
-        std::to_string(m_batch.pos[0]) + " has_embd=" + std::to_string(m_batch.embd != nullptr) +
-        " dft_n_batch=" + std::to_string(llama_n_batch(m_ctx)) +
-        " dft_n_ubatch=" + std::to_string(llama_n_ubatch(m_ctx)) +
-        " dft_n_rs_seq=" + std::to_string(llama_n_rs_seq(m_ctx)) +
-        " dft_n_layer_nextn=" + std::to_string(llama_model_n_layer_nextn(llama_get_model(m_ctx))) +
-        " mem_pos_min=" + std::to_string(llama_memory_seq_pos_min(llama_get_memory(m_ctx), 0)) +
-        " mem_pos_max=" + std::to_string(llama_memory_seq_pos_max(llama_get_memory(m_ctx), 0)) +
-        " shared=" + std::to_string(llama_get_ctx_other(m_ctx) != nullptr) + "\n");
 
     for (int depth = 0; depth < n_max; ++depth) {
         const int rc = llama_decode(m_ctx, m_batch);
-        log_output("[xllama] mtp: draft decode rc=" + std::to_string(rc) +
-                   " depth=" + std::to_string(depth) + "\n");
         if (rc != 0) {
             log_output("[xllama] mtp: draft decode failed at depth " + std::to_string(depth) +
                        "\n");
@@ -289,18 +283,6 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
             if (!h_next)
                 break;
-
-            if (depth == 0) {
-                float dmin = h_next[0], dmax = h_next[0];
-                for (int i = 1; i < n_embd; ++i) {
-                    if (h_next[i] < dmin)
-                        dmin = h_next[i];
-                    if (h_next[i] > dmax)
-                        dmax = h_next[i];
-                }
-                log_output("[xllama] mtp: draft row[min,max]=[" + std::to_string(dmin) + "," +
-                           std::to_string(dmax) + "]\n");
-            }
 
             out.push_back(cand);
 

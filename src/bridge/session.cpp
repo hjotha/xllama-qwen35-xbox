@@ -497,6 +497,11 @@ class LlamaSession final : public Session {
                 cparams.n_batch = static_cast<uint32_t>(m_n_batch);
             if (m_n_ubatch > 0)
                 cparams.n_ubatch = static_cast<uint32_t>(m_n_ubatch);
+            clamp_speculative_n_rs_seq(cparams, speculative_n_rs_seq(m_mtp, m_mtp_n_max));
+            if (m_mtp && cparams.n_rs_seq > 0)
+                log_output("[xllama] session: speculative n_rs_seq=" +
+                           std::to_string(cparams.n_rs_seq) + "\n");
+
             apply_gguf_gpu_context(m_gpu_layers, cparams);
             if (for_embedding) {
                 // Non-causal embedding graphs cannot split a sequence into
@@ -537,6 +542,11 @@ class LlamaSession final : public Session {
                     // Not fatal: MTP is an accelerator, so a failure here must
                     // leave a working single-token session behind.
                     m_mtp_drafter.reset();
+                } else {
+                    // Shared with the target, used strictly sequentially.
+                    m_cpu_pools.attach(m_gpu_layers, m_mtp_drafter->ctx(),
+                                       static_cast<int>(cparams.n_threads),
+                                       static_cast<int>(cparams.n_threads_batch));
                 }
             }
             m_cpu_pools.attach(m_gpu_layers, m_ctx.get(), m_n_threads, m_n_threads);

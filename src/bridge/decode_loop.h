@@ -124,6 +124,37 @@ struct DecodeLoopResult {
     bool rewind_failed = false;
 };
 
+// Rollback window for speculative decoding on a hybrid (recurrent + attention)
+// cache. The recurrent R/S rows must cover the draft depth: llama_memory_seq_rm
+// refuses a tail rewind on a hybrid cache otherwise, which is what aborted every
+// MTP run deeper than one token. Mirrors common_params_speculative::need_n_rs_seq
+// and the n_ubatch clamp from common.cpp.
+inline uint32_t speculative_n_rs_seq(bool mtp, int mtp_n_max) {
+    if (!mtp || mtp_n_max <= 0)
+        return 0;
+    return static_cast<uint32_t>(mtp_n_max);
+}
+
+// The window plus the token being decoded has to fit one micro-batch, or the
+// recurrent memory cannot keep it and the fork falls back to KV checkpoints.
+// Same condition as the original: effective n_ubatch must exceed n_rs_seq + 1.
+inline void clamp_speculative_n_rs_seq(llama_context_params& cparams, uint32_t n_rs_seq) {
+    const uint32_t n_batch_eff = static_cast<uint32_t>(
+        cparams.n_ctx > 0 ? std::min<uint32_t>(cparams.n_batch, cparams.n_ctx) : cparams.n_batch);
+    const uint32_t n_ubatch_eff =
+        cparams.n_ubatch == 0 ? n_batch_eff
+                              : std::min(n_batch_eff, static_cast<uint32_t>(cparams.n_ubatch));
+    if (n_rs_seq > 0 && n_ubatch_eff <= n_rs_seq + 1) {
+        log_output("[xllama] speculative rollback window (" + std::to_string(n_rs_seq) +
+                   " + 1) does not fit micro-batch " + std::to_string(n_ubatch_eff) +
+                   "; disabling it (raise -ub and -b to " + std::to_string(n_rs_seq + 2) +
+                   " to enable)\n");
+        cparams.n_rs_seq = 0;
+        return;
+    }
+    cparams.n_rs_seq = n_rs_seq;
+}
+
 namespace detail {
 
 // Emit a sampled token into the output stream. Returns true if a stop sequence
@@ -408,6 +439,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         }
 
         bool stop_all = false;
+        // Set once the reject path has already trimmed and then appended the
+        // correction. The generic tail trim at the bottom would otherwise remove
+        // the very token that was just decoded: it recomputes the same `keep`
+        // boundary and deletes |cand| along with the rejected drafts.
+        bool tail_already_trimmed = false;
         for (size_t i = 1; i < feed.size(); ++i) {
             if (out.n_generated >= p.n_predict || (p.abort_flag && p.abort_flag->load())) {
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
@@ -456,6 +492,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             }
             detail::accept_token(p, cand);
             ++out.n_generated;
+            tail_already_trimmed = true;
             break;
         }
 
@@ -463,7 +500,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             break;
         if (stop_all)
             break;
-        if (n_keep < n_feed) {
+        if (n_keep < n_feed && !tail_already_trimmed) {
             if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed)) {
                 fail_rewind();
                 break;
