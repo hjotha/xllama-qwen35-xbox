@@ -287,6 +287,14 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
 inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& output_text) {
     DecodeLoopResult out;
     const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
+    // The target enables nextn embeddings unmasked, so llama_get_embeddings_nextn_ith
+    // is indexed by raw token position, not by row within the last batch. The draft
+    // needs the row of the last decoded position, which after any decode is simply
+    // seq_pos_max - 1, so track it as a position instead of a batch row.
+    llama_memory_t mm_carry = llama_get_memory(p.ctx);
+    auto last_decoded_pos = [&]() -> llama_pos {
+        return llama_memory_seq_pos_max(mm_carry, 0) - 1;
+    };
     // The verify path only reads the two speculative counters, so whichever
     // source produced the tokens, the numbers mean the same thing.
     bool spec_enabled =
@@ -302,9 +310,44 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             break;
         }
 
-        // Always commit the sampled token via the classic path first. Spec never
-        // changes this step — that is what keeps greedy text identical.
-        {
+        // MTP drafts from the anchor *before* the anchor is decoded, exactly like
+        // the original common/speculative.cpp: |token| was sampled from the
+        // previous logits but never fed to the target, and it pairs with the
+        // hidden row of the last decoded position. That lets the anchor and the
+        // whole draft share ONE target decode. Decoding the anchor first (what
+        // this did before) cost two target decodes per round to gain at most
+        // n_max tokens, which cannot beat the single-token path even at 100%
+        // acceptance.
+        bool lead_in_batch = false;
+        std::vector<llama_token> feed;
+        if (mtp_enabled) {
+            const llama_pos P = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0);
+            const llama_pos carry = last_decoded_pos();
+            const float* h =
+                carry >= 0 ? llama_get_embeddings_nextn_ith(p.ctx, static_cast<int32_t>(carry))
+                           : nullptr;
+            if (h) {
+                const std::vector<llama_token> md = p.mtp->draft(token, P + 1, h, p.mtp_n_embd);
+                if (!md.empty()) {
+                    out.n_drafted += static_cast<int>(md.size());
+                    feed.reserve(md.size() + 1);
+                    feed.push_back(token); // anchor: sampled, not yet decoded
+                    for (llama_token t : md)
+                        feed.push_back(t);
+                    lead_in_batch = true;
+                }
+            } else {
+                log_output("[xllama] mtp: no nextn row for carry pos " + std::to_string(carry) +
+                           "; declining to draft\n");
+            }
+        }
+
+        // |first| is the pre-batch sample of the classic path. Hoisted so the
+        // post-batch fallbacks can still reach it when the lead is in the batch.
+        llama_token first = LLAMA_TOKEN_NULL;
+        if (!lead_in_batch) {
+            // Always commit the sampled token via the classic path first. Spec never
+            // changes this step — that is what keeps greedy text identical.
             if (out.n_generated == 0 && out.first_token_ms == 0.0 &&
                 p.decode_start != std::chrono::steady_clock::time_point{}) {
                 out.first_token_ms = std::chrono::duration<double, std::milli>(
@@ -314,77 +357,56 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             bool stop = false, decode_ok = true;
             if (!detail::classic_step(p, token, output_text, out, stop, decode_ok))
                 break;
-        }
-        if (out.n_generated >= p.n_predict)
-            break;
-
-        if (!spec_enabled)
-            continue;
-
-        // Lead is already in token_history via accept_token. Draft from that
-        // alone (no extra lead argument).
-        std::vector<int32_t> draft32;
-        if (mtp_enabled) {
-            // MTP reads the target's hidden row for the lead token. The session
-            // enables nextn embeddings on the target when MTP is on; without
-            // them there is no row, MTP declines, and this degrades to
-            // single-token decoding rather than failing.
-            // The index is a row in the last decoded batch, not a position. The
-            // fork reads it as i_batch_beg[seq_id] + i over the verify batch it
-            // just ran, and unmasked rows are written at a running token offset
-            // (llama-context.cpp: offset = n_tokens_prev). For a single-token
-            // decode that row is index 0 of a one-row batch, which is why
-            // indexing by position returns zeros: after a 298-token prefill,
-            // position 299 is past the batch the row lives in. -1, the idiom
-            // llama_get_logits_ith accepts, aborts here outright.
-            llama_memory_t mm = llama_get_memory(p.ctx);
-            const llama_pos pos = llama_memory_seq_pos_max(mm, 0);
-            const float* h = llama_get_embeddings_nextn_ith(p.ctx, 0);
-            if (!h) {
-                log_output("[xllama] mtp: target emitted no nextn row at pos " +
-                           std::to_string(pos) + "; declining to draft\n");
-                draft32.clear();
-            }
-            if (h) {
-                const std::vector<llama_token> md = p.mtp->draft(token, pos + 1, h, p.mtp_n_embd);
-                draft32.reserve(md.size());
-                for (llama_token t : md)
-                    draft32.push_back(static_cast<int32_t>(t));
-            }
-        } else if (p.token_history && static_cast<int>(p.token_history->size()) >= p.spec_n_gram) {
-            std::vector<int32_t> hist;
-            hist.reserve(p.token_history->size());
-            for (llama_token t : *p.token_history)
-                hist.push_back(static_cast<int32_t>(t));
-            draft32 = prompt_lookup_draft(hist, p.spec_n_gram, p.spec_k);
-        }
-        if (draft32.empty())
-            continue; // decline: no draft evidence, no extra cost
-
-        out.n_drafted += static_cast<int>(draft32.size());
-
-        // Verify draft[0] against the logits we already have after the lead
-        // (same sample classic would take next). If it disagrees, that sample
-        // *is* the true next token — classic_step it and skip the batch.
-        const llama_token first = llama_sampler_sample(p.sampler, p.ctx, -1);
-        if (detail::stops_at_eog(p, first)) {
-            log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
-                       " tokens (pre-draft)\n");
-            break;
-        }
-        if (first != static_cast<llama_token>(draft32[0])) {
-            bool stop = false, decode_ok = true;
-            if (!detail::classic_step(p, first, output_text, out, stop, decode_ok))
+            if (out.n_generated >= p.n_predict)
                 break;
-            continue;
-        }
 
-        // first == draft[0]: at least one draft token is free. Batch-decode all
-        // drafts; logits[i] predict the token after draft[i].
-        std::vector<llama_token> feed;
-        feed.reserve(draft32.size());
-        for (int32_t d : draft32)
-            feed.push_back(static_cast<llama_token>(d));
+            if (!spec_enabled)
+                continue;
+
+            // Lead is already in token_history via accept_token. Draft from that
+            // alone (no extra lead argument).
+            std::vector<int32_t> draft32;
+            if (p.token_history && static_cast<int>(p.token_history->size()) >= p.spec_n_gram) {
+                std::vector<int32_t> hist;
+                hist.reserve(p.token_history->size());
+                for (llama_token t : *p.token_history)
+                    hist.push_back(static_cast<int32_t>(t));
+                draft32 = prompt_lookup_draft(hist, p.spec_n_gram, p.spec_k);
+            }
+            if (draft32.empty())
+                continue; // decline: no draft evidence, no extra cost
+
+            out.n_drafted += static_cast<int>(draft32.size());
+
+            // Verify draft[0] against the logits we already have after the lead
+            // (same sample classic would take next). If it disagrees, that sample
+            // *is* the true next token — classic_step it and skip the batch. When the
+            // lead is already inside the batch there is nothing to pre-check: row 0 of
+            // that batch is the first real verification.
+            if (!lead_in_batch) {
+                first = llama_sampler_sample(p.sampler, p.ctx, -1);
+                if (detail::stops_at_eog(p, first)) {
+                    log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
+                               " tokens (pre-draft)\n");
+                    break;
+                }
+                if (first != static_cast<llama_token>(draft32[0])) {
+                    bool stop = false, decode_ok = true;
+                    if (!detail::classic_step(p, first, output_text, out, stop, decode_ok))
+                        break;
+                    continue;
+                }
+            }
+
+            // first == draft[0]: at least one draft token is free. Batch-decode all
+            // drafts; logits[i] predict the token after draft[i].
+            feed.reserve(draft32.size());
+            for (int32_t d : draft32)
+                feed.push_back(static_cast<llama_token>(d));
+        } // !lead_in_batch
+
+        // One target decode now covers the committed lead plus every draft:
+        // logits[i] predict feed[i+1], and the last row predicts the bonus.
         const int n_feed = static_cast<int>(feed.size());
 
         llama_memory_t mem = llama_get_memory(p.ctx);
@@ -396,9 +418,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 out.rewind_failed = true;
                 break;
             }
-            // first already sampled and matches draft[0]; commit it classically.
+            // Nothing entered the KV, so take one classic token. With the lead in
+            // the batch the trimmed logits are the pre-batch ones and |first| is
+            // stale, so resample; otherwise |first| already matched draft[0].
+            const llama_token next =
+                lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
+            if (detail::stops_at_eog(p, next))
+                break;
             bool stop = false, decode_ok = true;
-            if (!detail::classic_step(p, first, output_text, out, stop, decode_ok))
+            if (!detail::classic_step(p, next, output_text, out, stop, decode_ok))
                 break;
             continue;
         }
@@ -411,8 +439,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             spec_enabled = false;
         };
 
-        // Commit draft[0] (already verified equal to |first|).
-        int n_keep = 0;
+        // feed[0] is already committed in both paths: with lead_in_batch it is the
+        // anchor sampled from the target itself, otherwise draft[0] just verified
+        // equal to |first|. Either way row 0 of the batch is decided, so the walk
+        // starts at i = 1 with one row kept.
+        int n_keep = 1;
         auto commit_draft = [&](llama_token tok) -> bool {
             // returns false → stop outer loop
             if (detail::stops_at_eog(p, tok)) {
@@ -430,12 +461,20 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             return true;
         };
 
-        ++out.n_accepted;
-        ++n_keep;
-        if (!commit_draft(first)) {
-            if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
-                fail_rewind();
-            break;
+        if (!lead_in_batch) {
+            ++out.n_accepted;
+            if (!commit_draft(first)) {
+                if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
+                    fail_rewind();
+                break;
+            }
+        } else {
+            // The anchor joins the batch: emit it now, before its rows are walked.
+            if (!commit_draft(feed[0])) {
+                if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
+                    fail_rewind();
+                break;
+            }
         }
 
         bool stop_all = false;
@@ -506,7 +545,9 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 break;
             }
         }
-        // All drafts accepted: logits after the last draft are ready for -1.
+        // The next round drafts from the hidden row of the last decoded
+        // position, which is whichever token this round left in the KV.
+        (void)last_decoded_pos();
     }
     return out;
 }
