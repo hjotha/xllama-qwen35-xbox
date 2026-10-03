@@ -44,6 +44,16 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		"$PY_BIN" "$ROOT/scripts/resolve-llama-mmap-conflict.py"
 		git add src/llama-mmap.cpp
 	fi
+	# Any conflict left here belongs to a patch this script has no resolver for.
+	# Silently continuing let a 3-way conflict reach the compiler, which reported
+	# it as a syntax error in the middle of the file with nothing pointing at the
+	# patch. There is no way to guess a resolution, so stop.
+	if unmerged=$(git ls-files -u) && [ -n "$unmerged" ]; then
+		echo "apply-uwp-patches: ${name} left unresolved conflicts:" >&2
+		echo "$unmerged" | awk '{print "  " $4}' >&2
+		echo "Resolve by hand, or regenerate the patch against this pin." >&2
+		exit 1
+	fi
 	echo "apply-uwp-patches: applied ${name}."
 	applied=$((applied + 1))
 done
