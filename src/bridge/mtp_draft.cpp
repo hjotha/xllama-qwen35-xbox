@@ -227,6 +227,7 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     // Index of the row the current step decodes, i.e. the row just decoded. It
     // changes every depth because the draft batch is rebuilt with the sampled
     // token appended. The fork tracks the same thing as i_last[seq_id].
+    m_batch.n_tokens += 1;
     int i_last = m_batch.n_tokens - 1;
 
     const int32_t n_max = m_params.n_max;
