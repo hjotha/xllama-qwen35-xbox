@@ -274,6 +274,9 @@ void main_loop() {
     // 0 = off (default); 1 = on. Host-column tag -plookup (CSV has no dedicated
     // column — same pattern as -kvq8 / -uN).
     const int bench_prompt_lookup = read_local_int("bench_prompt_lookup.txt", 0);
+    // MTP drafting (beellama fork). Reads the raw value rather than a boolean so
+    // n_max can be swept from one file; 0 = off. Host-column tag -mtpN.
+    const int bench_mtp = read_local_int("bench_mtp.txt", 0);
     // GGUF GPU decode D2b: layers on the d3d12 backend. 0 = CPU. Host tag -gN.
     const int bench_gpu_layers = read_local_int("bench_gpu_layers.txt", 0);
     // D2b: decode exactly n_predict tokens (no EOG / stop sequence). Host tag -noeog.
@@ -321,6 +324,8 @@ void main_loop() {
     params.n_ubatch = bench_ubatch;                  // #172: 0 = llama default (512)
     params.kv_q8 = bench_kvq8 != 0;                  // #171: q8_0 KV + flash attention
     params.prompt_lookup = bench_prompt_lookup != 0; // #210 W2
+    params.mtp = bench_mtp > 0;                     // MTP drafting; requires the MTP GGUF
+    params.mtp_n_max = bench_mtp > 0 ? bench_mtp : 4;
     params.n_gpu_layers = bench_gpu_layers;          // D2b: 0 = CPU
     params.stop_sequences = fmt.stop_sequences;      // clean stop for Gemma's <end_of_turn>
     params.run_index = bench_run_index;              // W1.1: echo into CSV (0 = single-run)
@@ -339,6 +344,8 @@ void main_loop() {
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-u%d", bench_ubatch);
     if (bench_kvq8 != 0)
         host_len += snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-kvq8");
+    if (bench_mtp > 0)
+        host_len += snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-mtp%d", bench_mtp);
     if (bench_gpu_layers > 0)
         host_len +=
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-g%d", bench_gpu_layers);

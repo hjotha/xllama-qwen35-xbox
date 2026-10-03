@@ -42,6 +42,9 @@
 #                    (no EOG / stop-sequence end). Host column tagged -noeog.
 #                    Use for A/Bs whose arms reach EOG at different points.
 #   --prompt-lookup  Phase 15 W2 (#210): draft-free n-gram speculative decoding
+#   --mtp N          MTP drafting against the beellama MTP head, n_max = N.
+#                    Requires a model whose GGUF carries the head (qwen35-4b-mtp);
+#                    on any other model it is a no-op. Host tag -mtpN.
 #                    via bench_prompt_lookup.txt=1. Host column tagged -plookup.
 #                    Off (file deleted) when the flag is absent so a prior on
 #                    run cannot leak into the next.
@@ -71,6 +74,7 @@ KVQ8=0          # 1 = q8_0 KV + flash attention; #171 A/B knob, GGUF only
 GPU_LAYERS=0    # D2b: GGUF layers on the d3d12 backend; 0 = CPU
 IGNORE_EOG=0    # D2b: 1 = decode exactly n_predict tokens
 PROMPT_LOOKUP=0 # 1 = W2 prompt-lookup; #210 A/B knob, GGUF only
+MTP_N=0         # 0 = MTP off; N>0 = MTP on with n_max = N
 N_RUNS=4        # warmup run 1 dropped; runs 2..N recorded individually (W1.1) → 3 by default
 PROMPT_FILE=""
 OUT_CSV=""
@@ -115,6 +119,10 @@ while [[ $# -gt 0 ]]; do
 	--prompt-lookup)
 		PROMPT_LOOKUP=1
 		shift
+		;;
+	--mtp)
+		MTP_N="${2:?--mtp requires a value}"
+		shift 2
 		;;
 	--runs)
 		N_RUNS="${2:?--runs requires a value}"
@@ -411,6 +419,7 @@ printf '%d' "$KVQ8" >"${TMPDIR_LOCAL}/bench_kvq8.txt"
 printf '%d' "$GPU_LAYERS" >"${TMPDIR_LOCAL}/bench_gpu_layers.txt"
 printf '%d' "$IGNORE_EOG" >"${TMPDIR_LOCAL}/bench_ignore_eog.txt"
 printf '%d' "$PROMPT_LOOKUP" >"${TMPDIR_LOCAL}/bench_prompt_lookup.txt"
+printf '%d' "$MTP_N" >"${TMPDIR_LOCAL}/bench_mtp.txt"
 
 # bench.flag — consumed by app on each start; must be re-uploaded per run
 printf 'bench' >"${TMPDIR_LOCAL}/bench.flag"
@@ -465,6 +474,13 @@ for ((run = 1; run <= N_RUNS; run++)); do
 	upload_to_localstate "${TMPDIR_LOCAL}/bench_kvq8.txt"
 	upload_to_localstate "${TMPDIR_LOCAL}/bench_gpu_layers.txt"
 	upload_to_localstate "${TMPDIR_LOCAL}/bench_ignore_eog.txt"
+	if ((MTP_N != 0)); then
+		upload_to_localstate "${TMPDIR_LOCAL}/bench_mtp.txt"
+	else
+		delete_from_localstate "bench_mtp.txt"
+		verify_deleted "bench_mtp.txt" 5 || true
+	fi
+
 	if ((PROMPT_LOOKUP != 0)); then
 		upload_to_localstate "${TMPDIR_LOCAL}/bench_prompt_lookup.txt"
 	else
