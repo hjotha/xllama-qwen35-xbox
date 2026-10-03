@@ -49,8 +49,8 @@ float top_prob(llama_context* ctx, int32_t idx) {
 } // namespace
 
 MtpDrafter::~MtpDrafter() {
-    if (m_smpl)
-        llama_sampler_free(m_smpl);
+    if (m_backend_smpl)
+        llama_sampler_free(m_backend_smpl);
     if (m_batch.token)
         llama_batch_free(m_batch);
     if (m_ctx)
@@ -141,10 +141,21 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (m_batch.token)
         std::memset(m_batch.token, 0, sizeof(llama_token) * static_cast<size_t>(n_b));
 
-    llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
-    sparams.no_perf = true;
-    m_smpl = llama_sampler_chain_init(sparams);
-    llama_sampler_chain_add(m_smpl, llama_sampler_init_top_k(10));
+    // Backend sampling. An MTP context emits the NextN hidden row, not vocab
+    // logits, so llama_get_logits_ith on it throws and llama_sampler_sample
+    // aborts the process -- which is where every run was dying. The fork's own
+    // MTP drafter installs a sampler on the draft context and reads the token
+    // back with llama_get_sampled_token_ith for exactly this reason.
+    //
+    // Consequence: the candidate probability is not readable from the CPU, so
+    // p_min cannot be applied here. Drafting is bounded by n_max instead, and
+    // the verifier discards whatever the target rejects.
+    m_backend_smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    llama_sampler_chain_add(m_backend_smpl, llama_sampler_init_top_k(10));
+    if (!llama_set_sampler(m_ctx, 0, m_backend_smpl)) {
+        log_output("[xllama] mtp: backend sampler rejected; drafting will not run\n");
+        return false;
+    }
 
     // masked = false: the draft head sees the raw hidden row, not the selector
     // lattice the target produces.
@@ -174,7 +185,7 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
 std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos,
                                            const float* h_row, int n_embd) {
     std::vector<llama_token> out;
-    if (!m_ctx || !m_smpl || !h_row || n_embd != m_n_embd)
+    if (!m_ctx || !m_backend_smpl || !h_row || n_embd != m_n_embd)
         return out;
 
     // The carry row must describe the token about to be predicted. A prompt
@@ -212,8 +223,6 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
                    " row[min,max]=[" + std::to_string(mn) + "," + std::to_string(mx) + "]" +
                    (finite ? "" : " NON-FINITE") + "\n");
     }
-
-    llama_sampler_reset(m_smpl);
 
     // Shared-memory layouts (the reference calls this is_mem_shared, detected
     // via llama_get_ctx_other) reuse one position for every draft row, which is
@@ -265,10 +274,8 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // context is configured masked (unlike the target), so the accessor
             // resolves the index through output_resolve_row -- and every draft
             // row carries logits=true, so the output index is the batch index.
-            log_output("[xllama] mtp: sampling row=" + std::to_string(i_last) + "\n");
-            const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
-            log_output("[xllama] mtp: sampled cand=" + std::to_string(cand) + "\n");
-            if (cand < 0)
+            const llama_token cand = llama_get_sampled_token_ith(m_ctx, i_last);
+            if (cand < 0 || cand == LLAMA_TOKEN_NULL)
                 break;
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
             log_output("[xllama] mtp: nextn row=" + std::to_string(h_next != nullptr) + "\n");
@@ -293,15 +300,6 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
                 }
                 log_output("[xllama] mtp: draft row[min,max]=[" + std::to_string(dmin) + "," +
                            std::to_string(dmax) + "]\n");
-            }
-
-            const float p = top_prob(m_ctx, i_last);
-            log_output("[xllama] mtp: top_prob=" + std::to_string(p) + "\n");
-            if (p < m_params.p_min) {
-                // Stop drafting here. Anything already collected is still
-                // verified; the caller falls back to a single-token decode when
-                // the list comes back empty.
-                break;
             }
 
             out.push_back(cand);

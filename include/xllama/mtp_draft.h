@@ -105,7 +105,7 @@ class MtpDrafter {
 
   private:
     llama_context* m_ctx = nullptr;
-    llama_sampler* m_smpl = nullptr;
+    llama_sampler* m_backend_smpl = nullptr;
     llama_batch m_batch{};
     llama_context* m_target_ctx = nullptr;
     int m_n_embd = 0;
