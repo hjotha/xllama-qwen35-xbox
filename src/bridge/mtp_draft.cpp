@@ -166,6 +166,32 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     std::memcpy(m_pending_h.data(), h_row, static_cast<size_t>(n_embd) * sizeof(float));
     m_pending_pos = pos - 1;
 
+    // First draft on a real run, logged once. Everything downstream depends on
+    // this row being the target's hidden state, and a wrong width, a stale
+    // pointer or a non-finite value here surfaces only as an abort inside
+    // llama_decode with nothing pointing back at the draft.
+    static bool logged_once = false;
+    if (!logged_once) {
+        logged_once = true;
+        float mn = h_row[0], mx = h_row[0];
+        bool finite = true;
+        for (int i = 0; i < n_embd; ++i) {
+            const float v = h_row[i];
+            if (!std::isfinite(v)) {
+                finite = false;
+                break;
+            }
+            if (v < mn)
+                mn = v;
+            if (v > mx)
+                mx = v;
+        }
+        log_output("[xllama] mtp: first draft pos=" + std::to_string(pos) + " n_embd=" +
+                   std::to_string(n_embd) + " n_max=" + std::to_string(m_params.n_max) +
+                   " row[min,max]=[" + std::to_string(mn) + "," + std::to_string(mx) + "]" +
+                   (finite ? "" : " NON-FINITE") + "\n");
+    }
+
     llama_sampler_reset(m_smpl);
 
     // Shared-memory layouts (the reference calls this is_mem_shared, detected
