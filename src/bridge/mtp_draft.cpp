@@ -49,8 +49,8 @@ float top_prob(llama_context* ctx, int32_t idx) {
 } // namespace
 
 MtpDrafter::~MtpDrafter() {
-    if (m_backend_smpl)
-        llama_sampler_free(m_backend_smpl);
+    if (m_smpl)
+        llama_sampler_free(m_smpl);
     if (m_batch.token)
         llama_batch_free(m_batch);
     if (m_ctx)
@@ -119,18 +119,11 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (cparams.n_ubatch > n_draft_batch)
         cparams.n_ubatch = n_draft_batch;
 
-    // Register the sampler as part of context creation. llama.h says to prefer
-    // cparams.samplers over llama_set_sampler, and the fork's own setup does it
-    // this way ("init the backend samplers as part of the context creation").
-    // Registering afterwards left the sampled-token slots empty, so every draft
-    // came back with no candidate at all.
-    m_backend_smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(m_backend_smpl, llama_sampler_init_top_k(10));
-    llama_sampler_seq_config seq_cfg{};
-    seq_cfg.seq_id = 0;
-    seq_cfg.sampler = m_backend_smpl;
-    cparams.samplers = &seq_cfg;
-    cparams.n_samplers = 1;
+    // No cparams.samplers on purpose. Offloading sampling to the backend needs
+    // TOP_K / ARGMAX shaders, which ggml-d3d12 does not implement, so the
+    // sampled-token slots stayed LLAMA_TOKEN_NULL and every draft came back
+    // empty. It also flips needs_raw_logits false, suppressing the very logits
+    // the CPU sampler below reads. Sampling stays on the CPU.
 
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
@@ -154,12 +147,15 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (m_batch.token)
         std::memset(m_batch.token, 0, sizeof(llama_token) * static_cast<size_t>(n_b));
 
-    // The candidate comes from the backend sampler, not from CPU logits: an MTP
-    // context emits the NextN hidden row rather than vocab logits, so
-    // llama_get_logits_ith on it throws and llama_sampler_sample aborts the
-    // process. Consequence: the candidate probability is not readable here, so
-    // p_min does not gate drafts; n_max does, and the verifier discards
-    // whatever the target rejects.
+    // top_k only truncates and sorts cur_p; it never assigns cur_p.selected,
+    // and llama_sampler_sample asserts selected >= 0 (llama-sampler.cpp:956).
+    // A chain ending in top_k alone aborts the process. The greedy stage is
+    // what picks the winner.
+    llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
+    sparams.no_perf = true;
+    m_smpl = llama_sampler_chain_init(sparams);
+    llama_sampler_chain_add(m_smpl, llama_sampler_init_top_k(10));
+    llama_sampler_chain_add(m_smpl, llama_sampler_init_greedy());
 
     // masked = false: the draft head sees the raw hidden row, not the selector
     // lattice the target produces.
@@ -189,7 +185,7 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
 std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos,
                                            const float* h_row, int n_embd) {
     std::vector<llama_token> out;
-    if (!m_ctx || !m_backend_smpl || !h_row || n_embd != m_n_embd)
+    if (!m_ctx || !m_smpl || !h_row || n_embd != m_n_embd)
         return out;
 
     // The carry row must describe the token about to be predicted. A prompt
@@ -278,22 +274,22 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // context is configured masked (unlike the target), so the accessor
             // resolves the index through output_resolve_row -- and every draft
             // row carries logits=true, so the output index is the batch index.
-            const llama_token cand = llama_get_sampled_token_ith(m_ctx, i_last);
+            const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
             if (cand < 0 || cand == LLAMA_TOKEN_NULL)
                 break;
+
+            // Only draft while the candidate stays confident: a token the target
+            // is unlikely to accept costs a target decode to reject, which is a
+            // net loss. The MTP graph emits real logits (qwen35.cpp sets
+            // res->t_logits), so this reads the CPU logits.
+            const float p = top_prob(m_ctx, i_last);
+            if (p < m_params.p_min)
+                break;
+
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
-            log_output("[xllama] mtp: nextn row=" + std::to_string(h_next != nullptr) + "\n");
             if (!h_next)
                 break;
 
-            // Only draft while the candidate stays confident enough that the
-            // target is likely to accept it; a token below the threshold costs
-            // a target decode to reject, which is a net loss.
-            //
-            // The probability is computed here from the draft context's logits
-            // rather than through llama_sampler_get_candidates, which lives in
-            // the fork's common layer and is not part of the public C API this
-            // frontend links against.
             if (depth == 0) {
                 float dmin = h_next[0], dmax = h_next[0];
                 for (int i = 1; i < n_embd; ++i) {
