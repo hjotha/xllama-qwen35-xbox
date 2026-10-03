@@ -80,13 +80,27 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (m_params.n_max < m_params.n_min)
         m_params.n_max = m_params.n_min;
 
-    // Deliberately a copy of the target params with mtp_reserve_enabled left
-    // at its default false. The reserve exists to pre-allocate the mixed-cache
-    // footprint the fork's KVarN MTP path wants, and turning it on here made
-    // llama_init_from_model fail on every run (logged as "draft context
-    // creation failed"), which silently degraded MTP to no-op. The draft only
-    // needs a context built from the same model.
+    // Three deviations from the target params, each mirroring what the fork's
+    // common layer does when it stands up a draft MTP context:
+    //
+    //  * ctx_other = the target, so the two contexts share one KV cache. The
+    //    draft reads the target's committed prefix instead of asking for a
+    //    second full-size cache, which is what made creation fail on a 4 GB
+    //    console. The failure path degrades to single-token decoding, so the
+    //    symptom was a flat A/B rather than an error.
+    //  * ctx_type = LLAMA_CONTEXT_TYPE_MTP, which is what makes the graph
+    //    builder emit the NextN head rather than a duplicate target decoder.
+    //  * n_rs_seq = 0: the MTP draft holds no recurrent state of its own.
+    //
+    // mtp_reserve_enabled stays at its default false. It pre-allocates the
+    // mixed-cache footprint the KVarN path wants; the fork keeps it off by
+    // default so a model that merely has an MTP head does not phantom-reserve.
     llama_context_params cparams = target_cparams;
+    // Read target_ctx directly, not m_target_ctx: the member is only
+    // assigned after a successful init, so it is still null here.
+    cparams.ctx_other = target_ctx;
+    cparams.ctx_type = LLAMA_CONTEXT_TYPE_MTP;
+    cparams.n_rs_seq = 0;
 
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
