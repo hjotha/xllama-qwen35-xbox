@@ -360,6 +360,7 @@ InferenceResult run_inference_ort(const InferenceParams& params) {
 #ifdef XLLAMA_USE_LLAMA
 
     #include "llama.h"
+    #include "xllama/mtp_draft.h"
 
     #include "decode_loop.h"
     #include "llama_gpu.h"
@@ -390,6 +391,9 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
 
     llama_model_params mparams = llama_model_default_params();
     const int gpu_layers = apply_gguf_gpu_layers(params.n_gpu_layers, mparams);
+    // MTP: the draft head is inside the same GGUF, so this costs draft KV and
+    // compute but no second file. A GGUF without the head simply loads no MTP.
+    mparams.load_mtp = params.mtp;
     res.gpu_layers = gpu_layers;
 
     if (params.on_status)
@@ -474,6 +478,20 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     LlamaContextPtr ctx(raw_ctx);
     cpu_pools.attach(gpu_layers, ctx.get(), static_cast<int>(cparams.n_threads),
                      static_cast<int>(cparams.n_threads_batch));
+
+    // MTP draft context, built from the same model. Declared before the
+    // samplers below so it is destroyed after them: it holds its own KV.
+    std::unique_ptr<MtpDrafter> mtp_drafter;
+    if (raw_ctx && params.mtp) {
+        llama_set_embeddings_nextn(raw_ctx, true, /*masked=*/false);
+        MtpDraftParams mp;
+        mp.n_max = params.mtp_n_max;
+        mp.p_min = params.mtp_p_min;
+        mtp_drafter = std::make_unique<MtpDrafter>();
+        if (!mtp_drafter->init(model.get(), cparams, mp, llama_model_n_embd_out(model.get()))) {
+            mtp_drafter.reset();
+        }
+    }
 
     if (adapter) {
         llama_adapter_lora* arr[1] = {adapter.get()};
@@ -587,6 +605,10 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     dlp.prompt_lookup = params.prompt_lookup;
     dlp.ignore_eog = params.ignore_eog;
     dlp.token_history = params.prompt_lookup ? &gen_history : nullptr;
+    if (mtp_drafter) {
+        dlp.mtp = mtp_drafter.get();
+        dlp.mtp_n_embd = llama_model_n_embd_out(model.get());
+    }
     const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
     const int n_generated = dlr.n_generated;
     res.ended_with_stop = dlr.ended_with_stop;

@@ -324,11 +324,11 @@ void main_loop() {
     params.n_ubatch = bench_ubatch;                  // #172: 0 = llama default (512)
     params.kv_q8 = bench_kvq8 != 0;                  // #171: q8_0 KV + flash attention
     params.prompt_lookup = bench_prompt_lookup != 0; // #210 W2
-    params.mtp = bench_mtp > 0;                     // MTP drafting; requires the MTP GGUF
+    params.mtp = bench_mtp > 0;                      // MTP drafting; requires the MTP GGUF
     params.mtp_n_max = bench_mtp > 0 ? bench_mtp : 4;
-    params.n_gpu_layers = bench_gpu_layers;          // D2b: 0 = CPU
-    params.stop_sequences = fmt.stop_sequences;      // clean stop for Gemma's <end_of_turn>
-    params.run_index = bench_run_index;              // W1.1: echo into CSV (0 = single-run)
+    params.n_gpu_layers = bench_gpu_layers;     // D2b: 0 = CPU
+    params.stop_sequences = fmt.stop_sequences; // clean stop for Gemma's <end_of_turn>
+    params.run_index = bench_run_index;         // W1.1: echo into CSV (0 = single-run)
     if (bench_ignore_eog != 0) { // after stop_sequences is set, or the stops come back
         params.ignore_eog = true;
         params.stop_sequences.clear();

@@ -104,6 +104,12 @@ struct InferenceParams {
     /// Draft-free prompt-lookup speculative decoding (GGUF path only; default OFF).
     bool prompt_lookup = false;
 
+    /// MTP drafting against the beellama MTP head (GGUF path only; default OFF).
+    /// Needs a model whose GGUF carries the head; a no-op on any other model.
+    bool mtp = false;
+    int mtp_n_max = 4;
+    float mtp_p_min = 0.75f;
+
     /// Probe CPU memory bandwidth and exit (no model load).
     bool run_membw = false;
 
