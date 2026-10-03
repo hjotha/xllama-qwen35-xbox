@@ -532,7 +532,7 @@ class LlamaSession final : public Session {
                 mp.n_max = m_mtp_n_max;
                 mp.p_min = m_mtp_p_min;
                 m_mtp_drafter = std::make_unique<MtpDrafter>();
-                if (!m_mtp_drafter->init(m_model.get(), cparams, mp,
+                if (!m_mtp_drafter->init(m_model.get(), m_ctx.get(), cparams, mp,
                                          llama_model_n_embd_out(m_model.get()))) {
                     // Not fatal: MTP is an accelerator, so a failure here must
                     // leave a working single-token session behind.

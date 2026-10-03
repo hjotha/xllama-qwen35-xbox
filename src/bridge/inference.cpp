@@ -488,7 +488,8 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         mp.n_max = params.mtp_n_max;
         mp.p_min = params.mtp_p_min;
         mtp_drafter = std::make_unique<MtpDrafter>();
-        if (!mtp_drafter->init(model.get(), cparams, mp, llama_model_n_embd_out(model.get()))) {
+        if (!mtp_drafter->init(model.get(), raw_ctx, cparams, mp,
+                               llama_model_n_embd_out(model.get()))) {
             mtp_drafter.reset();
         }
     }

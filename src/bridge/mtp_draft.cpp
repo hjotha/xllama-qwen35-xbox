@@ -57,8 +57,9 @@ MtpDrafter::~MtpDrafter() {
         llama_free(m_ctx);
 }
 
-bool MtpDrafter::init(llama_model* model, llama_context_params target_cparams,
-                      const MtpDraftParams& params, int n_embd) {
+bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
+                      llama_context_params target_cparams, const MtpDraftParams& params,
+                      int n_embd) {
     if (m_ctx)
         return true;
     if (!model) {
@@ -89,10 +90,15 @@ bool MtpDrafter::init(llama_model* model, llama_context_params target_cparams,
 
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
-        log_output("[xllama] mtp: draft context creation failed; drafting disabled\n");
+        log_output("[xllama] mtp: draft context creation failed (n_ctx=" +
+                   std::to_string(cparams.n_ctx) + " n_batch=" + std::to_string(cparams.n_batch) +
+                   " n_ubatch=" + std::to_string(cparams.n_ubatch) +
+                   " ctx_type=" + std::to_string(static_cast<int>(cparams.ctx_type)) + " shared=" +
+                   std::to_string(cparams.ctx_other != nullptr) + "); drafting disabled\n");
         return false;
     }
 
+    m_target_ctx = target_ctx;
     m_n_embd = n_embd;
     m_pending_h.assign(static_cast<size_t>(n_embd), 0.0f);
 

@@ -65,8 +65,8 @@ class MtpDrafter {
     // cache and compute buffers are additional. Returns false and logs on
     // failure, in which case draft() is a no-op and callers fall back to
     // single-token decoding.
-    bool init(llama_model* model, llama_context_params target_cparams, const MtpDraftParams& params,
-              int n_embd);
+    bool init(llama_model* model, llama_context* target_ctx, llama_context_params target_cparams,
+              const MtpDraftParams& params, int n_embd);
 
     bool ready() const {
         return m_ctx != nullptr;
@@ -91,6 +91,7 @@ class MtpDrafter {
     llama_context* m_ctx = nullptr;
     llama_sampler* m_smpl = nullptr;
     llama_batch m_batch{};
+    llama_context* m_target_ctx = nullptr;
     int m_n_embd = 0;
     MtpDraftParams m_params{};
     std::vector<float> m_pending_h;
