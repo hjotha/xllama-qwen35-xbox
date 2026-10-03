@@ -185,6 +185,12 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     const int i_last = m_batch.n_tokens;
     m_batch.n_tokens += 1;
 
+    // Position of the row the current draft step decodes, tracked alongside the
+    // batch index because the nextn accessor wants the position. Shared-memory
+    // layouts reuse one position for every draft row; a private context walks
+    // forward one position per depth.
+    llama_pos row_pos = pos;
+
     const int32_t n_max = m_params.n_max;
     for (int depth = 0; depth < n_max; ++depth) {
         if (llama_decode(m_ctx, m_batch) != 0) {
@@ -196,10 +202,17 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
         m_batch.n_tokens = 0;
 
         {
+            // Two different indices, and conflating them is what broke the
+            // first run: the sampler takes a batch index (the draft batch is
+            // rebuilt each depth, so the row just decoded is i_last), while
+            // llama_get_embeddings_nextn_ith takes a token position. The draft
+            // context is configured unmasked, so its nextn rows are stored
+            // densely and indexed by position -- passing i_last (0 on the first
+            // depth) would read the wrong row, and passing -1 aborts.
             const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
             if (cand < 0)
                 break;
-            const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
+            const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, row_pos);
             if (!h_next)
                 break;
 
@@ -227,6 +240,7 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             const int i = m_batch.n_tokens;
             m_batch.token[i] = cand;
             m_batch.pos[i] = shared ? pos : pos + depth + 1;
+            row_pos = m_batch.pos[i];
             m_batch.n_seq_id[i] = 1;
             m_batch.seq_id[i][0] = 0;
             m_batch.logits[i] = 1;
