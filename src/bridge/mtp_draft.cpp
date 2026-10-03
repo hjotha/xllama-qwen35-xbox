@@ -119,6 +119,19 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (cparams.n_ubatch > n_draft_batch)
         cparams.n_ubatch = n_draft_batch;
 
+    // Register the sampler as part of context creation. llama.h says to prefer
+    // cparams.samplers over llama_set_sampler, and the fork's own setup does it
+    // this way ("init the backend samplers as part of the context creation").
+    // Registering afterwards left the sampled-token slots empty, so every draft
+    // came back with no candidate at all.
+    m_backend_smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
+    llama_sampler_chain_add(m_backend_smpl, llama_sampler_init_top_k(10));
+    llama_sampler_seq_config seq_cfg{};
+    seq_cfg.seq_id = 0;
+    seq_cfg.sampler = m_backend_smpl;
+    cparams.samplers = &seq_cfg;
+    cparams.n_samplers = 1;
+
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
         log_output("[xllama] mtp: draft context creation failed (n_ctx=" +
@@ -141,21 +154,12 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (m_batch.token)
         std::memset(m_batch.token, 0, sizeof(llama_token) * static_cast<size_t>(n_b));
 
-    // Backend sampling. An MTP context emits the NextN hidden row, not vocab
-    // logits, so llama_get_logits_ith on it throws and llama_sampler_sample
-    // aborts the process -- which is where every run was dying. The fork's own
-    // MTP drafter installs a sampler on the draft context and reads the token
-    // back with llama_get_sampled_token_ith for exactly this reason.
-    //
-    // Consequence: the candidate probability is not readable from the CPU, so
-    // p_min cannot be applied here. Drafting is bounded by n_max instead, and
-    // the verifier discards whatever the target rejects.
-    m_backend_smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-    llama_sampler_chain_add(m_backend_smpl, llama_sampler_init_top_k(10));
-    if (!llama_set_sampler(m_ctx, 0, m_backend_smpl)) {
-        log_output("[xllama] mtp: backend sampler rejected; drafting will not run\n");
-        return false;
-    }
+    // The candidate comes from the backend sampler, not from CPU logits: an MTP
+    // context emits the NextN hidden row rather than vocab logits, so
+    // llama_get_logits_ith on it throws and llama_sampler_sample aborts the
+    // process. Consequence: the candidate probability is not readable here, so
+    // p_min does not gate drafts; n_max does, and the verifier discards
+    // whatever the target rejects.
 
     // masked = false: the draft head sees the raw hidden row, not the selector
     // lattice the target produces.
