@@ -102,6 +102,18 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     cparams.ctx_type = LLAMA_CONTEXT_TYPE_MTP;
     cparams.n_rs_seq = 0;
 
+    // The draft never sees more than n_max + 1 tokens at a time: the committed
+    // token whose hidden row is fed back, plus the deepest proposal. Inheriting
+    // the target's n_batch made the compute reservation ask for a full-prompt
+    // graph, and with the target already holding ~4000 MB on a 4 GB console that
+    // allocation failed outright -- "failed to allocate compute pp buffers" --
+    // so the draft context never came up.
+    const int32_t n_draft_batch = m_params.n_max + 2;
+    if (cparams.n_batch > n_draft_batch)
+        cparams.n_batch = n_draft_batch;
+    if (cparams.n_ubatch > n_draft_batch)
+        cparams.n_ubatch = n_draft_batch;
+
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
         log_output("[xllama] mtp: draft context creation failed (n_ctx=" +
