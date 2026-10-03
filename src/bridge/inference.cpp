@@ -393,7 +393,14 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     const int gpu_layers = apply_gguf_gpu_layers(params.n_gpu_layers, mparams);
     // MTP: the draft head is inside the same GGUF, so this costs draft KV and
     // compute but no second file. A GGUF without the head simply loads no MTP.
+    //
+    // split_mtp_weights is the other half and is not optional: the fork's
+    // speculative bootstrap and is_ready both gate on
+    // llama_model_mtp_weights_get_info().managed, which is exactly this flag.
+    // Without it the head loads but the draft never gets a usable prefix, and
+    // the draft's own llama_decode dies inside the graph.
     mparams.load_mtp = params.mtp;
+    mparams.split_mtp_weights = params.mtp;
     res.gpu_layers = gpu_layers;
 
     if (params.on_status)

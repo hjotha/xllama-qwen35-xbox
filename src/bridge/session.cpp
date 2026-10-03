@@ -1254,6 +1254,9 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
     // memory and draft compute but no second file and no second mmap. Requesting
     // it on a GGUF without the head is harmless -- the loader just finds nothing.
     mparams.load_mtp = sp.mtp;
+    // Required alongside load_mtp: the fork's MTP speculative path gates on
+    // llama_model_mtp_weights_get_info().managed, which mirrors this flag.
+    mparams.split_mtp_weights = sp.mtp;
 
     llama_model* raw_model = llama_model_load_from_file(abs_path.c_str(), mparams);
     if (!raw_model) {
