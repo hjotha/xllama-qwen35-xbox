@@ -79,10 +79,13 @@ bool MtpDrafter::init(llama_model* model, llama_context_params target_cparams,
     if (m_params.n_max < m_params.n_min)
         m_params.n_max = m_params.n_min;
 
+    // Deliberately a copy of the target params with mtp_reserve_enabled left
+    // at its default false. The reserve exists to pre-allocate the mixed-cache
+    // footprint the fork's KVarN MTP path wants, and turning it on here made
+    // llama_init_from_model fail on every run (logged as "draft context
+    // creation failed"), which silently degraded MTP to no-op. The draft only
+    // needs a context built from the same model.
     llama_context_params cparams = target_cparams;
-    // MTP needs its own KV reserve; the target's sizing does not account for
-    // the draft context.
-    cparams.mtp_reserve_enabled = true;
 
     m_ctx = llama_init_from_model(model, cparams);
     if (!m_ctx) {
