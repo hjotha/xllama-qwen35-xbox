@@ -152,6 +152,17 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     // buffer was sized to zero at creation the row read back would be zeros.
     log_output("[xllama] mtp: target nextn head layers=" +
                std::to_string(llama_model_n_layer_nextn(model)) + "\n");
+    {
+        // .managed is what the fork's own speculative bootstrap gates on: it
+        // means load_mtp actually pulled the head's tensors into the model. A
+        // GGUF with nextn tensors but no load_mtp leaves n_layer_nextn set and
+        // the head unloaded, and then the target graph never emits an h_nextn
+        // row at all -- which reads back as zeros.
+        const llama_mtp_weights_info wi = llama_model_mtp_weights_get_info(model);
+        log_output("[xllama] mtp: weights managed=" + std::to_string(wi.managed) + " resident=" +
+                   std::to_string(wi.resident) + " tensors=" + std::to_string(wi.tensor_count) +
+                   " host_bytes=" + std::to_string(wi.host_bytes) + "\n");
+    }
     return true;
 }
 

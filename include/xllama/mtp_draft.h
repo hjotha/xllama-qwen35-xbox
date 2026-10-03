@@ -31,10 +31,26 @@
 // Redeclared here instead of including it, so no build file has to grow an
 // include path into llama.cpp's private source tree. They are LLAMA_API, so
 // the definitions are exported from the same library and this links.
+struct llama_mtp_weights_info {
+    bool managed = false;
+    bool resident = false;
+    size_t host_bytes = 0;
+    size_t allocated_bytes = 0;
+    size_t gpu_allocated_bytes = 0;
+    size_t tensor_count = 0;
+    uint64_t model_instance = 0;
+    uint64_t model_load_count = 0;
+    uint64_t main_gpu_upload_bytes = 0;
+    uint64_t mtp_gpu_upload_bytes = 0;
+    uint64_t mtp_reloads = 0;
+    uint64_t backing_hash = 0;
+};
+
 extern "C" {
 void llama_set_embeddings_nextn(struct llama_context* ctx, bool value, bool masked);
 float* llama_get_embeddings_nextn_ith(struct llama_context* ctx, int32_t i);
 struct llama_context* llama_get_ctx_other(struct llama_context* ctx);
+struct llama_mtp_weights_info llama_model_mtp_weights_get_info(const struct llama_model* model);
 }
 
 #include <cstdint>

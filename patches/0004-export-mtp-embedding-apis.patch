@@ -30,9 +30,18 @@ index 792b8a8d9..146933360 100644
  }
  
 diff --git a/src/llama-ext.h b/src/llama-ext.h
-index e5f858c2d..9b1a15ec6 100644
+index e5f858c2d..e2cac1374 100644
 --- a/src/llama-ext.h
 +++ b/src/llama-ext.h
+@@ -46,7 +46,7 @@ enum class llama_mtp_weights_fault : uint8_t { none, allocation, upload };
+ LLAMA_API bool llama_model_mtp_weights_set_resident(
+         llama_model * model, bool resident, llama_mtp_weights_fault fault = llama_mtp_weights_fault::none);
+ // Do not read concurrently with residency changes; publish a copy for HTTP status.
+-LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model);
++extern "C" LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model);
+ 
+ // Managed MTP target, owner-thread only. Zero means no tracked unmasked NextN decode.
+ // State imports, failed/new decodes, encode, output reservation and a NextN mode change invalidate the ID.
 @@ -179,7 +179,11 @@ LLAMA_API llama_kv_memory_stats llama_get_kv_memory_stats(const struct llama_con
  // Set whether the context outputs nextn embeddings or not
  // If masked == true,  output the embeddings only for the tokens with batch.logits != 0
@@ -64,3 +73,16 @@ index e5f858c2d..9b1a15ec6 100644
  
  //
  // model/context data extraction
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index bdb8ec939..2a1f0877a 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -2473,7 +2473,7 @@ bool llama_model::set_mtp_weights_resident(bool resident, llama_mtp_weights_faul
+     }
+ }
+ 
+-llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model) {
++extern "C" LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model) {
+     return model ? model->mtp_weights_info() : llama_mtp_weights_info{};
+ }
+ 

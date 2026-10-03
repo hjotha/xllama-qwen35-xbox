@@ -298,15 +298,19 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             // enables nextn embeddings on the target when MTP is on; without
             // them there is no row, MTP declines, and this degrades to
             // single-token decoding rather than failing.
-            // The index is the token's position, not its batch row: the session
-            // enables nextn embeddings unmasked, and the fork then stores those
-            // rows densely and indexes them by raw position. Passing -1 is what
-            // llama_get_logits_ith accepts, but here it aborts with
-            // "invalid nextn embeddings id -1, reason: out of range [0, 2048)",
-            // which is where the first working MTP run died.
+            // Unmasked nextn rows are stored at a running offset of decoded
+            // tokens (llama-context.cpp: offset = n_tokens_prev), so the row for
+            // a single-token decode at position N is indexed by N. -1, the
+            // idiom llama_get_logits_ith accepts, aborts here with
+            // "invalid nextn embeddings id -1, reason: out of range".
             llama_memory_t mm = llama_get_memory(p.ctx);
             const llama_pos pos = llama_memory_seq_pos_max(mm, 0);
             const float* h = llama_get_embeddings_nextn_ith(p.ctx, pos);
+            if (!h) {
+                log_output("[xllama] mtp: target emitted no nextn row at pos " +
+                           std::to_string(pos) + "; declining to draft\n");
+                draft32.clear();
+            }
             if (h) {
                 const std::vector<llama_token> md = p.mtp->draft(token, pos + 1, h, p.mtp_n_embd);
                 draft32.reserve(md.size());
