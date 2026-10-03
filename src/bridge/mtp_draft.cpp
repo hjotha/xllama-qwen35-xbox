@@ -234,6 +234,12 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     llama_pos row_pos = pos;
 
     const int32_t n_max = m_params.n_max;
+    log_output("[xllama] mtp: draft batch n_tokens=" + std::to_string(m_batch.n_tokens) +
+               " pos=" + std::to_string(m_batch.pos[0]) +
+               " has_embd=" + std::to_string(m_batch.embd != nullptr) +
+               " dft_n_batch=" + std::to_string(llama_n_batch(m_ctx)) + " dft_type=" +
+               std::to_string(static_cast<int>(llama_get_ctx_other(m_ctx) ? 1 : 0)) + "\n");
+
     for (int depth = 0; depth < n_max; ++depth) {
         if (llama_decode(m_ctx, m_batch) != 0) {
             log_output("[xllama] mtp: draft decode failed at depth " + std::to_string(depth) +
