@@ -1256,7 +1256,15 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
     mparams.load_mtp = sp.mtp;
     // Required alongside load_mtp: the fork's MTP speculative path gates on
     // llama_model_mtp_weights_get_info().managed, which mirrors this flag.
-    mparams.split_mtp_weights = sp.mtp;
+    // split_mtp_weights stays FALSE on Xbox. The fork requires the MTP head's
+    // host backing to live in a CPU or CUDA buffer (llama-model.cpp: the
+    // ctx_map check allows only GGML_BACKEND_DEVICE_TYPE_CPU or a backend
+    // registered as CUDA). With the head offloaded to D3D12_Weights the load
+    // is rejected outright:
+    //   MTP host backing requires standard CPU/CUDA buffers, got D3D12_Weights
+    // D3D12 is neither, so the flag is unsatisfiable on this platform.
+    // Left false; the draft context below is the non-split MTP path, which
+    // is the one the fork's is_ready() treats as supported when !managed.
 
     llama_model* raw_model = llama_model_load_from_file(abs_path.c_str(), mparams);
     if (!raw_model) {
