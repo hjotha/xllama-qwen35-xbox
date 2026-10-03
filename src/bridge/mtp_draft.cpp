@@ -146,7 +146,12 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     llama_set_embeddings_nextn(m_ctx, true, /*masked=*/true);
 
     log_output("[xllama] mtp: draft ready, n_max=" + std::to_string(m_params.n_max) +
-               " p_min=" + std::to_string(m_params.p_min) + "\n");
+               " p_min=" + std::to_string(m_params.p_min) +
+               " dft_n_batch=" + std::to_string(cparams.n_batch) + "\n");
+    // Confirms the draft context is wired for MTP output; if the target's nextn
+    // buffer was sized to zero at creation the row read back would be zeros.
+    log_output("[xllama] mtp: target nextn head layers=" +
+               std::to_string(llama_model_n_layer_nextn(model)) + "\n");
     return true;
 }
 
