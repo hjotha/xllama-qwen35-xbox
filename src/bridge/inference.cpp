@@ -406,6 +406,10 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     if (params.on_status)
         params.on_status("loading model");
 
+    if (params.mtp) {
+        log_output("[xllama] mtp: model_params load_mtp=" + std::to_string(mparams.load_mtp) +
+                   " split_mtp_weights=" + std::to_string(mparams.split_mtp_weights) + "\n");
+    }
     llama_model* raw_model = llama_model_load_from_file(abs_model_path.c_str(), mparams);
     if (!raw_model) {
         res.error_msg = "failed to load model: " + abs_model_path;
