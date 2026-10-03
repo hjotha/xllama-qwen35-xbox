@@ -90,8 +90,7 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     //    symptom was a flat A/B rather than an error.
     //  * ctx_type = LLAMA_CONTEXT_TYPE_MTP, which is what makes the graph
     //    builder emit the NextN head rather than a duplicate target decoder.
-    //  * n_rs_seq = 0: the MTP draft holds no recurrent state of its own.
-    //
+
     // mtp_reserve_enabled stays at its default false. It pre-allocates the
     // mixed-cache footprint the KVarN path wants; the fork keeps it off by
     // default so a model that merely has an MTP head does not phantom-reserve.
@@ -100,7 +99,13 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     // assigned after a successful init, so it is still null here.
     cparams.ctx_other = target_ctx;
     cparams.ctx_type = LLAMA_CONTEXT_TYPE_MTP;
-    cparams.n_rs_seq = 0;
+    // n_rs_seq is deliberately NOT zeroed. The fork's own setup leaves it at
+    // whatever the target resolved to, and says why: with n_rs_seq == 0 the
+    // draft's seq_rm fails silently on partial acceptance and keeps stale
+    // positions. Zeroing it here is what made the draft's cache disagree with
+    // the target's.
+    cparams.kv_tail_tokens = 0;
+    cparams.kv_tail_type = GGML_TYPE_F16;
 
     // The draft never sees more than n_max + 1 tokens at a time: the committed
     // token whose hidden row is fed back, plus the deepest proposal. Inheriting
@@ -260,10 +265,13 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // context is configured masked (unlike the target), so the accessor
             // resolves the index through output_resolve_row -- and every draft
             // row carries logits=true, so the output index is the batch index.
+            log_output("[xllama] mtp: sampling row=" + std::to_string(i_last) + "\n");
             const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
+            log_output("[xllama] mtp: sampled cand=" + std::to_string(cand) + "\n");
             if (cand < 0)
                 break;
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
+            log_output("[xllama] mtp: nextn row=" + std::to_string(h_next != nullptr) + "\n");
             if (!h_next)
                 break;
 
@@ -287,7 +295,9 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
                            std::to_string(dmax) + "]\n");
             }
 
-            if (top_prob(m_ctx, i_last) < m_params.p_min) {
+            const float p = top_prob(m_ctx, i_last);
+            log_output("[xllama] mtp: top_prob=" + std::to_string(p) + "\n");
+            if (p < m_params.p_min) {
                 // Stop drafting here. Anything already collected is still
                 // verified; the caller falls back to a single-token decode when
                 // the list comes back empty.
