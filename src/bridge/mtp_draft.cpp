@@ -159,9 +159,9 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
         // the head unloaded, and then the target graph never emits an h_nextn
         // row at all -- which reads back as zeros.
         const llama_mtp_weights_info wi = llama_model_mtp_weights_get_info(model);
-        log_output("[xllama] mtp: weights managed=" + std::to_string(wi.managed) + " resident=" +
-                   std::to_string(wi.resident) + " tensors=" + std::to_string(wi.tensor_count) +
-                   " host_bytes=" + std::to_string(wi.host_bytes) + "\n");
+        log_output("[xllama] mtp: split_mtp_weights=" + std::to_string(wi.managed) +
+                   " resident=" + std::to_string(wi.resident) +
+                   " tensors=" + std::to_string(wi.tensor_count) + "\n");
     }
     return true;
 }
@@ -266,6 +266,18 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // rather than through llama_sampler_get_candidates, which lives in
             // the fork's common layer and is not part of the public C API this
             // frontend links against.
+            if (depth == 0) {
+                float dmin = h_next[0], dmax = h_next[0];
+                for (int i = 1; i < n_embd; ++i) {
+                    if (h_next[i] < dmin)
+                        dmin = h_next[i];
+                    if (h_next[i] > dmax)
+                        dmax = h_next[i];
+                }
+                log_output("[xllama] mtp: draft row[min,max]=[" + std::to_string(dmin) + "," +
+                           std::to_string(dmax) + "]\n");
+            }
+
             if (top_prob(m_ctx, i_last) < m_params.p_min) {
                 // Stop drafting here. Anything already collected is still
                 // verified; the caller falls back to a single-token decode when

@@ -298,14 +298,17 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             // enables nextn embeddings on the target when MTP is on; without
             // them there is no row, MTP declines, and this degrades to
             // single-token decoding rather than failing.
-            // Unmasked nextn rows are stored at a running offset of decoded
-            // tokens (llama-context.cpp: offset = n_tokens_prev), so the row for
-            // a single-token decode at position N is indexed by N. -1, the
-            // idiom llama_get_logits_ith accepts, aborts here with
-            // "invalid nextn embeddings id -1, reason: out of range".
+            // The index is a row in the last decoded batch, not a position. The
+            // fork reads it as i_batch_beg[seq_id] + i over the verify batch it
+            // just ran, and unmasked rows are written at a running token offset
+            // (llama-context.cpp: offset = n_tokens_prev). For a single-token
+            // decode that row is index 0 of a one-row batch, which is why
+            // indexing by position returns zeros: after a 298-token prefill,
+            // position 299 is past the batch the row lives in. -1, the idiom
+            // llama_get_logits_ith accepts, aborts here outright.
             llama_memory_t mm = llama_get_memory(p.ctx);
             const llama_pos pos = llama_memory_seq_pos_max(mm, 0);
-            const float* h = llama_get_embeddings_nextn_ith(p.ctx, pos);
+            const float* h = llama_get_embeddings_nextn_ith(p.ctx, 0);
             if (!h) {
                 log_output("[xllama] mtp: target emitted no nextn row at pos " +
                            std::to_string(pos) + "; declining to draft\n");
