@@ -224,14 +224,10 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     m_batch.logits[m_batch.n_tokens] = 1;
     std::memcpy(m_batch.embd + static_cast<size_t>(m_batch.n_tokens) * n_embd, m_pending_h.data(),
                 static_cast<size_t>(n_embd) * sizeof(float));
-    const int i_last = m_batch.n_tokens;
-    m_batch.n_tokens += 1;
-
-    // Position of the row the current draft step decodes, tracked alongside the
-    // batch index because the nextn accessor wants the position. Shared-memory
-    // layouts reuse one position for every draft row; a private context walks
-    // forward one position per depth.
-    llama_pos row_pos = pos;
+    // Index of the row the current step decodes, i.e. the row just decoded. It
+    // changes every depth because the draft batch is rebuilt with the sampled
+    // token appended. The fork tracks the same thing as i_last[seq_id].
+    int i_last = m_batch.n_tokens - 1;
 
     const int32_t n_max = m_params.n_max;
     log_output("[xllama] mtp: draft batch n_tokens=" + std::to_string(m_batch.n_tokens) +
@@ -250,17 +246,15 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
         m_batch.n_tokens = 0;
 
         {
-            // Two different indices, and conflating them is what broke the
-            // first run: the sampler takes a batch index (the draft batch is
-            // rebuilt each depth, so the row just decoded is i_last), while
-            // llama_get_embeddings_nextn_ith takes a token position. The draft
-            // context is configured unmasked, so its nextn rows are stored
-            // densely and indexed by position -- passing i_last (0 on the first
-            // depth) would read the wrong row, and passing -1 aborts.
+            // Both the sampler and the nextn accessor take an index into the
+            // batch that was just decoded, not a token position. The draft
+            // context is configured masked (unlike the target), so the accessor
+            // resolves the index through output_resolve_row -- and every draft
+            // row carries logits=true, so the output index is the batch index.
             const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
             if (cand < 0)
                 break;
-            const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, row_pos);
+            const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
             if (!h_next)
                 break;
 
@@ -300,13 +294,13 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             const int i = m_batch.n_tokens;
             m_batch.token[i] = cand;
             m_batch.pos[i] = shared ? pos : pos + depth + 1;
-            row_pos = m_batch.pos[i];
             m_batch.n_seq_id[i] = 1;
             m_batch.seq_id[i][0] = 0;
             m_batch.logits[i] = 1;
             std::memcpy(m_batch.embd + static_cast<size_t>(i) * n_embd, h_next,
                         static_cast<size_t>(n_embd) * sizeof(float));
             m_batch.n_tokens = static_cast<int32_t>(i + 1);
+            i_last = i;
         }
     }
 
