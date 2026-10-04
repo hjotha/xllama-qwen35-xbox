@@ -681,6 +681,19 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
              res.peak_ws_mb, res.n_drafted, res.n_spec_accepted);
     log_output(log_buf);
 
+    // Parity probe: FNV-1a over the generated text. MTP verifies drafts against
+    // the target's own greedy pick, so with the same prompt and sampler the hash
+    // must match the non-MTP run; a mismatch means the carry/verify path is wrong.
+    uint64_t out_hash = 1469598103934665603ULL;
+    for (const unsigned char c : res.output_text) {
+        out_hash ^= c;
+        out_hash *= 1099511628211ULL;
+    }
+    char hash_buf[96];
+    snprintf(hash_buf, sizeof(hash_buf), "[xllama] output: len=%zu fnv1a=%016llx\n",
+             res.output_text.size(), static_cast<unsigned long long>(out_hash));
+    log_output(hash_buf);
+
     return res;
 }
 } // namespace detail
