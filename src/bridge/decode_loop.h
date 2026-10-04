@@ -41,8 +41,9 @@ namespace xllama {
 // loop so CLI and Session cannot drift on speculation either.
 
 // Feed |n_tokens| tokens through the context, chunked at the model's logical
-// batch. Returns false if a chunk fails to decode; the caller owns what that
-// means for its cache, since the two callers answer that differently.
+// batch. Returns the number of rows the FINAL chunk decoded, or -1 on failure;
+// the caller owns what a failure means for its cache, since the two callers
+// answer that differently.
 //
 // The chunking is NOT optional: llama_decode does not return an error for a
 // batch larger than n_batch, it trips GGML_ASSERT(n_tokens_all <= n_batch) and
@@ -50,15 +51,35 @@ namespace xllama {
 // coding session's trimmer ceiling is 3846, so a long paste used to kill the
 // process. This is the LOGICAL batch only; the physical ubatch stays at the #172
 // optimum of 512, which is what every published prefill rate was measured on.
-inline bool prefill_chunked(llama_context* ctx, const llama_token* tokens, int n_tokens) {
+//
+// The row count of the final chunk is load-bearing for MTP (plan 003, F3): the
+// drafter indexes the last-batch nextn buffer by row, and deriving it from the
+// absolute position (pos_max % n_batch + 1) is wrong whenever the prompt is a
+// delta appended after a reused prefix — the positions keep counting while the
+// buffer only describes the last chunk.
+//
+// |after_chunk|, when set, runs right after each chunk's decode with the chunk
+// offset, its row count and its first position. The MTP callers use it to feed
+// the target's hidden rows of that chunk into the draft context (F2 catch-up):
+// the target's nextn buffer describes the LAST batch only, so the replay has
+// to happen chunk by chunk, exactly like the reference's process() does.
+inline int
+prefill_chunked(llama_context* ctx, const llama_token* tokens, int n_tokens,
+                const std::function<void(int off, int n_rows, llama_pos pos0)>& after_chunk = {}) {
     const int n_batch = std::max(1, static_cast<int>(llama_n_batch(ctx)));
+    int last_rows = -1;
+    llama_pos pos0 = llama_memory_seq_pos_max(llama_get_memory(ctx), 0) + 1;
     for (int off = 0; off < n_tokens; off += n_batch) {
-        llama_batch batch = llama_batch_get_one(const_cast<llama_token*>(tokens) + off,
-                                                std::min(n_batch, n_tokens - off));
+        const int chunk = std::min(n_batch, n_tokens - off);
+        llama_batch batch = llama_batch_get_one(const_cast<llama_token*>(tokens) + off, chunk);
         if (llama_decode(ctx, batch) != 0)
-            return false;
+            return -1;
+        last_rows = chunk;
+        if (after_chunk)
+            after_chunk(off, chunk, pos0);
+        pos0 += static_cast<llama_pos>(chunk);
     }
-    return true;
+    return last_rows;
 }
 
 // Rows in the batch the nextn embeddings were last written by, or 0.
@@ -66,7 +87,11 @@ inline bool prefill_chunked(llama_context* ctx, const llama_token* tokens, int n
 // Unmasked nextn rows are indexed within the last batch (see decode_loop), so a
 // drafter starting straight after a chunked prefill needs the size of the FINAL
 // chunk, not the whole prompt: the prefill splits at n_batch and the buffer only
-// describes whatever llama_decode ran last.
+// describes whatever llama_decode ran last. This is the fallback for callers
+// that do not know the real count; prefill_chunked now returns it, and
+// DecodeLoopParams.mtp_prefill_rows carries it into the loop (plan 003, F3).
+// Deriving from the absolute position (pos_max % n_batch + 1) is wrong for a
+// delta appended after a reused prefix: positions keep counting past the chunk.
 inline int last_nextn_rows(llama_context* ctx) {
     llama_memory_t mem = llama_get_memory(ctx);
     const llama_pos pos_max = llama_memory_seq_pos_max(mem, 0);
@@ -102,6 +127,12 @@ struct DecodeLoopParams {
     // prefix diff and the #170b snapshot fingerprint both read.
     std::function<void(llama_token)> on_accepted;
 
+    // Collect every token accepted into the KV, in order (plan 003, stage 1:
+    // per-run token parity sidecar). Null = off. Prompt-lookup's own history is
+    // token_history; this is an independent collector so the CLI path can dump
+    // tokens without enabling drafting.
+    std::vector<llama_token>* tokens_out = nullptr;
+
     // Start of the decode phase, used to expose time-to-first-token.
     std::chrono::steady_clock::time_point decode_start{};
 
@@ -121,6 +152,11 @@ struct DecodeLoopParams {
     class MtpDrafter* mtp = nullptr;
     int mtp_n_embd = 0;
 
+    // Real row count of the last prefill chunk (plan 003, F3). 0 = unknown:
+    // fall back to last_nextn_rows(), which is wrong for a delta appended after
+    // a reused prefix. The caller gets it from prefill_chunked().
+    int mtp_prefill_rows = 0;
+
     // Bench only: keep decoding through end-of-generation so every run decodes
     // exactly n_predict tokens. Two backends whose arithmetic differs (CPU q8
     // activations vs d3d12 f32) reach EOG at different points, and a decode
@@ -135,6 +171,19 @@ struct DecodeLoopResult {
     // Speculative counters (zero when prompt_lookup is off or never drafted).
     int n_drafted = 0;  // draft tokens proposed (not counting the lead sample)
     int n_accepted = 0; // draft tokens that matched the target sample
+    // Phase accounting (plan 003, stage 2): how the MTP budget is spent, so the
+    // cost can be attributed before any backend rewrite. All values are summed
+    // over the whole generation; the drafter's per-call stats feed them.
+    int n_mtp_rounds = 0;         // MTP rounds with a non-empty draft batch
+    int n_mtp_decodes = 0;        // draft-context llama_decode calls (draft + catch-up)
+    int n_mtp_discarded = 0;      // draft candidates rejected by the p_min gate
+    int n_catchup_tokens = 0;     // target tokens replayed into the draft context
+    double mtp_draft_ms = 0.0;    // draft-context decode time
+    double mtp_sample_ms = 0.0;   // draft sampler time (incl. the p_min gate)
+    double mtp_top_prob_ms = 0.0; // confidence softmax time
+    double mtp_catchup_ms = 0.0;  // prefix replay decode time
+    double verify_ms = 0.0;       // target verify-batch decode time
+    double corrective_ms = 0.0;   // immediate corrective decode time (reject path)
     // True when a needed llama_memory_seq_rm refused after a multi-token verify
     // batch. Callers must treat the generation as failed and drop the KV —
     // continuing would desync history from cells (hybrid/LFM caches).
@@ -194,6 +243,8 @@ inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string
 
 // Record an accepted token in history / session bookkeeping.
 inline void accept_token(const DecodeLoopParams& p, llama_token token) {
+    if (p.tokens_out)
+        p.tokens_out->push_back(token);
     if (p.on_accepted)
         p.on_accepted(token);
     else if (p.token_history)
@@ -258,6 +309,28 @@ inline std::vector<int32_t> history_for_draft(const DecodeLoopParams& p, llama_t
     return h;
 }
 
+// MTP catch-up for one target batch (plan 003, F2): replay |n_rows| tokens with
+// the target's hidden rows (shifted by one, first row carrying the drafter's
+// pending state) into the private draft context. Called from the prefill
+// after_chunk hook and after every target verify batch, exactly when the
+// target's nextn buffer still describes the batch that just decoded.
+inline bool mtp_catchup_batch(class MtpDrafter* mtp, llama_context* ctx, const llama_token* tokens,
+                              int n_rows, llama_pos pos0, int n_embd) {
+    if (!mtp || !mtp->ready() || n_rows <= 0 || !tokens)
+        return true;
+    // The target's buffer describes the LAST decode — this batch. Copy the rows
+    // out before anything else can overwrite them.
+    std::vector<float> h_rows(static_cast<size_t>(n_rows) * static_cast<size_t>(n_embd));
+    for (int i = 0; i < n_rows; ++i) {
+        const float* hr = llama_get_embeddings_nextn_ith(ctx, i);
+        if (!hr)
+            return false;
+        std::memcpy(h_rows.data() + static_cast<size_t>(i) * n_embd, hr,
+                    static_cast<size_t>(n_embd) * sizeof(float));
+    }
+    return mtp->process(tokens, h_rows.data(), nullptr, n_rows, pos0);
+}
+
 // Classic single-token step. Returns false to stop the outer loop.
 // Sets |stop| when a stop sequence matched; |decode_ok| false on decode error.
 inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::string& output_text,
@@ -304,6 +377,11 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
 inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& output_text) {
     DecodeLoopResult out;
     const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
+    // Mutable: a catch-up or seq_rm failure leaves the private draft context in
+    // an unknown state, and drafting on top of it is worse than not drafting
+    // (plan 003, F2.3). The loop then falls back to single-token decoding for
+    // the rest of the generation.
+    bool mtp_ok = mtp_enabled;
     // The target enables nextn embeddings unmasked, and in that mode
     // llama_get_embeddings_nextn_ith is indexed by ROW WITHIN THE LAST BATCH, not by
     // token position: llama-context.cpp writes the rows at n_tokens_prev, a local that
@@ -317,7 +395,12 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     // a row, so subtracting 1 lands two tokens back.
     // Seed from the prefill: the first draft would otherwise read row 0, which is
     // the FIRST prompt token rather than the last one decoded.
-    int mtp_carry_row = mtp_enabled ? last_nextn_rows(p.ctx) - 1 : 0;
+    //
+    // F3 (plan 003): the caller reports the REAL row count of the last prefill
+    // chunk (prefill_chunked returns it). last_nextn_rows() is only a fallback:
+    // pos_max % n_batch + 1 is wrong for a delta appended after a reused prefix.
+    const int prefill_rows = p.mtp_prefill_rows > 0 ? p.mtp_prefill_rows : last_nextn_rows(p.ctx);
+    int mtp_carry_row = mtp_enabled ? prefill_rows - 1 : 0;
     if (mtp_carry_row < 0)
         mtp_carry_row = 0;
     auto set_carry_rows = [&](int n_rows) { mtp_carry_row = n_rows > 0 ? n_rows - 1 : 0; };
@@ -326,14 +409,36 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     bool spec_enabled =
         mtp_enabled || (p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0);
 
+    // F4.1 (plan 003): a corrected token from a rejected MTP draft is emitted
+    // immediately but NOT decoded right away — it becomes the anchor of the next
+    // round, so the correction shares that round's verify batch instead of
+    // costing its own target decode. The token was already sampled (do not
+    // sample it again) and already counted; only its KV insertion is deferred.
+    // The pending hidden row is captured now, before any decode overwrites the
+    // buffer. If the loop ends with a pending correction, the final flush
+    // decodes it so the Session contract (m_kv_tokens == KV cells) holds.
+    bool mtp_pending_anchor = false;
+    llama_token mtp_pending_tok = LLAMA_TOKEN_NULL;
+    llama_pos mtp_pending_pos = -1;
+    std::vector<float> mtp_pending_h;
+
     while (out.n_generated < p.n_predict) {
         if (p.abort_flag && p.abort_flag->load())
             break;
 
-        llama_token token = llama_sampler_sample(p.sampler, p.ctx, -1);
-        if (detail::stops_at_eog(p, token)) {
-            log_output("[xllama] EOG after " + std::to_string(out.n_generated) + " tokens\n");
-            break;
+        // The anchor of a pending correction was sampled from the target logits
+        // of the previous batch; sampling again would consume the sampler's
+        // state twice. Use it verbatim.
+        llama_token token = LLAMA_TOKEN_NULL;
+        const bool anchor_pending = mtp_pending_anchor;
+        if (anchor_pending) {
+            token = mtp_pending_tok;
+        } else {
+            token = llama_sampler_sample(p.sampler, p.ctx, -1);
+            if (detail::stops_at_eog(p, token)) {
+                log_output("[xllama] EOG after " + std::to_string(out.n_generated) + " tokens\n");
+                break;
+            }
         }
 
         // MTP drafts from the anchor *before* the anchor is decoded, exactly like
@@ -346,13 +451,34 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // acceptance.
         bool lead_in_batch = false;
         std::vector<llama_token> feed;
-        if (mtp_enabled) {
+        if (mtp_ok) {
             // seq_pos_max is the last written position, so the anchor sits one past
-            // it and is the position the first draft would occupy.
-            const llama_pos P = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0) + 1;
-            const float* h = llama_get_embeddings_nextn_ith(p.ctx, mtp_carry_row);
+            // it and is the position the first draft would occupy. A pending
+            // correction already occupies its slot.
+            const llama_pos P = anchor_pending
+                                    ? mtp_pending_pos
+                                    : llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0) + 1;
+            const float* h = anchor_pending ? mtp_pending_h.data()
+                                            : llama_get_embeddings_nextn_ith(p.ctx, mtp_carry_row);
             if (h) {
-                const std::vector<llama_token> md = p.mtp->draft(token, P, h, p.mtp_n_embd);
+                // F4.2: never draft past the output budget or the context end.
+                // The anchor plus each draft occupies one position; a draft token
+                // that could not be emitted would only be verified and discarded.
+                const int budget_left = p.n_predict - out.n_generated;
+                const int ctx_left = static_cast<int>(llama_n_ctx(p.ctx)) - static_cast<int>(P);
+                int n_max_eff = p.mtp->params().n_max;
+                n_max_eff = std::min(n_max_eff, std::max(0, budget_left - 1));
+                n_max_eff = std::min(n_max_eff, std::max(0, ctx_left - 1));
+                p.mtp->reset_stats();
+                const std::vector<llama_token> md =
+                    p.mtp->draft(token, P, h, p.mtp_n_embd, n_max_eff);
+                const MtpDraftStats& st = p.mtp->stats();
+                out.n_mtp_decodes += st.n_decodes;
+                out.n_mtp_discarded += st.n_discarded;
+                out.mtp_draft_ms += st.decode_ms;
+                out.mtp_sample_ms += st.sample_ms;
+                out.mtp_top_prob_ms += st.top_prob_ms;
+                out.mtp_catchup_ms += st.catchup_ms;
                 if (!md.empty()) {
                     out.n_drafted += static_cast<int>(md.size());
                     feed.reserve(md.size() + 1);
@@ -371,6 +497,33 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // post-batch fallbacks can still reach it when the lead is in the batch.
         llama_token first = LLAMA_TOKEN_NULL;
         if (!lead_in_batch) {
+            // A pending correction with no draft batch still has to enter the KV
+            // (it was emitted and counted already): decode it classically, then
+            // continue with a fresh sample on the next iteration.
+            if (anchor_pending) {
+                const auto t_c0 = std::chrono::steady_clock::now();
+                const bool ok = detail::decode_one(p.ctx, token);
+                out.corrective_ms += std::chrono::duration<double, std::milli>(
+                                         std::chrono::steady_clock::now() - t_c0)
+                                         .count();
+                if (!ok) {
+                    log_output("[xllama] decode failed after speculative reject\n");
+                    break;
+                }
+                detail::accept_token(p, token);
+                mtp_pending_anchor = false;
+                mtp_pending_tok = LLAMA_TOKEN_NULL;
+                if (mtp_ok)
+                    detail::mtp_catchup_batch(
+                        p.mtp, p.ctx, &token, 1,
+                        mtp_pending_pos >= 0 ? mtp_pending_pos
+                                             : llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0),
+                        p.mtp_n_embd);
+                set_carry_rows(1);
+                if (out.n_generated >= p.n_predict)
+                    break;
+                continue;
+            }
             // Always commit the sampled token via the classic path first. Spec never
             // changes this step — that is what keeps greedy text identical.
             if (out.n_generated == 0 && out.first_token_ms == 0.0 &&
@@ -438,23 +591,53 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         llama_memory_t mem = llama_get_memory(p.ctx);
         const llama_pos pos_before = llama_memory_seq_pos_max(mem, 0);
 
-        if (!detail::decode_verify_batch(p.ctx, feed)) {
-            log_output("[xllama] speculative draft batch failed — classic for first match\n");
-            if (!detail::trim_verify_tail(mem, pos_before, /*n_keep=*/0, n_feed)) {
-                out.rewind_failed = true;
-                break;
+        {
+            const auto t_v0 = std::chrono::steady_clock::now();
+            const bool vok = detail::decode_verify_batch(p.ctx, feed);
+            out.verify_ms +=
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_v0)
+                    .count();
+            if (!vok) {
+                log_output("[xllama] speculative draft batch failed — classic for first "
+                           "match\n");
+                if (!detail::trim_verify_tail(mem, pos_before, /*n_keep=*/0, n_feed)) {
+                    out.rewind_failed = true;
+                    break;
+                }
+                // Nothing entered the KV, so take one classic token. With the lead in
+                // the batch the trimmed logits are the pre-batch ones and |first| is
+                // stale, so resample; otherwise |first| already matched draft[0].
+                const llama_token next =
+                    lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
+                if (detail::stops_at_eog(p, next))
+                    break;
+                bool stop = false, decode_ok = true;
+                if (!detail::classic_step(p, next, output_text, out, stop, decode_ok))
+                    break;
+                continue;
             }
-            // Nothing entered the KV, so take one classic token. With the lead in
-            // the batch the trimmed logits are the pre-batch ones and |first| is
-            // stale, so resample; otherwise |first| already matched draft[0].
-            const llama_token next =
-                lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
-            if (detail::stops_at_eog(p, next))
-                break;
-            bool stop = false, decode_ok = true;
-            if (!detail::classic_step(p, next, output_text, out, stop, decode_ok))
-                break;
-            continue;
+        }
+
+        // F2 catch-up: replay this verified batch into the private draft context
+        // (tokens + the target's hidden rows, shifted), so the draft head attends
+        // to the same history the target just committed. The reference does the
+        // same in process(); without it the private cache drifts after a partial
+        // accept and the next proposals lose the accepted prefix. A failure
+        // disables drafting for the rest of the generation (F2.3: never
+        // speculate on an unknown state).
+        if (mtp_ok) {
+            if (!detail::mtp_catchup_batch(p.mtp, p.ctx, feed.data(), n_feed, pos_before + 1,
+                                           p.mtp_n_embd)) {
+                log_output("[xllama] mtp: catch-up failed — falling back to classic "
+                           "decoding\n");
+                mtp_ok = false;
+                spec_enabled = false;
+            } else {
+                out.n_catchup_tokens += n_feed;
+                const MtpDraftStats& st = p.mtp->stats();
+                out.n_mtp_decodes += st.n_decodes;
+                out.mtp_catchup_ms += st.catchup_ms;
+            }
         }
 
         auto fail_rewind = [&]() {
@@ -504,8 +687,14 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                                          std::chrono::steady_clock::now() - p.decode_start)
                                          .count();
             }
-            // The anchor joins the batch: emit it now, before its rows are walked.
-            if (!commit_draft(feed[0])) {
+            if (anchor_pending) {
+                // The anchor of a pending correction was emitted and counted in the
+                // previous round; this batch put it in the KV. Record it in the
+                // session bookkeeping without emitting or counting it again.
+                detail::accept_token(p, feed[0]);
+                mtp_pending_anchor = false;
+                mtp_pending_tok = LLAMA_TOKEN_NULL;
+            } else if (!commit_draft(feed[0])) {
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
                     fail_rewind();
                 break;
@@ -559,12 +748,34 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 break;
             }
             // cand is not yet in the KV (only accepted drafts are).
-            if (!detail::decode_one(p.ctx, cand)) {
-                log_output("[xllama] decode failed after speculative reject\n");
-                stop_all = true;
-                break;
+            if (mtp_ok && p.mtp != nullptr) {
+                // F4.1: defer the correction decode to the next round's anchor
+                // slot; the token was already sampled from these logits, so the
+                // next round must not sample it again. Capture the hidden row of
+                // the last accepted line NOW — the next decode overwrites the
+                // target's nextn buffer.
+                mtp_pending_anchor = true;
+                mtp_pending_tok = cand;
+                mtp_pending_pos = pos_before + static_cast<llama_pos>(n_keep) + 1;
+                const float* h_keep = llama_get_embeddings_nextn_ith(p.ctx, n_keep - 1);
+                if (h_keep) {
+                    mtp_pending_h.assign(h_keep, h_keep + p.mtp_n_embd);
+                } else {
+                    mtp_pending_h.clear();
+                }
+            } else {
+                const auto t_c0 = std::chrono::steady_clock::now();
+                const bool ok = detail::decode_one(p.ctx, cand);
+                out.corrective_ms += std::chrono::duration<double, std::milli>(
+                                         std::chrono::steady_clock::now() - t_c0)
+                                         .count();
+                if (!ok) {
+                    log_output("[xllama] decode failed after speculative reject\n");
+                    stop_all = true;
+                    break;
+                }
+                detail::accept_token(p, cand);
             }
-            detail::accept_token(p, cand);
             ++out.n_generated;
             tail_already_trimmed = true;
             break;
@@ -585,6 +796,23 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // single-token decode, so the carry is that one row; otherwise the whole
         // verify batch stands and its last row is the freshest.
         set_carry_rows(tail_already_trimmed ? 1 : n_feed);
+    }
+
+    // F4.1 contract: a pending correction was emitted and counted but never
+    // decoded. Satisfy the Session state (KV + m_kv_tokens) before returning.
+    if (mtp_pending_anchor) {
+        const auto t_c0 = std::chrono::steady_clock::now();
+        const bool ok = detail::decode_one(p.ctx, mtp_pending_tok);
+        out.corrective_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_c0)
+                .count();
+        if (ok)
+            detail::accept_token(p, mtp_pending_tok);
+        else
+            log_output("[xllama] decode failed for pending correction at end of "
+                       "generation\n");
+        mtp_pending_anchor = false;
+        mtp_pending_tok = LLAMA_TOKEN_NULL;
     }
     return out;
 }

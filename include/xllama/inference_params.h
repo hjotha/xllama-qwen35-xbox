@@ -91,6 +91,11 @@ struct InferenceParams {
     /// Dump last prefill-token logit vector to this path (+ `.json` sidecar).
     std::string dump_logits_path;
 
+    /// Dump the accepted token ids of this run to this path, one per line, with
+    /// a trailing fnv1a of the generated text (plan 003, stage 1: per-run token
+    /// parity sidecar). Empty = off.
+    std::string dump_tokens_path;
+
     /// Stop strings; generation ends when output ends with any of these.
     std::vector<std::string> stop_sequences;
 
@@ -228,6 +233,11 @@ struct InferenceResult {
 
     /// Speculative drafts accepted.
     int n_spec_accepted = 0;
+
+    /// True when MTP was requested and the draft context actually came up.
+    /// A bench that asked for MTP must fail when this is false (plan 003,
+    /// stage 1: "a drafter that did not activate is a validation failure").
+    bool mtp_active = false;
 
     /// Generated text output.
     std::string output_text;

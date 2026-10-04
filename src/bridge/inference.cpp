@@ -372,6 +372,28 @@ InferenceResult run_inference_ort(const InferenceParams& params) {
 namespace xllama {
 namespace detail {
 
+// Per-run token sidecar (plan 003, stage 1): one token id per line, then the
+// FNV-1a of the generated text as the last line. The bench pipeline diffs two
+// of these (baseline vs MTP) to report the first divergent position, and the
+// hash line doubles as the existing summary hash for cross-checks.
+static inline bool write_token_dump(const std::string& path, const std::vector<llama_token>& tokens,
+                                    uint64_t text_hash) {
+    std::FILE* f = std::fopen(path.c_str(), "wb");
+    if (!f)
+        return false;
+    bool ok = true;
+    for (const llama_token t : tokens) {
+        if (std::fprintf(f, "%d\n", static_cast<int>(t)) < 0) {
+            ok = false;
+            break;
+        }
+    }
+    if (ok && std::fprintf(f, "fnv1a=%016llx\n", static_cast<unsigned long long>(text_hash)) < 0)
+        ok = false;
+    std::fclose(f);
+    return ok;
+}
+
 InferenceResult run_inference_llama(const InferenceParams& params) {
     InferenceResult res;
 
@@ -517,6 +539,7 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
             // destroyed first and the pool outlives both contexts.
             cpu_pools.attach(gpu_layers, mtp_drafter->ctx(), static_cast<int>(cparams.n_threads),
                              static_cast<int>(cparams.n_threads_batch));
+            res.mtp_active = true;
         }
     }
 
@@ -572,7 +595,21 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         log_output(("[xllama] " + res.error_msg + "\n").c_str());
         return res;
     }
-    if (!prefill_chunked(ctx.get(), tokens.data(), n_prompt_tokens)) {
+    // MTP catch-up (plan 003, F2): replay each prefill chunk into the private
+    // draft context with the target's hidden rows, chunk by chunk — the target's
+    // nextn buffer describes only the last decode, so the replay must happen
+    // right after each chunk, like the reference's process() does.
+    const int prefill_rows = prefill_chunked(
+        ctx.get(), tokens.data(), n_prompt_tokens, [&](int off, int n_rows, llama_pos pos0) {
+            if (mtp_drafter && mtp_drafter->ready()) {
+                if (!detail::mtp_catchup_batch(mtp_drafter.get(), ctx.get(), tokens.data() + off,
+                                               n_rows, pos0, llama_model_n_embd_out(model.get()))) {
+                    log_output("[xllama] mtp: prefill catch-up failed; drafting disabled\n");
+                    mtp_drafter.reset();
+                }
+            }
+        });
+    if (prefill_rows < 0) {
         res.error_msg = "prompt decode failed";
         log_output("[xllama] prompt decode failed\n");
         return res;
@@ -632,9 +669,15 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     dlp.prompt_lookup = params.prompt_lookup;
     dlp.ignore_eog = params.ignore_eog;
     dlp.token_history = params.prompt_lookup ? &gen_history : nullptr;
+    // Per-run token sidecar (plan 003, stage 1): collect every accepted token so
+    // baseline and MTP runs can be diffed token-by-token, not just by text hash.
+    std::vector<llama_token> run_tokens;
+    if (!params.dump_tokens_path.empty())
+        dlp.tokens_out = &run_tokens;
     if (mtp_drafter) {
         dlp.mtp = mtp_drafter.get();
         dlp.mtp_n_embd = llama_model_n_embd_out(model.get());
+        dlp.mtp_prefill_rows = prefill_rows > 0 ? prefill_rows : 0;
     }
     const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
     const int n_generated = dlr.n_generated;
@@ -681,6 +724,22 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
              res.peak_ws_mb, res.n_drafted, res.n_spec_accepted);
     log_output(log_buf);
 
+    // MTP phase accounting (plan 003, stage 2): how the decode budget was spent.
+    // Reconciliation contract: n_mtp_decodes + verify/corrective counts must be
+    // consistent with n_generated and n_drafted; the phase ms must sum to at most
+    // t_eval_ms (fences and classic decodes are not split out here).
+    if (params.mtp) {
+        char mlog[384];
+        snprintf(mlog, sizeof(mlog),
+                 "[xllama] MTP_STATS rounds=%d decodes=%d discarded=%d catchup_tok=%d"
+                 " draft_ms=%.1f sample_ms=%.1f topprob_ms=%.1f catchup_ms=%.1f"
+                 " verify_ms=%.1f corrective_ms=%.1f\n",
+                 dlr.n_mtp_rounds, dlr.n_mtp_decodes, dlr.n_mtp_discarded, dlr.n_catchup_tokens,
+                 dlr.mtp_draft_ms, dlr.mtp_sample_ms, dlr.mtp_top_prob_ms, dlr.mtp_catchup_ms,
+                 dlr.verify_ms, dlr.corrective_ms);
+        log_output(mlog);
+    }
+
     // Parity probe: FNV-1a over the generated text. MTP verifies drafts against
     // the target's own greedy pick, so with the same prompt and sampler the hash
     // must match the non-MTP run; a mismatch means the carry/verify path is wrong.
@@ -693,6 +752,17 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     snprintf(hash_buf, sizeof(hash_buf), "[xllama] output: len=%zu fnv1a=%016llx\n",
              res.output_text.size(), static_cast<unsigned long long>(out_hash));
     log_output(hash_buf);
+
+    // Per-run token sidecar (plan 003, stage 1): ids of every accepted token,
+    // one per line, then the text hash. The bench pipeline diffs these between
+    // baseline and MTP arms to report the first divergent position, instead of
+    // comparing only the summary hash.
+    if (!params.dump_tokens_path.empty()) {
+        if (write_token_dump(params.dump_tokens_path, run_tokens, out_hash))
+            log_output("[xllama] tokens dumped to " + params.dump_tokens_path + "\n");
+        else
+            log_output("[xllama] WARN: token dump failed: " + params.dump_tokens_path + "\n");
+    }
 
     return res;
 }

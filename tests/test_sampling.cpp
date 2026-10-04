@@ -200,3 +200,70 @@ TEST_CASE("sampling: CLI and Session produce the same text (opt-in: XLLAMA_TEST_
     // one surface must be reproducible on the other.
     CHECK(cli.output_text == gui.output_text);
 }
+
+// MTP + Session: a continuation turn (KV reuse, delta prefill) must draft and
+// verify identically to the cold full-prompt run of the same two turns
+// (plan 003, F3: the carry is seeded from the real last-batch row count, not
+// from the absolute position — a delta after a reused prefix used to read a
+// stale row). Opt-in: XLLAMA_TEST_MODEL must carry the MTP head.
+TEST_CASE("mtp: session KV-reuse delta parity with MTP (opt-in: XLLAMA_TEST_MODEL)") {
+    const char* model_env = std::getenv("XLLAMA_TEST_MODEL");
+    if (!model_env) {
+        MESSAGE("XLLAMA_TEST_MODEL not set — skipping mtp session delta");
+        return;
+    }
+
+    SessionParams sp;
+    sp.model_path = model_env;
+    sp.n_ctx = 2048;
+    sp.mtp = true;
+    sp.mtp_n_max = 4;
+    sp.mtp_p_min = 0.75f;
+    std::string err;
+    auto session = Session::create(sp, &err);
+    REQUIRE_MESSAGE(session != nullptr, err);
+
+    // Turn 1 with KV reuse: full prompt, reset.
+    GenerateParams g1;
+    g1.prompt = "The capital of France is";
+    g1.n_predict = 12;
+    g1.temperature = 0.0f;
+    g1.reuse_kv = true;
+    g1.reset_kv = true;
+    const InferenceResult r1 = session->generate(g1);
+    REQUIRE(r1.success);
+
+    // Turn 2: a SHORT delta appended after the reused prefix — the case F3
+    // fixes (the last batch is 3 rows at positions 100+, not 103 rows).
+    GenerateParams g2;
+    g2.prompt = " and its largest city is";
+    g2.n_predict = 12;
+    g2.temperature = 0.0f;
+    g2.reuse_kv = true;
+    g2.reset_kv = false;
+    const InferenceResult r2 = session->generate(g2);
+    REQUIRE(r2.success);
+    CHECK(r2.n_eval > 0);
+
+    // Cold reference: the same two turns as one full prompt, same session rules.
+    auto session2 = Session::create(sp, &err);
+    REQUIRE_MESSAGE(session2 != nullptr, err);
+    GenerateParams g3;
+    g3.prompt = "The capital of France is and its largest city is";
+    g3.n_predict = 24;
+    g3.temperature = 0.0f;
+    g3.reuse_kv = true;
+    g3.reset_kv = true;
+    const InferenceResult r3 = session2->generate(g3);
+    REQUIRE(r3.success);
+
+    // The continuation must continue the same greedy text the cold run
+    // produced: the cold output starts with turn-1's text and the turn-2 delta
+    // must be the continuation the cold run generated after that prefix.
+    CHECK(r3.output_text.size() >= r1.output_text.size() + r2.output_text.size());
+    if (r3.output_text.size() >= r1.output_text.size() + r2.output_text.size()) {
+        CHECK(r3.output_text.compare(0, r1.output_text.size(), r1.output_text) == 0);
+        CHECK(r3.output_text.compare(r1.output_text.size(), r2.output_text.size(),
+                                     r2.output_text) == 0);
+    }
+}

@@ -67,6 +67,19 @@ struct MtpDraftParams {
     float p_min = 0.75f;
 };
 
+// Per-call phase accounting, so the decode loop can reconcile where the MTP
+// budget goes (plan 003, stage 2). Times are milliseconds; counters are
+// counts. The drafter accumulates into this struct during draft() and
+// process(); the loop reads it after each call and resets it.
+struct MtpDraftStats {
+    double decode_ms = 0.0;   // llama_decode inside draft() / process()
+    double sample_ms = 0.0;   // draft sampler (including the p_min gate)
+    double top_prob_ms = 0.0; // the confidence softmax over the vocabulary
+    double catchup_ms = 0.0;  // process() catch-up decodes (replayed prefix)
+    int n_decodes = 0;        // draft()+process() llama_decode calls
+    int n_discarded = 0;      // candidates rejected by the p_min gate
+};
+
 // Owns the draft context and its sampler. One instance per Session.
 class MtpDrafter {
   public:
@@ -96,8 +109,33 @@ class MtpDrafter {
     // token (llama_get_embeddings_nextn_ith on the target context). Returns an
     // empty vector when MTP declines, which the caller must treat as "decode
     // one token classically" rather than as an error.
+    //
+    // |n_max_eff| clamps this call's depth below params().n_max (context or
+    // output budget already consumed); -1 keeps the configured depth.
     std::vector<llama_token> draft(llama_token last_token, llama_pos pos, const float* h_row,
-                                   int n_embd);
+                                   int n_embd, int n_max_eff = -1);
+
+    // Replay a committed prefix into the private context so the draft head
+    // attends to the same history the target has. Mirrors the catch-up decode
+    // in common_speculative_impl_draft_mtp::process: the first row carries the
+    // pending hidden state (|h_pending|), rows 1..n-1 carry |h_rows| shifted by
+    // one (the target's row for the token before the one being fed), and the
+    // last row's embedding is stashed as the next pending state. Chunked at the
+    // draft context's own n_batch, which is n_max+2 and far below a prompt.
+    //
+    // |tokens| are the committed token ids (target-side), |pos0| the position
+    // of tokens[0] in the target cache. Returns false on decode failure, in
+    // which case the drafter must be re-validated before drafting again.
+    bool process(const llama_token* tokens, const float* h_rows, const float* h_pending, int n,
+                 llama_pos pos0);
+
+    // Phase accounting for the last draft()/process() calls (see MtpDraftStats).
+    const MtpDraftStats& stats() const {
+        return m_stats;
+    }
+    void reset_stats() {
+        m_stats = MtpDraftStats{};
+    }
 
     const MtpDraftParams& params() const {
         return m_params;
@@ -113,6 +151,7 @@ class MtpDrafter {
     std::vector<float> m_pending_h;
     llama_pos m_pending_pos = -1;
     bool m_pending_valid = false;
+    MtpDraftStats m_stats{};
 };
 
 } // namespace xllama

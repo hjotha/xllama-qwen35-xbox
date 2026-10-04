@@ -79,6 +79,9 @@ IGNORE_EOG=0    # D2b: 1 = decode exactly n_predict tokens
 PROMPT_LOOKUP=0 # 1 = W2 prompt-lookup; #210 A/B knob, GGUF only
 MTP_N=0         # 0 = MTP off; N>0 = MTP on with n_max = N
 MTP_PMIN=-1     # -1 = bridge default (0.75); 0..100 = draft p_min in percent
+GREEDY=0        # 1 = deterministic argmax decode (plan 003, stage 1: parity)
+SEED=0          # 0 = engine default seed; >0 = fixed sampling seed
+DUMP_TOKENS=0   # 1 = save the accepted token ids per run (bench-tokens-<run>.txt)
 N_RUNS=4        # warmup run 1 dropped; runs 2..N recorded individually (W1.1) → 3 by default
 PROMPT_FILE=""
 OUT_CSV=""
@@ -131,6 +134,18 @@ while [[ $# -gt 0 ]]; do
 	--mtp-pmin)
 		MTP_PMIN="${2:?--mtp-pmin requires a value}"
 		shift 2
+		;;
+	--greedy)
+		GREEDY=1
+		shift
+		;;
+	--seed)
+		SEED="${2:?--seed requires a value}"
+		shift 2
+		;;
+	--tokens)
+		DUMP_TOKENS=1
+		shift
 		;;
 	--runs)
 		N_RUNS="${2:?--runs requires a value}"
@@ -429,6 +444,11 @@ printf '%d' "$IGNORE_EOG" >"${TMPDIR_LOCAL}/bench_ignore_eog.txt"
 printf '%d' "$PROMPT_LOOKUP" >"${TMPDIR_LOCAL}/bench_prompt_lookup.txt"
 printf '%d' "$MTP_N" >"${TMPDIR_LOCAL}/bench_mtp.txt"
 printf '%d' "$MTP_PMIN" >"${TMPDIR_LOCAL}/bench_mtp_pmin.txt"
+# Plan 003, stage 1: parity knobs. Greedy (argmax) and a fixed seed make the
+# sampling deterministic so baseline and MTP runs can be compared token by token.
+printf '%d' "$GREEDY" >"${TMPDIR_LOCAL}/bench_greedy.txt"
+printf '%u' "$SEED" >"${TMPDIR_LOCAL}/bench_seed.txt"
+printf '%d' "$DUMP_TOKENS" >"${TMPDIR_LOCAL}/bench_tokens.txt"
 
 # bench.flag — consumed by app on each start; must be re-uploaded per run
 printf 'bench' >"${TMPDIR_LOCAL}/bench.flag"
@@ -495,6 +515,11 @@ for ((run = 1; run <= N_RUNS; run++)); do
 		delete_from_localstate "bench_mtp_pmin.txt"
 		verify_deleted "bench_mtp_pmin.txt" 5 || true
 	fi
+	# Plan 003, stage 1: greedy/seed/tokens knobs. Always uploaded so a previous
+	# run cannot leave them in force; the bridge treats 0 as "not set".
+	upload_to_localstate "${TMPDIR_LOCAL}/bench_greedy.txt"
+	upload_to_localstate "${TMPDIR_LOCAL}/bench_seed.txt"
+	upload_to_localstate "${TMPDIR_LOCAL}/bench_tokens.txt"
 
 	if ((PROMPT_LOOKUP != 0)); then
 		upload_to_localstate "${TMPDIR_LOCAL}/bench_prompt_lookup.txt"
@@ -515,6 +540,21 @@ for ((run = 1; run <= N_RUNS; run++)); do
 
 	local_csv="${TMPDIR_LOCAL}/run${run}.csv"
 	download_from_localstate "bench-result.csv" "$local_csv"
+	# Plan 003, stage 1: per-run token sidecar (accepted ids + text hash). The
+	# bridge writes bench-tokens-<run_index>.txt when bench_tokens.txt=1; a
+	# missing sidecar on a run that asked for one is a parity failure, not a
+	# skip (same rule as a drafter that did not activate).
+	if ((DUMP_TOKENS != 0)); then
+		tok_local="${TMPDIR_LOCAL}/run${run}.tokens"
+		if download_from_localstate "bench-tokens-${run}.txt" "$tok_local" \
+			&& [[ -s "$tok_local" ]]; then
+			echo "  Tokens: $tok_local ($(wc -l <"$tok_local") lines)"
+		else
+			echo "Error: bench_tokens.txt=1 but bench-tokens-${run}.txt is missing." >&2
+			echo "  The installed MSIX predates the token sidecar — redeploy before parity runs." >&2
+			exit 1
+		fi
+	fi
 	data_row=$(tail -n +2 "$local_csv" 2>/dev/null | head -1)
 	if [[ -n "$data_row" ]]; then
 		# The device writes the row; this script owns the header. A build older
@@ -593,6 +633,26 @@ for ((run = 1; run <= N_RUNS; run++)); do
 				exit 1
 			fi
 		fi
+		# Plan 003, stage 1: parity knobs must be honoured — a bench that asked
+		# for greedy or a fixed seed but got the engine default would produce a
+		# row that cannot be diffed token-by-token. The host column carries the
+		# tags, same contract as -uN / -kvq8 / -noeog.
+		if ((GREEDY != 0)); then
+			got_host=$(awk -F, '{print $15}' <<<"$data_row")
+			if [[ "$got_host" != *"-greedy"* ]]; then
+				echo "Error: the console ignored --greedy: host column says '${got_host}'." >&2
+				echo "  The installed MSIX predates bench_greedy.txt — redeploy before parity runs." >&2
+				exit 1
+			fi
+		fi
+		if ((SEED != 0)); then
+			got_host=$(awk -F, '{print $15}' <<<"$data_row")
+			if [[ "$got_host" != *"-s${SEED}"* ]]; then
+				echo "Error: the console ignored --seed ${SEED}: host column says '${got_host}'." >&2
+				echo "  The installed MSIX predates bench_seed.txt — redeploy before parity runs." >&2
+				exit 1
+			fi
+		fi
 		# And for --gpu-layers (D2b): require the -gN tag and the d3d12 backend
 		# column — a CPU fallback (device unavailable) must not pass as a GPU row.
 		if ((GPU_LAYERS > 0)); then
@@ -618,6 +678,19 @@ if [[ -n "$SAMPLER_PID" ]]; then
 		echo ""
 		cat "${TMPDIR_LOCAL}/gpu-summary.txt"
 	fi
+fi
+
+# Persist the per-run token sidecars next to the CSV when --tokens was asked:
+# TMPDIR_LOCAL is removed by the EXIT trap, and the pipeline diffs these files
+# between baseline and MTP arms (plan 003, stage 1).
+if ((DUMP_TOKENS != 0)); then
+	RESULT_CSV="${OUT_CSV:-${REPO_ROOT}/bench/results/phase1-cpu.csv}"
+	RESULT_DIR="$(dirname "$RESULT_CSV")"
+	for tok in "${TMPDIR_LOCAL}"/run*.tokens; do
+		[[ -e "$tok" ]] || continue
+		run=$(basename "$tok" .tokens)
+		cp "$tok" "${RESULT_DIR}/$(basename "$RESULT_CSV" .csv).${run}.tokens"
+	done
 fi
 
 # ---------------------------------------------------------------------------

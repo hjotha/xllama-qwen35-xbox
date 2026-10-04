@@ -454,6 +454,7 @@ class LlamaSession final : public Session {
     bool m_kv_q8 = false;         // #171: q8_0 KV + forced flash attention
     bool m_prompt_lookup = false; // #210: draft-free speculative decoding
     bool m_mtp = false;           // MTP drafting against the beellama fork
+    bool m_mtp_active = false;    // drafter came up (plan 003, stage 1 gate)
     int m_mtp_n_max = 4;
     float m_mtp_p_min = 0.75f;
     int m_gpu_layers = 0; // layers on the d3d12 backend (llama_gpu.h)
@@ -547,6 +548,7 @@ class LlamaSession final : public Session {
                     m_cpu_pools.attach(m_gpu_layers, m_mtp_drafter->ctx(),
                                        static_cast<int>(cparams.n_threads),
                                        static_cast<int>(cparams.n_threads_batch));
+                    m_mtp_active = true;
                 }
             }
             m_cpu_pools.attach(m_gpu_layers, m_ctx.get(), m_n_threads, m_n_threads);
@@ -774,7 +776,23 @@ class LlamaSession final : public Session {
         // LOGICAL batch only — the physical ubatch stays 512 (#172 optimum),
         // which is what the prefill rate was measured on.
         const auto t_prefill0 = std::chrono::steady_clock::now();
-        if (!prefill_chunked(ctx, pf, n_pf)) {
+        // MTP catch-up (plan 003, F2): replay each prefill chunk into the
+        // private draft context, right after the target decoded it (the nextn
+        // buffer describes only the last batch). The drafter's own n_batch is
+        // n_max+2, so the replay is chunked inside process().
+        int mtp_prefill_rows = 0;
+        const int pf_rows =
+            prefill_chunked(ctx, pf, n_pf, [&](int off, int n_rows, llama_pos pos0) {
+                if (m_mtp_drafter && m_mtp_drafter->ready()) {
+                    if (!detail::mtp_catchup_batch(m_mtp_drafter.get(), ctx, pf + off, n_rows, pos0,
+                                                   llama_model_n_embd_out(m_model.get()))) {
+                        log_output("[xllama] mtp: session prefill catch-up failed; drafting "
+                                   "disabled\n");
+                        m_mtp_drafter.reset();
+                    }
+                }
+            });
+        if (pf_rows < 0) {
             res.error_msg = "prompt decode failed";
             log_output("[xllama] session generate: prompt decode failed\n");
             // The cache now holds a partial batch — nothing about it is
@@ -785,6 +803,7 @@ class LlamaSession final : public Session {
             llama_memory_clear(mem, true);
             return res;
         }
+        mtp_prefill_rows = pf_rows;
         res.t_p_eval_ms =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_prefill0)
                 .count();
@@ -837,6 +856,7 @@ class LlamaSession final : public Session {
         if (m_mtp_drafter) {
             dlp.mtp = m_mtp_drafter.get();
             dlp.mtp_n_embd = llama_model_n_embd_out(m_model.get());
+            dlp.mtp_prefill_rows = mtp_prefill_rows;
         }
         const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
         const int n_generated = dlr.n_generated;
@@ -851,6 +871,7 @@ class LlamaSession final : public Session {
         res.ended_with_stop = stopped_by_seq;
         res.n_drafted = dlr.n_drafted;
         res.n_spec_accepted = dlr.n_accepted;
+        res.mtp_active = m_mtp_active;
         if (dlr.rewind_failed) {
             // History and KV are untrustworthy — same class as a decode failure.
             m_kv_tokens.clear();
@@ -871,6 +892,17 @@ class LlamaSession final : public Session {
                  n_generated, res.t_p_eval_ms, res.n_p_eval, gp.reuse_kv && !gp.reset_kv,
                  dlr.n_drafted, dlr.n_accepted);
         log_output(log_buf);
+        if (m_mtp) {
+            char mlog[384];
+            snprintf(mlog, sizeof(mlog),
+                     "[xllama] MTP_STATS rounds=%d decodes=%d discarded=%d catchup_tok=%d"
+                     " draft_ms=%.1f sample_ms=%.1f topprob_ms=%.1f catchup_ms=%.1f"
+                     " verify_ms=%.1f corrective_ms=%.1f\n",
+                     dlr.n_mtp_rounds, dlr.n_mtp_decodes, dlr.n_mtp_discarded, dlr.n_catchup_tokens,
+                     dlr.mtp_draft_ms, dlr.mtp_sample_ms, dlr.mtp_top_prob_ms, dlr.mtp_catchup_ms,
+                     dlr.verify_ms, dlr.corrective_ms);
+            log_output(mlog);
+        }
 
         return res;
     }

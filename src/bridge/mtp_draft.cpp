@@ -19,6 +19,8 @@
 
 #include "xllama/platform.h"
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
@@ -30,7 +32,14 @@ namespace {
 // Softmax probability of the drafted token, from the draft context's own logits
 // at |idx|. llama_sampler_get_candidates would do this, but it is declared in
 // the fork's common layer, which this frontend does not link.
-float top_prob(llama_context* ctx, int32_t idx) {
+//
+// Early exit (plan 003, stage 4.4): the candidate fails when 1/sum < p_min,
+// i.e. sum > 1/p_min. Every term is positive and the maximum logit's term is
+// exactly 1, so once the running sum exceeds the limit the verdict cannot
+// change — stop instead of summing the whole vocabulary. The result is
+// identical to the full sum; only the work is skipped. The limit is
+// recomputed from the same p_min the caller gates on.
+float top_prob(llama_context* ctx, int32_t idx, float p_min) {
     const int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx)));
     const float* logits = llama_get_logits_ith(ctx, idx);
     if (!logits || n_vocab <= 0)
@@ -39,9 +48,13 @@ float top_prob(llama_context* ctx, int32_t idx) {
     for (int i = 1; i < n_vocab; ++i)
         if (logits[i] > max_l)
             max_l = logits[i];
+    const double limit = 1.0 / static_cast<double>(p_min);
     double sum = 0.0;
-    for (int i = 0; i < n_vocab; ++i)
+    for (int i = 0; i < n_vocab; ++i) {
         sum += std::exp(static_cast<double>(logits[i] - max_l));
+        if (sum > limit)
+            return 0.0f; // 1/sum < p_min is already decided
+    }
     // exp of the largest logit is 1 by construction, so it contributes exactly 1.
     return static_cast<float>(1.0 / sum);
 }
@@ -147,14 +160,16 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     if (m_batch.token)
         std::memset(m_batch.token, 0, sizeof(llama_token) * static_cast<size_t>(n_b));
 
-    // top_k only truncates and sorts cur_p; it never assigns cur_p.selected,
-    // and llama_sampler_sample asserts selected >= 0 (llama-sampler.cpp:956).
-    // A chain ending in top_k alone aborts the process. The greedy stage is
-    // what picks the winner.
+    // Greedy only (plan 003, stage 4.3): the previous top_k(10) stage neither
+    // selected the winner nor saved work — it truncated and sorted cur_p so the
+    // greedy stage could pick data[0], but greedy_apply already scans the whole
+    // array for the argmax (llama-sampler.cpp:1053). Removing it leaves the
+    // selection identical (the global argmax is the max of any top-k) and
+    // skips the partial sort. A chain ending in top_k alone would still abort
+    // (it never assigns selected), so greedy must be the last stage either way.
     llama_sampler_chain_params sparams = llama_sampler_chain_default_params();
     sparams.no_perf = true;
     m_smpl = llama_sampler_chain_init(sparams);
-    llama_sampler_chain_add(m_smpl, llama_sampler_init_top_k(10));
     llama_sampler_chain_add(m_smpl, llama_sampler_init_greedy());
 
     // masked = false: the draft head sees the raw hidden row, not the selector
@@ -183,7 +198,7 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
 }
 
 std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos,
-                                           const float* h_row, int n_embd) {
+                                           const float* h_row, int n_embd, int n_max_eff) {
     std::vector<llama_token> out;
     if (!m_ctx || !m_smpl || !h_row || n_embd != m_n_embd)
         return out;
@@ -201,8 +216,15 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     // Drop anything the previous round left at or above pos. The draft cache is
     // rewritten one row at a time, so without this a rejected tail keeps
     // attending to positions that have left the committed prefix, and the
-    // recurrent rows desynchronise from the accepted ones.
-    llama_memory_seq_rm(llama_get_memory(m_ctx), 0, pos, -1);
+    // recurrent rows desynchronise from the accepted ones. The return value is
+    // load-bearing (plan 003, F2.3): a refused rewind leaves the private cache
+    // in an unknown state, and drafting on top of it is worse than not
+    // drafting — bail out to single-token decoding.
+    if (!llama_memory_seq_rm(llama_get_memory(m_ctx), 0, pos, -1)) {
+        log_output("[xllama] mtp: draft seq_rm refused at pos " + std::to_string(pos) +
+                   "; drafting disabled for this call\n");
+        return out;
+    }
 
     // First draft on a real run, logged once. Everything downstream depends on
     // this row being the target's hidden state, and a wrong width, a stale
@@ -239,6 +261,12 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     // takes the next position.
     const bool shared = llama_get_ctx_other(m_ctx) != nullptr;
 
+    // Effective depth: the caller may clamp this call below the configured
+    // n_max (context / output budget already consumed — plan 003, stage 4.2).
+    const int32_t n_max = n_max_eff >= 0 ? std::min(m_params.n_max, n_max_eff) : m_params.n_max;
+    if (n_max <= 0)
+        return out;
+
     m_batch.n_tokens = 0;
     m_batch.token[m_batch.n_tokens] = last_token;
     m_batch.pos[m_batch.n_tokens] = pos;
@@ -253,10 +281,13 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     m_batch.n_tokens += 1;
     int i_last = m_batch.n_tokens - 1;
 
-    const int32_t n_max = m_params.n_max;
-
     for (int depth = 0; depth < n_max; ++depth) {
+        const auto t_dec0 = std::chrono::steady_clock::now();
         const int rc = llama_decode(m_ctx, m_batch);
+        m_stats.decode_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_dec0)
+                .count();
+        ++m_stats.n_decodes;
         if (rc != 0) {
             log_output("[xllama] mtp: draft decode failed at depth " + std::to_string(depth) +
                        "\n");
@@ -271,7 +302,11 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // context is configured masked (unlike the target), so the accessor
             // resolves the index through output_resolve_row -- and every draft
             // row carries logits=true, so the output index is the batch index.
+            const auto t_smpl0 = std::chrono::steady_clock::now();
             const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
+            m_stats.sample_ms += std::chrono::duration<double, std::milli>(
+                                     std::chrono::steady_clock::now() - t_smpl0)
+                                     .count();
             if (cand < 0 || cand == LLAMA_TOKEN_NULL)
                 break;
 
@@ -283,11 +318,18 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // top_prob is a full softmax over the vocabulary -- 152064 std::exp on
             // the CPU, per depth, per token -- so only pay for it when the
             // threshold is actually in use. With p_min <= 0 every candidate passes
-            // and the result is discarded.
+            // and the result is discarded. The sum itself early-exits once the
+            // verdict is decided (plan 003, stage 4.4).
             if (m_params.p_min > 0.0f) {
-                const float p = top_prob(m_ctx, i_last);
-                if (p < m_params.p_min)
+                const auto t_p0 = std::chrono::steady_clock::now();
+                const float p = top_prob(m_ctx, i_last, m_params.p_min);
+                m_stats.top_prob_ms += std::chrono::duration<double, std::milli>(
+                                           std::chrono::steady_clock::now() - t_p0)
+                                           .count();
+                if (p < m_params.p_min) {
+                    ++m_stats.n_discarded;
                     break;
+                }
             }
 
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
@@ -315,6 +357,77 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
 
     m_pending_valid = false;
     return out;
+}
+
+bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
+                         int n, llama_pos pos0) {
+    if (!m_ctx || !tokens || n <= 0)
+        return false;
+    if (!h_rows && !m_pending_valid)
+        return false; // first row would carry garbage
+
+    // The private context mirrors the target's committed prefix: the draft head
+    // attends to the same history, and its recurrent rows desynchronise from
+    // the target's when they are rebuilt from a different prefix. The reference
+    // (speculative.cpp:4093-4190) feeds the target's batch with the hidden rows
+    // shifted by one position: row i carries the target's hidden state of token
+    // i-1, and the first row carries the carry from the previous round.
+    const size_t row_bytes = static_cast<size_t>(m_n_embd) * sizeof(float);
+    const int n_batch_eff = std::max(1, static_cast<int>(llama_n_batch(m_ctx)));
+
+    std::vector<float> pending(m_pending_h.size());
+    if (h_pending) {
+        std::memcpy(pending.data(), h_pending, row_bytes);
+    } else if (pos0 == 0) {
+        // The very first prompt row has no predecessor: the reference zero-fills
+        // the pending row at position 0 (speculative.cpp reset_seq_state).
+        std::memset(pending.data(), 0, row_bytes);
+    } else if (m_pending_valid) {
+        std::memcpy(pending.data(), m_pending_h.data(), row_bytes);
+    } else {
+        return false;
+    }
+
+    const auto t0 = std::chrono::steady_clock::now();
+    for (int off = 0; off < n; off += n_batch_eff) {
+        const int chunk = std::min(n_batch_eff, n - off);
+        m_batch.n_tokens = 0;
+        for (int i = 0; i < chunk; ++i) {
+            const int idx = m_batch.n_tokens;
+            m_batch.token[idx] = tokens[off + i];
+            m_batch.pos[idx] = pos0 + static_cast<llama_pos>(off + i);
+            m_batch.n_seq_id[idx] = 1;
+            m_batch.seq_id[idx][0] = 0;
+            m_batch.logits[idx] = 1;
+            // Row i carries the target's hidden state of token off+i-1; the
+            // first row of the whole prefix carries the carry (pending).
+            const float* src = (off + i == 0)
+                                   ? pending.data()
+                                   : h_rows + static_cast<size_t>(off + i - 1) * m_n_embd;
+            std::memcpy(m_batch.embd + static_cast<size_t>(idx) * m_n_embd, src, row_bytes);
+            m_batch.n_tokens = static_cast<int32_t>(idx + 1);
+        }
+        const int rc = llama_decode(m_ctx, m_batch);
+        ++m_stats.n_decodes;
+        if (rc != 0) {
+            log_output("[xllama] mtp: catch-up decode failed at off=" + std::to_string(off) +
+                       " rc=" + std::to_string(rc) + "\n");
+            m_batch.n_tokens = 0;
+            return false;
+        }
+        m_batch.n_tokens = 0;
+    }
+    m_stats.catchup_ms +=
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+
+    // Carry for the next draft/round is the target's hidden state of the LAST
+    // token this prefix ends with — the accept() contract of the reference
+    // (speculative.cpp:4421-4434). The draft context's own nextn row is not the
+    // target's and must not leak into the carry.
+    std::memcpy(m_pending_h.data(), h_rows + static_cast<size_t>(n - 1) * m_n_embd, row_bytes);
+    m_pending_pos = pos0 + static_cast<llama_pos>(n) - 1;
+    m_pending_valid = true;
+    return true;
 }
 
 } // namespace xllama

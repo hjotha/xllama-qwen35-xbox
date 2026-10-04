@@ -280,6 +280,14 @@ void main_loop() {
     // MTP draft confidence threshold in percent (0..100). -1 (file absent) keeps
     // the InferenceParams default (0.75). Host-column tag -pminN.
     const int bench_mtp_pmin = read_local_int("bench_mtp_pmin.txt", -1);
+    // Plan 003, stage 1: parity knobs. Greedy (argmax) and a fixed seed make a
+    // run reproducible token-by-token, so baseline and MTP arms can be diffed
+    // (not just hashed). 0 = off / engine default.
+    const int bench_greedy = read_local_int("bench_greedy.txt", 0);
+    const int bench_seed = read_local_int("bench_seed.txt", 0);
+    // Plan 003, stage 1: dump the accepted token ids per run (bench-tokens-<i>.txt)
+    // for token-level parity diffing. 0 = off.
+    const int bench_tokens = read_local_int("bench_tokens.txt", 0);
     // GGUF GPU decode D2b: layers on the d3d12 backend. 0 = CPU. Host tag -gN.
     const int bench_gpu_layers = read_local_int("bench_gpu_layers.txt", 0);
     // D2b: decode exactly n_predict tokens (no EOG / stop sequence). Host tag -noeog.
@@ -331,6 +339,24 @@ void main_loop() {
     params.mtp_n_max = bench_mtp > 0 ? bench_mtp : 4;
     if (bench_mtp_pmin >= 0)
         params.mtp_p_min = static_cast<float>(bench_mtp_pmin) / 100.0f;
+    // Plan 003, stage 1: parity knobs, applied from the LocalState files the
+    // bench driver writes. The effective values are logged AND echoed into the
+    // host column (-greedy / -sN), so an MSIX that ignores them fails the
+    // driver's host-tag validation instead of silently benching the default.
+    params.greedy = bench_greedy != 0;
+    if (bench_seed > 0)
+        params.seed = static_cast<uint32_t>(bench_seed);
+    if (bench_tokens != 0) {
+        char tokpath[128];
+        snprintf(tokpath, sizeof(tokpath), "bench-tokens-%d.txt", bench_run_index);
+        params.dump_tokens_path = resolve_local_path(tokpath);
+        log_output(std::string("[xllama] bench tokens sidecar: ") + tokpath + "\n");
+    }
+    char samp_buf[160];
+    snprintf(samp_buf, sizeof(samp_buf),
+             "[xllama] bench sampling: greedy=%d seed=%u temp=%.2f top_p=%.2f top_k=%d\n",
+             params.greedy ? 1 : 0, params.seed, params.temperature, params.top_p, params.top_k);
+    log_output(samp_buf);
     params.n_gpu_layers = bench_gpu_layers;     // D2b: 0 = CPU
     params.stop_sequences = fmt.stop_sequences; // clean stop for Gemma's <end_of_turn>
     params.run_index = bench_run_index;         // W1.1: echo into CSV (0 = single-run)
@@ -354,6 +380,10 @@ void main_loop() {
     if (bench_mtp > 0 && bench_mtp_pmin >= 0)
         host_len +=
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-pmin%d", bench_mtp_pmin);
+    if (bench_greedy != 0)
+        host_len += snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-greedy");
+    if (bench_seed > 0)
+        host_len += snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-s%d", bench_seed);
     if (bench_gpu_layers > 0)
         host_len +=
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-g%d", bench_gpu_layers);
@@ -371,6 +401,20 @@ void main_loop() {
                  res.success ? 1 : 0, res.n_eval, res.t_eval_ms, res.n_drafted,
                  res.n_spec_accepted);
         log_output(spec_buf);
+    }
+    // Plan 003, stage 1: a bench that asked for MTP but whose drafter never
+    // came up must FAIL, not silently produce a baseline row. write_bench_csv
+    // only writes on success anyway; make the failure loud and explicit so
+    // get-log shows the reason instead of a mysterious missing CSV.
+    if (bench_mtp > 0 && !res.mtp_active) {
+        log_output("[xllama] MTP_REQUESTED_BUT_INACTIVE — refusing to write bench row\n");
+        return;
+    }
+    if (res.success && bench_mtp > 0) {
+        char mlog[192];
+        snprintf(mlog, sizeof(mlog), "[xllama] MTP_ACTIVE n_drafted=%d n_spec_accepted=%d\n",
+                 res.n_drafted, res.n_spec_accepted);
+        log_output(mlog);
     }
     xllama::write_bench_csv(params, res, host_buf);
 #endif
