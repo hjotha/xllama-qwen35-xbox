@@ -224,10 +224,13 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             if (v > mx)
                 mx = v;
         }
-        log_output("[xllama] mtp: first draft pos=" + std::to_string(pos) + " n_embd=" +
-                   std::to_string(n_embd) + " n_max=" + std::to_string(m_params.n_max) +
-                   " row[min,max]=[" + std::to_string(mn) + "," + std::to_string(mx) + "]" +
-                   (finite ? "" : " NON-FINITE") + "\n");
+        log_output(
+            "[xllama] mtp: first draft pos=" + std::to_string(pos) +
+            " n_embd=" + std::to_string(n_embd) + " n_max=" + std::to_string(m_params.n_max) +
+            " row[min,max]=[" + std::to_string(mn) + "," + std::to_string(mx) + "]" +
+            (finite ? "" : " NON-FINITE") + " dft_n_batch=" + std::to_string(llama_n_batch(m_ctx)) +
+            " dft_pos_max=" + std::to_string(llama_memory_seq_pos_max(llama_get_memory(m_ctx), 0)) +
+            "\n");
     }
 
     // Shared-memory layouts (the reference calls this is_mem_shared, detected
