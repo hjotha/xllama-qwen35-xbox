@@ -276,9 +276,16 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // is unlikely to accept costs a target decode to reject, which is a
             // net loss. The MTP graph emits real logits (qwen35.cpp sets
             // res->t_logits), so this reads the CPU logits.
-            const float p = top_prob(m_ctx, i_last);
-            if (p < m_params.p_min)
-                break;
+            //
+            // top_prob is a full softmax over the vocabulary -- 152064 std::exp on
+            // the CPU, per depth, per token -- so only pay for it when the
+            // threshold is actually in use. With p_min <= 0 every candidate passes
+            // and the result is discarded.
+            if (m_params.p_min > 0.0f) {
+                const float p = top_prob(m_ctx, i_last);
+                if (p < m_params.p_min)
+                    break;
+            }
 
             const float* h_next = llama_get_embeddings_nextn_ith(m_ctx, i_last);
             if (!h_next)

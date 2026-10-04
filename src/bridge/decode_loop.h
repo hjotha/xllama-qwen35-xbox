@@ -287,14 +287,19 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
 inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& output_text) {
     DecodeLoopResult out;
     const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
-    // The target enables nextn embeddings unmasked, so llama_get_embeddings_nextn_ith
-    // is indexed by raw token position, not by row within the last batch. The draft
-    // needs the row of the last decoded position, which after any decode is simply
-    // seq_pos_max - 1, so track it as a position instead of a batch row.
-    llama_memory_t mm_carry = llama_get_memory(p.ctx);
-    auto last_decoded_pos = [&]() -> llama_pos {
-        return llama_memory_seq_pos_max(mm_carry, 0) - 1;
-    };
+    // The target enables nextn embeddings unmasked, and in that mode
+    // llama_get_embeddings_nextn_ith is indexed by ROW WITHIN THE LAST BATCH, not by
+    // token position: llama-context.cpp writes the rows at n_tokens_prev, a local that
+    // resets to 0 on every llama_decode, and reads them back as a dense index.
+    // common/speculative.cpp relies on exactly this -- it asks for
+    // i_batch_beg[seq_id] + i and carries forward row n_rows - 1.
+    //
+    // The draft needs the hidden row of the LAST DECODED token, i.e. the last row of
+    // whichever batch ran last. Track that row count rather than a position:
+    // deriving it from seq_pos_max is wrong, because that is a position rather than
+    // a row, so subtracting 1 lands two tokens back.
+    int mtp_carry_row = 0;
+    auto set_carry_rows = [&](int n_rows) { mtp_carry_row = n_rows > 0 ? n_rows - 1 : 0; };
     // The verify path only reads the two speculative counters, so whichever
     // source produced the tokens, the numbers mean the same thing.
     bool spec_enabled =
@@ -321,13 +326,12 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         bool lead_in_batch = false;
         std::vector<llama_token> feed;
         if (mtp_enabled) {
-            const llama_pos P = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0);
-            const llama_pos carry = last_decoded_pos();
-            const float* h =
-                carry >= 0 ? llama_get_embeddings_nextn_ith(p.ctx, static_cast<int32_t>(carry))
-                           : nullptr;
+            // seq_pos_max is the last written position, so the anchor sits one past
+            // it and is the position the first draft would occupy.
+            const llama_pos P = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0) + 1;
+            const float* h = llama_get_embeddings_nextn_ith(p.ctx, mtp_carry_row);
             if (h) {
-                const std::vector<llama_token> md = p.mtp->draft(token, P + 1, h, p.mtp_n_embd);
+                const std::vector<llama_token> md = p.mtp->draft(token, P, h, p.mtp_n_embd);
                 if (!md.empty()) {
                     out.n_drafted += static_cast<int>(md.size());
                     feed.reserve(md.size() + 1);
@@ -337,8 +341,8 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                     lead_in_batch = true;
                 }
             } else {
-                log_output("[xllama] mtp: no nextn row for carry pos " + std::to_string(carry) +
-                           "; declining to draft\n");
+                log_output("[xllama] mtp: no nextn row for carry row " +
+                           std::to_string(mtp_carry_row) + "; declining to draft\n");
             }
         }
 
@@ -357,6 +361,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             bool stop = false, decode_ok = true;
             if (!detail::classic_step(p, token, output_text, out, stop, decode_ok))
                 break;
+            set_carry_rows(1); // classic_step is a one-row decode
             if (out.n_generated >= p.n_predict)
                 break;
 
@@ -469,6 +474,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 break;
             }
         } else {
+            // The anchor joins the batch, so feed[0] is the first token this round can
+            // emit and the classic path above never ran. Stamp first_token_ms here or
+            // a leading MTP round leaves it at 0 and the latency reads as unset.
+            if (out.first_token_ms == 0.0 &&
+                p.decode_start != std::chrono::steady_clock::time_point{}) {
+                out.first_token_ms = std::chrono::duration<double, std::milli>(
+                                         std::chrono::steady_clock::now() - p.decode_start)
+                                         .count();
+            }
             // The anchor joins the batch: emit it now, before its rows are walked.
             if (!commit_draft(feed[0])) {
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
@@ -545,9 +559,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 break;
             }
         }
-        // The next round drafts from the hidden row of the last decoded
-        // position, which is whichever token this round left in the KV.
-        (void)last_decoded_pos();
+        // Carry the hidden row of the last token this round left in the KV.
+        // tail_already_trimmed means the reject path appended |cand| with its own
+        // single-token decode, so the carry is that one row; otherwise the whole
+        // verify batch stands and its last row is the freshest.
+        set_carry_rows(tail_already_trimmed ? 1 : n_feed);
     }
     return out;
 }
