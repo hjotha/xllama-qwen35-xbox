@@ -61,6 +61,23 @@ inline bool prefill_chunked(llama_context* ctx, const llama_token* tokens, int n
     return true;
 }
 
+// Rows in the batch the nextn embeddings were last written by, or 0.
+//
+// Unmasked nextn rows are indexed within the last batch (see decode_loop), so a
+// drafter starting straight after a chunked prefill needs the size of the FINAL
+// chunk, not the whole prompt: the prefill splits at n_batch and the buffer only
+// describes whatever llama_decode ran last.
+inline int last_nextn_rows(llama_context* ctx) {
+    llama_memory_t mem = llama_get_memory(ctx);
+    const llama_pos pos_max = llama_memory_seq_pos_max(mem, 0);
+    if (pos_max < 0)
+        return 0;
+    const int n_batch = std::max(1, static_cast<int>(llama_n_batch(ctx)));
+    const int pos = static_cast<int>(pos_max);
+    // The final chunk starts at the largest multiple of n_batch at or below pos.
+    return pos % n_batch + 1;
+}
+
 // The message for a prompt that cannot fit the context at all. Chunking makes an
 // oversized BATCH safe, not an oversized CONTEXT — without this the run would
 // fail somewhere inside the loop with a bare "decode failed".
@@ -298,7 +315,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     // whichever batch ran last. Track that row count rather than a position:
     // deriving it from seq_pos_max is wrong, because that is a position rather than
     // a row, so subtracting 1 lands two tokens back.
-    int mtp_carry_row = 0;
+    // Seed from the prefill: the first draft would otherwise read row 0, which is
+    // the FIRST prompt token rather than the last one decoded.
+    int mtp_carry_row = mtp_enabled ? last_nextn_rows(p.ctx) - 1 : 0;
+    if (mtp_carry_row < 0)
+        mtp_carry_row = 0;
     auto set_carry_rows = [&](int n_rows) { mtp_carry_row = n_rows > 0 ? n_rows - 1 : 0; };
     // The verify path only reads the two speculative counters, so whichever
     // source produced the tokens, the numbers mean the same thing.
