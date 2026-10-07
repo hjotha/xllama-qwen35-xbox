@@ -1,0 +1,13 @@
+{
+  "local_remote_byte_equal": {
+    "scripts/build-xbox-local.ps1": "b30eb785a78044328f6e5aa9e84ca6c39ca05328c962c2d126dd68f3ebf2dd45",
+    "scripts/run-xbox-build.ps1": "adf01d735e979e4ccd32bfb58775a971f31efcf474cfa6597ee7998b38bb845f",
+    "uwp/xllama.vcxproj": "bbe029e8bceb3cb3ece66db3bd8bbf865af7011c4e937916e0e22c33bca466e0",
+    "src/bridge/mtp_draft.cpp": "9ce3226c5655ff5a968218c08f98a6239365c72152fd4dde78c052b1d1f75112"
+  },
+  "powershell_parse": [
+    "scripts/build-xbox-local.ps1 PASS",
+    "scripts/run-xbox-build.ps1 PASS"
+  ],
+  "note": "remote Get-FileHash matched each digest; no new build during config pilots"
+}

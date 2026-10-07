@@ -1,0 +1,31 @@
+dgon runs (diag+VROUND): 3
+  run0: diag=171 {'prefill': 1, 'draftish': 28, 'classic': 99, 'batched': 43} vr=14
+  run1: diag=171 {'prefill': 1, 'draftish': 27, 'classic': 100, 'batched': 43} vr=14
+  run2: diag=171 {'prefill': 1, 'draftish': 26, 'classic': 101, 'batched': 43} vr=14
+batched-class phase shares: n=129 sum=9518ms | apply 0.00% | build 1.34% | set_inputs 0.02% | graph 98.64%
+ALL-calls phase shares: n=513 sum=17291ms | apply 0.01% | build 0.87% | set_inputs 0.07% | graph 99.05%
+batched rebuild n=66 build_med=1.90ms | reused n=63 build_med=0.00ms
+
+VROUND verify walls: n=42 med=89.0 mean=99.9
+batched diag sums:   n=129 med=60.6 mean=73.8
+nearest-pair residual wall-sum: med=0.1 max=0.8 min=-3.0 (join non-unique: verify/catchup share the class)
+d3w: med=24.4; wall-d3w med=61.7
+classic-class: n=300 graph=98.6% of sum, sum_med=3.60ms
+draftish-class: n=81 graph=99.4% of sum, sum_med=15.04ms
+
+-- overhead --
+
+-- overhead (fixed) --
+diag-OFF pkg overhead (rev103 vs rev102 def-off): decode -29.7 ms (-0.77%)
+  ttft: +14.1 ms (+0.66%)
+diag-ON emission (dgoff vs p1doff): decode +73.2 ms (+1.92%) ttft -7.7
+profile atop diag (dgon vs dgoff): decode -15.3 ms (-0.39%) ttft +24.2
+ref103: decode=3858.0 ttft=1822.9
+ID run1: 47 files, 2 distinct digests
+    d9d23039f70e 46 ['vsplit-20261006-d1on.run1.tokens', 'vsplit-20261006-d2on.run1.tokens', 'vsplit-20261006-d4off.run1.tokens', 'vsplit-20261006-d4on.run1.tokens', 'vsplit-20261006-r100-d1on.run1.tokens', 'vsplit-20261006-r100-d2on.run1.tokens']
+    8dd939eaa885 1 ['vsplit-20261006-r102-kvq8b.run1.tokens']
+ID run2: 47 files, 2 distinct digests
+    d9d23039f70e 46 ['vsplit-20261006-d1on.run2.tokens', 'vsplit-20261006-d2on.run2.tokens', 'vsplit-20261006-d4off.run2.tokens', 'vsplit-20261006-d4on.run2.tokens', 'vsplit-20261006-r100-d1on.run2.tokens', 'vsplit-20261006-r100-d2on.run2.tokens']
+    8dd939eaa885 1 ['vsplit-20261006-r102-kvq8b.run2.tokens']
+ID run3: 24 files identical (full sha256)
+IDs: DISTINCT above (expect only kvq8b)

@@ -1,0 +1,30 @@
+{
+  "order": [
+    [
+      "r121-c4-a",
+      "c4"
+    ],
+    [
+      "r121-auto-b",
+      "auto"
+    ],
+    [
+      "r121-auto-b2",
+      "auto"
+    ],
+    [
+      "r121-c4-a2",
+      "c4"
+    ]
+  ],
+  "measured_n_per_variant": {
+    "auto": 4,
+    "c4": 4
+  },
+  "median_tps": {
+    "auto": 28.375,
+    "c4": 28.259999999999998
+  },
+  "full_ids_exact": true,
+  "auto_vs_c4_percent": 0.4069355980184097
+}

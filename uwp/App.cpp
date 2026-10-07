@@ -208,6 +208,10 @@ App::App() {
 
 void App::OnLaunched(LaunchActivatedEventArgs const&) {
     log_write("[xllama] App::OnLaunched\n");
+    // Immutable startup profile (twocol/repack): applied once here, before
+    // any session/model load, single-threaded (plan004). Changing those
+    // files mid-process is rejected at session entry; restart required.
+    ::xllama::bridge::apply_startup_profile();
 
     try {
         if (!m_controller) {
@@ -449,6 +453,15 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 winrt::make<HeadlessView>(&::xllama::bridge::run_gpugemv, "gpugemv"));
             return 0; // not reached: CoreApplication::Exit terminates the process
         }
+        std::wstring tttarget_flag = flag_path_if_present(L"tttarget.flag");
+        if (!tttarget_flag.empty()) {
+            _wremove(tttarget_flag.c_str());
+            ::xllama::log_output(
+                "[xllama] ttarget.flag detected -> headless real T_target(B) bench\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_tttarget, "tttarget"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
         std::wstring d3d12be_flag = flag_path_if_present(L"d3d12be.flag");
         if (!d3d12be_flag.empty()) {
             _wremove(d3d12be_flag.c_str());
@@ -489,6 +502,42 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
             ::xllama::log_output("[xllama] logits.flag detected -> headless logit-parity dump\n");
             winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
                 winrt::make<HeadlessView>(&::xllama::bridge::run_logits, "logits"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
+        std::wstring replay_flag = flag_path_if_present(L"replay.flag");
+        if (!replay_flag.empty()) {
+            _wremove(replay_flag.c_str());
+            ::xllama::log_output("[xllama] replay.flag detected -> headless single-vs-batch "
+                                 "replay (diagnostic, never a gate)\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_replay, "replay"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
+        std::wstring diverge_flag = flag_path_if_present(L"diverge.flag");
+        if (!diverge_flag.empty()) {
+            _wremove(diverge_flag.c_str());
+            ::xllama::log_output("[xllama] diverge.flag detected -> headless first-divergence "
+                                 "capture (diagnostic, never a gate)\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_diverge, "diverge"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
+        std::wstring termgate_flag = flag_path_if_present(L"termgate.flag");
+        if (!termgate_flag.empty()) {
+            _wremove(termgate_flag.c_str());
+            ::xllama::log_output("[xllama] termgate.flag detected -> headless termination-state "
+                                 "gate (diagnostic, never a gate default)\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_termgate, "termgate"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
+        std::wstring znarrow_flag = flag_path_if_present(L"znarrow.flag");
+        if (!znarrow_flag.empty()) {
+            _wremove(znarrow_flag.c_str());
+            ::xllama::log_output("[xllama] znarrow.flag detected -> headless narrow z-0 "
+                                 "capture (diagnostic, never a gate)\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_znarrow, "znarrow"));
             return 0; // not reached: CoreApplication::Exit terminates the process
         }
         std::wstring oprepro_flag = flag_path_if_present(L"oprepro.flag");

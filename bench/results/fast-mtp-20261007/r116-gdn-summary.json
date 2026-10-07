@@ -1,0 +1,28 @@
+{
+  "0": {
+    "ref": {
+      "decode_tok_s": 19.6,
+      "ttft_ms": 1374.7,
+      "peak_ws_mb": 3458.5
+    },
+    "mtp": {
+      "decode_tok_s": 20.415,
+      "ttft_ms": 1998.95,
+      "peak_ws_mb": 3779.0
+    },
+    "full_ids_exact": true
+  },
+  "1": {
+    "ref": {
+      "decode_tok_s": 20.265,
+      "ttft_ms": 1250.85,
+      "peak_ws_mb": 3458.0
+    },
+    "mtp": {
+      "decode_tok_s": 21.36,
+      "ttft_ms": 1843.0500000000002,
+      "peak_ws_mb": 3777.0
+    },
+    "full_ids_exact": true
+  }
+}

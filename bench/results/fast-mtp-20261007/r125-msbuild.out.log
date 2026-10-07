@@ -1,0 +1,255 @@
+Reusing existing test certificate ...
+Certificate thumbprint: 89F82DB72C9AB8BE8E92B6A3B1F016F3CCA0884D
+PFX: C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama-test.pfx
+CER: C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama-test.cer
+Using MSBuild: C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe
+[33;1mWARNING: VC++ CRT redist directory not found. onnxruntime may fail in AppContainer on Xbox.[0m
+Iteration: reusing installed NuGet packages.
+Version stamped (AppxManifest.xml): 1.6.0.125 (revision = build 125)
+Building Release|x64 ...
+Iteration: optimized incremental Build without LTCG; persistent separate cache.
+Backend: unified (links the static ggml/llama lib)
+Pre-building ggml-uwp.vcxproj (Release|x64) ...
+Build started 10/7/2026 3:28:26 PM.
+
+     1>Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp.vcxproj" on node 1 (Build target(s)).
+     1>PrepareForBuild:
+         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+       GetInstalledSDKLocations:
+         Searching for SDKs targeting "UAP, 10.0.26100.0".
+         Searching for SDKs targeting "Windows, 8.1".
+       ResolveSDKReferences:
+           Reading SDK manifest file "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\SDKManifest.xml".
+           Targeted configuration and architecture "Retail|x64"
+           Could not find "FrameworkIdentity" attribute "FrameworkIdentity-Retail-x64" in the SDK manifest. 
+           Found "FrameworkIdentity" attribute "Name = Microsoft.VCLibs.140.00, MinVersion = 14.0.33519.0, Publisher = 'CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US'" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x86=.\AppX\Retail\x86\Microsoft.VCLibs.x86.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x64=.\AppX\Retail\x64\Microsoft.VCLibs.x64.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM=.\AppX\Retail\ARM\Microsoft.VCLibs.ARM.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM64=.\AppX\Retail\ARM64\Microsoft.VCLibs.ARM64.14.00.appx" in the SDK manifest.
+       ExpandSDKReferences:
+         Enumerating SDK Reference "Microsoft.VCLibs, Version=14.0" from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\".
+       InitializeBuildStatus:
+         Creating "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp\x64\Release-iteration\ggml-uwp.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
+         Touching "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp\x64\Release-iteration\ggml-uwp.tlog\unsuccessfulbuild".
+       GenerateGgmlVersion:
+         cmake -DGGML_SOURCE_DIR="C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\..\llama.cpp\ggml" -DOUTPUT_FILE="C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp\x64\Release-iteration\generated\ggml-version.h" -P "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\..\cmake\GenerateGgmlVersion.cmake"
+       ClCompile:
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+       Lib:
+         All outputs are up-to-date.
+         ggml-uwp.vcxproj -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\ggml-uwp.lib
+       ComputeProcessXamlFiles:
+         (Out) ProcessedXamlFiles == 
+       CustomOutputGroupForPackaging:
+         (Out) Project='ggml-uwp' ProcessedXamlFiles == 
+         (Out) XamlPackagingRootFolder == Generated Files\
+         (Out) ProcessedXamlFilesFullPath == 
+         (Out) Project='ggml-uwp' CustomOutputGroupForPackagingOutput == 
+       _GenerateProjectPriFileCore:
+       Skipping target "_GenerateProjectPriFileCore" because all output files are up-to-date with respect to the input files.
+       FinalizeBuildStatus:
+         Deleting file "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp\x64\Release-iteration\ggml-uwp.tlog\unsuccessfulbuild".
+         Touching "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp\x64\Release-iteration\ggml-uwp.tlog\ggml-uwp.lastbuildstate".
+     1>Done Building Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp.vcxproj" (Build target(s)).
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:03.37
+Build started 10/7/2026 3:28:30 PM.
+
+     1>Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.sln" on node 1 (Build target(s)).
+     1>ValidateSolutionConfiguration:
+         Building solution configuration "Release|x64".
+       ValidateProjects:
+         The project "ggml-uwp" is not selected for building in solution configuration "Release|x64".
+     1>Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.sln" (1) is building "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj" (2) on node 1 (default targets).
+     2>CppWinRTGetResolvedWinMD:
+         GetResolvedWinMD: C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\xllama.winmd
+       PrepareForBuild:
+         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+       GetInstalledSDKLocations:
+         Searching for SDKs targeting "UAP, 10.0.26100.0".
+         Searching for SDKs targeting "Windows, 8.1".
+       ResolveSDKReferences:
+           Reading SDK manifest file "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\SDKManifest.xml".
+           Targeted configuration and architecture "Retail|x64"
+           Could not find "FrameworkIdentity" attribute "FrameworkIdentity-Retail-x64" in the SDK manifest. 
+           Found "FrameworkIdentity" attribute "Name = Microsoft.VCLibs.140.00, MinVersion = 14.0.33519.0, Publisher = 'CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US'" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x86=.\AppX\Retail\x86\Microsoft.VCLibs.x86.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x64=.\AppX\Retail\x64\Microsoft.VCLibs.x64.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM=.\AppX\Retail\ARM\Microsoft.VCLibs.ARM.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM64=.\AppX\Retail\ARM64\Microsoft.VCLibs.ARM64.14.00.appx" in the SDK manifest.
+       ExpandSDKReferences:
+         Enumerating SDK Reference "Microsoft.VCLibs, Version=14.0" from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\".
+       GetCppWinRTProjectWinMDReferences:
+         CppWinRTStaticProjectWinMDReferences: 
+         CppWinRTDynamicProjectWinMDReferences: 
+       InitializeBuildStatus:
+         Creating "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\xllama.tlog\unsuccessfulbuild" because "AlwaysCreate" was specified.
+         Touching "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\xllama.tlog\unsuccessfulbuild".
+       GetCppWinRTPlatformWinMDReferences:
+         CppWinRTPlatformWinMDReferences: C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.MachineLearningContract\5.0.0.0\Windows.AI.MachineLearning.MachineLearningContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.Preview.MachineLearningPreviewContract\2.0.0.0\Windows.AI.MachineLearning.Preview.MachineLearningPreviewContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.Background.CallsBackgroundContract\4.0.0.0\Windows.ApplicationModel.Calls.Background.CallsBackgroundContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsPhoneContract\7.0.0.0\Windows.ApplicationModel.Calls.CallsPhoneContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsVoipContract\5.0.0.0\Windows.ApplicationModel.Calls.CallsVoipContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.CommunicationBlocking.CommunicationBlockingContract\2.0.0.0\Windows.ApplicationModel.CommunicationBlocking.CommunicationBlockingContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.SocialInfo.SocialInfoContract\2.0.0.0\Windows.ApplicationModel.SocialInfo.SocialInfoContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.StartupTaskContract\3.0.0.0\Windows.ApplicationModel.StartupTaskContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Custom.CustomDeviceContract\1.0.0.0\Windows.Devices.Custom.CustomDeviceContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.DevicesLowLevelContract\3.0.0.0\Windows.Devices.DevicesLowLevelContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Printers.PrintersContract\1.0.0.0\Windows.Devices.Printers.PrintersContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardBackgroundTriggerContract\3.0.0.0\Windows.Devices.SmartCards.SmartCardBackgroundTriggerContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardEmulatorContract\6.0.0.0\Windows.Devices.SmartCards.SmartCardEmulatorContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.FoundationContract\4.0.0.0\Windows.Foundation.FoundationContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.UniversalApiContract\19.0.0.0\Windows.Foundation.UniversalApiContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Gaming.XboxLive.StorageApiContract\1.0.0.0\Windows.Gaming.XboxLive.StorageApiContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Graphics.Printing3D.Printing3DContract\4.0.0.0\Windows.Graphics.Printing3D.Printing3DContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Connectivity.WwanContract\3.0.0.0\Windows.Networking.Connectivity.WwanContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Sockets.ControlChannelTriggerContract\3.0.0.0\Windows.Networking.Sockets.ControlChannelTriggerContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Security.Isolation.IsolatedWindowsEnvironmentContract\5.0.0.0\Windows.Security.Isolation.Isolatedwindowsenvironmentcontract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.GuidanceContract\3.0.0.0\Windows.Services.Maps.GuidanceContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.LocalSearchContract\4.0.0.0\Windows.Services.Maps.LocalSearchContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Store.StoreContract\4.0.0.0\Windows.Services.Store.StoreContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.TargetedContent.TargetedContentContract\1.0.0.0\Windows.Services.TargetedContent.TargetedContentContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Storage.Provider.CloudFilesContract\7.0.0.0\Windows.Storage.Provider.CloudFilesContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileHardwareTokenContract\1.0.0.0\Windows.System.Profile.ProfileHardwareTokenContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileRetailInfoContract\1.0.0.0\Windows.System.Profile.ProfileRetailInfoContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileSharedModeContract\2.0.0.0\Windows.System.Profile.ProfileSharedModeContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.SystemManufacturers.SystemManufacturersContract\3.0.0.0\Windows.System.Profile.SystemManufacturers.SystemManufacturersContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.SystemManagementContract\7.0.0.0\Windows.System.SystemManagementContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.UIAutomation.UIAutomationContract\2.0.0.0\Windows.UI.UIAutomation.UIAutomationContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.ViewManagement.ViewManagementViewScalingContract\1.0.0.0\Windows.UI.ViewManagement.ViewManagementViewScalingContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.Xaml.Core.Direct.XamlDirectContract\5.0.0.0\Windows.UI.Xaml.Core.Direct.XamlDirectContract.winmd
+       GetCppWinRTDirectWinMDReferences:
+         CppWinRTDirectWinMDReferences: 
+       CppWinRTSetMidlReferences:
+       Skipping target "CppWinRTSetMidlReferences" because all output files are up-to-date with respect to the input files.
+       Midl:
+         All outputs are up-to-date.
+       GetCppWinRTMdMergeInputs:
+         CppWinRTMdMergeInputs: C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\Unmerged\xllama.winmd
+         CppWinRTMdMergeMetadataDirectories: C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.MachineLearningContract\5.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.Preview.MachineLearningPreviewContract\2.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.Background.CallsBackgroundContract\4.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsPhoneContract\7.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsVoipContract\5.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.CommunicationBlocking.CommunicationBlockingContract\2.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.SocialInfo.SocialInfoContract\2.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.StartupTaskContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Custom.CustomDeviceContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.DevicesLowLevelContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Printers.PrintersContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardBackgroundTriggerContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardEmulatorContract\6.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.FoundationContract\4.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.UniversalApiContract\19.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Gaming.XboxLive.StorageApiContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Graphics.Printing3D.Printing3DContract\4.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Connectivity.WwanContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Sockets.ControlChannelTriggerContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Security.Isolation.IsolatedWindowsEnvironmentContract\5.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.GuidanceContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.LocalSearchContract\4.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Store.StoreContract\4.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.TargetedContent.TargetedContentContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Storage.Provider.CloudFilesContract\7.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileHardwareTokenContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileRetailInfoContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileSharedModeContract\2.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.SystemManufacturers.SystemManufacturersContract\3.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.SystemManagementContract\7.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.UIAutomation.UIAutomationContract\2.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.ViewManagement.ViewManagementViewScalingContract\1.0.0.0\;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.Xaml.Core.Direct.XamlDirectContract\5.0.0.0\
+       CppWinRTMergeProjectWinMDInputs:
+       Skipping target "CppWinRTMergeProjectWinMDInputs" because all output files are up-to-date with respect to the input files.
+       CppWinRTCopyWinMDToOutputDirectory:
+       Skipping target "CppWinRTCopyWinMDToOutputDirectory" because all output files are up-to-date with respect to the input files.
+       GetCppWinRTPlatformWinMDInputs:
+         CppWinRTPlatformWinMDInputs: C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.MachineLearningContract\5.0.0.0\Windows.AI.MachineLearning.MachineLearningContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.AI.MachineLearning.Preview.MachineLearningPreviewContract\2.0.0.0\Windows.AI.MachineLearning.Preview.MachineLearningPreviewContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.Background.CallsBackgroundContract\4.0.0.0\Windows.ApplicationModel.Calls.Background.CallsBackgroundContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsPhoneContract\7.0.0.0\Windows.ApplicationModel.Calls.CallsPhoneContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.Calls.CallsVoipContract\5.0.0.0\Windows.ApplicationModel.Calls.CallsVoipContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.CommunicationBlocking.CommunicationBlockingContract\2.0.0.0\Windows.ApplicationModel.CommunicationBlocking.CommunicationBlockingContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.SocialInfo.SocialInfoContract\2.0.0.0\Windows.ApplicationModel.SocialInfo.SocialInfoContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.ApplicationModel.StartupTaskContract\3.0.0.0\Windows.ApplicationModel.StartupTaskContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Custom.CustomDeviceContract\1.0.0.0\Windows.Devices.Custom.CustomDeviceContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.DevicesLowLevelContract\3.0.0.0\Windows.Devices.DevicesLowLevelContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.Printers.PrintersContract\1.0.0.0\Windows.Devices.Printers.PrintersContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardBackgroundTriggerContract\3.0.0.0\Windows.Devices.SmartCards.SmartCardBackgroundTriggerContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Devices.SmartCards.SmartCardEmulatorContract\6.0.0.0\Windows.Devices.SmartCards.SmartCardEmulatorContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.FoundationContract\4.0.0.0\Windows.Foundation.FoundationContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Foundation.UniversalApiContract\19.0.0.0\Windows.Foundation.UniversalApiContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Gaming.XboxLive.StorageApiContract\1.0.0.0\Windows.Gaming.XboxLive.StorageApiContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Graphics.Printing3D.Printing3DContract\4.0.0.0\Windows.Graphics.Printing3D.Printing3DContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Connectivity.WwanContract\3.0.0.0\Windows.Networking.Connectivity.WwanContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Networking.Sockets.ControlChannelTriggerContract\3.0.0.0\Windows.Networking.Sockets.ControlChannelTriggerContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Security.Isolation.IsolatedWindowsEnvironmentContract\5.0.0.0\Windows.Security.Isolation.Isolatedwindowsenvironmentcontract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.GuidanceContract\3.0.0.0\Windows.Services.Maps.GuidanceContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Maps.LocalSearchContract\4.0.0.0\Windows.Services.Maps.LocalSearchContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.Store.StoreContract\4.0.0.0\Windows.Services.Store.StoreContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Services.TargetedContent.TargetedContentContract\1.0.0.0\Windows.Services.TargetedContent.TargetedContentContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.Storage.Provider.CloudFilesContract\7.0.0.0\Windows.Storage.Provider.CloudFilesContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileHardwareTokenContract\1.0.0.0\Windows.System.Profile.ProfileHardwareTokenContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileRetailInfoContract\1.0.0.0\Windows.System.Profile.ProfileRetailInfoContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.ProfileSharedModeContract\2.0.0.0\Windows.System.Profile.ProfileSharedModeContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.Profile.SystemManufacturers.SystemManufacturersContract\3.0.0.0\Windows.System.Profile.SystemManufacturers.SystemManufacturersContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.System.SystemManagementContract\7.0.0.0\Windows.System.SystemManagementContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.UIAutomation.UIAutomationContract\2.0.0.0\Windows.UI.UIAutomation.UIAutomationContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.ViewManagement.ViewManagementViewScalingContract\1.0.0.0\Windows.UI.ViewManagement.ViewManagementViewScalingContract.winmd;C:\Program Files (x86)\Windows Kits\10\References\10.0.26100.0\Windows.UI.Xaml.Core.Direct.XamlDirectContract\5.0.0.0\Windows.UI.Xaml.Core.Direct.XamlDirectContract.winmd
+       CppWinRTMakePlatformProjection:
+       Skipping target "CppWinRTMakePlatformProjection" because all output files are up-to-date with respect to the input files.
+       CppWinRTMakeComponentProjection:
+       Skipping target "CppWinRTMakeComponentProjection" because all output files are up-to-date with respect to the input files.
+     2>Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj" (2) is building "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp.vcxproj" (3) on node 1 (GetProjectInfoForReference target(s)).
+     3>PrepareForBuild:
+         Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+       GetInstalledSDKLocations:
+         Searching for SDKs targeting "UAP, 10.0.26100.0".
+         Searching for SDKs targeting "Windows, 8.1".
+       ResolveSDKReferences:
+           Reading SDK manifest file "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\SDKManifest.xml".
+           Targeted configuration and architecture "Retail|x64"
+           Could not find "FrameworkIdentity" attribute "FrameworkIdentity-Retail-x64" in the SDK manifest. 
+           Found "FrameworkIdentity" attribute "Name = Microsoft.VCLibs.140.00, MinVersion = 14.0.33519.0, Publisher = 'CN=Microsoft Corporation, O=Microsoft Corporation, L=Redmond, S=Washington, C=US'" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x86=.\AppX\Retail\x86\Microsoft.VCLibs.x86.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-x64=.\AppX\Retail\x64\Microsoft.VCLibs.x64.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM=.\AppX\Retail\ARM\Microsoft.VCLibs.ARM.14.00.appx" in the SDK manifest.
+           Found "APPX" location attribute "AppX-Retail-ARM64=.\AppX\Retail\ARM64\Microsoft.VCLibs.ARM64.14.00.appx" in the SDK manifest.
+       ExpandSDKReferences:
+         Enumerating SDK Reference "Microsoft.VCLibs, Version=14.0" from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\".
+     3>Done Building Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ggml-uwp.vcxproj" (GetProjectInfoForReference target(s)).
+     2>ClCompile:
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+         All outputs are up-to-date.
+       Link:
+         All outputs are up-to-date.
+         xllama.vcxproj -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\xllama.exe
+       _CopyOutOfDateSourceItemsToOutputDirectory:
+       Skipping target "_CopyOutOfDateSourceItemsToOutputDirectory" because all output files are up-to-date with respect to the input files.
+       ComputeProcessXamlFiles:
+         (Out) ProcessedXamlFiles == 
+       CustomOutputGroupForPackaging:
+         (Out) Project='xllama' ProcessedXamlFiles == 
+         (Out) XamlPackagingRootFolder == C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\\
+         (Out) ProcessedXamlFilesFullPath == 
+         (Out) Project='xllama' CustomOutputGroupForPackagingOutput == 
+       _GeneratePrisForPortableLibraries:
+         No resources are out of date with respect to their source files. Skipping resource generation.
+       _GenerateProjectPriFileCore:
+         C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\MakePri.exe New -ProjectRoot C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\ -ConfigXml C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\priconfig.xml -OutputFile C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\resources.pri -IndexName GianlucaMazza.xllama -Verbose -Overwrite  
+     2>C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.AppXPackage.Targets(2840,5): warning APPX2101: File 'cl.exe' is not found or is not an executable file. [C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj]
+         xllama -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\AppxManifest.xml
+       CheckForUnsupportedScenarios:
+         The specified XPath query did not capture any nodes.
+       _GenerateAppxPackageRecipeFile:
+         xllama -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\xllama.build.appxrecipe
+       _GenerateAppxPackageFile:
+         C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\MakeAppx.exe pack /l /h sha256 /f C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\package.map.txt /o /p C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\xllama_1.6.0.125_x64.msix  
+         xllama -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\xllama_1.6.0.125_x64.msix
+       _GenerateAppxSymbolPackage:
+         C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\\x64\mspdbcmf.exe /check C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\x64\Release-iteration\xllama.pdb 
+         Microsoft (R) FastLink To Full PDB Converter Version 14.39.33523.0
+         Copyright (C) Microsoft Corporation.  All rights reserved.
+         
+          [Non FASTLINK] The input PDB file was not generated by the linker with /DEBUG:fastlink.
+         xllama -> C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\Symbols\xllama_1.6.0.125_x64.appxsym
+       _CreateTestLayout:
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\x86".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\ARM".
+         Copying file from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\AppX\Retail\x86\Microsoft.VCLibs.x86.14.00.appx" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\x86\Microsoft.VCLibs.x86.14.00.appx".
+         Copying file from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\AppX\Retail\ARM\Microsoft.VCLibs.ARM.14.00.appx" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\ARM\Microsoft.VCLibs.ARM.14.00.appx".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\ARM64".
+         Copying file from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\AppX\Retail\ARM64\Microsoft.VCLibs.ARM64.14.00.appx" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\ARM64\Microsoft.VCLibs.ARM64.14.00.appx".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\x64".
+         Copying file from "C:\Program Files (x86)\Microsoft SDKs\Windows Kits\10\ExtensionSDKs\Microsoft.VCLibs\14.0\AppX\Retail\x64\Microsoft.VCLibs.x64.14.00.appx" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Dependencies\x64\Microsoft.VCLibs.x64.14.00.appx".
+         Copying file from "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\Symbols\xllama_1.6.0.125_x64.appxsym" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\xllama_1.6.0.125_x64.appxsym".
+       _AddWindowsInstallScriptToTestLayout:
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\cs-CZ".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\de-DE".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.ps1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.ps1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\en-US".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\de-DE\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\de-DE\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\cs-CZ\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\cs-CZ\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\es-ES".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\en-US\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\en-US\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\fr-FR".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\it-IT".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\es-ES\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\es-ES\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\fr-FR\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\fr-FR\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ja-JP".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ko-KR".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\it-IT\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\it-IT\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\ja-JP\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ja-JP\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\pl-PL".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\ko-KR\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ko-KR\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\pl-PL\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\pl-PL\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\pt-BR".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\pt-BR\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\pt-BR\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ru-RU".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\tr-TR".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\zh-CN".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\ru-RU\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\ru-RU\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\tr-TR\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\tr-TR\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\zh-TW".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\zh-CN\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\zh-CN\Add-AppDevPackage.psd1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Install.ps1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Install.ps1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Add-AppDevPackage.resources\zh-TW\Add-AppDevPackage.psd1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\Add-AppDevPackage.resources\zh-TW\Add-AppDevPackage.psd1".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies".
+         Creating directory "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\LogSideloadingTelemetry.ps1" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\LogSideloadingTelemetry.ps1".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.VisualStudio.Telemetry.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\Microsoft.VisualStudio.Telemetry.dll".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.VisualStudio.RemoteControl.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\Microsoft.VisualStudio.RemoteControl.dll".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.Diagnostics.Tracing.EventSource.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\Microsoft.Diagnostics.Tracing.EventSource.dll".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.VisualStudio.Utilities.Internal.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\Microsoft.VisualStudio.Utilities.Internal.dll".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Newtonsoft.Json.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\Newtonsoft.Json.dll".
+         Copying file from "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\System.Runtime.CompilerServices.Unsafe.dll" to "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\TelemetryDependencies\System.Runtime.CompilerServices.Unsafe.dll".
+       _GenerateAppxPackage:
+         Deleting file "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\_installerinfo.log".
+       FinalizeBuildStatus:
+         Deleting file "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\xllama.tlog\unsuccessfulbuild".
+         Touching "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama\x64\Release-iteration\xllama.tlog\xllama.lastbuildstate".
+     2>Done Building Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj" (default targets).
+     1>Done Building Project "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.sln" (Build target(s)).
+
+Build succeeded.
+
+       "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.sln" (Build target) (1) ->
+       "C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj" (default target) (2) ->
+       (_GenerateCurrentProjectAppxManifest target) -> 
+         C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VisualStudio\v17.0\AppxPackage\Microsoft.AppXPackage.Targets(2840,5): warning APPX2101: File 'cl.exe' is not found or is not an executable file. [C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\xllama.vcxproj]
+
+    1 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:20.14
+Build succeeded.
+Package: C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.125_x64_Test\xllama_1.6.0.125_x64.msix

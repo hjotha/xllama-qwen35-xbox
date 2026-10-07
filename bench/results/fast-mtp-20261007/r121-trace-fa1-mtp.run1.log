@@ -1,0 +1,251 @@
+[xllama] bench: Q6_K LM-head columns=0
+[xllama] bench: Q8_0 matmul=D3D12
+[xllama] bench: fused attention=forced
+[xllama] bench: GATED_DELTA_NET=D3D12
+[xllama] main_loop: cpurepackforcegemv.txt='2' -> repack control scope 2 (all small)
+[xllama] main_loop: d3d12spinwait.txt='(absent)' -> spin_wait_us=-1 (default unbounded spin)
+[xllama] main_loop: ggmlprof.txt='(absent)' -> none (default)
+[xllama] bench: d3d12twocol.txt='auto' -> kernel variant 2 (prev 0)
+[xllama] bench: prompt.txt 1379 bytes
+[xllama] bench: verify_trace output idx=166 (diagnostic)
+[xllama] bench model: qwen35-4b-mtp
+[xllama] bench prompt: <|im_start|>system
+You are a helpful AI assistant.<|im_end|>
+<|im_start|>user
+Th...
+[xllama] bench tokens sidecar: bench-tokens-1.txt
+[xllama] bench sampling: greedy=1 seed=1 temp=0.80 top_p=0.90 top_k=40
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] model loaded
+[xllama] gpu-mem post-load: current=2692MB budget=4147MB
+[xllama] speculative: target n_rs_seq=2 n_ubatch=64
+[xllama] prefill batch override: n_batch=64 n_ubatch=64
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   150.75 MiB
+[xllama] d3d12: D3D12_Host buffer 62.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.75 MiB
+[llama] sched_reserve: graph splits = 370
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 14
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] prompt tokens: 298
+[xllama] d3d12: D3D12_Host buffer 1.6 MiB
+[xllama] TRACE round idx=0 anchor=0 kv=297 mtp_ok=1
+[xllama] mtp: first draft pos=298 n_embd=2560 n_max=2 row[min,max]=[-23.221035,13.181052] dft_n_batch=4 dft_pos_max=297
+[xllama] d3d12: D3D12_Host buffer 3.5 MiB
+[xllama] TRACE feed idx=0 n=3 pos0=298 toks=1919,10597,22527
+[xllama] TRACE round idx=2 anchor=1 kv=298 mtp_ok=1
+[xllama] TRACE feed idx=2 n=2 pos0=299 toks=369,264
+[xllama] TRACE round idx=3 anchor=0 kv=300 mtp_ok=1
+[xllama] TRACE feed idx=3 n=3 pos0=301 toks=6235,10597,22527
+[xllama] TRACE round idx=6 anchor=0 kv=303 mtp_ok=1
+[xllama] TRACE round idx=7 anchor=0 kv=304 mtp_ok=1
+[xllama] TRACE feed idx=7 n=3 pos0=305 toks=279,94408,23470
+[xllama] TRACE round idx=10 anchor=0 kv=307 mtp_ok=1
+[xllama] TRACE round idx=11 anchor=0 kv=308 mtp_ok=1
+[xllama] TRACE feed idx=11 n=3 pos0=309 toks=1669,303,6278
+[xllama] TRACE round idx=14 anchor=0 kv=311 mtp_ok=1
+[xllama] TRACE round idx=15 anchor=0 kv=312 mtp_ok=1
+[xllama] TRACE feed idx=15 n=3 pos0=313 toks=74593,1040,279
+[xllama] TRACE round idx=18 anchor=0 kv=315 mtp_ok=1
+[xllama] TRACE feed idx=18 n=3 pos0=316 toks=19952,10808,326
+[xllama] TRACE round idx=21 anchor=0 kv=318 mtp_ok=1
+[xllama] TRACE feed idx=21 n=3 pos0=319 toks=321,30238,220
+[xllama] TRACE round idx=24 anchor=0 kv=321 mtp_ok=1
+[xllama] TRACE feed idx=24 n=2 pos0=322 toks=20,13
+[xllama] TRACE round idx=26 anchor=0 kv=323 mtp_ok=1
+[xllama] TRACE round idx=27 anchor=0 kv=324 mtp_ok=1
+[xllama] TRACE feed idx=27 n=3 pos0=325 toks=2908,12083,10503
+[xllama] TRACE round idx=30 anchor=0 kv=327 mtp_ok=1
+[xllama] TRACE feed idx=30 n=2 pos0=328 toks=279,1328
+[xllama] TRACE round idx=32 anchor=0 kv=329 mtp_ok=1
+[xllama] TRACE feed idx=32 n=3 pos0=330 toks=6599,25,271
+[xllama] TRACE round idx=34 anchor=1 kv=330 mtp_ok=1
+[xllama] TRACE round idx=34 anchor=0 kv=331 mtp_ok=1
+[xllama] TRACE feed idx=34 n=3 pos0=332 toks=836,6355,61782
+[xllama] TRACE round idx=36 anchor=1 kv=332 mtp_ok=1
+[xllama] TRACE feed idx=36 n=3 pos0=333 toks=916,1315,25
+[xllama] TRACE round idx=38 anchor=0 kv=335 mtp_ok=1
+[xllama] TRACE feed idx=38 n=3 pos0=336 toks=271,16,13
+[xllama] TRACE round idx=40 anchor=1 kv=336 mtp_ok=1
+[xllama] TRACE feed idx=40 n=3 pos0=337 toks=9,256,2972
+[xllama] TRACE round idx=42 anchor=0 kv=339 mtp_ok=1
+[xllama] TRACE feed idx=42 n=3 pos0=340 toks=39,1356,46420
+[xllama] TRACE round idx=45 anchor=0 kv=342 mtp_ok=1
+[xllama] TRACE feed idx=45 n=2 pos0=343 toks=1987,34
+[xllama] TRACE round idx=47 anchor=0 kv=344 mtp_ok=1
+[xllama] TRACE feed idx=47 n=3 pos0=345 toks=6765,64700,561
+[xllama] TRACE round idx=49 anchor=1 kv=345 mtp_ok=1
+[xllama] TRACE feed idx=49 n=2 pos0=346 toks=92217,561
+[xllama] TRACE round idx=50 anchor=0 kv=347 mtp_ok=1
+[xllama] TRACE feed idx=50 n=3 pos0=348 toks=10286,314,23547
+[xllama] TRACE round idx=53 anchor=0 kv=350 mtp_ok=1
+[xllama] TRACE feed idx=53 n=3 pos0=351 toks=30746,220,17
+[xllama] TRACE round idx=56 anchor=0 kv=353 mtp_ok=1
+[xllama] TRACE feed idx=56 n=2 pos0=354 toks=13540,34523
+[xllama] TRACE round idx=58 anchor=0 kv=355 mtp_ok=1
+[xllama] TRACE feed idx=58 n=3 pos0=356 toks=321,36737,7096
+[xllama] TRACE round idx=61 anchor=0 kv=358 mtp_ok=1
+[xllama] TRACE feed idx=61 n=3 pos0=359 toks=220,17,21966
+[xllama] TRACE round idx=64 anchor=0 kv=361 mtp_ok=1
+[xllama] TRACE round idx=65 anchor=0 kv=362 mtp_ok=1
+[xllama] TRACE feed idx=65 n=3 pos0=363 toks=2785,264,41275
+[xllama] TRACE round idx=68 anchor=1 kv=364 mtp_ok=1
+[xllama] TRACE round idx=68 anchor=0 kv=365 mtp_ok=1
+[xllama] TRACE round idx=69 anchor=0 kv=366 mtp_ok=1
+[xllama] TRACE feed idx=69 n=3 pos0=367 toks=10020,28589,558
+[xllama] TRACE round idx=72 anchor=0 kv=369 mtp_ok=1
+[xllama] TRACE feed idx=72 n=3 pos0=370 toks=318,4272,34
+[xllama] TRACE round idx=75 anchor=0 kv=372 mtp_ok=1
+[xllama] TRACE feed idx=75 n=3 pos0=373 toks=8,369,264
+[xllama] TRACE round idx=78 anchor=0 kv=375 mtp_ok=1
+[xllama] TRACE feed idx=78 n=2 pos0=376 toks=94327,314
+[xllama] TRACE round idx=80 anchor=0 kv=377 mtp_ok=1
+[xllama] TRACE feed idx=80 n=2 pos0=378 toks=1727,35260
+[xllama] TRACE round idx=82 anchor=0 kv=379 mtp_ok=1
+[xllama] TRACE feed idx=82 n=2 pos0=380 toks=48408,13
+[xllama] TRACE round idx=84 anchor=0 kv=381 mtp_ok=1
+[xllama] TRACE feed idx=84 n=2 pos0=382 toks=1061,2790
+[xllama] TRACE round idx=86 anchor=1 kv=382 mtp_ok=1
+[xllama] TRACE feed idx=86 n=2 pos0=383 toks=5954,364
+[xllama] TRACE round idx=87 anchor=0 kv=384 mtp_ok=1
+[xllama] TRACE feed idx=87 n=3 pos0=385 toks=9990,17066,314
+[xllama] TRACE round idx=90 anchor=1 kv=386 mtp_ok=1
+[xllama] TRACE round idx=90 anchor=0 kv=387 mtp_ok=1
+[xllama] TRACE round idx=91 anchor=0 kv=388 mtp_ok=1
+[xllama] TRACE feed idx=91 n=3 pos0=389 toks=37972,7463,310
+[xllama] TRACE round idx=94 anchor=0 kv=391 mtp_ok=1
+[xllama] TRACE round idx=95 anchor=0 kv=392 mtp_ok=1
+[xllama] TRACE feed idx=95 n=3 pos0=393 toks=6599,13,198
+[xllama] TRACE round idx=98 anchor=0 kv=395 mtp_ok=1
+[xllama] TRACE feed idx=98 n=3 pos0=396 toks=9,256,2972
+[xllama] TRACE round idx=101 anchor=0 kv=398 mtp_ok=1
+[xllama] TRACE feed idx=101 n=3 pos0=399 toks=82428,13453,36593
+[xllama] TRACE round idx=104 anchor=0 kv=401 mtp_ok=1
+[xllama] TRACE round idx=105 anchor=0 kv=402 mtp_ok=1
+[xllama] TRACE round idx=106 anchor=0 kv=403 mtp_ok=1
+[xllama] TRACE feed idx=106 n=2 pos0=404 toks=958,314
+[xllama] TRACE round idx=108 anchor=0 kv=405 mtp_ok=1
+[xllama] TRACE feed idx=108 n=3 pos0=406 toks=5904,469,68376
+[xllama] TRACE round idx=111 anchor=0 kv=408 mtp_ok=1
+[xllama] TRACE feed idx=111 n=3 pos0=409 toks=21,4779,318
+[xllama] TRACE round idx=114 anchor=0 kv=411 mtp_ok=1
+[xllama] TRACE feed idx=114 n=3 pos0=412 toks=16,15,18295
+[xllama] TRACE round idx=117 anchor=0 kv=414 mtp_ok=1
+[xllama] TRACE round idx=118 anchor=0 kv=415 mtp_ok=1
+[xllama] TRACE round idx=119 anchor=0 kv=416 mtp_ok=1
+[xllama] TRACE feed idx=119 n=3 pos0=417 toks=3835,23,18295
+[xllama] TRACE round idx=122 anchor=0 kv=419 mtp_ok=1
+[xllama] TRACE feed idx=122 n=3 pos0=420 toks=364,1156,14548
+[xllama] TRACE round idx=125 anchor=0 kv=422 mtp_ok=1
+[xllama] TRACE feed idx=125 n=3 pos0=423 toks=5851,14143,8
+[xllama] TRACE round idx=128 anchor=0 kv=425 mtp_ok=1
+[xllama] TRACE feed idx=128 n=2 pos0=426 toks=369,264
+[xllama] TRACE round idx=130 anchor=0 kv=427 mtp_ok=1
+[xllama] TRACE round idx=131 anchor=0 kv=428 mtp_ok=1
+[xllama] TRACE feed idx=131 n=3 pos0=429 toks=2790,5576,13
+[xllama] TRACE round idx=134 anchor=0 kv=431 mtp_ok=1
+[xllama] TRACE feed idx=134 n=3 pos0=432 toks=3113,38192,279
+[xllama] TRACE round idx=137 anchor=0 kv=434 mtp_ok=1
+[xllama] TRACE feed idx=137 n=3 pos0=435 toks=1144,364,87567
+[xllama] TRACE round idx=140 anchor=0 kv=437 mtp_ok=1
+[xllama] TRACE feed idx=140 n=3 pos0=438 toks=24644,29612,1881
+[xllama] TRACE round idx=143 anchor=0 kv=440 mtp_ok=1
+[xllama] TRACE round idx=144 anchor=0 kv=441 mtp_ok=1
+[xllama] TRACE round idx=145 anchor=0 kv=442 mtp_ok=1
+[xllama] TRACE feed idx=145 n=3 pos0=443 toks=21966,321,264
+[xllama] TRACE round idx=148 anchor=1 kv=444 mtp_ok=1
+[xllama] TRACE feed idx=148 n=3 pos0=445 toks=1785,21360,11
+[xllama] TRACE round idx=150 anchor=0 kv=447 mtp_ok=1
+[xllama] TRACE feed idx=150 n=2 pos0=448 toks=795,6977
+[xllama] TRACE round idx=152 anchor=0 kv=449 mtp_ok=1
+[xllama] TRACE round idx=153 anchor=0 kv=450 mtp_ok=1
+[xllama] TRACE feed idx=153 n=3 pos0=451 toks=11602,10281,321
+[xllama] TRACE round idx=156 anchor=0 kv=453 mtp_ok=1
+[xllama] TRACE feed idx=156 n=3 pos0=454 toks=777,10727,11
+[xllama] TRACE round idx=159 anchor=1 kv=455 mtp_ok=1
+[xllama] TRACE feed idx=159 n=2 pos0=456 toks=13,1061
+[xllama] TRACE round idx=160 anchor=0 kv=457 mtp_ok=1
+[xllama] TRACE feed idx=160 n=2 pos0=458 toks=369,7695
+[xllama] TRACE round idx=162 anchor=0 kv=459 mtp_ok=1
+[xllama] TRACE feed idx=162 n=2 pos0=460 toks=22957,364
+[xllama] TRACE round idx=164 anchor=0 kv=461 mtp_ok=1
+[xllama] TRACE feed idx=164 n=3 pos0=462 toks=944,31600,421
+[xllama] TRACE verify idx=166 batch_row=1 tok=421 drafted=421 accepted=1 top5=421:22.6775 1332:22.6750 21998:21.5268 15394:20.0908 1040:19.6821 margin=0.002550 feed_n=3 pos_before=461 n_keep=2 kv_end=464
+[xllama] TRACE round idx=167 anchor=0 kv=464 mtp_ok=1
+[xllama] TRACE feed idx=167 n=2 pos0=465 toks=1325,20125
+[xllama] TRACE round idx=169 anchor=0 kv=466 mtp_ok=1
+[xllama] TRACE feed idx=169 n=3 pos0=467 toks=795,9013,1881
+[xllama] TRACE round idx=171 anchor=1 kv=467 mtp_ok=1
+[xllama] TRACE feed idx=171 n=3 pos0=468 toks=542,76945,1881
+[xllama] TRACE round idx=173 anchor=0 kv=470 mtp_ok=1
+[xllama] TRACE feed idx=173 n=3 pos0=471 toks=13540,321,21966
+[xllama] TRACE round idx=176 anchor=0 kv=473 mtp_ok=1
+[xllama] TRACE feed idx=176 n=3 pos0=474 toks=13,198,9
+[xllama] TRACE round idx=179 anchor=0 kv=476 mtp_ok=1
+[xllama] done: load=4387ms prompt=87.5 tok/s decode=28.1 tok/s peak=3666MB drafted=112 spec_accept=95
+[xllama] MTP_STATS rounds=65 decodes=231 discarded=37 catchup_tok=177 draft_ms=0.0 sample_ms=0.0 topprob_ms=0.0 catchup_ms=0.0 verify_ms=0.0 corrective_ms=0.0
+[xllama] output: len=875 fnv1a=c2e052be10914510
+[xllama] tokens dumped to Q:\Users\UserMgr1\AppData\Local\Packages\GianlucaMazza.xllama_pj67f1fcj4n14\LocalState\bench-tokens-1.txt
+[llama] ~llama_context: D3D12_Host compute buffer size is   3.8840 MiB, matches expectation of   3.8840 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 18653 graph_compute calls, 20711 matmuls (8816 2col), 5331.8 ms wall (4170.6 ms GPU)
+[xllama] d3d12: 2160 GATED_DELTA_NET dispatches
+[xllama] d3d12: Q6_K tiles 2col=18 4col=47
+[llama] ~llama_context: D3D12_Host compute buffer size is  62.7527 MiB, matches expectation of  62.7527 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] MTP_ACTIVE n_drafted=112 n_spec_accepted=95
+[xllama] bench-result.csv written
+[xllama] headless bench: done, exiting

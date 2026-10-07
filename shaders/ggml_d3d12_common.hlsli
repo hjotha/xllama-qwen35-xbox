@@ -27,8 +27,8 @@ cbuffer Params : register(b0) {
     uint w_row_bytes; // bytes per weight row (nb01)
     uint x_stride;    // floats between activation columns (nb11 / 4)
     uint y_stride;    // floats between output columns (nb1 / 4)
-    uint pad0;
-    uint pad1;
+    uint ncols;       // activation columns (two-column tile width, TWO_COL only)
+    uint pad1;        // one-column kernels ignore ncols
 };
 
 ByteAddressBuffer W : register(t0);
@@ -72,5 +72,30 @@ void reduce_store(float acc[NUM_ROWS], uint tid, uint row0, uint col) {
         GroupMemoryBarrierWithGroupSync();
     }
     if (tid < NUM_ROWS && row0 + tid < n)
+        Y[col * y_stride + row0 + tid] = red[tid][0];
+}
+
+// Two-column tile companion (TWO_COL): same tree, but the Y store is skipped
+// when this group's second column is past ncols. Every thread still executes
+// the whole function, so every barrier stays uniform; only the final store is
+// predicated. Callers reusing `red` for a second column must place an
+// unconditional GroupMemoryBarrierWithGroupSync between the first
+// reduce_store's Y read and this call's first write: reduce_store ends with
+// no final barrier.
+void reduce_store_col(float acc[NUM_ROWS], uint tid, uint row0, uint col, bool valid) {
+    [unroll]
+    for (uint r = 0; r < NUM_ROWS; ++r)
+        red[r][tid] = acc[r];
+    GroupMemoryBarrierWithGroupSync();
+    [unroll]
+    for (uint stride = NUM_THREADS / 2u; stride > 0u; stride >>= 1u) {
+        if (tid < stride) {
+            [unroll]
+            for (uint r = 0; r < NUM_ROWS; ++r)
+                red[r][tid] += red[r][tid + stride];
+        }
+        GroupMemoryBarrierWithGroupSync();
+    }
+    if (valid && tid < NUM_ROWS && row0 + tid < n)
         Y[col * y_stride + row0 + tid] = red[tid][0];
 }

@@ -1,0 +1,8 @@
+{
+  "checked_utc": "2026-10-07T14:16:24.571162+00:00",
+  "critical_transients_absent": true,
+  "durable_profile_present": true,
+  "original_ini_comments_and_section_retained": true,
+  "health_http": 200,
+  "app_status": "xllama process: pid=1684 image=xllama.exe running=True ws=3867283456"
+}

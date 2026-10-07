@@ -1,0 +1,110 @@
+{
+  "purpose": "Measured MTP cost diagnosis; experimental source and Xbox evidence, not a global performance optimum",
+  "mechanism": {
+    "adapter": "src/bridge/mtp_draft.cpp",
+    "native_context": "LLAMA_CONTEXT_TYPE_MTP",
+    "callers": [
+      "src/bridge/inference.cpp",
+      "src/bridge/session.cpp"
+    ],
+    "shared_decode_loop": "src/bridge/decode_loop.h",
+    "native_common_orchestrator_compiled_in_uwp": false,
+    "qwen_draft_kv_shared": false,
+    "draft_cpu_pool": "existing target pool; unused extra private pool removed in R120"
+  },
+  "confirmed_causes": [
+    {
+      "cause": "Unused catch-up logits forced LM-head work. Suppressing logits exposed rejection of an empty output MUL_MAT, making scheduler copy 521472000 weight bytes to CPU.",
+      "before": "r118-catchup-console.log",
+      "after": "r119-catchup-console.log",
+      "paired_result": "r119-catchup-summary.json",
+      "fix": "Accept correctly owned empty output nodes; skip them before GPU dispatch; catch-up requests no logits by default."
+    },
+    {
+      "cause": "LM-head matmul previously read/dequantized weights independently for each verification column.",
+      "component_evidence": "r119-q6-selftest-summary.json",
+      "fix": "Validated two/four-column HLSL tiles within a narrow Qwen shape allowlist."
+    },
+    {
+      "cause": "MTP hidden projection Q8_0 and gated delta network used CPU fallback.",
+      "q8_evidence": "r115-q8-summary.json",
+      "gdn_evidence": "r116-gdn-summary.json",
+      "fix": "GPU Q8_0 and GDN shaders, with same-package CPU controls and GPU numerical checks."
+    },
+    {
+      "cause": "AUTO attention used the separate CPU graph because D3D12 lacks FLASH_ATTN_EXT.",
+      "evidence": "r120-fa1-q6c4.json",
+      "fix": "Force existing native fused CPU attention; CPU FA1 is measured faster than CPU AUTO in the pilot, not proof of GPU FA speed."
+    },
+    {
+      "cause": "Extra low-confidence draft work raises cost without proportionate acceptance.",
+      "evidence": [
+        "r120-fa1-d2-p50.json",
+        "r120-fa1-d4-p0.json"
+      ],
+      "fix": "Tune depth and probability using full-token equality, fresh sequential controls, and repeated confirmation."
+    }
+  ],
+  "remaining_gpu_attention_boundary": {
+    "gpu_shader_implemented": false,
+    "currently": "native fused CPU attention",
+    "required_for_gpu": [
+      "strict tensor/precision contract and real shape capture",
+      "GPU accessible KV placement rather than whole-KV copies",
+      "routing offload_kqv while preserving recurrent-state placement",
+      "component CPU reference and full MTP-vs-sequential Xbox parity"
+    ],
+    "exclusive_cpu_attention_cost_measured": false
+  },
+  "build_cache": {
+    "iteration": "optimized inference, cached WinRT PCH, no LTCG, persistent objects",
+    "final": "LTCG with separate project prefix ending -final to prevent RelativeDir parent traversal alias",
+    "evidence": "r120-build.log",
+    "measured_r120_signed_seconds": 184.57,
+    "pch_optimization_alignment": "Verified R121/R123 C4653count0; iterationPCH/bridgeOd,coreO2; finalallO2GL",
+    "final_warm_return_seconds": 41.12
+  },
+  "current_search_and_final_receipts": "campaign-state.json",
+  "measurement_limits": [
+    "Pilot n1 figures are exploratory.",
+    "Compare MTP against a fresh same-package same-config sequential arm.",
+    "GPU timestamp is nested inside D3D12 wall, which is nested inside verification wall.",
+    "Summed process CPU time across workers is not exclusive wall time."
+  ],
+  "final_build_repair": {
+    "cause": "SolutionRebuild cleaned the inactive ggml ProjectReference after pre-building its static library, deleting both library and233 GLobjects.",
+    "proof": "r122-failed-msbuild.out.log",
+    "fix": "Clean once before pre-building library; final wrapper uses Build with isolatedGLcache.",
+    "recovery": "r122-recovered-build.log",
+    "recovery_seconds": 986.54,
+    "optimized_pre_FA2_package_sha256": "a9d4bf5c31ae9c4fa69c3da35c048936589e9ff1baf746e08d6d034a19850d3f"
+  },
+  "long_output_gate_failure": {
+    "package121": "FA1candidate excluded despite28.3TPS.",
+    "case": "standard-512256",
+    "first_index0": 166,
+    "seq_id": 1332,
+    "mtp_id": 421,
+    "all_three_runs_same_failure": true,
+    "trace_seq": "r121-trace-fa1-seq.run1.log",
+    "trace_mtp": "r121-trace-fa1-mtp.run1.log",
+    "candidate_cause": "singlequeryFA split-KV vs multiquery full-KV withF16 partial accumulation",
+    "candidate_fix": "opt-inpatch0006 + flashattn.txt2; hardware pending R123",
+    "FA2_resolution": {
+      "status": "PASS hardware R123",
+      "full_ids": "3 dumps per arm,256 IDs identical",
+      "index166_seq": 421,
+      "index166_mtp": 421,
+      "median_seq_tps": 22.73,
+      "median_mtp_tps": 27.13,
+      "gain_percent": 19.357677078750534,
+      "measured_n_per_arm": 2,
+      "drafted_per_run": 154,
+      "accepted_per_run": 130,
+      "scope": "original standard-512256 failing case; remaining gates in progress",
+      "remaining_gates": "Final1246gridpairs,Session4,termination16/APIallPASS"
+    }
+  },
+  "final_acceptance": "final124-acceptance.json",
+  "operation_complete": true
+}

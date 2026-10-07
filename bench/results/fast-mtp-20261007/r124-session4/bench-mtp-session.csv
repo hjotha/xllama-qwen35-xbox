@@ -1,0 +1,5 @@
+scenario,ok,mtp_active,n_drafted,n_spec_accepted,n_ids,n_ref,parity,first_diff,reason,mtp_drafted,mtp_accepted,mtp_rounds,lookup_drafted,host,date,run_index
+reset_prompt_swap,1,1,44,39,64,64,1,-1,"-",44,39,23,0,xbox-series-s-t2-g34-mtp2-pmin50-session,2026-10-07T13:56:42Z,1
+edited_prefix,1,1,41,38,64,64,1,-1,"-",41,38,22,0,xbox-series-s-t2-g34-mtp2-pmin50-session,2026-10-07T13:56:42Z,1
+delta_continuation,1,1,42,42,64,64,1,-1,"-",42,42,21,0,xbox-series-s-t2-g34-mtp2-pmin50-session,2026-10-07T13:56:42Z,1
+multi_chunk,1,1,43,41,64,64,1,-1,"-",43,41,22,0,xbox-series-s-t2-g34-mtp2-pmin50-session,2026-10-07T13:56:42Z,1

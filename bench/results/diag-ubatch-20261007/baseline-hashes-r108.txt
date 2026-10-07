@@ -1,0 +1,5 @@
+6e6656ffdb523e8b89812ddfa72859e08194556ef96864692f7391282bd1e0b4  llama.cpp/ggml/src/ggml-cpu/ggml-cpu.cpp
+65d02ebf17428d81948b23502e70e30e1207451916f7ce5d80db6b67c043fbc7  llama.cpp/ggml/src/ggml-cpu/ggml-cpu.c
+790bb6a8edb91e8887102d2bf026451a09702e4b27de0a9b4c27d01f49ba01fc  src/bridge/llama_gpu.h
+56e85ced236b682b98e695dc6578713f8f7103f210bbcc543d17c42860db53af  uwp/inference-bridge.cpp
+9888831b629245febe697eade65c52fb8950f81e3f735b0d7fe4bd3934583da3  src/bridge/decode_loop.h

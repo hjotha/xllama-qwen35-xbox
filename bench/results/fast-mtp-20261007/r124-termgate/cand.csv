@@ -1,0 +1,9 @@
+scenario,arm,ok,reason,n_ids,n_ref,parity,first_diff,active,drafted,rounds,lookup,ews,n_eval,eog_tok,eog_branch,stop_branch,stop_round
+cancel@6,cand,1,"-",6,18,1,-1,1,6,3,0,0,6,-1,-,-,-1
+cancel@13,cand,1,"-",13,25,1,-1,1,12,6,0,0,13,-1,-,-,-1
+stop@probe,cand,1,"eos",10,-1,-1,-1,1,6,3,0,0,10,248044,spec-reject,-,-1
+stop@run,cand,1,"-",10,-1,1,-1,1,6,3,0,1,10,-1,-,spec,5
+eog@0,cand,1,"cap",64,-1,-1,-1,1,46,25,0,0,64,-1,-,-,-1
+eog@1,cand,1,"cap",64,-1,-1,-1,1,36,23,0,0,64,-1,-,-,-1
+eog@2,cand,1,"cap",64,-1,-1,-1,1,42,24,0,0,64,-1,-,-,-1
+eog@3,cand,1,"eos",10,-1,-1,-1,1,6,3,0,0,10,248044,spec-reject,-,-1

@@ -1,0 +1,65 @@
+OFF-knob runs=10 diag-lines=0 | ON-knob runs=12 diag-lines=78312
+OFF-clean gate: PASS
+lines: {'exec': 78312, 'cens': 78312, 'cpu': 78312}
+pairs (exec [cens] cpu, g/sig/nodes/id consistent): 78312; violations: 0
+ov flags: {0} -> PASS (all 0)
+G1 resid1%: med=0.000 max=50.847 fails=3 -> FAIL
+G2 resid2%: med=44.23 max=98.60 fails=77145 -> FAIL
+G3 coverage: fails=0/78312 -> PASS
+G4 provenance: windows=42 missing-cpu=0 -> PASS
+
+MEASURED operation classes (% of C, n=78312):
+  kickoff                med=  0.00% mean=  0.74%
+  MUL_MAT fwd(caller)    med=  0.00% mean=  3.89%
+  STATE/SSM fwd          med=  0.00% mean= 15.93%
+  NORM/ROPE fwd          med=  5.88% mean=  8.22%
+  OTHER fwd              med= 10.00% mean= 24.06%
+  caller barrier wall    med=  1.85% mean=  2.51%
+  resid2 inside C         med= 44.23%
+Tier1 all: t med=0.056 p med=0.0010 a med=0.0000 c med=0.054
+
+big graphs nodes>=200 (n=528):
+  MUL_MAT          med= 68.42%
+  STATE/SSM        med=  1.77%
+  NORM/ROPE        med=  0.48%
+  OTHER            med= 24.68%
+  barrier wall     med=  3.21%
+  resid2            med=  0.98%
+  t med=18.9 c med=18.9
+
+census: emissions=78312 distinct sigs=10 all-trunc0=True
+  big census sig=15861920488204296645 nodes=437: ADD:17,MUL:26,CONCAT:5,RMS_NORM:30,MUL_MAT:49,SCALE:21,CPY:41,CONT:3,RESHAPE:59,VIEW:111,PERMUTE:4,TRANSPOSE:6,GET_ROWS:23,SET_ROWS:2,SOFT_MAX:1,ROPE:2,SSM_CONV:5,GATED_DELTA_NET:5,UNARY:16,GLU:11
+
+MEASURED overhead: OFF med=3857.9 (range 3789-3917) ON med=4330.2 (range 4261-4339)
+  decode delta=+472.3 ms (+12.24%) | within-arm spread max=128 ms
+  ttft OFF med=2155.3 ON med=2175.0 (+0.91%)
+  p1off: decode=['3917', '3883'] ttft=['2159', '2151']
+  p1on: decode=['4339', '4339'] ttft=['2180', '2168']
+  p2off: decode=['3789', '3832'] ttft=['2167', '2152']
+  p2on: decode=['4261', '4321'] ttft=['2176', '2174']
+
+FULL-ID parity (same package, diag ON/OFF):
+  run1: 7 dumps, 1 distinct EXACT
+  run2: 7 dumps, 1 distinct EXACT
+  run3: 7 dumps, 1 distinct EXACT
+IDs: ALL EXACT
+G1 failing calls (id, nodes, t_ms, resid1%): [(2292, 3, 0.059, 50.8), (6146, 4, 0.039, 7.7), (2312, 3, 0.051, 45.1)]
+G2 split: big(nodes>=200) 528 pairs fails=0 | small 77784 pairs fails=77145
+gate-passing calls: big=528 small=639 (of 528/77784)
+
+== conclusions restricted to G2-passing calls ==
+big passing n=528:
+  MUL_MAT          med= 68.42% mean= 70.89%
+  STATE/SSM        med=  1.77% mean=  1.63%
+  NORM/ROPE        med=  0.48% mean=  0.46%
+  OTHER            med= 24.68% mean= 22.93%
+  barrier wall     med=  3.21% mean=  3.21%
+  resid2          med=  0.98%
+small passing n=639:
+  MUL_MAT          med= 43.43%
+  STATE/SSM        med=  0.00%
+  NORM/ROPE        med=  1.24%
+  OTHER            med= 45.41%
+  barrier wall     med=  3.23%
+  resid2          med=  3.57%
+pair node-size histogram: {'>=200': 528, '46-199': 10032, '<46': 67752}

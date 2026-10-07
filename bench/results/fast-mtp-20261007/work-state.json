@@ -1,0 +1,23 @@
+{
+  "objective": "Fastest correct Qwen3.5-4B Q4_K_M MTP configuration on Xbox; incremental Windows iteration then optimized final delivery",
+  "local_worktree": "/home/hjotha/worktrees/xllama-mtp",
+  "local_branch": "spike/beellama-pin",
+  "windows_worktree": "C:/Users/hjotha/worktrees/xllama-mtp-fast",
+  "windows_branch": "perf/xbox-mtp-fast",
+  "windows_build_launcher": "scripts/run-xbox-build.ps1",
+  "scratch_helpers": "/tmp/xllama-build-review",
+  "installed_revision": 124,
+  "installed_sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+  "build_results": "Final124712.31s; warmIteration12541.12s withzeroobjects changed; changing attentionandstartupR123270.52s,one nativecompile",
+  "implemented": "Q8/GDN GPU, Q6auto HLSL tiles, native catch-up without unused logits, empty GPU output no-op, bounded draft threads on shared pool, consistent fused CPUFA2",
+  "critical_blocker": null,
+  "evidence": "r118-catchup-console.log proves empty Q6 output caused 497MiB weight copy to CPU; R119 fixed fallback and preserved full IDs, r119-catchup-summary.json; Q6 GPU pairs passed, r119-q6-selftest-summary.json",
+  "best_pilot_before_empty_fix": "Historical only; finalprofile supersedes pilot",
+  "comparison": "Final124 exactsame-config pairedrates+16.39%..46.80% across3prompts64/256,2measuredreps+warmup perarm,36fulltokenfilesPASS",
+  "next": [],
+  "controls": "Final profile in final124-acceptance.json; FA2nof splitKV,Q6auto0, GDN1,Q81,threads2/draft1,depth2pmin50,ctx2048,b64u64,KVF16,34GPUlayers,Q4auto/scope2",
+  "constraints": "No model inference on157. Preserve foreign3 submodule edits, Windows originalcheckout; worktree only. No Graphify. Bench twocol and termgate restore pretest profile now. Do not end at progress.",
+  "pool_correction": "Target persistent pools were already attached in both inference.cpp and session.cpp. R117 added unused private pool, not a causal fix, and R120 removes it.",
+  "final_evidence": "final124-acceptance.json",
+  "operation_complete": true
+}

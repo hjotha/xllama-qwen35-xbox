@@ -1,0 +1,99 @@
+[xllama] bench: Q6_K LM-head columns=0
+[xllama] bench: Q8_0 matmul=D3D12
+[xllama] bench: fused attention=forced
+[xllama] bench: GATED_DELTA_NET=D3D12
+[xllama] main_loop: cpurepackforcegemv.txt='2' -> repack control scope 2 (all small)
+[xllama] main_loop: d3d12spinwait.txt='(absent)' -> spin_wait_us=-1 (default unbounded spin)
+[xllama] main_loop: ggmlprof.txt='(absent)' -> none (default)
+[xllama] bench: d3d12twocol.txt='auto' -> kernel variant 2 (prev 0)
+[xllama] bench: prompt.txt 1379 bytes
+[xllama] bench model: qwen35-4b-mtp
+[xllama] bench prompt: <|im_start|>system
+You are a helpful AI assistant.<|im_end|>
+<|im_start|>user
+Th...
+[xllama] bench tokens sidecar: bench-tokens-1.txt
+[xllama] bench sampling: greedy=1 seed=1 temp=0.80 top_p=0.90 top_k=40
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] model loaded
+[xllama] gpu-mem post-load: current=2692MB budget=4147MB
+[xllama] speculative: target n_rs_seq=2 n_ubatch=64
+[xllama] prefill batch override: n_batch=64 n_ubatch=64
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   150.75 MiB
+[xllama] d3d12: D3D12_Host buffer 62.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.75 MiB
+[llama] sched_reserve: graph splits = 370
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 14
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] prompt tokens: 298
+[xllama] d3d12: D3D12_Host buffer 1.6 MiB
+[xllama] mtp: first draft pos=298 n_embd=2560 n_max=2 row[min,max]=[-23.221035,13.181052] dft_n_batch=4 dft_pos_max=297
+[xllama] d3d12: D3D12_Host buffer 3.5 MiB
+[xllama] done: load=4350ms prompt=88.2 tok/s decode=27.3 tok/s peak=3666MB drafted=154 spec_accept=130
+[xllama] MTP_STATS rounds=93 decodes=340 discarded=64 catchup_tok=252 draft_ms=0.0 sample_ms=0.0 topprob_ms=0.0 catchup_ms=0.0 verify_ms=0.0 corrective_ms=0.0
+[xllama] output: len=1246 fnv1a=2e4d4df15482fe2b
+[xllama] tokens dumped to Q:\Users\UserMgr1\AppData\Local\Packages\GianlucaMazza.xllama_pj67f1fcj4n14\LocalState\bench-tokens-1.txt
+[llama] ~llama_context: D3D12_Host compute buffer size is   3.8840 MiB, matches expectation of   3.8840 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 26967 graph_compute calls, 29901 matmuls (12604 2col), 6712.4 ms wall (5076.2 ms GPU)
+[xllama] d3d12: 3144 GATED_DELTA_NET dispatches
+[xllama] d3d12: Q6_K tiles 2col=32 4col=61
+[llama] ~llama_context: D3D12_Host compute buffer size is  62.7527 MiB, matches expectation of  62.7527 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] MTP_ACTIVE n_drafted=154 n_spec_accepted=130
+[xllama] bench-result.csv written
+[xllama] headless bench: done, exiting

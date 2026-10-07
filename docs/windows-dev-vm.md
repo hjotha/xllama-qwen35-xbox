@@ -90,6 +90,48 @@ The final artifact set must include:
 - dependency `.appx` files from `Dependencies\x64`
 - `uwp\xllama-test.cer`
 
+## Incremental Xbox iteration on the Windows build host
+
+The configured `.193` host reuses the `XllamaMtpBuild` interactive scheduled
+task and its existing signing certificate. From the dedicated build worktree:
+
+```powershell
+Set-Location C:\Users\hjotha\worktrees\xllama-mtp-fast
+.\scripts\run-xbox-build.ps1 -BuildRevision 126
+.\scripts\run-xbox-build.ps1 -BuildRevision 127 -Final -TimeoutSeconds 7200
+```
+
+The first command builds incrementally. The inference/ggml sources retain
+`/O2` and AVX2; UI glue uses its existing WinRT precompiled header and skips
+the optimizer. Whole-program optimization and LTCG are disabled. Objects
+and outputs use separate `Release-iteration` directories, NuGet packages
+are reused, and unchanged CRT DLLs keep their timestamps. The wrapper fixes
+the console's VCLibs dependency and signs the resulting package once.
+Use a revision greater than the last generated package; R125 was the last
+package generated during this campaign, and R124 is the installed delivery.
+
+`-Final` builds optimized Release with LTCG. Its cache is separate and reusable;
+the first final build compiles the native library in that mode. An explicit
+`build-uwp.ps1 -Clean` cleans the solution before building the native library
+and app, so the app build cannot remove a library that was just produced.
+Final intermediates use a project prefix ending in `-final`, so external
+source paths containing `..\` cannot resolve to the iteration objects.
+Both commands select the SDK already installed on the host, wait for the
+completion event, report the package hash, and refuse to replace an active
+build. Transfer only files whose content changed and verify their hashes
+before invoking the build, so unchanged inputs retain their timestamps.
+
+The initial cold iteration cache took 1,445 seconds on `.193`; subsequent
+signed packages with source changes took 75–186 seconds in the 2026-10-07
+campaign. The [R120 build log](../bench/results/fast-mtp-20261007/r120-build.log)
+records the mode, SDK, elapsed time and signed package hash.
+Recreating the iteration PCH/UI cache took 279 seconds (R121); changing the
+native attention kernel and its startup control took 270 seconds (R123), with
+one native compile command. These changes reused the remaining native objects.
+After the final R124 build, a source-unchanged iteration R125 took 41 seconds
+and changed no native or app objects in either cache. R125 was archived for
+the cache check; the console delivery remains the optimized R124 package.
+
 ## Deploy and diagnose
 
 From the Linux host, after copying the artifacts back:

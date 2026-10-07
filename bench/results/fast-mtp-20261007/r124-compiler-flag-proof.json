@@ -1,0 +1,30 @@
+{
+  "native-final": {
+    "entries": 233,
+    "O2": 233,
+    "Od": 0,
+    "GL": 233,
+    "tlog": "cache-native-final-command-post124.txt"
+  },
+  "native-iteration": {
+    "entries": 233,
+    "O2": 233,
+    "Od": 0,
+    "GL": 0,
+    "tlog": "cache-native-iteration-command-post124.txt"
+  },
+  "app-final": {
+    "entries": 39,
+    "O2": 39,
+    "Od": 0,
+    "GL": 39,
+    "tlog": "cache-app-final-command-post124.txt"
+  },
+  "app-iteration": {
+    "entries": 40,
+    "O2": 31,
+    "Od": 9,
+    "GL": 0,
+    "tlog": "cache-app-iteration-command-post124.txt"
+  }
+}

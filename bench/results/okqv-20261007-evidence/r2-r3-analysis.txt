@@ -1,0 +1,26 @@
+== R2 full-ID parity (okqv family, full sha256) ==
+  run1: 12 dumps, 2 distinct MISMATCH: {'d606316d32e5': ['okqv-20261007-clean.run1.tokens', 'okqv-20261007-probe.run1.tokens'], 'd9d23039f70e': ['okqv-20261007-eng-copies.run1.tokens', 'okqv-20261007-eng-off.run1.tokens', 'okqv-20261007-eng-sched-off.run1.tokens', 'okqv-20261007-eng-sched.run1.tokens', 'okqv-20261007-p1off.run1.tokens', 'okqv-20261007-p1on.run1.tokens', 'okqv-20261007-p2off.run1.tokens', 'okqv-20261007-p2on.run1.tokens', 'okqv-20261007-ref-off.run1.tokens', 'okqv-20261007-ref-on.run1.tokens']}
+  run2: 7 dumps, 1 distinct EXACT
+  run3: 6 dumps, 1 distinct EXACT
+  okqv run1 == legacy ref run1 digest: True
+R2 verdict: FAIL — token drift, REJECT
+catchup_tok in fresh log (d4 cells=63, np16 cells=16): {'16': 2, '63': 17}
+
+== R3 paired profile-OFF timings (whole = decode + ttft) ==
+  p1off: n=2 decode=['3907', '3837'] ttft=['2150', '2153'] whole=['6057', '5990']
+  p1on: n=2 decode=['3912', '3862'] ttft=['2143', '2176'] whole=['6055', '6038']
+  p2off: n=2 decode=['3891', '3900'] ttft=['2149', '2153'] whole=['6039', '6053']
+  p2on: n=2 decode=['3893', '3835'] ttft=['2146', '2143'] whole=['6039', '5978']
+
+per-pass paired deltas (ON - OFF; negative = ON faster):
+  pass1: whole 6024 -> 6047 (+23.1 ms, +0.38%); decode 3872 -> 3887 (+0.39%)
+  pass2: whole 6046 -> 6009 (-37.6 ms, -0.62%); decode 3895 -> 3864 (-0.81%)
+
+pooled: OFF whole med=6046.2 range=5990-6057 (spread 68)
+        ON  whole med=6038.7 range=5978-6055 (spread 77)
+gain (OFF->ON whole) = -0.12%  (-7.5 ms)
+combined within-arm spread (uncertainty proxy) = 77 ms
+pass gains: p1 +23.1 ms, p2 -37.6 ms (both must be negative for benefit)
+R3 verdict: REJECT — no material benefit (per rule)
+decode med OFF 3895 ON 3878 (-0.45%)
+ttft   med OFF 2151 ON 2145 (-0.31%)

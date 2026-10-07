@@ -52,6 +52,7 @@ void run_gpustep(bool inproc);
 // LocalFolder\d3d12be.flag; writes d3d12be-result.csv (+ .done). Every Q4_0 /
 // Q4_K / Q6_K shape against ggml's dequantizers. llama builds only.
 void run_d3d12_selftest();
+void run_tttarget();
 
 // GGUF GPU decode D2b: n_gpu_layers for interactive sessions (GUI and LAN API)
 // from LocalState\gguf_gpu_layers.txt, else LocalState\llama.ini [n_gpu_layers],
@@ -73,6 +74,8 @@ LlamaIni read_llama_ini();
 // the explicit single-purpose files keep overriding the .ini. No-op when the
 // file is absent.
 void apply_llama_ini_session(SessionParams& sp);
+// Apply the immutable twocol/repack startup profile once (App launch).
+void apply_startup_profile();
 
 // Heap-ceiling probe. Triggered by LocalFolder\ramceil.flag; writes
 // ramceil-result.csv (+ .done marker holding the stop reason) to LocalState.
@@ -100,6 +103,37 @@ void run_diffuse();
 // scripts/validate-logit-parity.sh pulls the dump and diffs it against the
 // llama.cpp golden via scripts/compare-logits.py.
 void run_logits();
+
+// Controlled single-vs-batch replay (plan 004 boundary diagnosis): knob files
+// replay_prompt.txt (prompt text), replay_ctx.txt (committed output ids),
+// replay_feed.txt (observed verify feed), replay_known.txt (sequential argmax
+// chain), replay_rem.txt (captured remainder ids through the output33
+// decision), replay_rem_known.txt (sequential argmax after each remainder
+// id). Writes replay-result.csv (+ .done): 46 rows per rep (seq, acc, tail,
+// seqc/accc/tailc x6, d0..d3, drem x6, e0..e2, etail, ecorr, erem x6,
+// accb x3, btail). UWP llama builds only; diagnostic, never a gate.
+void run_replay();
+
+// First-numeric-divergence capture (plan 004): same replay_* inputs as
+// run_replay (rem files not required). Triggered by diverge.flag; writes
+// diverge-result.csv (+ .done) with per-tensor B3-vs-B4 first-3-row
+// comparisons in graph order. Diagnostic, never a gate.
+void run_diverge();
+
+// Narrow z-0 capture (NARROW-TO-Z0): same replay_* inputs (rem files not
+// required). Triggered by znarrow.flag; writes znarrow-result.csv (+ .done)
+// with per-tensor B3-vs-B4 first-3-row comparisons for the z-0 neighborhood
+// only (z-0, norm-0, attn_norm-0), validated by the same shared exporter.
+// Diagnostic, never a gate.
+void run_znarrow();
+
+// Termination-state gate (plan 003): deterministic headless scenarios for
+// cancel through the real abort_flag, a boundary-spanning stop sequence and
+// natural EOG, each with full-id state checks. Same replay/bench knob files
+// select the arm (bench_mtp.txt / d3d12twocol.txt / cpurepackforcegemv.txt)
+// and termgate.txt selects scenarios ("cancel,stop,eog"; default all).
+// Writes termgate-result.csv (+ .done). Diagnostic, never a gate default.
+void run_termgate();
 
 // Single-op CPU-vs-DML repro (#111): loads LocalState\repro.onnx with a plain
 // ORT CPU session and a DML session, feeds repro-input.bin and writes

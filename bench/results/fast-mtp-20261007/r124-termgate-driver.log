@@ -1,0 +1,8 @@
+=== ARM=seq starting
+ARM=seq done at poll 4
+=== ARM=seq fetched (24 dumps, csv 598 bytes)
+=== ARM=cand starting
+ARM=cand done at poll 4
+=== ARM=cand fetched (24 dumps, csv 617 bytes)
+PASS: 16/16 termination scenarios,48 token dumps, cancel/stop state proofs and natural EOG parity
+TERMGATE SELECTED-PROFILE COMPLETE

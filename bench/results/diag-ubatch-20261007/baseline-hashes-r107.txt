@@ -1,0 +1,3 @@
+60ab40bdf1eb8f73f62548fde8d12e5012fc2870eed5d6283cee5a52a87991fa  include/xllama/inference_params.h
+1ca4897f79f1552ffa284068aa05337d353aac7c8201908c7ca25aa49af2734c  src/bridge/inference.cpp
+56e85ced236b682b98e695dc6578713f8f7103f210bbcc543d17c42860db53af  uwp/inference-bridge.cpp

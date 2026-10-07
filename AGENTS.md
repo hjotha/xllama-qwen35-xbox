@@ -26,6 +26,7 @@ Linux host toolchain (Ubuntu packages match CI):
 
 ```bash
 git submodule update --init --recursive
+./scripts/apply-uwp-patches.sh
 sudo apt-get install -y cmake build-essential libcurl4-openssl-dev
 ```
 
@@ -169,7 +170,7 @@ source ~/.config/xllama/xbox-env
 ```bash
 clang-format -i path/to/file.cpp
 # CI check (skips llama.cpp/ and build trees):
-find . -path ./llama.cpp -prune -o -path ./build -prune -o -path ./build-uwp-test -prune -o \
+find . -path ./llama.cpp -prune -o -path ./build -prune -o -path ./build-uwp-test -prune -o -path ./bench/results -prune -o \
   \( -name '*.cpp' -o -name '*.h' -o -name '*.c' \) -type f -print |
   xargs clang-format --dry-run --Werror
 ```
@@ -208,6 +209,7 @@ shaders/            HLSL and generated DXIL for the GPU probes
 bench/              Raw results and comparison policy
 demo/               Capture scripts: what the demo video records, reviewable in a PR
 patches/            llama.cpp and vendor patches applied at UWP build time
+plans/              Engineering plans and historical implementation notes
 diffusion/          SD-Turbo → ONNX host toolchain (not inside the MSIX)
 paper/              Citable research package
 llama.cpp/          Submodule. Do not edit in place.

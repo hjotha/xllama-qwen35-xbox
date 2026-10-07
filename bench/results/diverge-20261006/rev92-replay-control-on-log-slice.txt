@@ -1,0 +1,349 @@
+[xllama] replay.flag detected -> headless single-vs-batch replay (diagnostic, never a gate)
+[xllama] headless replay: starting
+[xllama] replay: controlled single-vs-batch replay (diagnostic)
+[xllama] replay: cpurepackforcegemv.txt=1 (repack force-gemv engaged)
+[xllama] replay model=Q:\Users\UserMgr1\AppData\Local\Packages\GianlucaMazza.xllama_pj67f1fcj4n14\LocalState\models\qwen35-4b-mtp\Qwen3.5-4B-MTP-Q4_K_M.gguf gguf=f3559ed1a2922585 bytes=2834975040 gpu_layers=28
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: MUL_MAT refused: q8_0 5120x2560 x [5120,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] replay prefix n=142 fnv=23dd5abcb2b0eee5 feed=[8772,279,84810,11] at pos=142 rem=[47973,11,567,1902,1353,506] at rempos=146 vocab=248320
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[xllama] d3d12: MUL_MAT refused: q6_K 2560x248320 x [2560,0,1,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] replay A-final rep=0 argmax=47973 margin=0.158970 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=0 k=0 pos=146 seqc0 arg=11 want=11 margin=4.6470 finite=1
+[xllama] replay cont rep=0 k=1 pos=147 seqc1 arg=567 want=567 margin=6.9407 finite=1
+[xllama] replay cont rep=0 k=2 pos=148 seqc2 arg=1902 want=1902 margin=0.4046 finite=1
+[xllama] replay cont rep=0 k=3 pos=149 seqc3 arg=1353 want=1353 margin=3.6846 finite=1
+[xllama] replay cont rep=0 k=4 pos=150 seqc4 arg=506 want=506 margin=9.6526 finite=1
+[xllama] replay cont rep=0 k=5 pos=151 seqc5 arg=279 want=279 margin=0.0026 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 4453 graph_compute calls, 5575 matmuls (0 2col), 1491.4 ms wall (924.3 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 22.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay C-batch rep=0 argmax=279 margin=4.850052 top=279:23681:264:6608:11148 finite=1
+[xllama] replay C-batch rep=0 argmax=84810 margin=7.409973 top=84810:3798:216387:799:16002 finite=1
+[xllama] replay C-batch rep=0 argmax=2261 margin=7.833061 top=2261:318:364:303:6575 finite=1
+[xllama] replay C-final rep=0 argmax=47973 margin=0.158970 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=0 k=0 pos=146 accc0 arg=11 want=11 margin=4.6470 finite=1
+[xllama] replay cont rep=0 k=1 pos=147 accc1 arg=567 want=567 margin=6.9407 finite=1
+[xllama] replay cont rep=0 k=2 pos=148 accc2 arg=1902 want=1902 margin=0.4046 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=0 k=3 pos=149 accc3 arg=1353 want=1353 margin=3.6846 finite=1
+[xllama] replay cont rep=0 k=4 pos=150 accc4 arg=506 want=506 margin=9.6526 finite=1
+[xllama] replay cont rep=0 k=5 pos=151 accc5 arg=279 want=279 margin=0.0026 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3798 graph_compute calls, 4755 matmuls (0 2col), 1259.3 ms wall (911.6 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 23.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay bw rep=0 row=0 b_arg=279 c_arg=279 maxabs=0.0232697 maxrel=0.000891365 match=1
+[xllama] replay bw rep=0 row=1 b_arg=84810 c_arg=84810 maxabs=0.0126675 maxrel=0.000480095 match=1
+[xllama] replay bw rep=0 row=2 b_arg=2261 c_arg=2261 maxabs=0.0422173 maxrel=0.0014863 match=1
+[xllama] replay B-tailrow rep=0 argmax=567 margin=4.520529 top=567:321:488:466:424 finite=1
+[xllama] replay mem rep=0 B-pre-trim kv_end=145
+[xllama] replay mem rep=0 B-post-trim kv_end=144
+[xllama] replay B-final rep=0 argmax=47973 margin=0.164652 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=0 k=0 pos=146 tailc0 arg=11 want=11 margin=4.6710 finite=1
+[xllama] replay cont rep=0 k=1 pos=147 tailc1 arg=567 want=567 margin=6.9495 finite=1
+[xllama] replay cont rep=0 k=2 pos=148 tailc2 arg=1902 want=1902 margin=0.4100 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=0 k=3 pos=149 tailc3 arg=1353 want=1353 margin=3.6956 finite=1
+[xllama] replay cont rep=0 k=4 pos=150 tailc4 arg=506 want=506 margin=9.6539 finite=1
+[xllama] replay cont rep=0 k=5 pos=151 tailc5 arg=279 want=279 margin=0.0153 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3798 graph_compute calls, 4755 matmuls (0 2col), 1254.4 ms wall (919.1 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 23.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay mem rep=0 D-post-B4 kv_end=145
+[xllama] replay dw rep=0 row=0 d_arg=279 want=279 maxabs=0.0232697 maxrel=0.000891365 match=1
+[xllama] replay dw rep=0 row=1 d_arg=84810 want=84810 maxabs=0.0126675 maxrel=0.000480095 match=1
+[xllama] replay dw rep=0 row=2 d_arg=2261 want=2261 maxabs=0.0422173 maxrel=0.0014863 match=1
+[xllama] replay dw rep=0 row=3 d_arg=47973 want=47973 maxabs=0.027401 maxrel=0.0012001 match=1
+[xllama] replay cont rep=0 k=0 pos=146 drem0 arg=11 want=11 margin=4.6746 finite=1
+[xllama] replay cont rep=0 k=1 pos=147 drem1 arg=567 want=567 margin=6.9604 finite=1
+[xllama] replay cont rep=0 k=2 pos=148 drem2 arg=1902 want=1902 margin=0.3873 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=0 k=3 pos=149 drem3 arg=1353 want=1353 margin=3.6738 finite=1
+[xllama] replay cont rep=0 k=4 pos=150 drem4 arg=506 want=506 margin=9.6761 finite=1
+[xllama] replay cont rep=0 k=5 pos=151 drem5 arg=279 want=279 margin=0.0084 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3667 graph_compute calls, 4591 matmuls (0 2col), 1233.9 ms wall (909.5 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 22.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay eb rep=0 row=0 e_arg=279 want=279 maxabs=0 maxrel=0 match=1
+[xllama] replay eb rep=0 row=1 e_arg=84810 want=84810 maxabs=0 maxrel=0 match=1
+[xllama] replay eb rep=0 row=2 e_arg=2261 want=2261 maxabs=0 maxrel=0 match=1
+[xllama] replay et rep=0 e_arg=567 b_arg=567 maxabs=0.299144 maxrel=0.0118541 match=1
+[xllama] replay mem rep=0 E-pre-trim kv_end=145
+[xllama] replay mem rep=0 E-post-trim kv_end=144
+[xllama] replay ec rep=0 e_arg=47973 c_arg=47973 maxabs=0.286738 maxrel=0.0124334 match=1
+[xllama] replay cont rep=0 k=0 pos=146 erem0 arg=11 want=11 margin=4.6067 finite=1
+[xllama] replay cont rep=0 k=1 pos=147 erem1 arg=567 want=567 margin=6.6698 finite=1
+[xllama] replay cont rep=0 k=2 pos=148 erem2 arg=1902 want=1902 margin=0.3026 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=0 k=3 pos=149 erem3 arg=1353 want=1353 margin=3.5311 finite=1
+[xllama] replay cont rep=0 k=4 pos=150 erem4 arg=506 want=506 margin=9.8266 finite=1
+[xllama] replay cont rep=0 k=5 pos=151 erem5 arg=279 want=279 margin=0.0717 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3929 graph_compute calls, 4919 matmuls (0 2col), 1265.0 ms wall (921.8 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] replay A-final rep=1 argmax=47973 margin=0.158970 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=1 k=0 pos=146 seqc0 arg=11 want=11 margin=4.6470 finite=1
+[xllama] replay cont rep=1 k=1 pos=147 seqc1 arg=567 want=567 margin=6.9407 finite=1
+[xllama] replay cont rep=1 k=2 pos=148 seqc2 arg=1902 want=1902 margin=0.4046 finite=1
+[xllama] replay cont rep=1 k=3 pos=149 seqc3 arg=1353 want=1353 margin=3.6846 finite=1
+[xllama] replay cont rep=1 k=4 pos=150 seqc4 arg=506 want=506 margin=9.6526 finite=1
+[xllama] replay cont rep=1 k=5 pos=151 seqc5 arg=279 want=279 margin=0.0026 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 4453 graph_compute calls, 5575 matmuls (0 2col), 1339.2 ms wall (924.3 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 22.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay C-batch rep=1 argmax=279 margin=4.850052 top=279:23681:264:6608:11148 finite=1
+[xllama] replay C-batch rep=1 argmax=84810 margin=7.409973 top=84810:3798:216387:799:16002 finite=1
+[xllama] replay C-batch rep=1 argmax=2261 margin=7.833061 top=2261:318:364:303:6575 finite=1
+[xllama] replay C-final rep=1 argmax=47973 margin=0.158970 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=1 k=0 pos=146 accc0 arg=11 want=11 margin=4.6470 finite=1
+[xllama] replay cont rep=1 k=1 pos=147 accc1 arg=567 want=567 margin=6.9407 finite=1
+[xllama] replay cont rep=1 k=2 pos=148 accc2 arg=1902 want=1902 margin=0.4046 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=1 k=3 pos=149 accc3 arg=1353 want=1353 margin=3.6846 finite=1
+[xllama] replay cont rep=1 k=4 pos=150 accc4 arg=506 want=506 margin=9.6526 finite=1
+[xllama] replay cont rep=1 k=5 pos=151 accc5 arg=279 want=279 margin=0.0026 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3798 graph_compute calls, 4755 matmuls (0 2col), 1244.2 ms wall (911.5 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 23.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay bw rep=1 row=0 b_arg=279 c_arg=279 maxabs=0.0232697 maxrel=0.000891365 match=1
+[xllama] replay bw rep=1 row=1 b_arg=84810 c_arg=84810 maxabs=0.0126675 maxrel=0.000480095 match=1
+[xllama] replay bw rep=1 row=2 b_arg=2261 c_arg=2261 maxabs=0.0422173 maxrel=0.0014863 match=1
+[xllama] replay B-tailrow rep=1 argmax=567 margin=4.520529 top=567:321:488:466:424 finite=1
+[xllama] replay mem rep=1 B-pre-trim kv_end=145
+[xllama] replay mem rep=1 B-post-trim kv_end=144
+[xllama] replay B-final rep=1 argmax=47973 margin=0.164652 top=47973:9640:42903:279:829 finite=1
+[xllama] replay cont rep=1 k=0 pos=146 tailc0 arg=11 want=11 margin=4.6710 finite=1
+[xllama] replay cont rep=1 k=1 pos=147 tailc1 arg=567 want=567 margin=6.9495 finite=1
+[xllama] replay cont rep=1 k=2 pos=148 tailc2 arg=1902 want=1902 margin=0.4100 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=1 k=3 pos=149 tailc3 arg=1353 want=1353 margin=3.6956 finite=1
+[xllama] replay cont rep=1 k=4 pos=150 tailc4 arg=506 want=506 margin=9.6539 finite=1
+[xllama] replay cont rep=1 k=5 pos=151 tailc5 arg=279 want=279 margin=0.0153 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3798 graph_compute calls, 4755 matmuls (0 2col), 1299.2 ms wall (919.6 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 23.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay mem rep=1 D-post-B4 kv_end=145
+[xllama] replay dw rep=1 row=0 d_arg=279 want=279 maxabs=0.0232697 maxrel=0.000891365 match=1
+[xllama] replay dw rep=1 row=1 d_arg=84810 want=84810 maxabs=0.0126675 maxrel=0.000480095 match=1
+[xllama] replay dw rep=1 row=2 d_arg=2261 want=2261 maxabs=0.0422173 maxrel=0.0014863 match=1
+[xllama] replay dw rep=1 row=3 d_arg=47973 want=47973 maxabs=0.027401 maxrel=0.0012001 match=1
+[xllama] replay cont rep=1 k=0 pos=146 drem0 arg=11 want=11 margin=4.6746 finite=1
+[xllama] replay cont rep=1 k=1 pos=147 drem1 arg=567 want=567 margin=6.9604 finite=1
+[xllama] replay cont rep=1 k=2 pos=148 drem2 arg=1902 want=1902 margin=0.3873 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=1 k=3 pos=149 drem3 arg=1353 want=1353 margin=3.6738 finite=1
+[xllama] replay cont rep=1 k=4 pos=150 drem4 arg=506 want=506 margin=9.6761 finite=1
+[xllama] replay cont rep=1 k=5 pos=151 drem5 arg=279 want=279 margin=0.0084 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3667 graph_compute calls, 4591 matmuls (0 2col), 1234.5 ms wall (909.7 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 22.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay eb rep=1 row=0 e_arg=279 want=279 maxabs=0 maxrel=0 match=1
+[xllama] replay eb rep=1 row=1 e_arg=84810 want=84810 maxabs=0 maxrel=0 match=1
+[xllama] replay eb rep=1 row=2 e_arg=2261 want=2261 maxabs=0 maxrel=0 match=1
+[xllama] replay et rep=1 e_arg=567 b_arg=567 maxabs=0.299144 maxrel=0.0118541 match=1
+[xllama] replay mem rep=1 E-pre-trim kv_end=145
+[xllama] replay mem rep=1 E-post-trim kv_end=144
+[xllama] replay ec rep=1 e_arg=47973 c_arg=47973 maxabs=0.286738 maxrel=0.0124334 match=1
+[xllama] replay cont rep=1 k=0 pos=146 erem0 arg=11 want=11 margin=4.6067 finite=1
+[xllama] replay cont rep=1 k=1 pos=147 erem1 arg=567 want=567 margin=6.6698 finite=1
+[xllama] replay cont rep=1 k=2 pos=148 erem2 arg=1902 want=1902 margin=0.3026 finite=1
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] replay cont rep=1 k=3 pos=149 erem3 arg=1353 want=1353 margin=3.5311 finite=1
+[xllama] replay cont rep=1 k=4 pos=150 erem4 arg=506 want=506 margin=9.8266 finite=1
+[xllama] replay cont rep=1 k=5 pos=151 erem5 arg=279 want=279 margin=0.0717 finite=1
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3929 graph_compute calls, 4919 matmuls (0 2col), 1276.8 ms wall (923.0 ms GPU)
+[xllama] replay rep=0 seq=47973 acc=47973 tail=47973 ac_maxabs=0 ac_match=1 bc_maxabs=0.0253153 bc_match=1
+[xllama] replay cont-rep=0 k=0 seq=11 acc=11 tail=11 acc_maxabs=0 acc_match=1 tail_maxabs=0.0808868 tail_match=1
+[xllama] replay cont-rep=0 k=1 seq=567 acc=567 tail=567 acc_maxabs=0 acc_match=1 tail_maxabs=0.0225484 tail_match=1
+[xllama] replay cont-rep=0 k=2 seq=1902 acc=1902 tail=1902 acc_maxabs=0 acc_match=1 tail_maxabs=0.0481205 tail_match=1
+[xllama] replay cont-rep=0 k=3 seq=1353 acc=1353 tail=1353 acc_maxabs=0 acc_match=1 tail_maxabs=0.036839 tail_match=1
+[xllama] replay cont-rep=0 k=4 seq=506 acc=506 tail=506 acc_maxabs=0 acc_match=1 tail_maxabs=0.0587482 tail_match=1
+[xllama] replay cont-rep=0 k=5 seq=279 acc=279 tail=279 acc_maxabs=0 acc_match=1 tail_maxabs=0.0968227 tail_match=1
+[xllama] replay dcont-rep=0 k=0 seq=11 d=11 d_maxabs=0.0706367 d_match=1
+[xllama] replay dcont-rep=0 k=1 seq=567 d=567 d_maxabs=0.0389462 d_match=1
+[xllama] replay dcont-rep=0 k=2 seq=1902 d=1902 d_maxabs=0.052224 d_match=1
+[xllama] replay dcont-rep=0 k=3 seq=1353 d=1353 d_maxabs=0.0476537 d_match=1
+[xllama] replay dcont-rep=0 k=4 seq=506 d=506 d_maxabs=0.0745144 d_match=1
+[xllama] replay dcont-rep=0 k=5 seq=279 d=279 d_maxabs=0.0822153 d_match=1
+[xllama] replay econt-rep=0 k=0 seq=11 e=11 e_maxabs=0.549843 e_match=1
+[xllama] replay econt-rep=0 k=1 seq=567 e=567 e_maxabs=0.487478 e_match=1
+[xllama] replay econt-rep=0 k=2 seq=1902 e=1902 e_maxabs=0.27482 e_match=1
+[xllama] replay econt-rep=0 k=3 seq=1353 e=1353 e_maxabs=0.202446 e_match=1
+[xllama] replay econt-rep=0 k=4 seq=506 e=506 e_maxabs=0.183063 e_match=1
+[xllama] replay econt-rep=0 k=5 seq=279 e=279 e_maxabs=0.278044 e_match=1
+[xllama] replay rep=1 seq=47973 acc=47973 tail=47973 ac_maxabs=0 ac_match=1 bc_maxabs=0.0253153 bc_match=1
+[xllama] replay cont-rep=1 k=0 seq=11 acc=11 tail=11 acc_maxabs=0 acc_match=1 tail_maxabs=0.0808868 tail_match=1
+[xllama] replay cont-rep=1 k=1 seq=567 acc=567 tail=567 acc_maxabs=0 acc_match=1 tail_maxabs=0.0225484 tail_match=1
+[xllama] replay cont-rep=1 k=2 seq=1902 acc=1902 tail=1902 acc_maxabs=0 acc_match=1 tail_maxabs=0.0481205 tail_match=1
+[xllama] replay cont-rep=1 k=3 seq=1353 acc=1353 tail=1353 acc_maxabs=0 acc_match=1 tail_maxabs=0.036839 tail_match=1
+[xllama] replay cont-rep=1 k=4 seq=506 acc=506 tail=506 acc_maxabs=0 acc_match=1 tail_maxabs=0.0587482 tail_match=1
+[xllama] replay cont-rep=1 k=5 seq=279 acc=279 tail=279 acc_maxabs=0 acc_match=1 tail_maxabs=0.0968227 tail_match=1
+[xllama] replay dcont-rep=1 k=0 seq=11 d=11 d_maxabs=0.0706367 d_match=1
+[xllama] replay dcont-rep=1 k=1 seq=567 d=567 d_maxabs=0.0389462 d_match=1
+[xllama] replay dcont-rep=1 k=2 seq=1902 d=1902 d_maxabs=0.052224 d_match=1
+[xllama] replay dcont-rep=1 k=3 seq=1353 d=1353 d_maxabs=0.0476537 d_match=1
+[xllama] replay dcont-rep=1 k=4 seq=506 d=506 d_maxabs=0.0745144 d_match=1
+[xllama] replay dcont-rep=1 k=5 seq=279 d=279 d_maxabs=0.0822153 d_match=1
+[xllama] replay econt-rep=1 k=0 seq=11 e=11 e_maxabs=0.549843 e_match=1
+[xllama] replay econt-rep=1 k=1 seq=567 e=567 e_maxabs=0.487478 e_match=1
+[xllama] replay econt-rep=1 k=2 seq=1902 e=1902 e_maxabs=0.27482 e_match=1
+[xllama] replay econt-rep=1 k=3 seq=1353 e=1353 e_maxabs=0.202446 e_match=1
+[xllama] replay econt-rep=1 k=4 seq=506 e=506 e_maxabs=0.183063 e_match=1
+[xllama] replay econt-rep=1 k=5 seq=279 e=279 e_maxabs=0.278044 e_match=1
+[xllama] replay done rows=92 fail=- msix=1dbff95e6004b7ab51e57b500f3c9aaa9e60870d4f8d514caa9a6eea4999e531

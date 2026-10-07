@@ -1,0 +1,51 @@
+{
+  "requested": {
+    "stem": "r120-win-t6",
+    "threads": 6,
+    "draft": 1,
+    "depth": 2,
+    "pmin": 50,
+    "q6": 4,
+    "gdn": 1,
+    "fa": 1,
+    "runs": 2,
+    "predict": 64,
+    "prompt": "bench/prompts/spec-chat-open.txt",
+    "reference": "r120-seq-fa1",
+    "ignore_eog": false,
+    "profile": 0
+  },
+  "profile": {
+    "d3d12q8.txt": "1",
+    "d3d12q6tile.txt": "4",
+    "d3d12gdn.txt": "1",
+    "flashattn.txt": "1",
+    "mtp_threads.txt": "1",
+    "mtp_catchup_logits.txt": "0",
+    "cpurepackforcegemv.txt": "2",
+    "d3d12twocol.txt": "auto"
+  },
+  "package_sha256": "0b3bddbbda4a1721261848bfd61c6357908bf98e41a46d99a59089807923e0ac",
+  "package_pfn": "GianlucaMazza.xllama_1.6.0.120_x64__pj67f1fcj4n14",
+  "classification": "pilot",
+  "status": "complete",
+  "rows": 1,
+  "stats": [
+    {
+      "run": 1,
+      "drafted": 35,
+      "accepted": 30
+    },
+    {
+      "run": 2,
+      "drafted": 35,
+      "accepted": 30
+    }
+  ],
+  "token_sha256": "84e081965076a0c947bb9d45953ec5b8768c25f79db37075a933553c000129f2",
+  "median": {
+    "decode_tok_s": 24.89,
+    "ttft_ms": 1378.7,
+    "peak_ws_mb": 3668.0
+  }
+}

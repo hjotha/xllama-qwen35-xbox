@@ -4,9 +4,9 @@
 # The Linux build globs llama.cpp sources via CMake; the UWP build lists them by
 # hand in ggml-uwp.vcxproj. src/models/*.cpp is now a MSBuild wildcard (one file
 # per architecture — the volatile set), so it can't drift. The top-level
-# src/*.cpp list is still explicit; this check fails CI if the submodule gained a
-# top-level source the vcxproj doesn't reference (the 657e011 bump did exactly
-# this with llama-kv-cache-dsa/dsv4.cpp → LNK2001).
+# src/*.cpp may also be wildcarded; this check accepts that complete inventory
+# or verifies explicit entries (the 657e011 bump added previously missing
+# llama-kv-cache-dsa/dsv4.cpp → LNK2001).
 #
 # Run after `git submodule update` (both UWP workflows do this via
 # apply-uwp-patches.sh).
@@ -29,7 +29,7 @@ missing=0
 for f in "$SRC"/*.cpp; do
 	base="$(basename "$f")"
 	# vcxproj entries look like: Include="..\llama.cpp\src\<base>"
-	if ! grep -qF "\\src\\$base\"" "$VCX"; then
+	if ! grep -qF '..\llama.cpp\src\*.cpp"' "$VCX" && ! grep -qF "\\src\\$base\"" "$VCX"; then
 		echo "DRIFT: llama.cpp/src/$base is not referenced in ggml-uwp.vcxproj"
 		missing=1
 	fi

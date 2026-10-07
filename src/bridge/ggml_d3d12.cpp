@@ -6,22 +6,362 @@
 #ifdef XLLAMA_USE_LLAMA
 
     #include "xllama/ggml_d3d12.h"
+    #include "xllama/platform.h"
 
     #include <algorithm>
+    #include <array>
+    #include <chrono>
     #include <cmath>
     #include <cstdio>
     #include <cstring>
     #include <ctime>
+    #include <random>
+    #include <set>
     #include <string>
     #include <vector>
+
+    #include "ggml-alloc.h"
+    #include "ggml-backend.h"
+    #include "ggml-cpu.h"
 
 namespace xllama {
 
 // --- Pure rules (host-tested) ---
 
 bool d3d12_weight_type_supported(ggml_type t) {
-    return t == GGML_TYPE_Q4_0 || t == GGML_TYPE_Q4_K || t == GGML_TYPE_Q5_K || t == GGML_TYPE_Q6_K;
+    return t == GGML_TYPE_Q4_0 || t == GGML_TYPE_Q4_K || t == GGML_TYPE_Q5_K ||
+           t == GGML_TYPE_Q6_K || t == GGML_TYPE_Q8_0;
 }
+
+static bool s_q8_enabled = true;
+void d3d12_set_q8_enabled(bool enabled) {
+    s_q8_enabled = enabled;
+}
+bool d3d12_q8_enabled() {
+    return s_q8_enabled;
+}
+
+static int s_q6_columns = 1;
+void d3d12_set_q6_columns(int columns) {
+    s_q6_columns = columns == 0 || columns == 2 || columns == 4 ? columns : 1;
+}
+int d3d12_q6_columns() {
+    return s_q6_columns;
+}
+bool d3d12_q6_allowlisted(int n, int k, int ncols) {
+    return n == 248320 && k == 2560 && (ncols == 2 || ncols == 3 || ncols == 5);
+}
+int d3d12_q6_columns_for(int n, int k, int ncols) {
+    if (!d3d12_q6_allowlisted(n, k, ncols))
+        return 1;
+    return s_q6_columns == 0 ? (ncols == 2 ? 2 : 4) : s_q6_columns;
+}
+
+static bool s_gdn_enabled = false;
+static int s_gdn_min_tokens = 1;
+void d3d12_set_gdn_enabled(bool enabled, int min_tokens) {
+    s_gdn_enabled = enabled;
+    s_gdn_min_tokens = min_tokens == 2 ? 2 : 1;
+}
+bool d3d12_gdn_enabled() {
+    return s_gdn_enabled;
+}
+
+bool d3d12_gdn_supported(const ggml_tensor* op) {
+    if (!d3d12_gdn_enabled() || !op || op->op != GGML_OP_GATED_DELTA_NET ||
+        op->type != GGML_TYPE_F32 || op->src[6] || op->src[7] || op->src[8] ||
+        op->op_params[1] != 0)
+        return false;
+    const int slots = op->op_params[0];
+    if (slots < 1 || slots > 17)
+        return false;
+    for (int i = 0; i < 6; ++i)
+        if (!op->src[i] || op->src[i]->type != GGML_TYPE_F32 || op->src[i]->ne[3] != 1)
+            return false;
+    const int64_t tokens = op->src[2]->ne[2];
+    if (tokens < s_gdn_min_tokens || tokens > 64)
+        return false;
+    for (int i = 0; i < 3; ++i) {
+        const ggml_tensor* t = op->src[i];
+        if (t->ne[0] != 128 || t->ne[1] != (i == 2 ? 32 : 16) || t->ne[2] != tokens ||
+            !ggml_is_contiguous_rows(t))
+            return false;
+        for (int j = 1; j < 3; ++j)
+            if (t->nb[j] % sizeof(float) != 0 || t->nb[j] / sizeof(float) > UINT32_MAX)
+                return false;
+    }
+    for (int i = 3; i < 5; ++i) {
+        const ggml_tensor* t = op->src[i];
+        if (t->ne[0] != 1 || t->ne[1] != 32 || t->ne[2] != tokens || !ggml_is_contiguous(t))
+            return false;
+    }
+    const ggml_tensor* s = op->src[5];
+    return s->ne[0] == 128 && s->ne[1] == 128 && s->ne[2] == 32 && ggml_is_contiguous(s) &&
+           ggml_is_contiguous(op) && op->ne[0] == 4096 && op->ne[1] == tokens + slots * 128 &&
+           op->ne[2] == 1 && op->ne[3] == 1;
+}
+
+// Host mirror of the HLSL eight-lane reduction and chronological state updates.
+// This is a small-op reference check, never a CPU inference implementation.
+void d3d12_gdn_emulate(const ggml_tensor* op, float* out) {
+    if (!out || !d3d12_gdn_supported(op))
+        return;
+    const int tokens = static_cast<int>(op->src[2]->ne[2]);
+    const int slots = op->op_params[0];
+    auto at = [&](int src, int token, int head, int i) {
+        const ggml_tensor* t = op->src[src];
+        const char* data = static_cast<const char*>(t->data);
+        return *reinterpret_cast<const float*>(data + token * t->nb[2] + head * t->nb[1] + i * 4);
+    };
+    auto reduce = [](float p[8]) {
+        for (int stride = 4; stride > 0; stride >>= 1)
+            for (int lane = 0; lane < stride; ++lane)
+                p[lane] += p[lane + stride];
+        return p[0];
+    };
+    std::vector<float> state(128 * 128);
+    const float* initial = static_cast<const float*>(op->src[5]->data);
+    const int s_off = 4096 * tokens;
+    const float scale = 1.0f / std::sqrt(128.0f);
+    for (int head = 0; head < 32; ++head) {
+        std::memcpy(state.data(), initial + head * 128 * 128, state.size() * sizeof(float));
+        for (int t = 0; t < tokens; ++t) {
+            const float decay = std::exp(at(3, t, head, 0));
+            const float beta = at(4, t, head, 0);
+            for (int col = 0; col < 128; ++col) {
+                float kv[8] = {}, attn[8] = {};
+                float* s = state.data() + col * 128;
+                for (int i = 0; i < 128; ++i) {
+                    s[i] *= decay;
+                    kv[i % 8] += s[i] * at(1, t, head % 16, i);
+                }
+                const float delta = (at(2, t, head, col) - reduce(kv)) * beta;
+                for (int i = 0; i < 128; ++i) {
+                    s[i] += at(1, t, head % 16, i) * delta;
+                    attn[i % 8] += s[i] * at(0, t, head % 16, i);
+                }
+                out[(t * 32 + head) * 128 + col] = reduce(attn) * scale;
+            }
+            const int slot = tokens - 1 - t;
+            if ((slots > 1 && slot < slots) || (slots == 1 && t + 1 == tokens))
+                std::memcpy(out + s_off + (slots == 1 ? 0 : slot) * 524288 + head * 128 * 128,
+                            state.data(), state.size() * sizeof(float));
+        }
+    }
+}
+
+namespace {
+
+struct GdnEnabledGuard {
+    bool previous = d3d12_gdn_enabled();
+    GdnEnabledGuard() {
+        d3d12_set_gdn_enabled(true);
+    }
+    ~GdnEnabledGuard() {
+        d3d12_set_gdn_enabled(previous);
+    }
+};
+
+// Only small synthetic ops: the same inputs feed the real CPU kernel and
+// either the GPU or its eight-lane host mirror. No model/context is loaded.
+D3d12SelftestRow run_gdn_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
+                              ggml_backend_t cpu, int tokens, int slots, int pad,
+                              std::vector<float>* result) {
+    D3d12SelftestRow row;
+    row.type = "gdn_k" + std::to_string(slots);
+    row.n = 128;
+    row.k = 32;
+    row.ncols = tokens;
+    row.pads = std::to_string(pad) + "/" + std::to_string(pad ? pad + 2 : 0) + "/" +
+               std::to_string(pad ? pad + 4 : 0); // Q/K/V head padding, floats
+    ggml_init_params ip = {};
+    ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx = ggml_init(ip);
+    if (!ctx) {
+        row.error = "GDN metadata allocation failed";
+        return row;
+    }
+    ggml_tensor* src[6] = {ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 128, 16, tokens, 1),
+                           ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 128, 16, tokens, 1),
+                           ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 128, 32, tokens, 1),
+                           ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 1, 32, tokens, 1),
+                           ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 1, 32, tokens, 1),
+                           ggml_new_tensor_4d(ctx, GGML_TYPE_F32, 128, 128, 32, 1)};
+    for (int i = 0; pad && i < 3; ++i) {
+        src[i]->nb[1] = (128 + pad + 2 * i) * sizeof(float);
+        src[i]->nb[2] = src[i]->nb[1] * src[i]->ne[1];
+        src[i]->nb[3] = src[i]->nb[2] * tokens;
+    }
+    ggml_tensor* test =
+        ggml_gated_delta_net(ctx, src[0], src[1], src[2], src[3], src[4], src[5], slots);
+    ggml_tensor* ref =
+        ggml_gated_delta_net(ctx, src[0], src[1], src[2], src[3], src[4], src[5], slots);
+    ggml_cgraph* gt = ggml_new_graph(ctx);
+    ggml_cgraph* gr = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gt, test);
+    ggml_build_forward_expand(gr, ref);
+    ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
+    auto cleanup = [&] {
+        if (buf)
+            ggml_backend_buffer_free(buf);
+        ggml_free(ctx);
+    };
+    if (!buf || !d3d12_gdn_supported(test)) {
+        row.error = "GDN allocation/contract failed";
+        cleanup();
+        return row;
+    }
+    constexpr float sentinel = 1e30f;
+    std::array<std::vector<float>, 6> inputs;
+    for (int j = 0; j < 6; ++j) {
+        inputs[j].assign(ggml_nbytes(src[j]) / sizeof(float), sentinel);
+        std::mt19937 rng(1701u + j); // tensor-specific, independent of T/K/padding
+        std::uniform_real_distribution<float> uni(-0.05f, 0.05f);
+        for (int64_t t = 0; t < src[j]->ne[2]; ++t)
+            for (int64_t h = 0; h < src[j]->ne[1]; ++h)
+                for (int64_t i = 0; i < src[j]->ne[0]; ++i) {
+                    float v = uni(rng);
+                    if (j == 3)
+                        v = -0.3f - std::fabs(v);
+                    if (j == 4)
+                        v += 0.5f;
+                    inputs[j][(t * src[j]->nb[2] + h * src[j]->nb[1]) / 4 + i] = v;
+                }
+        ggml_backend_tensor_set(src[j], inputs[j].data(), 0, ggml_nbytes(src[j]));
+    }
+    std::vector<float> got(ggml_nelements(test), sentinel), want(got);
+    ggml_backend_tensor_set(test, got.data(), 0, ggml_nbytes(test));
+    ggml_backend_tensor_set(ref, want.data(), 0, ggml_nbytes(ref));
+    std::vector<double> cpu_times, gpu_times, wall_times;
+    ggml_status status = GGML_STATUS_SUCCESS;
+    const int runs = backend ? 4 : 1; // GPU: warmup + three paired samples; host mirror: one check
+    for (int run = 0; run < runs; ++run) {
+        const auto tc = std::chrono::steady_clock::now();
+        status = ggml_backend_graph_compute(cpu, gr);
+        const double cpu_ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tc)
+                .count();
+        if (status != GGML_STATUS_SUCCESS)
+            break;
+        const double gpu0 = d3d12_gpu_ms();
+        const auto tg = std::chrono::steady_clock::now();
+        if (backend)
+            status = ggml_backend_graph_compute(backend, gt);
+        else
+            d3d12_gdn_emulate(test, got.data());
+        const double wall_ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - tg)
+                .count();
+        if (status != GGML_STATUS_SUCCESS)
+            break;
+        if (!backend || run > 0) {
+            cpu_times.push_back(cpu_ms);
+            wall_times.push_back(wall_ms);
+            gpu_times.push_back(d3d12_gpu_ms() - gpu0);
+        }
+    }
+    if (status != GGML_STATUS_SUCCESS) {
+        row.error = "GDN CPU/GPU graph compute failed";
+        cleanup();
+        return row;
+    }
+    row.d3d12_ran = backend != nullptr;
+    row.cpu_ms = d3d12_block_median(cpu_times);
+    row.wall_ms = d3d12_block_median(wall_times);
+    row.gpu_ms = d3d12_block_median(gpu_times);
+    row.wall_ms_range = d3d12_block_range(wall_times);
+    row.gpu_ms_range = d3d12_block_range(gpu_times);
+    if (backend)
+        ggml_backend_tensor_get(test, got.data(), 0, ggml_nbytes(test));
+    ggml_backend_tensor_get(ref, want.data(), 0, ggml_nbytes(ref));
+    const std::size_t valid = 4096u * tokens + 524288u * std::min(tokens, slots);
+    bool intact = true;
+    double max_ref = 0, max_diff = 0;
+    for (std::size_t i = 0; i < valid; ++i) {
+        intact &= std::isfinite(got[i]) && std::isfinite(want[i]);
+        max_ref = std::max(max_ref, std::fabs(static_cast<double>(want[i])));
+        max_diff = std::max(max_diff, std::fabs(static_cast<double>(got[i]) - want[i]));
+    }
+    for (std::size_t i = valid; i < got.size(); ++i)
+        intact &= got[i] == sentinel && want[i] == sentinel; // old unwritten slots are caller-owned
+    for (int j = 0; j < 6; ++j) {
+        std::vector<float> after(inputs[j].size());
+        ggml_backend_tensor_get(src[j], after.data(), 0, ggml_nbytes(src[j]));
+        intact &= after == inputs[j]; // inputs and their padding must stay untouched
+    }
+    row.rel_err = max_ref > 0 ? max_diff / max_ref : max_diff;
+    row.ok = intact && row.rel_err <= 1e-4;
+    if (!row.ok)
+        row.error = "GDN mismatch/input mutation/unwritten snapshot overwrite";
+    if (result)
+        *result = std::move(got);
+    cleanup();
+    return row;
+}
+
+void run_gdn_cases(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
+                   std::vector<D3d12SelftestRow>* out) {
+    GdnEnabledGuard guard;
+    ggml_backend_t cpu = ggml_backend_cpu_init();
+    ggml_threadpool_params tp = ggml_threadpool_params_default(6);
+    ggml_threadpool_t pool = ggml_threadpool_new(&tp);
+    if (!cpu || !pool) {
+        D3d12SelftestRow row;
+        row.type = "gdn";
+        row.error = "GDN CPU reference backend/threadpool unavailable";
+        out->push_back(row);
+        if (cpu)
+            ggml_backend_free(cpu);
+        if (pool)
+            ggml_threadpool_free(pool);
+        return;
+    }
+    ggml_backend_cpu_set_n_threads(cpu, 6);
+    ggml_backend_cpu_set_threadpool(cpu, pool);
+    std::vector<float> baseline;
+    auto check = [&](int tokens, int slots, int pad) {
+        std::vector<float> got;
+        D3d12SelftestRow row = run_gdn_case(backend, buft, cpu, tokens, slots, pad, &got);
+        if (row.ok && baseline.empty())
+            baseline = got; // first case: T=5, K=5
+        if (row.ok && !baseline.empty()) {
+            bool same =
+                std::equal(got.begin(), got.begin() + 4096 * std::min(tokens, 5), baseline.begin());
+            if (tokens <= 5) {
+                for (int j = 0; j < std::min(tokens, slots); ++j) {
+                    const int state_slot = slots == 1 ? 5 - tokens : 5 - tokens + j;
+                    const std::size_t a = 4096u * tokens + 524288u * j;
+                    const std::size_t b = 4096u * 5 + 524288u * state_slot;
+                    same &=
+                        std::equal(got.begin() + a, got.begin() + a + 524288, baseline.begin() + b);
+                }
+            }
+            if (!same) {
+                row.ok = false;
+                row.error = "GDN prefix/snapshot changed across T/K/padding";
+            }
+        }
+        char msg[320];
+        std::snprintf(msg, sizeof(msg),
+                      "[xllama] GDN_SELFTEST T=%d K=%d pads=%s gpu=%d cpu6_ms=%.4f wall_ms=%.4f "
+                      "gpu_ms=%.4f rel_err=%.8g snapshots=%d ok=%d\n",
+                      tokens, slots, row.pads.c_str(), row.d3d12_ran ? 1 : 0, row.cpu_ms,
+                      row.wall_ms, row.gpu_ms, row.rel_err, std::min(tokens, slots),
+                      row.ok ? 1 : 0);
+        log_output(msg);
+        out->push_back(std::move(row));
+    };
+    for (int slots : {5, 1})
+        for (int tokens : {5, 1, 2, 3, 4, 64})
+            check(tokens, slots, 0);
+    check(3, 5, 3);
+    check(4, 5, 3);
+    ggml_backend_free(cpu);
+    ggml_threadpool_free(pool);
+}
+
+} // namespace
 
 D3d12Dispatch d3d12_mm_dispatch(std::int64_t n, std::int64_t ncols) {
     D3d12Dispatch d;
@@ -36,16 +376,56 @@ D3d12Dispatch d3d12_mm_dispatch(std::int64_t n, std::int64_t ncols) {
     return d;
 }
 
+D3d12Dispatch d3d12_mm_dispatch_2col(std::int64_t n, std::int64_t ncols) {
+    D3d12Dispatch d;
+    if (n <= 0 || ncols <= 0)
+        return d;
+    const std::int64_t gx = (n + kD3d12MmvRows - 1) / kD3d12MmvRows;
+    const std::int64_t gy = (ncols + 1) / 2;
+    d.ok = gx <= kD3d12MaxGroups && gy <= kD3d12MaxGroups;
+    if (d.ok) {
+        d.groups_x = static_cast<std::uint32_t>(gx);
+        d.groups_y = static_cast<std::uint32_t>(gy);
+    }
+    return d;
+}
+
+D3d12Dispatch d3d12_mm_dispatch_4col(std::int64_t n, std::int64_t ncols) {
+    if (ncols <= 0)
+        return {};
+    return d3d12_mm_dispatch_2col(n, ncols / 2 + ncols % 2);
+}
+
+// Explicit allowlist for variant 2 (plan 004): the rev57 same-run pair
+// winners. Five q4_k shapes at B=2/3/5; each won with pair-delta ranges far
+// from zero (1.18x-1.59x). Deliberately absent: B=1 (single column, nothing
+// to tile), B=4 and prefill widths (unmeasured), 1024x2560 and smaller
+// (measured regressions), every other type.
+bool d3d12_2col_allowlisted(ggml_type t, int n, int k, int ncols) {
+    if (t != GGML_TYPE_Q4_K)
+        return false;
+    if (ncols != 2 && ncols != 3 && ncols != 5)
+        return false;
+    static const int kShapes[][2] = {
+        {2560, 4096}, {4096, 2560}, {8192, 2560}, {2560, 9216}, {9216, 2560},
+    };
+    for (const auto& s : kShapes)
+        if (n == s[0] && k == s[1])
+            return true;
+    return false;
+}
+
 int d3d12_mm_threads(std::int64_t k) {
     return k / kD3d12Chunk >= kD3d12LongKChunks ? kD3d12MmvThreadsLong : kD3d12MmvThreadsShort;
 }
 
 bool d3d12_mm_supported(const D3d12MatmulDesc& d) {
-    return d3d12_weight_type_supported(d.src0_type) && d.src0_in_weight_buffer &&
+    return d3d12_weight_type_supported(d.src0_type) &&
+           (d.src0_type != GGML_TYPE_Q8_0 || d3d12_q8_enabled()) && d.src0_in_weight_buffer &&
            d.src0_contiguous && d.src1_contiguous && d.src1_type == GGML_TYPE_F32 &&
            d.dst_type == GGML_TYPE_F32 && d.ne00 > 0 && d.ne00 % kD3d12Chunk == 0 &&
            d.ne00 == d.ne10 && d.ne02 == 1 && d.ne03 == 1 && d.ne12 == 1 && d.ne13 == 1 &&
-           d3d12_mm_dispatch(d.ne01, d.ne11).ok;
+           d.ne01 > 0 && (d.ne11 == 0 || d3d12_mm_dispatch(d.ne01, d.ne11).ok);
 }
 
 // --- Host emulation of shaders/ggml_d3d12_mmv_*.hlsl ---
@@ -170,6 +550,19 @@ float thread_chunk(ggml_type t, const std::uint8_t* w, std::uint32_t row_off, st
         }
         return d1 * lo - m1 * sxl + d2 * hi - m2 * sxh;
     }
+    if (t == GGML_TYPE_Q8_0) {
+        const std::uint32_t b = itid >> 1, h = itid & 1u;
+        const std::uint32_t e = 32u * b + 16u * h;
+        const std::uint32_t bb = row_off + (blk * 8u + b) * 34u;
+        const float d = h2f(ld16(w, bb));
+        float dotq = 0.f;
+        for (std::uint32_t j = 0; j < 4; ++j) {
+            const std::uint32_t q = ld32(w, bb + 2u + 16u * h + 4u * j);
+            for (std::uint32_t i = 0; i < 4; ++i)
+                dotq += sbyte(q, i) * xe[e + 4u * j + i];
+        }
+        return d * dotq;
+    }
     // Q6_K
     const std::uint32_t v = itid >> 3, l0 = 4u * (itid & 7u), is = l0 >> 4;
     const std::uint32_t e = 128u * v + l0;
@@ -226,6 +619,108 @@ void d3d12_mmv_emulate(ggml_type t, const std::uint8_t* w, std::size_t w_row_byt
     }
 }
 
+// --- Bounded weight generation (plan 004 shape-cost bench) ---
+
+void d3d12_q6_tile_emulate(const std::uint8_t* w, std::size_t w_row_bytes, const float* x,
+                           std::size_t x_stride, float* y, std::size_t y_stride, int n, int k,
+                           int ncols, int columns) {
+    if (!w || !x || !y || n <= 0 || k <= 0 || k % kD3d12Chunk != 0 || ncols <= 0 ||
+        (columns != 2 && columns != 4))
+        return;
+    const int threads = d3d12_mm_threads(k);
+    const int in_flight = threads / 16;
+    for (int col0 = 0; col0 < ncols; col0 += columns) {
+        for (int row0 = 0; row0 < n; row0 += kD3d12MmvRows) {
+            float acc[4][kD3d12MmvRows][kD3d12MmvThreadsLong] = {};
+            for (int tid = 0; tid < threads; ++tid) {
+                for (int blk = tid / 16; blk < k / kD3d12Chunk; blk += in_flight) {
+                    for (int r = 0; r < kD3d12MmvRows; ++r) {
+                        const auto offset =
+                            static_cast<std::uint32_t>(std::min(row0 + r, n - 1) * w_row_bytes);
+                        for (int c = 0; c < columns && col0 + c < ncols; ++c)
+                            acc[c][r][tid] += thread_chunk(GGML_TYPE_Q6_K, w, offset, blk, tid % 16,
+                                                           x + (col0 + c) * x_stride);
+                    }
+                }
+            }
+            for (int c = 0; c < columns; ++c) {
+                for (int stride = threads / 2; stride > 0; stride >>= 1)
+                    for (int tid = 0; tid < stride; ++tid)
+                        for (int r = 0; r < kD3d12MmvRows; ++r)
+                            acc[c][r][tid] += acc[c][r][tid + stride];
+                if (col0 + c < ncols)
+                    for (int r = 0; r < kD3d12MmvRows && row0 + r < n; ++r)
+                        y[(col0 + c) * y_stride + row0 + r] = acc[c][r][0];
+            }
+        }
+    }
+}
+
+bool d3d12_gen_weights(ggml_type t, int n, int k, std::mt19937& rng, void* dst) {
+    if (!dst || n <= 0 || k <= 0 || !d3d12_weight_type_supported(t))
+        return false;
+    const std::int64_t blck = ggml_blck_size(t);
+    if (blck <= 0 || k % blck != 0)
+        return false;
+    const std::size_t row_bytes = ggml_row_size(t, k);
+    if (row_bytes == 0)
+        return false;
+    const std::size_t rows = std::max<std::size_t>(
+        1, kD3d12GenScratchBytes / (static_cast<std::size_t>(k) * sizeof(float)));
+    std::vector<float> src(rows * static_cast<std::size_t>(k));
+    auto* out = static_cast<std::uint8_t*>(dst);
+    std::uniform_real_distribution<float> uni(-1.f, 1.f);
+    for (int r = 0; r < n; r += static_cast<int>(rows)) {
+        const std::size_t nr = std::min<std::size_t>(rows, static_cast<std::size_t>(n - r));
+        const std::size_t ne = nr * static_cast<std::size_t>(k);
+        // Row-major draw order, chunk after chunk: the concatenated stream is
+        // the same count in the same order as one n*k vector drawn at once.
+        for (std::size_t i = 0; i < ne; ++i)
+            src[i] = uni(rng);
+        // start=0 with the dst pre-advanced to row r: ggml_quantize_chunk
+        // writes at dst + (start/n_per_row) * row_size, so this is the same
+        // write the one-shot call would make for rows [r, r+nr), and the same
+        // flat super-block stream when k is a multiple of the block size.
+        const std::size_t want = nr * row_bytes;
+        if (ggml_quantize_chunk(t, src.data(), out + static_cast<std::size_t>(r) * row_bytes, 0,
+                                static_cast<std::int64_t>(nr), k, nullptr) != want)
+            return false;
+    }
+    return true;
+}
+
+bool d3d12_gen_weights_reference(ggml_type t, int n, int k, std::mt19937& rng, void* dst) {
+    if (!dst || n <= 0 || k <= 0 || !d3d12_weight_type_supported(t))
+        return false;
+    const std::int64_t blck = ggml_blck_size(t);
+    if (blck <= 0 || k % blck != 0)
+        return false;
+    const std::size_t row_bytes = ggml_row_size(t, k);
+    if (row_bytes == 0)
+        return false;
+    std::vector<float> src(static_cast<std::size_t>(n) * static_cast<std::size_t>(k));
+    std::uniform_real_distribution<float> uni(-1.f, 1.f);
+    for (float& v : src)
+        v = uni(rng);
+    return ggml_quantize_chunk(t, src.data(), dst, 0, n, k, nullptr) ==
+           static_cast<std::size_t>(n) * row_bytes;
+}
+
+double d3d12_block_median(const std::vector<double>& v) {
+    if (v.empty())
+        return 0.0;
+    std::vector<double> s(v);
+    std::sort(s.begin(), s.end());
+    return s[(s.size() - 1) / 2];
+}
+
+double d3d12_block_range(const std::vector<double>& v) {
+    if (v.empty())
+        return 0.0;
+    const auto mm = std::minmax_element(v.begin(), v.end());
+    return *mm.second - *mm.first;
+}
+
 // --- Selftest CSV ---
 
 const char* d3d12_selftest_csv_header() {
@@ -243,6 +738,29 @@ std::string format_d3d12_selftest_row(const D3d12SelftestRow& r, const char* hos
     char buf[512];
     std::snprintf(buf, sizeof(buf), "%s,%d,%d,%d,%.3g,%.4f,%.2f,%d,%d,%s,%s,%s\n", r.type.c_str(),
                   r.n, r.k, r.ncols, r.rel_err, r.gpu_ms, r.packed_gbs, r.ok ? 1 : 0,
+                  r.d3d12_ran ? 1 : 0, host_label ? host_label : "unknown", date_buf, err.c_str());
+    return buf;
+}
+const char* d3d12_shapecost_csv_header() {
+    return "type,n,k,ncols,rel_err,gpu_ms,wall_ms,gpu_ms_range,wall_ms_range,packed_gbs,weight_"
+           "mb,peak_ws_mb,variant,pair,twocol,pads,ok,d3d12_ran,host,date,error\n";
+}
+
+std::string format_d3d12_shapecost_row(const D3d12SelftestRow& r, const char* host_label) {
+    char date_buf[32];
+    std::time_t now = std::time(nullptr);
+    std::strftime(date_buf, sizeof(date_buf), "%Y-%m-%dT%H:%M:%SZ", std::gmtime(&now));
+    std::string err = r.error.empty() ? "-" : r.error;
+    for (char& ch : err)
+        if (ch == ',' || ch == '\n' || ch == '\r')
+            ch = ' ';
+    char buf[512];
+    std::snprintf(buf, sizeof(buf),
+                  "%s,%d,%d,%d,%.3g,%.4f,%.4f,%.4f,%.4f,%.2f,%.3f,%.1f,%d,%d,%llu,%s,%d,%d,%s,%s,"
+                  "%s\n",
+                  r.type.c_str(), r.n, r.k, r.ncols, r.rel_err, r.gpu_ms, r.wall_ms, r.gpu_ms_range,
+                  r.wall_ms_range, r.packed_gbs, r.weight_mb, r.peak_ws_mb, r.variant, r.pair,
+                  static_cast<unsigned long long>(r.twocol), r.pads.c_str(), r.ok ? 1 : 0,
                   r.d3d12_ran ? 1 : 0, host_label ? host_label : "unknown", date_buf, err.c_str());
     return buf;
 }
@@ -266,6 +784,71 @@ void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     out->push_back(std::move(r));
 }
 
+void run_d3d12_shape_cost(std::vector<D3d12SelftestRow>* out) {
+    if (!out)
+        return;
+    D3d12SelftestRow r;
+    r.type = "-";
+    r.error = "d3d12 unavailable on this platform";
+    out->push_back(std::move(r));
+}
+
+void run_d3d12_gdn_selftest(std::vector<D3d12SelftestRow>* out) {
+    if (out)
+        run_gdn_cases(nullptr, ggml_backend_cpu_buffer_type(), out);
+}
+
+void d3d12_set_kernel_variant(int) {}
+int d3d12_kernel_variant() {
+    return 0;
+}
+void d3d12_set_z0_dispatch_log(bool) {}
+void d3d12_set_z0_pin_cpu(bool) {}
+static int s_spin_wait_us = -1;
+void d3d12_set_spin_wait_us(int spin_us) {
+    s_spin_wait_us = spin_us;
+}
+int d3d12_spin_wait_us() {
+    return s_spin_wait_us;
+}
+bool d3d12_2col_available() {
+    return false;
+}
+
+bool d3d12_q6_tiled_available(int) {
+    return false;
+}
+std::uint64_t d3d12_q6_tiled_matmuls() {
+    return 0;
+}
+std::uint64_t d3d12_2col_matmuls() {
+    return 0;
+}
+std::string d3d12_2col_info() {
+    return "2col unavailable on this platform";
+}
+
+// Same names as the Windows build below, so a caller compiles either way; on a CPU
+// host there is no d3d12 backend and every count is zero.
+std::uint64_t d3d12_graph_calls() {
+    return 0;
+}
+std::uint64_t d3d12_matmul_count() {
+    return 0;
+}
+double d3d12_gpu_ms() {
+    return 0.0;
+}
+double d3d12_wall_ms() {
+    return 0.0;
+}
+void d3d12_set_shape_log(bool) {}
+void d3d12_set_scope(const char*, const char*) {}
+void d3d12_get_scope(const char**, const char**) {}
+bool d3d12_shape_drain(const char*) {
+    return true;
+}
+
 } // namespace xllama
 
     #else // _WIN32 — the backend itself
@@ -281,14 +864,23 @@ void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
         #include "ggml-alloc.h"
         #include "ggml-backend-impl.h"
         #include "ggml-backend.h"
+        #include "ggml_d3d12_gated_delta_net_dxil.h"
         #include "ggml_d3d12_mmv_q4_0_t128_dxil.h"
         #include "ggml_d3d12_mmv_q4_0_t64_dxil.h"
+        #include "ggml_d3d12_mmv_q4_k_t128_2col_dxil.h"
         #include "ggml_d3d12_mmv_q4_k_t128_dxil.h"
+        #include "ggml_d3d12_mmv_q4_k_t64_2col_dxil.h"
         #include "ggml_d3d12_mmv_q4_k_t64_dxil.h"
         #include "ggml_d3d12_mmv_q5_k_t128_dxil.h"
         #include "ggml_d3d12_mmv_q5_k_t64_dxil.h"
+        #include "ggml_d3d12_mmv_q6_k_t128_2col_dxil.h"
+        #include "ggml_d3d12_mmv_q6_k_t128_4col_dxil.h"
         #include "ggml_d3d12_mmv_q6_k_t128_dxil.h"
+        #include "ggml_d3d12_mmv_q6_k_t64_2col_dxil.h"
+        #include "ggml_d3d12_mmv_q6_k_t64_4col_dxil.h"
         #include "ggml_d3d12_mmv_q6_k_t64_dxil.h"
+        #include "ggml_d3d12_mmv_q8_0_t128_dxil.h"
+        #include "ggml_d3d12_mmv_q8_0_t64_dxil.h"
         #include "xllama/d3d12_dyn.h"
         #include "xllama/platform.h"
 
@@ -297,7 +889,7 @@ namespace {
 
 using d3d12c::ComPtr;
 
-enum Pso { kPsoQ40 = 0, kPsoQ4K = 1, kPsoQ5K = 2, kPsoQ6K = 3, kPsoCount = 4 };
+enum Pso { kPsoQ40 = 0, kPsoQ4K = 1, kPsoQ5K = 2, kPsoQ6K = 3, kPsoQ80 = 4, kPsoCount = 5 };
 
 int pso_for(ggml_type t) {
     switch (t) {
@@ -309,6 +901,8 @@ int pso_for(ggml_type t) {
         return kPsoQ5K;
     case GGML_TYPE_Q6_K:
         return kPsoQ6K;
+    case GGML_TYPE_Q8_0:
+        return kPsoQ80;
     default:
         return -1;
     }
@@ -321,7 +915,17 @@ struct Gpu {
     ComPtr<ID3D12CommandAllocator> alloc;
     ComPtr<ID3D12GraphicsCommandList> cl;
     ComPtr<ID3D12RootSignature> root;
+    ComPtr<ID3D12RootSignature> gdn_root;
+    ComPtr<ID3D12PipelineState> gdn_pso;
+    std::string gdn_error;
     ComPtr<ID3D12PipelineState> pso[kPsoCount][2]; // [type][0 = 64 threads, 1 = 128]
+    // Plan 004 two-column tile experiment: q4_k only, same two widths. Kept
+    // beside pso (not inside it) so the gate blobs and their indices never
+    // move. Null entries mean the NEW path is unavailable and dispatch falls
+    // back to OLD; a paired case then reports an error row, never silent OLD.
+    ComPtr<ID3D12PipelineState> pso2col[2];
+    ComPtr<ID3D12PipelineState> pso_q6col[2][2]; // [2/4 columns][64/128 threads]
+    std::string twocol_error;
     ComPtr<ID3D12QueryHeap> ts;
     ComPtr<ID3D12Resource> ts_rb;
     ComPtr<ID3D12Resource> staging;  // weight upload ring (kStagingBytes)
@@ -335,12 +939,45 @@ struct Gpu {
     // Per-backend-lifetime counters, logged when the backend is freed.
     std::uint64_t n_calls = 0;
     std::uint64_t n_matmuls = 0;
+    std::uint64_t n_gdn = 0;
+    // Actual two-column dispatches (plan 004): incremented only when the NEW
+    // kernel really runs. Requested variant (the global) is not evidence: B1
+    // stays OLD even under request 1, and non-Q4 never dispatches NEW.
+    std::uint64_t n_matmuls_2col = 0;
+    std::uint64_t n_q6_tiled[2] = {}; // actual 2/4-column Q6 dispatches
     double wall_ms = 0.0;
     double gpu_ms = 0.0;
     std::mutex mu;
     bool ok = false;
+    // Per-shape histogram switch (plan 003 stage 2). Defaults ON; the bench knob
+    // turns it off for the instrumentation-cost arm, because building and logging
+    // the aggregation is itself work in the hot path.
     std::string error;
 };
+
+// --- Plan 003 stage 2: shape histogram -------------------------------------
+// Separate from Gpu's lifetime counters: those are zeroed in backend_free and
+// cannot attribute anything to a phase, and they have no shape dimension. These
+// are keyed by (context, phase, type, N, K, B, threads) and drained at a phase or
+// generation boundary. One aggregation buffer owned by its own mutex, so the hot
+// path never nests locks on g.mu and never logs.
+struct ShapeAggKey {
+    std::string ctx;
+    std::string phase;
+    int type = 0;
+    long long n = 0;
+    long long k = 0;
+    long long b = 0;
+    int thr = 0;
+};
+std::mutex g_shape_mu;
+std::vector<std::pair<ShapeAggKey, long long>> g_shape_agg;
+bool g_shape_off = false;
+// Context/phase tags. Thread-local because decode and prefill run on the calling
+// thread, and a tag set around a target call must not leak into the drafter call
+// that follows it. Restored by the RAII guard at each call site.
+thread_local const char* t_ctx = "target";
+thread_local const char* t_phase = "decode";
 
 // Weight upload / readback ring. Mapped for the process lifetime and counted in
 // its working set, so it stays small: 64 MiB each put the first GPU-layer
@@ -348,21 +985,30 @@ struct Gpu {
 // round trips at load only.
 constexpr UINT64 kStagingBytes = 8ull << 20;
 
-ComPtr<ID3D12RootSignature> make_root_sig(ID3D12Device* device, std::string* err) {
-    D3D12_ROOT_PARAMETER p[4] = {};
+ComPtr<ID3D12RootSignature> make_root_sig(ID3D12Device* device, std::string* err,
+                                          bool gdn = false) {
+    D3D12_ROOT_PARAMETER p[8] = {};
     p[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
     p[0].Constants.ShaderRegister = 0;
-    p[0].Constants.Num32BitValues = 8;
-    p[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV; // t0 weights
-    p[1].Descriptor.ShaderRegister = 0;
-    p[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV; // u0 output
-    p[2].Descriptor.ShaderRegister = 0;
-    p[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV; // u1 activations
-    p[3].Descriptor.ShaderRegister = 1;
+    p[0].Constants.Num32BitValues = gdn ? 16 : 8;
+    if (gdn) {
+        // All seven GDN tensors live in D3D12_Host/UNORDERED_ACCESS.
+        for (int i = 0; i < 7; ++i) {
+            p[i + 1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+            p[i + 1].Descriptor.ShaderRegister = i;
+        }
+    } else {
+        p[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV; // t0 weights
+        p[1].Descriptor.ShaderRegister = 0;
+        p[2].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV; // u0 output
+        p[2].Descriptor.ShaderRegister = 0;
+        p[3].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV; // u1 activations
+        p[3].Descriptor.ShaderRegister = 1;
+    }
     for (auto& q : p)
         q.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
     D3D12_ROOT_SIGNATURE_DESC desc = {};
-    desc.NumParameters = 4;
+    desc.NumParameters = gdn ? 8 : 4;
     desc.pParameters = p;
     auto serialize = d3d12_dyn::SerializeRootSignature();
     if (!serialize) {
@@ -422,12 +1068,14 @@ bool init_gpu(Gpu& g) {
     const void* blobs[kPsoCount][2] = {{kGgmlD3d12MmvQ40T64Dxil, kGgmlD3d12MmvQ40T128Dxil},
                                        {kGgmlD3d12MmvQ4KT64Dxil, kGgmlD3d12MmvQ4KT128Dxil},
                                        {kGgmlD3d12MmvQ5KT64Dxil, kGgmlD3d12MmvQ5KT128Dxil},
-                                       {kGgmlD3d12MmvQ6KT64Dxil, kGgmlD3d12MmvQ6KT128Dxil}};
+                                       {kGgmlD3d12MmvQ6KT64Dxil, kGgmlD3d12MmvQ6KT128Dxil},
+                                       {kGgmlD3d12MmvQ80T64Dxil, kGgmlD3d12MmvQ80T128Dxil}};
     const size_t sizes[kPsoCount][2] = {
         {kGgmlD3d12MmvQ40T64DxilSize, kGgmlD3d12MmvQ40T128DxilSize},
         {kGgmlD3d12MmvQ4KT64DxilSize, kGgmlD3d12MmvQ4KT128DxilSize},
         {kGgmlD3d12MmvQ5KT64DxilSize, kGgmlD3d12MmvQ5KT128DxilSize},
-        {kGgmlD3d12MmvQ6KT64DxilSize, kGgmlD3d12MmvQ6KT128DxilSize}};
+        {kGgmlD3d12MmvQ6KT64DxilSize, kGgmlD3d12MmvQ6KT128DxilSize},
+        {kGgmlD3d12MmvQ80T64DxilSize, kGgmlD3d12MmvQ80T128DxilSize}};
     for (int i = 0; i < kPsoCount; ++i) {
         for (int wd = 0; wd < 2; ++wd) {
             D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
@@ -438,6 +1086,53 @@ bool init_gpu(Gpu& g) {
             if (FAILED(hr)) {
                 err = d3d12c::hr_message("CreateComputePipelineState", hr);
                 return false;
+            }
+        }
+    }
+    // Optional GDN PSO: failure leaves the existing matmul backend available.
+    g.gdn_root = make_root_sig(g.device.Get(), &g.gdn_error, true);
+    if (g.gdn_root) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+        pd.pRootSignature = g.gdn_root.Get();
+        pd.CS = {kGgmlD3d12GatedDeltaNetDxil, kGgmlD3d12GatedDeltaNetDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.gdn_pso));
+        if (FAILED(hr))
+            g.gdn_error = d3d12c::hr_message("CreateComputePipelineState(GDN)", hr);
+    }
+    if (!g.gdn_pso)
+        log_output("[xllama] d3d12: GDN unavailable: " + g.gdn_error + "\n");
+
+    // Two-column experiment PSOs (plan 004). A failure here must NOT fail the
+    // backend: the gate and production path are OLD-only. Record it; dispatch
+    // falls back to OLD and paired cases report explicit error rows.
+    const void* blobs2col[2] = {kGgmlD3d12MmvQ4K2ColT64Dxil, kGgmlD3d12MmvQ4K2ColT128Dxil};
+    const size_t sizes2col[2] = {kGgmlD3d12MmvQ4K2ColT64DxilSize, kGgmlD3d12MmvQ4K2ColT128DxilSize};
+    for (int wd = 0; wd < 2; ++wd) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+        pd.pRootSignature = g.root.Get();
+        pd.CS.pShaderBytecode = blobs2col[wd];
+        pd.CS.BytecodeLength = sizes2col[wd];
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.pso2col[wd]));
+        if (FAILED(hr) || !g.pso2col[wd]) {
+            g.pso2col[wd].Reset();
+            g.twocol_error = d3d12c::hr_message("CreateComputePipelineState(2col)", hr);
+        }
+    }
+    const void* q6blobs[2][2] = {{kGgmlD3d12MmvQ6K2ColT64Dxil, kGgmlD3d12MmvQ6K2ColT128Dxil},
+                                 {kGgmlD3d12MmvQ6K4ColT64Dxil, kGgmlD3d12MmvQ6K4ColT128Dxil}};
+    const size_t q6sizes[2][2] = {
+        {kGgmlD3d12MmvQ6K2ColT64DxilSize, kGgmlD3d12MmvQ6K2ColT128DxilSize},
+        {kGgmlD3d12MmvQ6K4ColT64DxilSize, kGgmlD3d12MmvQ6K4ColT128DxilSize}};
+    for (int cols = 0; cols < 2; ++cols) {
+        for (int wide = 0; wide < 2; ++wide) {
+            D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+            pd.pRootSignature = g.root.Get();
+            pd.CS = {q6blobs[cols][wide], q6sizes[cols][wide]};
+            hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.pso_q6col[cols][wide]));
+            if (FAILED(hr)) {
+                g.pso_q6col[cols][wide].Reset();
+                log_output("[xllama] d3d12: Q6 tile unavailable: " +
+                           d3d12c::hr_message("CreateComputePipelineState(Q6 tile)", hr) + "\n");
             }
         }
     }
@@ -488,7 +1183,7 @@ template <typename F> bool run_now(Gpu& g, F&& record) {
     g.cl->Close();
     ID3D12CommandList* lists[] = {g.cl.Get()};
     g.queue->ExecuteCommandLists(1, lists);
-    return g.fence.signal_and_wait(g.queue.Get(), /*spin=*/true);
+    return g.fence.signal_and_wait(g.queue.Get(), /*spin=*/true, d3d12_spin_wait_us());
 }
 
 // --- Buffers ---
@@ -701,6 +1396,14 @@ bool is_ours(ggml_backend_buffer_type_t buft) {
     return buft == &kHostBuft || buft == &kWeightsBuft;
 }
 
+// Narrow z-0 dispatch record (see header): log-only, default off. The flag
+// lives here (ahead of the matmul record path); the setter sits beside the
+// other switches further down, in xllama namespace for linkage.
+static bool g_z0_dispatch_log = false;
+static int g_spin_wait_us = -1; // -1 = historical unbounded spin (see ggml_d3d12.h)
+// Narrow z-0 placement pin (see header + setter beside the other switches).
+static bool g_z0_pin_cpu = false;
+
 // --- Backend ---
 
 const char* backend_name(ggml_backend_t) {
@@ -712,12 +1415,26 @@ void backend_free(ggml_backend_t b) {
         std::lock_guard<std::mutex> lock(g.mu);
         char msg[256];
         std::snprintf(msg, sizeof(msg),
-                      "[xllama] d3d12: %llu graph_compute calls, %llu matmuls, %.1f ms wall "
-                      "(%.1f ms GPU)\n",
+                      "[xllama] d3d12: %llu graph_compute calls, %llu matmuls (%llu 2col), "
+                      "%.1f ms wall (%.1f ms GPU)\n",
                       static_cast<unsigned long long>(g.n_calls),
-                      static_cast<unsigned long long>(g.n_matmuls), g.wall_ms, g.gpu_ms);
+                      static_cast<unsigned long long>(g.n_matmuls),
+                      static_cast<unsigned long long>(g.n_matmuls_2col), g.wall_ms, g.gpu_ms);
         log_output(msg);
-        g.n_calls = g.n_matmuls = 0;
+        if (g.n_gdn > 0) {
+            std::snprintf(msg, sizeof(msg), "[xllama] d3d12: %llu GATED_DELTA_NET dispatches\n",
+                          static_cast<unsigned long long>(g.n_gdn));
+            log_output(msg);
+        }
+        g.n_gdn = 0;
+        if (g.n_q6_tiled[0] || g.n_q6_tiled[1]) {
+            std::snprintf(msg, sizeof(msg), "[xllama] d3d12: Q6_K tiles 2col=%llu 4col=%llu\n",
+                          static_cast<unsigned long long>(g.n_q6_tiled[0]),
+                          static_cast<unsigned long long>(g.n_q6_tiled[1]));
+            log_output(msg);
+        }
+        g.n_q6_tiled[0] = g.n_q6_tiled[1] = 0;
+        g.n_calls = g.n_matmuls = g.n_matmuls_2col = 0;
         g.wall_ms = g.gpu_ms = 0.0;
     }
     delete b;
@@ -725,14 +1442,21 @@ void backend_free(ggml_backend_t b) {
 
 ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
     Gpu& g = gpu();
-    std::vector<const ggml_tensor*> mm;
+    std::vector<const ggml_tensor*> ops;
+    std::size_t n_mm = 0, n_gdn = 0;
     for (int i = 0; i < ggml_graph_n_nodes(cgraph); ++i) {
         const ggml_tensor* node = ggml_graph_node(cgraph, i);
-        if ((node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0)
+        if (ggml_is_empty(node) || (node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0)
             continue;
         switch (node->op) {
         case GGML_OP_MUL_MAT:
-            mm.push_back(node);
+            ops.push_back(node);
+            ++n_mm;
+            break;
+        case GGML_OP_GATED_DELTA_NET:
+            GGML_ASSERT(d3d12_gdn_supported(node) && g.gdn_pso);
+            ops.push_back(node);
+            ++n_gdn;
             break;
         case GGML_OP_NONE:
         case GGML_OP_RESHAPE:
@@ -744,7 +1468,7 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
             GGML_ABORT("d3d12: unsupported op %s", ggml_op_desc(node));
         }
     }
-    if (mm.empty())
+    if (ops.empty())
         return GGML_STATUS_SUCCESS;
 
     std::lock_guard<std::mutex> lock(g.mu);
@@ -752,25 +1476,129 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
     const bool ts = g.ts && g.ts_rb;
     const bool ran = run_now(g, [&](ID3D12GraphicsCommandList* cl) {
         cl->SetComputeRootSignature(g.root.Get());
+        bool gdn_root_active = false;
         if (ts)
             cl->EndQuery(g.ts.Get(), D3D12_QUERY_TYPE_TIMESTAMP, 0);
-        for (const ggml_tensor* node : mm) {
+        for (const ggml_tensor* node : ops) {
+            if (node->op == GGML_OP_GATED_DELTA_NET) {
+                const ggml_tensor* q = node->src[0];
+                const ggml_tensor* k = node->src[1];
+                const ggml_tensor* v = node->src[2];
+                std::uint32_t c[16] = {static_cast<std::uint32_t>(v->ne[2]),
+                                       static_cast<std::uint32_t>(node->op_params[0]),
+                                       static_cast<std::uint32_t>(q->nb[1] / 4),
+                                       static_cast<std::uint32_t>(q->nb[2] / 4),
+                                       static_cast<std::uint32_t>(k->nb[1] / 4),
+                                       static_cast<std::uint32_t>(k->nb[2] / 4),
+                                       static_cast<std::uint32_t>(v->nb[1] / 4),
+                                       static_cast<std::uint32_t>(v->nb[2] / 4),
+                                       static_cast<std::uint32_t>(4096 * v->ne[2]),
+                                       524288,
+                                       32,
+                                       16,
+                                       0,
+                                       0,
+                                       0,
+                                       0};
+                const float scale = 1.0f / std::sqrt(128.0f);
+                std::memcpy(c + 12, &scale, sizeof(scale));
+                cl->SetComputeRootSignature(g.gdn_root.Get());
+                gdn_root_active = true;
+                cl->SetPipelineState(g.gdn_pso.Get());
+                cl->SetComputeRoot32BitConstants(0, 16, c, 0);
+                for (int i = 0; i < 6; ++i) {
+                    GGML_ASSERT(node->src[i]->buffer && node->src[i]->buffer->buft == &kHostBuft);
+                    cl->SetComputeRootUnorderedAccessView(i + 1, tensor_va(node->src[i]));
+                }
+                GGML_ASSERT(node->buffer && node->buffer->buft == &kHostBuft);
+                cl->SetComputeRootUnorderedAccessView(7, tensor_va(node));
+                cl->Dispatch(32, 1, 16);
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
+            if (gdn_root_active) {
+                cl->SetComputeRootSignature(g.root.Get());
+                gdn_root_active = false;
+            }
             const ggml_tensor* w = node->src[0];
             const ggml_tensor* x = node->src[1];
             GGML_ASSERT(w->buffer && w->buffer->buft == &kWeightsBuft);
             GGML_ASSERT(x->buffer && is_ours(x->buffer->buft));
             GGML_ASSERT(node->buffer && is_ours(node->buffer->buft));
-            const D3d12Dispatch d = d3d12_mm_dispatch(node->ne[0], node->ne[1]);
+            // Plan 004 two-column tile. Variant 1 (bench experiment) forces NEW
+            // wherever applicable; variant 2 (real decode) additionally
+            // requires the explicit allowlist, so unmeasured widths (B=4,
+            // prefill) and measured regressions stay OLD. B=1 can never take
+            // this branch: the B1 path is exactly OLD. ncols rides in constant
+            // dword 6 (pad0 renamed ncols in the shared header; one-column
+            // kernels never read it).
+            const int kvar = d3d12_kernel_variant();
+            const int bn = static_cast<int>(node->ne[1]);
+            const int wide = d3d12_mm_threads(w->ne[0]) == kD3d12MmvThreadsLong ? 1 : 0;
+            const int q6_cols =
+                d3d12_q6_columns_for(static_cast<int>(w->ne[1]), static_cast<int>(w->ne[0]), bn);
+            const int q6_index = q6_cols == 4 ? 1 : 0;
+            const bool q6_tiled =
+                q6_cols > 1 && g.pso_q6col[q6_index][wide] && w->type == GGML_TYPE_Q6_K &&
+                d3d12_q6_allowlisted(static_cast<int>(w->ne[1]), static_cast<int>(w->ne[0]), bn);
+            const bool two_col =
+                g.pso2col[0] && g.pso2col[1] && w->type == GGML_TYPE_Q4_K &&
+                ((kvar == 1 && bn >= 2) ||
+                 (kvar == 2 && d3d12_2col_allowlisted(w->type, static_cast<int>(w->ne[1]),
+                                                      static_cast<int>(w->ne[0]), bn)));
+            const int columns = q6_tiled ? q6_cols : (two_col ? 2 : 1);
+            const D3d12Dispatch d =
+                columns == 4 ? d3d12_mm_dispatch_4col(node->ne[0], node->ne[1])
+                             : (columns == 2 ? d3d12_mm_dispatch_2col(node->ne[0], node->ne[1])
+                                             : d3d12_mm_dispatch(node->ne[0], node->ne[1]));
             const std::uint32_t c[8] = {static_cast<std::uint32_t>(w->ne[1]),
                                         static_cast<std::uint32_t>(w->ne[0]),
                                         static_cast<std::uint32_t>(w->ne[0] / kD3d12Chunk),
                                         static_cast<std::uint32_t>(w->nb[1]),
                                         static_cast<std::uint32_t>(x->nb[1] / sizeof(float)),
                                         static_cast<std::uint32_t>(node->nb[1] / sizeof(float)),
-                                        0,
+                                        columns > 1 ? static_cast<std::uint32_t>(node->ne[1]) : 0,
                                         0};
-            const int wide = d3d12_mm_threads(w->ne[0]) == kD3d12MmvThreadsLong ? 1 : 0;
-            cl->SetPipelineState(g.pso[pso_for(w->type)][wide].Get());
+            // Narrow dispatch record (see header): matched by node name OR by
+            // stable weight identity, so a renamed graph node is still caught
+            // (the `via=` field then reveals the transform). Log-only.
+            const bool z_by_node = std::strcmp(node->name, "z-0") == 0;
+            const bool z_by_weight =
+                d3d12_is_z0_weight(w->name, w->ne[0], w->ne[1], w->type == GGML_TYPE_Q4_K);
+            if (g_z0_dispatch_log && (z_by_node || z_by_weight)) {
+                // Narrow dispatch record: everything that selects the executed
+                // kernel for this exact node. Log-only; numerics untouched.
+                const bool x_in_weights = x->buffer && x->buffer->buft == &kWeightsBuft;
+                const bool y_in_weights = node->buffer && node->buffer->buft == &kWeightsBuft;
+                char lb[512];
+                std::snprintf(lb, sizeof(lb),
+                              "[xllama] d3d12 zdispatch via=%s node=%s w=%s[%s %lldx%lld] "
+                              "x=%s[%s] y=[%s %lldx%lld] wbuf=%s xbuf=%s ybuf=%s "
+                              "twocol=%d wide=%d threads=%d groups=%ux%u "
+                              "c=[%u,%u,%u,%u,%u,%u,%u,%u]\n",
+                              z_by_node ? "node-name" : "weight-identity",
+                              node->name[0] != '\0' ? node->name : "-",
+                              w->name[0] != '\0' ? w->name : "-", ggml_type_name(w->type),
+                              static_cast<long long>(w->ne[0]), static_cast<long long>(w->ne[1]),
+                              x->name[0] != '\0' ? x->name : "-", ggml_type_name(x->type),
+                              ggml_type_name(node->type), static_cast<long long>(node->ne[0]),
+                              static_cast<long long>(node->ne[1]), "weights",
+                              x_in_weights ? "weights" : "host", y_in_weights ? "weights" : "host",
+                              two_col ? 1 : 0, wide, d3d12_mm_threads(w->ne[0]), d.groups_x,
+                              d.groups_y, c[0], c[1], c[2], c[3], c[4], c[5], c[6], c[7]);
+                log_output(lb);
+            }
+            if (q6_tiled) {
+                cl->SetPipelineState(g.pso_q6col[q6_index][wide].Get());
+                ++g.n_q6_tiled[q6_index];
+            } else if (two_col)
+                cl->SetPipelineState(g.pso2col[wide].Get());
+            else
+                cl->SetPipelineState(g.pso[pso_for(w->type)][wide].Get());
+            if (two_col)
+                ++g.n_matmuls_2col;
             cl->SetComputeRoot32BitConstants(0, 8, c, 0);
             cl->SetComputeRootShaderResourceView(1, tensor_va(w));
             cl->SetComputeRootUnorderedAccessView(2, tensor_va(node));
@@ -799,10 +1627,43 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
         }
     }
     ++g.n_calls;
-    g.n_matmuls += mm.size();
+    g.n_matmuls += n_mm;
+    g.n_gdn += n_gdn;
     g.gpu_ms += g.last_gpu_ms;
     g.wall_ms +=
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+
+    // Plan 003 stage 2: shape counts into the aggregation buffer, keyed by
+    // context + phase + shape. g.mu is already held here, so this only appends to
+    // the histogram's OWN mutex-protected buffer — never logs and never takes a
+    // second lock on g.mu. Nothing is emitted from the hot path; the boundary call
+    // d3d12_shape_drain() logs outside both locks.
+    if (!g_shape_off) {
+        std::lock_guard<std::mutex> shlock(g_shape_mu);
+        const char* ctx = t_ctx;
+        const char* phase = t_phase;
+        for (const ggml_tensor* node : ops) {
+            if (node->op != GGML_OP_MUL_MAT)
+                continue;
+            const ggml_tensor* w = node->src[0];
+            const int type = static_cast<int>(w->type);
+            const long long n = static_cast<long long>(w->ne[1]);
+            const long long k = static_cast<long long>(w->ne[0]);
+            const long long b = static_cast<long long>(node->ne[1]);
+            const int thr = d3d12_mm_threads(w->ne[0]);
+            bool found = false;
+            for (auto& e : g_shape_agg) {
+                if (e.first.type == type && e.first.n == n && e.first.k == k && e.first.b == b &&
+                    e.first.thr == thr && e.first.ctx == ctx && e.first.phase == phase) {
+                    e.second += 1;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                g_shape_agg.push_back({ShapeAggKey{ctx, phase, type, n, k, b, thr}, 1});
+        }
+    }
     return GGML_STATUS_SUCCESS;
 }
 
@@ -877,6 +1738,8 @@ ggml_backend_buffer_type_t dev_buffer_type(ggml_backend_dev_t) {
 
 bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
     switch (op->op) {
+    case GGML_OP_GATED_DELTA_NET:
+        return gpu().gdn_pso && d3d12_gdn_supported(op);
     case GGML_OP_NONE:
     case GGML_OP_RESHAPE:
     case GGML_OP_VIEW:
@@ -884,6 +1747,32 @@ bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
     case GGML_OP_TRANSPOSE:
         return true;
     case GGML_OP_MUL_MAT: {
+        // Narrow z-0 placement pin (first-divergence diagnosis): refuse exactly
+        // the z-0 node so it falls back to the CPU kernel path, testing whether
+        // the B3/B4 width variation follows placement. Matched by node name OR
+        // by stable weight identity (name + shape + type), so a renamed graph
+        // node cannot silently dodge it; the hit line says which matcher fired.
+        // Opt-in via knob (default off); every other node is untouched.
+        if (g_z0_pin_cpu) {
+            const ggml_tensor* w0 = op->src[0];
+            const bool by_node = std::strcmp(op->name, "z-0") == 0;
+            const bool by_weight =
+                w0 != nullptr &&
+                d3d12_is_z0_weight(w0->name, w0->ne[0], w0->ne[1], w0->type == GGML_TYPE_Q4_K);
+            if (by_node || by_weight) {
+                char lb[256];
+                std::snprintf(
+                    lb, sizeof(lb),
+                    "[xllama] d3d12: zpin REFUSED node=%s via=%s "
+                    "w=%s[%s %lldx%lld]\n",
+                    op->name[0] != '\0' ? op->name : "-", by_node ? "node-name" : "weight-identity",
+                    w0 != nullptr ? w0->name : "-", w0 != nullptr ? ggml_type_name(w0->type) : "?",
+                    w0 != nullptr ? static_cast<long long>(w0->ne[0]) : -1,
+                    w0 != nullptr ? static_cast<long long>(w0->ne[1]) : -1);
+                log_output(lb);
+                return false;
+            }
+        }
         const ggml_tensor* w = op->src[0];
         const ggml_tensor* x = op->src[1];
         D3d12MatmulDesc d;
@@ -903,10 +1792,11 @@ bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
         d.src0_in_weight_buffer = w->buffer && w->buffer->buft == &kWeightsBuft;
         const bool ok = d3d12_mm_supported(d);
         // A refused matmul whose weight already sits in D3D12_Weights means a
-        // placement the backend then cannot run — log the first few (D2b #309).
-        static int logged = 0;
-        if (!ok && w->buffer && w->buffer->buft == &kWeightsBuft && logged < 8) {
-            ++logged;
+        // placement the backend then cannot run — log each distinct shape once
+        // (D2b #309; was first-8-only, which hid all but the first shape and
+        // made per-op backend attribution impossible).
+        static std::set<std::string> logged_shapes;
+        if (!ok && w->buffer && w->buffer->buft == &kWeightsBuft) {
             char msg[256];
             std::snprintf(msg, sizeof(msg),
                           "[xllama] d3d12: MUL_MAT refused: %s %lldx%lld x [%lld,%lld,%lld,%lld] "
@@ -916,7 +1806,8 @@ bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
                           static_cast<long long>(x->ne[1]), static_cast<long long>(x->ne[2]),
                           static_cast<long long>(x->ne[3]), ggml_type_name(x->type),
                           ggml_type_name(op->type));
-            log_output(msg);
+            if (logged_shapes.insert(msg).second)
+                log_output(msg);
         }
         return ok;
     }
@@ -1026,20 +1917,79 @@ struct SelftestCase {
     int n, k, ncols;
 };
 
-double reference_rel_err(ggml_type t, const std::vector<std::uint8_t>& q, std::size_t row_bytes,
+// RAII variant scope: the bench sets OLD/NEW around timed runs and always
+// restores OLD, so a variant never leaks from one case (or into real decode).
+struct KernelVariantGuard {
+    explicit KernelVariantGuard(int v) {
+        d3d12_set_kernel_variant(v);
+    }
+    ~KernelVariantGuard() {
+        d3d12_set_kernel_variant(0);
+    }
+};
+
+struct Q6ColumnsGuard {
+    int previous = d3d12_q6_columns();
+    Q6ColumnsGuard() {
+        d3d12_set_q6_columns(1);
+    }
+    ~Q6ColumnsGuard() {
+        d3d12_set_q6_columns(previous);
+    }
+};
+
+// Padding sentinel for the strided gate (plan 004): exact float equality is
+// the check, so it must survive memcpy/set/get bit-identically (it does) and
+// must never be produced by real computation (1e30 is far outside the
+// uniform(-1,1) draws and their products).
+constexpr float kPadSentinel = 1e30f;
+constexpr std::uint8_t kPadByte = 0xAB;
+
+// Exact-equality padding checks on device readback: any kernel write outside
+// the valid region fails the row, even when the numerics match. ggml_nbytes
+// covers [0, last valid element] — the FINAL row/column has no padding storage
+// (neither host vector nor device buffer holds it), so only rows/cols [0, n)
+// resp. [0, ncols) carry checkable padding. The kernel's address range stays
+// inside the buffer by construction (col < ncols, row < n); these canaries
+// catch stride miscalculations short of an overrun.
+bool check_float_pad(const std::vector<float>& v, std::size_t stride, int ncols, int n_valid) {
+    for (int c = 0; c + 1 < ncols; ++c)
+        for (std::size_t i = static_cast<std::size_t>(n_valid); i < stride; ++i)
+            if (v[static_cast<std::size_t>(c) * stride + i] != kPadSentinel)
+                return false;
+    return true;
+}
+
+bool check_byte_pad(const std::vector<std::uint8_t>& q, std::size_t nb1, std::size_t row_bytes,
+                    int n) {
+    for (int r = 0; r + 1 < n; ++r)
+        for (std::size_t i = row_bytes; i < nb1; ++i)
+            if (q[static_cast<std::size_t>(r) * nb1 + i] != kPadByte)
+                return false;
+    return true;
+}
+
+// `row_pitch` is the byte distance between weight-row starts in `q` — the
+// PACKED row size for contiguous tensors, nb[1] for strided ones. Passing the
+// packed size for a strided q misaligns every row past the first: the padded
+// gate caught exactly this (rev58, rel_err=1 on both variants while the
+// kernels agreed with each other).
+double reference_rel_err(ggml_type t, const std::vector<std::uint8_t>& q, std::size_t row_pitch,
                          const std::vector<float>& x, const std::vector<float>& y, int n, int k,
-                         int ncols) {
+                         int ncols, std::size_t x_stride = 0, std::size_t y_stride = 0) {
     const auto* traits = ggml_get_type_traits(t);
+    const std::size_t xs = x_stride == 0 ? static_cast<std::size_t>(k) : x_stride;
+    const std::size_t ys = y_stride == 0 ? static_cast<std::size_t>(n) : y_stride;
     std::vector<float> wrow(static_cast<std::size_t>(k));
     double max_ref = 0.0, max_diff = 0.0;
     for (int r = 0; r < n; ++r) {
-        traits->to_float(q.data() + static_cast<std::size_t>(r) * row_bytes, wrow.data(), k);
+        traits->to_float(q.data() + static_cast<std::size_t>(r) * row_pitch, wrow.data(), k);
         for (int c = 0; c < ncols; ++c) {
             double acc = 0.0;
-            const float* xc = x.data() + static_cast<std::size_t>(c) * k;
+            const float* xc = x.data() + static_cast<std::size_t>(c) * xs;
             for (int i = 0; i < k; ++i)
                 acc += static_cast<double>(wrow[static_cast<std::size_t>(i)]) * xc[i];
-            const double got = y[static_cast<std::size_t>(c) * n + r];
+            const double got = y[static_cast<std::size_t>(c) * ys + r];
             max_ref = std::max(max_ref, std::fabs(acc));
             max_diff = std::max(max_diff, std::fabs(acc - got));
         }
@@ -1047,12 +1997,14 @@ double reference_rel_err(ggml_type t, const std::vector<std::uint8_t>& q, std::s
     return max_ref > 0.0 ? max_diff / max_ref : max_diff;
 }
 
-D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc) {
+D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc, int repeats) {
     D3d12SelftestRow row;
     row.type = sc.name;
     row.n = sc.n;
     row.k = sc.k;
     row.ncols = sc.ncols;
+    KernelVariantGuard vg(0); // gate and single-variant rows always run OLD
+    Q6ColumnsGuard q6g;
 
     ggml_init_params ip = {};
     ip.mem_size = 8 * ggml_tensor_overhead() + ggml_graph_overhead();
@@ -1083,13 +2035,23 @@ D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc) {
         return row;
     }
 
-    std::mt19937 rng(1234u + static_cast<unsigned>(sc.n + sc.k + sc.ncols));
+    // Seed depends on the SHAPE only, never on ncols (B): the microbenchmark needs
+    // the same weights and activations across B so a timing difference is the batch
+    // width, not different data. A seed that moves with B would compare two
+    // different matrices and call it T_target(B).
+    std::mt19937 rng(1234u + static_cast<unsigned>(sc.n + sc.k));
     std::uniform_real_distribution<float> uni(-1.f, 1.f);
-    std::vector<float> wf(static_cast<std::size_t>(sc.n) * sc.k);
-    for (float& v : wf)
-        v = uni(rng);
+    // Bounded generation: a full n*k fp32 source would be 2542.8 MB for the
+    // 248320x2560 Q6_K lm_head. Chunked rows quantize to the same bytes as one
+    // call over the whole matrix, and the rng ends where the one-shot path
+    // would, so xf below draws the same numbers.
     std::vector<std::uint8_t> q(ggml_nbytes(w));
-    ggml_quantize_chunk(sc.type, wf.data(), q.data(), 0, sc.n, sc.k, nullptr);
+    if (!d3d12_gen_weights(sc.type, sc.n, sc.k, rng, q.data())) {
+        row.error = "weight generation failed";
+        cleanup();
+        return row;
+    }
+    row.weight_mb = static_cast<double>(q.size()) / 1e6;
     ggml_backend_tensor_set(w, q.data(), 0, q.size());
     std::vector<float> xf(static_cast<std::size_t>(sc.k) * sc.ncols);
     for (float& v : xf)
@@ -1105,18 +2067,37 @@ D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc) {
         cleanup();
         return row;
     }
-    // Warm-up, then the timed run.
+    // Warm-up, then the timed block: `repeats` consecutive timed runs. The row
+    // reports the median with the max-min range, not one exploratory sample.
+    // repeats=1 keeps the gate rows on their exact single-sample methodology.
+    if (repeats < 1)
+        repeats = 1;
+    const std::uint64_t tc0 = d3d12_2col_matmuls();
     ggml_status st = ggml_backend_graph_compute(backend, gf);
-    if (st == GGML_STATUS_SUCCESS)
+    std::vector<double> gpu_t, wall_t;
+    for (int i = 0; i < repeats && st == GGML_STATUS_SUCCESS; ++i) {
+        const auto t0 = std::chrono::steady_clock::now();
         st = ggml_backend_graph_compute(backend, gf);
-    row.d3d12_ran = st == GGML_STATUS_SUCCESS;
+        if (st != GGML_STATUS_SUCCESS)
+            break;
+        gpu_t.push_back(gpu().last_gpu_ms);
+        wall_t.push_back(
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
+                .count());
+    }
+    row.d3d12_ran = st == GGML_STATUS_SUCCESS && !gpu_t.empty();
     if (!row.d3d12_ran) {
         row.error = "graph_compute failed";
         cleanup();
         return row;
     }
-    row.gpu_ms = gpu().last_gpu_ms;
+    row.gpu_ms = d3d12_block_median(gpu_t);
+    row.wall_ms = d3d12_block_median(wall_t);
+    row.gpu_ms_range = d3d12_block_range(gpu_t);
+    row.wall_ms_range = d3d12_block_range(wall_t);
+    row.twocol = d3d12_2col_matmuls() - tc0;
     row.packed_gbs = row.gpu_ms > 0.0 ? static_cast<double>(q.size()) / 1e6 / row.gpu_ms : 0.0;
+    row.peak_ws_mb = static_cast<double>(peak_working_set_mb());
     std::vector<float> yf(static_cast<std::size_t>(sc.n) * sc.ncols);
     ggml_backend_tensor_get(y, yf.data(), 0, yf.size() * sizeof(float));
     row.rel_err = reference_rel_err(sc.type, q, w->nb[1], xf, yf, sc.n, sc.k, sc.ncols);
@@ -1127,7 +2108,457 @@ D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc) {
     return row;
 }
 
+// Paired OLD/NEW block (plan 004, q4_k ncols >= 2 only). Setup mirrors
+// run_case above (same seed encoding, same tensors); the gate path there is
+// intentionally not shared, so it stays byte-identical. Tensors are allocated
+// once and every pair runs on them: warmup OLD, warmup NEW, then `pairs`
+// pairs with the starting variant alternating per pair and case_index, then
+// one untimed verification run per variant for rel_err. Emits 2 rows per pair
+// (one timed sample each); the script aggregates pairs and variances.
+void run_paired_case(ggml_backend_t backend, ggml_type type, const char* name, int n, int k,
+                     int ncols, int pairs, int case_index, std::vector<D3d12SelftestRow>* out,
+                     int x_pad = 0, int y_pad = 0, std::size_t w_pad = 0, int q6_columns = 2) {
+    if (!out || pairs < 1)
+        return;
+    KernelVariantGuard vg(0);
+    Q6ColumnsGuard q6g;
+    const bool q6 = type == GGML_TYPE_Q6_K;
+    D3d12SelftestRow base;
+    base.type = name ? name : "-";
+    base.n = n;
+    base.k = k;
+    base.ncols = ncols;
+    base.pads = std::to_string(x_pad) + "/" + std::to_string(y_pad) + "/" + std::to_string(w_pad);
+    auto fail = [&](const char* msg) {
+        D3d12SelftestRow r = base;
+        r.variant = -1;
+        r.error = msg;
+        out->push_back(std::move(r));
+    };
+    if (x_pad < 0 || y_pad < 0) {
+        fail("negative padding");
+        return;
+    }
+    if ((type != GGML_TYPE_Q4_K && !q6) || ncols < 2 ||
+        (q6 && !d3d12_q6_allowlisted(n, k, ncols))) {
+        fail("paired blocks need q4_k B>=2 or the Q6 LM-head allowlist");
+        return;
+    }
+    if (q6 ? !d3d12_q6_tiled_available(q6_columns) : !d3d12_2col_available()) {
+        fail("requested tile PSOs unavailable");
+        return;
+    }
+
+    ggml_init_params ip = {};
+    ip.mem_size = 8 * ggml_tensor_overhead() + ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx_w = ggml_init(ip);
+    ggml_context* ctx_x = ggml_init(ip);
+    ggml_context* ctx_g = ggml_init(ip);
+    ggml_tensor* w = ggml_new_tensor_2d(ctx_w, type, k, n);
+    ggml_tensor* x = ggml_new_tensor_2d(ctx_x, GGML_TYPE_F32, k, ncols);
+    // Stride padding (plan 004 padded gate): widened row strides BEFORE any
+    // buffer is sized, so ggml_nbytes accounts the padding. supports_op would
+    // route strided inputs to CPU in production (it requires contiguity); the
+    // bench bypasses it with direct graph_compute like every run_case row, to
+    // prove the kernels honor nb01/nb11 regardless.
+    const std::size_t row_bytes = ggml_row_size(type, k);
+    const std::size_t w_nb1 = row_bytes + w_pad;
+    const std::size_t x_stride_f = static_cast<std::size_t>(k) + static_cast<std::size_t>(x_pad);
+    const std::size_t y_stride_f = static_cast<std::size_t>(n) + static_cast<std::size_t>(y_pad);
+    const bool padded = x_pad != 0 || y_pad != 0 || w_pad != 0;
+    w->nb[1] = w_nb1;
+    x->nb[1] = x_stride_f * sizeof(float);
+    ggml_backend_buffer_t wbuf = ggml_backend_alloc_ctx_tensors_from_buft(ctx_w, &kWeightsBuft);
+    ggml_backend_buffer_t xbuf = ggml_backend_alloc_ctx_tensors_from_buft(ctx_x, &kHostBuft);
+    ggml_backend_buffer_t ybuf = nullptr;
+    ggml_gallocr_t galloc = nullptr;
+
+    auto cleanup = [&] {
+        if (galloc)
+            ggml_gallocr_free(galloc);
+        if (ybuf)
+            ggml_backend_buffer_free(ybuf);
+        if (wbuf)
+            ggml_backend_buffer_free(wbuf);
+        if (xbuf)
+            ggml_backend_buffer_free(xbuf);
+        ggml_free(ctx_g);
+        ggml_free(ctx_x);
+        ggml_free(ctx_w);
+    };
+    if (!wbuf || !xbuf) {
+        fail("buffer allocation failed");
+        cleanup();
+        return;
+    }
+
+    std::mt19937 rng(1234u + static_cast<unsigned>(n + k));
+    std::uniform_real_distribution<float> uni(-1.f, 1.f);
+    // Same draws as the contiguous case (same seed, same count, same order):
+    // generate flat, then lay rows at the strided pitch over a sentinel fill,
+    // so any weight-padding byte the kernel touches is visible on readback.
+    std::vector<std::uint8_t> qflat(static_cast<std::size_t>(n) * row_bytes);
+    if (!d3d12_gen_weights(type, n, k, rng, qflat.data())) {
+        fail("weight generation failed");
+        cleanup();
+        return;
+    }
+    std::vector<std::uint8_t> q(ggml_nbytes(w), kPadByte);
+    for (int r = 0; r < n; ++r)
+        std::memcpy(q.data() + static_cast<std::size_t>(r) * w_nb1,
+                    qflat.data() + static_cast<std::size_t>(r) * row_bytes, row_bytes);
+    ggml_backend_tensor_set(w, q.data(), 0, q.size());
+    std::vector<float> xf(ggml_nbytes(x) / sizeof(float), kPadSentinel);
+    for (int c = 0; c < ncols; ++c)
+        for (int i = 0; i < k; ++i)
+            xf[static_cast<std::size_t>(c) * x_stride_f + static_cast<std::size_t>(i)] = uni(rng);
+    ggml_backend_tensor_set(x, xf.data(), 0, xf.size() * sizeof(float));
+
+    ggml_tensor* y = ggml_mul_mat(ctx_g, w, x);
+    ggml_cgraph* gf = ggml_new_graph(ctx_g);
+    ggml_build_forward_expand(gf, y);
+    if (!padded) {
+        galloc = ggml_gallocr_new(&kHostBuft);
+        if (!ggml_gallocr_alloc_graph(galloc, gf)) {
+            fail("graph allocation failed");
+            cleanup();
+            return;
+        }
+    } else {
+        // Padded Y cannot come from gallocr (it packs outputs tightly, like
+        // production): assign the padded pitch, then size the buffer from it.
+        // The kernel only sees (VA, y_stride), the same mechanism either way.
+        y->nb[1] = y_stride_f * sizeof(float);
+        ybuf = ggml_backend_alloc_ctx_tensors_from_buft(ctx_g, &kHostBuft);
+        if (!ybuf) {
+            fail("graph allocation failed");
+            cleanup();
+            return;
+        }
+    }
+    const std::size_t y_floats = ggml_nbytes(y) / sizeof(float);
+    const std::size_t x_floats = ggml_nbytes(x) / sizeof(float);
+    if (padded) {
+        // Device Y padding starts uninitialized: seed it with the sentinel so
+        // the check below is meaningful. Untimed; valid outputs are fully
+        // overwritten by every compute.
+        std::vector<float> yinit(y_floats, kPadSentinel);
+        ggml_backend_tensor_set(y, yinit.data(), 0, yinit.size() * sizeof(float));
+    }
+
+    auto select_variant = [&](int variant) {
+        if (q6)
+            d3d12_set_q6_columns(variant == 0 ? 1 : q6_columns);
+        else
+            d3d12_set_kernel_variant(variant);
+    };
+    auto tiled_count = [&] { return q6 ? d3d12_q6_tiled_matmuls() : d3d12_2col_matmuls(); };
+    auto run_once = [&](int variant, double* gpu_ms, double* wall_ms) {
+        select_variant(variant);
+        const auto t0 = std::chrono::steady_clock::now();
+        const ggml_status st = ggml_backend_graph_compute(backend, gf);
+        if (st != GGML_STATUS_SUCCESS)
+            return false;
+        *gpu_ms = gpu().last_gpu_ms;
+        *wall_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
+                       .count();
+        return true;
+    };
+    double g0 = 0.0, w0 = 0.0;
+    if (!run_once(0, &g0, &w0) || !run_once(1, &g0, &w0)) {
+        fail("variant warmup failed");
+        cleanup();
+        return;
+    }
+    struct PairT {
+        double old_gpu, old_wall, new_gpu, new_wall;
+        std::uint64_t old_tc = 0, new_tc = 0;
+    };
+    std::vector<PairT> pts;
+    for (int p = 0; p < pairs; ++p) {
+        PairT pt{};
+        const int first = (p + case_index) % 2; // alternate the starting variant
+        for (int s = 0; s < 2; ++s) {
+            const int v = (s == 0) ? first : 1 - first;
+            double g = 0.0, wl = 0.0;
+            const std::uint64_t tc0 = tiled_count();
+            if (!run_once(v, &g, &wl)) {
+                fail("paired compute failed");
+                cleanup();
+                return;
+            }
+            const std::uint64_t tc = tiled_count() - tc0;
+            if ((v == 0 && tc != 0) || (v == 1 && tc != 1)) {
+                fail("requested tile did not execute exactly once");
+                cleanup();
+                return;
+            }
+            if (v == 0) {
+                pt.old_gpu = g;
+                pt.old_wall = wl;
+                pt.old_tc = tc;
+            } else {
+                pt.new_gpu = g;
+                pt.new_wall = wl;
+                pt.new_tc = tc;
+            }
+        }
+        pts.push_back(pt);
+    }
+    // Untimed verification per variant against the unchanged threshold. The
+    // reference dequantizes at the PACKED row pitch (not the strided nb[1])
+    // with strided X/Y; padding regions are checked against sentinels on
+    // device readback, so any out-of-bounds kernel write fails the row even
+    // when the numerics match. Each region reports separately: a combined
+    // flag once hid which of X/Y/W moved.
+    std::vector<float> yf_old(y_floats, kPadSentinel);
+    std::vector<float> yf_new(y_floats, kPadSentinel);
+    std::vector<float> xf_old(x_floats, kPadSentinel);
+    std::vector<float> xf_new(x_floats, kPadSentinel);
+    std::vector<std::uint8_t> q_old(q.size(), 0);
+    std::vector<std::uint8_t> q_new(q.size(), 0);
+    std::vector<float> yinit(y_floats, kPadSentinel);
+    ggml_backend_tensor_set(y, yinit.data(), 0, yinit.size() * sizeof(float));
+    select_variant(0);
+    if (ggml_backend_graph_compute(backend, gf) != GGML_STATUS_SUCCESS) {
+        fail("OLD verification failed");
+        cleanup();
+        return;
+    }
+    ggml_backend_tensor_get(y, yf_old.data(), 0, yf_old.size() * sizeof(float));
+    ggml_backend_tensor_get(x, xf_old.data(), 0, xf_old.size() * sizeof(float));
+    ggml_backend_tensor_get(w, q_old.data(), 0, q_old.size());
+    ggml_backend_tensor_set(y, yinit.data(), 0, yinit.size() * sizeof(float));
+    select_variant(1);
+    if (ggml_backend_graph_compute(backend, gf) != GGML_STATUS_SUCCESS) {
+        fail("NEW verification failed");
+        cleanup();
+        return;
+    }
+    ggml_backend_tensor_get(y, yf_new.data(), 0, yf_new.size() * sizeof(float));
+    ggml_backend_tensor_get(x, xf_new.data(), 0, xf_new.size() * sizeof(float));
+    ggml_backend_tensor_get(w, q_new.data(), 0, q_new.size());
+    const double rel_old =
+        reference_rel_err(type, q, w_nb1, xf, yf_old, n, k, ncols, x_stride_f, y_stride_f);
+    const double rel_new =
+        reference_rel_err(type, q, w_nb1, xf, yf_new, n, k, ncols, x_stride_f, y_stride_f);
+    const bool y_old_ok = check_float_pad(yf_old, y_stride_f, ncols, n);
+    const bool x_old_ok = check_float_pad(xf_old, x_stride_f, ncols, k);
+    const bool w_old_ok = check_byte_pad(q_old, w_nb1, row_bytes, n);
+    const bool y_new_ok = check_float_pad(yf_new, y_stride_f, ncols, n);
+    const bool x_new_ok = check_float_pad(xf_new, x_stride_f, ncols, k);
+    const bool w_new_ok = check_byte_pad(q_new, w_nb1, row_bytes, n);
+    bool bit_exact = true;
+    if (q6)
+        for (int c = 0; c < ncols; ++c)
+            bit_exact &= std::memcmp(yf_old.data() + c * y_stride_f, yf_new.data() + c * y_stride_f,
+                                     n * sizeof(float)) == 0;
+
+    const double wmb = static_cast<double>(q.size()) / 1e6;
+    const double peak = static_cast<double>(peak_working_set_mb());
+    for (int p = 0; p < pairs; ++p) {
+        D3d12SelftestRow ro = base, rn = base;
+        ro.variant = 0;
+        ro.pair = p;
+        ro.gpu_ms = pts[p].old_gpu;
+        ro.wall_ms = pts[p].old_wall;
+        ro.twocol = pts[p].old_tc;
+        ro.packed_gbs = ro.gpu_ms > 0.0 ? wmb / ro.gpu_ms : 0.0;
+        ro.weight_mb = wmb;
+        ro.peak_ws_mb = peak;
+        ro.rel_err = rel_old;
+        ro.ok = rel_old <= kD3d12SelftestRelTol && y_old_ok && x_old_ok && w_old_ok;
+        ro.d3d12_ran = true;
+        if (rel_old > kD3d12SelftestRelTol)
+            ro.error = "mismatch vs ggml dequant reference (OLD)";
+        else if (!y_old_ok)
+            ro.error = "y padding clobbered (OLD)";
+        else if (!x_old_ok)
+            ro.error = "x padding clobbered (OLD)";
+        else if (!w_old_ok)
+            ro.error = "w padding clobbered (OLD)";
+        rn.variant = 1;
+        rn.pair = p;
+        rn.gpu_ms = pts[p].new_gpu;
+        rn.wall_ms = pts[p].new_wall;
+        rn.twocol = pts[p].new_tc;
+        rn.packed_gbs = rn.gpu_ms > 0.0 ? wmb / rn.gpu_ms : 0.0;
+        rn.weight_mb = wmb;
+        rn.peak_ws_mb = peak;
+        rn.rel_err = rel_new;
+        rn.ok = rel_new <= kD3d12SelftestRelTol && y_new_ok && x_new_ok && w_new_ok && bit_exact;
+        rn.d3d12_ran = true;
+        if (rel_new > kD3d12SelftestRelTol)
+            rn.error = "mismatch vs ggml dequant reference (NEW)";
+        else if (!y_new_ok)
+            rn.error = "y padding clobbered (NEW)";
+        else if (!x_new_ok)
+            rn.error = "x padding clobbered (NEW)";
+        else if (!w_new_ok)
+            rn.error = "w padding clobbered (NEW)";
+        else if (!bit_exact)
+            rn.error = "Q6 tiled output differs bitwise from OLD";
+        out->push_back(std::move(ro));
+        out->push_back(std::move(rn));
+    }
+    cleanup();
+}
+
 } // namespace
+
+// Read-only counter snapshots. A caller takes a delta around one phase; the totals
+// are never reset here, so a phase delta stays valid even though backend_free logs
+// and zeroes them when the backend goes away.
+std::uint64_t d3d12_graph_calls() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.n_calls;
+}
+
+// Turns the per-shape histogram off/on. Separate from the decode-phase switch:
+// the decode timers are cheap chrono reads, this one builds strings in the hot
+// path, so they are measured and gated independently.
+void d3d12_set_shape_log(bool off) {
+    std::lock_guard<std::mutex> shlock(g_shape_mu);
+    g_shape_off = off;
+    if (off)
+        g_shape_agg.clear();
+}
+
+void d3d12_set_scope(const char* ctx, const char* phase) {
+    t_ctx = ctx ? ctx : "unknown";
+    t_phase = phase ? phase : "unknown";
+}
+
+void d3d12_get_scope(const char** ctx, const char** phase) {
+    if (ctx)
+        *ctx = t_ctx;
+    if (phase)
+        *phase = t_phase;
+}
+
+// Drained at a phase or generation boundary, outside the compute lock and outside
+// the decode loop. Returns false when the buffer did not fit the cap: that is a
+// precondition failure of the ANALYSIS (the histogram is incomplete), not a
+// complete histogram with a truncation note.
+bool d3d12_shape_drain(const char* label) {
+    std::vector<std::pair<ShapeAggKey, long long>> local;
+    {
+        std::lock_guard<std::mutex> shlock(g_shape_mu);
+        local.swap(g_shape_agg);
+    }
+    if (local.empty())
+        return true;
+    // Paginated, no arbitrary cap: every key is emitted, across as many records as
+    // it takes. Each record carries the key count and the total so a consumer can
+    // verify completeness from the lines themselves instead of trusting a cap that
+    // happened to be large enough. A truncated record would be an incomplete
+    // analysis, so this never truncates — it pages.
+    const std::size_t kPerLine = 12;
+    const std::size_t n = local.size();
+    for (std::size_t first = 0; first < n; first += kPerLine) {
+        const std::size_t last = (first + kPerLine < n) ? first + kPerLine : n;
+        std::string line = "[xllama] d3d12_shape label=";
+        line += label ? label : "-";
+        line += " part=" + std::to_string(first / kPerLine + 1) + "/" +
+                std::to_string((n + kPerLine - 1) / kPerLine);
+        line += " keys_total=" + std::to_string(n);
+        for (std::size_t i = first; i < last; ++i) {
+            const ShapeAggKey& k = local[i].first;
+            line += " | ctx=" + k.ctx + " phase=" + k.phase + " t=" + std::to_string(k.type) +
+                    " N=" + std::to_string(k.n) + " K=" + std::to_string(k.k) +
+                    " B=" + std::to_string(k.b) + " thr=" + std::to_string(k.thr) +
+                    " mm=" + std::to_string(local[i].second);
+        }
+        line += "\n";
+        log_output(line.c_str());
+    }
+    return true;
+}
+
+std::uint64_t d3d12_matmul_count() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.n_matmuls;
+}
+
+double d3d12_gpu_ms() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.gpu_ms;
+}
+
+double d3d12_wall_ms() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.wall_ms;
+}
+
+std::uint64_t d3d12_2col_matmuls() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.n_matmuls_2col;
+}
+
+bool d3d12_q6_tiled_available(int columns) {
+    if (columns != 2 && columns != 4)
+        return false;
+    Gpu& g = gpu();
+    const int i = columns == 4 ? 1 : 0;
+    return g.ok && g.pso_q6col[i][0] && g.pso_q6col[i][1];
+}
+std::uint64_t d3d12_q6_tiled_matmuls() {
+    Gpu& g = gpu();
+    std::lock_guard<std::mutex> lock(g.mu);
+    return g.n_q6_tiled[0] + g.n_q6_tiled[1];
+}
+
+// Kernel variant switch (plan 004). Set outside graph_compute on the bench
+// thread, read inside it on the same thread; plain int like the scope tags'
+// contract (set/restore around the call, never leaking across cases).
+static int g_kernel_variant = 0;
+
+void d3d12_set_kernel_variant(int v) {
+    g_kernel_variant = (v >= 0 && v <= 2) ? v : 0;
+}
+
+void d3d12_set_z0_dispatch_log(bool on) {
+    g_z0_dispatch_log = on;
+}
+
+void d3d12_set_z0_pin_cpu(bool on) {
+    g_z0_pin_cpu = on;
+}
+
+void d3d12_set_spin_wait_us(int spin_us) {
+    g_spin_wait_us = spin_us;
+}
+
+int d3d12_spin_wait_us() {
+    return g_spin_wait_us;
+}
+
+int d3d12_kernel_variant() {
+    return g_kernel_variant;
+}
+
+bool d3d12_2col_available() {
+    Gpu& g = gpu();
+    return g.ok && g.pso2col[0] && g.pso2col[1];
+}
+
+std::string d3d12_2col_info() {
+    Gpu& g = gpu();
+    char buf[256];
+    std::snprintf(buf, sizeof(buf),
+                  "q4k-2col blobs t64=%zuB t128=%zuB | root 8dw (ncols in dword 6) | groupshared "
+                  "t64=1024B t128=2048B (same red array as OLD) | acc 8 f32/thread (OLD 4) | %s",
+                  kGgmlD3d12MmvQ4K2ColT64DxilSize, kGgmlD3d12MmvQ4K2ColT128DxilSize,
+                  g.twocol_error.empty() ? (d3d12_2col_available() ? "PSOs ready" : "PSOs missing")
+                                         : g.twocol_error.c_str());
+    return buf;
+}
 
 void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     if (!out)
@@ -1142,17 +2573,157 @@ void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     ggml_backend_t backend = dev_init_backend(&kDevice, nullptr);
     // Shapes of the D2 target models; q6_k 2048x11008 has 2-byte-aligned rows.
     const SelftestCase cases[] = {
-        {GGML_TYPE_Q4_0, "q4_0", 8192, 2048, 1},   {GGML_TYPE_Q4_0, "q4_0", 2048, 8192, 1},
-        {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 1},  {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 1},
-        {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 1},  {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 1},
-        {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 1},  {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 1},
-        {GGML_TYPE_Q4_0, "q4_0", 1024, 1024, 7},   {GGML_TYPE_Q4_K, "q4_k", 1024, 1024, 7},
-        {GGML_TYPE_Q5_K, "q5_k", 1024, 1024, 7},   {GGML_TYPE_Q6_K, "q6_k", 1024, 1024, 7},
-        {GGML_TYPE_Q4_0, "q4_0", 1024, 1024, 512}, {GGML_TYPE_Q4_K, "q4_k", 1024, 1024, 512},
-        {GGML_TYPE_Q5_K, "q5_k", 1024, 1024, 512}, {GGML_TYPE_Q6_K, "q6_k", 1024, 1024, 512},
+        {GGML_TYPE_Q4_0, "q4_0", 8192, 2048, 1},
+        {GGML_TYPE_Q4_0, "q4_0", 2048, 8192, 1},
+        {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 1},
+        {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 1},
+        {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 1},
+        {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 1},
+        {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 1},
+        {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 1},
+        {GGML_TYPE_Q4_0, "q4_0", 1024, 1024, 7},
+        {GGML_TYPE_Q4_K, "q4_k", 1024, 1024, 7},
+        {GGML_TYPE_Q5_K, "q5_k", 1024, 1024, 7},
+        {GGML_TYPE_Q6_K, "q6_k", 1024, 1024, 7},
+        {GGML_TYPE_Q4_0, "q4_0", 1024, 1024, 512},
+        {GGML_TYPE_Q4_K, "q4_k", 1024, 1024, 512},
+        {GGML_TYPE_Q5_K, "q5_k", 1024, 1024, 512},
+        {GGML_TYPE_Q6_K, "q6_k", 1024, 1024, 512},
+        // MTP eh_proj, including the B3/B4 transition and odd-row tails.
+        {GGML_TYPE_Q8_0, "q8_0", 2560, 5120, 1},
+        {GGML_TYPE_Q8_0, "q8_0", 2560, 5120, 2},
+        {GGML_TYPE_Q8_0, "q8_0", 2560, 5120, 3},
+        {GGML_TYPE_Q8_0, "q8_0", 2560, 5120, 4},
+        {GGML_TYPE_Q8_0, "q8_0", 2560, 5120, 5},
+        {GGML_TYPE_Q8_0, "q8_0", 13, 256, 512},
     };
     for (const auto& sc : cases)
-        out->push_back(run_case(backend, sc));
+        out->push_back(run_case(backend, sc, 1));
+
+    // Plan 003 stage 2: MATMUL MICROBENCHMARK across batch widths, NOT T_target(B).
+    // These are isolated matmuls with a fixed seed independent of B; they say
+    // nothing about KV attention, the recurrent state or real decode scheduling.
+    // The real T_target(B) is a separate bench (tttarget.flag) on a live context.
+    const SelftestCase batch_cases[] = {
+        {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 1}, {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 2},
+        {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 3}, {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 5},
+        {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 1}, {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 2},
+        {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 3}, {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 5},
+    };
+    for (const auto& sc : batch_cases)
+        out->push_back(run_case(backend, sc, 1));
+    ggml_backend_free(backend);
+}
+
+void run_d3d12_shape_cost(std::vector<D3d12SelftestRow>* out) {
+    if (!out)
+        return;
+    run_d3d12_gdn_selftest(out);
+    if (!ggml_d3d12_register()) {
+        D3d12SelftestRow r;
+        r.type = "-";
+        r.error = gpu().error.empty() ? "d3d12 backend unavailable" : gpu().error;
+        out->push_back(std::move(r));
+        return;
+    }
+    // The 11 (t, N, K) triples the target saw under label=tttarget in the real
+    // run (plan 004): every shape the batch widths must be costed against. The
+    // 12th histogram triple (q6_k 8192x2560) appeared only in
+    // session_prefill/session_decode, never under tttarget, so it stays out.
+    // Sorted by weight bytes, smallest first and the 248320x2560 Q6_K lm_head
+    // last, so a kill at any point leaves the cheap shapes already measured.
+    // Ordering is by weight bytes computed from ggml_row_size, not by a
+    // hand-sorted table: the order claim is checkable, not asserted.
+    struct ShapeCostShape {
+        ggml_type type;
+        const char* name;
+        int n, k;
+    };
+    const ShapeCostShape shapes[] = {
+        {GGML_TYPE_Q4_K, "q4_k", 1024, 2560},   {GGML_TYPE_Q4_K, "q4_k", 2560, 4096},
+        {GGML_TYPE_Q4_K, "q4_k", 2560, 9216},   {GGML_TYPE_Q4_K, "q4_k", 4096, 2560},
+        {GGML_TYPE_Q4_K, "q4_k", 8192, 2560},   {GGML_TYPE_Q4_K, "q4_k", 9216, 2560},
+        {GGML_TYPE_Q5_K, "q5_k", 2560, 4096},   {GGML_TYPE_Q5_K, "q5_k", 8192, 2560},
+        {GGML_TYPE_Q6_K, "q6_k", 1024, 2560},   {GGML_TYPE_Q6_K, "q6_k", 2560, 9216},
+        {GGML_TYPE_Q6_K, "q6_k", 248320, 2560},
+    };
+    const int widths[] = {1, 2, 3, 5};
+    std::vector<SelftestCase> cases;
+    for (const auto& s : shapes)
+        for (int w : widths)
+            cases.push_back({s.type, s.name, s.n, s.k, w});
+    std::stable_sort(cases.begin(), cases.end(), [](const SelftestCase& a, const SelftestCase& b) {
+        return static_cast<std::int64_t>(a.n) * ggml_row_size(a.type, a.k) <
+               static_cast<std::int64_t>(b.n) * ggml_row_size(b.type, b.k);
+    });
+    ggml_backend_t backend = dev_init_backend(&kDevice, nullptr);
+    // Synthetic edge cases first (NOT histogram triples, documented as such):
+    // an odd row count (exercises the row-clamp path) and a single-row group,
+    // B=1 single-variant plus B=2 paired. Microsecond cheap, and they prove
+    // the tail guards before the real shapes run.
+    const SelftestCase edges[] = {
+        {GGML_TYPE_Q4_K, "q4_k", 1023, 2560, 1},
+        {GGML_TYPE_Q4_K, "q4_k", 1023, 2560, 2},
+        {GGML_TYPE_Q4_K, "q4_k", 1, 256, 1},
+        {GGML_TYPE_Q4_K, "q4_k", 1, 256, 2},
+    };
+    int case_index = 0;
+    for (const auto& sc : edges) {
+        if (sc.ncols >= 2)
+            run_paired_case(backend, sc.type, sc.name, sc.n, sc.k, sc.ncols, kD3d12ShapeCostPairs,
+                            case_index++, out);
+        else
+            out->push_back(run_case(backend, sc, kD3d12ShapeCostRepeats));
+    }
+    // Padded-stride gate (plan 004, NOT histogram triples): real strided X/Y
+    // rows and weight rows with sentinel padding and odd tails, both variants
+    // checked for untouched padding and numerical match. Odd pads catch
+    // alignment assumptions; the 9216-row case keeps a B=5 column tail.
+    struct PaddedCase {
+        ggml_type type;
+        const char* name;
+        int n, k, ncols, x_pad, y_pad;
+        std::size_t w_pad;
+    };
+    const PaddedCase padded_cases[] = {
+        {GGML_TYPE_Q4_K, "q4_k", 2560, 4096, 3, 13, 7, 64},
+        {GGML_TYPE_Q4_K, "q4_k", 9216, 2560, 5, 1, 3, 48},
+    };
+    for (const auto& pc : padded_cases)
+        run_paired_case(backend, pc.type, pc.name, pc.n, pc.k, pc.ncols, kD3d12ShapeCostPairs,
+                        case_index++, out, pc.x_pad, pc.y_pad, pc.w_pad);
+    for (const auto& sc : cases) {
+        if (sc.type == GGML_TYPE_Q4_K && sc.ncols >= 2)
+            run_paired_case(backend, sc.type, sc.name, sc.n, sc.k, sc.ncols, kD3d12ShapeCostPairs,
+                            case_index++, out);
+        else
+            out->push_back(run_case(backend, sc, kD3d12ShapeCostRepeats));
+    }
+    // Real measured LM-head shape: same W/X for OLD vs each tile, alternated
+    // pairs. Inputs, outputs, pads and the exact OLD column sums are checked.
+    for (int columns : {2, 4}) {
+        const std::string label = "q6_k_c" + std::to_string(columns);
+        for (int width : {2, 3, 5})
+            run_paired_case(backend, GGML_TYPE_Q6_K, label.c_str(), 248320, 2560, width,
+                            kD3d12ShapeCostPairs, case_index++, out, 0, 0, 0, columns);
+        run_paired_case(backend, GGML_TYPE_Q6_K, label.c_str(), 248320, 2560, 5,
+                        kD3d12ShapeCostPairs, case_index++, out, 13, 7, 64, columns);
+    }
+    ggml_backend_free(backend);
+}
+
+void run_d3d12_gdn_selftest(std::vector<D3d12SelftestRow>* out) {
+    if (!out)
+        return;
+    if (!ggml_d3d12_register() || !gpu().gdn_pso) {
+        D3d12SelftestRow row;
+        row.type = "gdn";
+        row.error = "D3D12 GDN unavailable: " + gpu().gdn_error;
+        out->push_back(std::move(row));
+        return;
+    }
+    ggml_backend_t backend = dev_init_backend(&kDevice, nullptr);
+    run_gdn_cases(backend, &kHostBuft, out);
     ggml_backend_free(backend);
 }
 

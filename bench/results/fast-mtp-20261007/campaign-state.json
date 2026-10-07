@@ -1,0 +1,164 @@
+{
+  "owner": "gemini_records (all Xbox/Windows execution); root(docs/consolidation)",
+  "stage": "complete_final124_api_running",
+  "package_revision": 124,
+  "package_sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+  "package_archive": "packages/xllama_1.6.0.124_final_fa2.msix",
+  "fixed": {
+    "model": "qwen35-4b-mtp",
+    "gpu_layers": 34,
+    "ctx": 2048,
+    "batch": 64,
+    "ubatch": 64,
+    "kv_q8": 0,
+    "greedy": 1,
+    "seed": 1,
+    "q8_gpu": 1,
+    "catchup_logits": 0,
+    "twocol": "auto",
+    "repack_scope": 2,
+    "profile_phases": 0
+  },
+  "search_order": [
+    "Q6 columns1/2/4 after component correctness",
+    "target threads3/2/6 at draft1",
+    "draft1/2 at winning target",
+    "GDN all/hybrid and forced CPU FA",
+    "MTP depth/pmin probes and neighbor refinement",
+    "alternated repeated confirmation",
+    "Final optimized build once",
+    "3 prompts64/256 + Session/termination/API"
+  ],
+  "pilot_depth_pmin": [
+    [
+      4,
+      75
+    ],
+    [
+      1,
+      0
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      4,
+      0
+    ],
+    [
+      4,
+      50
+    ]
+  ],
+  "pmin_refinement": [
+    25,
+    90
+  ],
+  "pool_policy": "R120 shares existing target pool; obsolete pool knob removed",
+  "final_native_cache": {
+    "path": "C:/Users/hjotha/projects/xllama-qbox/uwp/x64/Release/ggml-uwp/ggml-uwp.lib",
+    "bytes": 435072076,
+    "compiler_tlog": "233 /GL /O2 AVX2 commands",
+    "historical_source_hash_proof": "not found; cold Final remains authorized"
+  },
+  "installed_pfn": "GianlucaMazza.xllama_1.6.0.124_x64__pj67f1fcj4n14",
+  "component_sst": "R119 282/282 SC,64/64 Q6 pairs,14/14GDN,30/30D2a",
+  "tentative": {
+    "threads": 2,
+    "draft": 1,
+    "depth": 2,
+    "pmin": 50,
+    "q6": 0,
+    "gdn": 1,
+    "fa": 2
+  },
+  "current_cells": [
+    "r120-win-q6c1",
+    "r120-win-q6c2",
+    "r120-win-t2",
+    "r120-win-t6",
+    "r120-win-draft2",
+    "r120-win-gdn2"
+  ],
+  "root_takeover": "Agent model capacity error; already-running build and benchmark chain preserved. Do not duplicate.",
+  "active_jobs": {},
+  "frozen_sources": true,
+  "final_build": {
+    "revision": 124,
+    "seconds": 712.31,
+    "sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+    "archive": "packages/xllama_1.6.0.124_final_fa2.msix",
+    "build_exit": 0,
+    "native_final_objects_recompiled": 1,
+    "native_iteration_objects_changed": 0,
+    "app_final_objects_recompiled": 6,
+    "app_iteration_objects_changed": 0
+  },
+  "root_sessions": {},
+  "selected_profile_status": "PASS_TESTED_FINAL_PROFILE",
+  "divergence": {
+    "package": 121,
+    "prompt": "standard-512",
+    "predict": 256,
+    "index0": 166,
+    "seq_token": 1332,
+    "mtp_token": 421,
+    "reproduced_runs": 3,
+    "seq_margin": 0.001818,
+    "verify_margin": 0.00255,
+    "FA0_180_control": "PASS full IDs both runs",
+    "hypothesis": "CPU single-query splitKV atNkv>=512 differs from multiquery fullKV; F16 accumulation/reduction order",
+    "candidate_fix": "patches/0006-cpu-flash-attn-consistent-kv-reduction.patch + flashattn.txt2; localprepared, not syncedWindows whileFinal122active"
+  },
+  "next": [],
+  "final_pre_FA2": {
+    "revision": 122,
+    "success": true,
+    "sha256": "a9d4bf5c31ae9c4fa69c3da35c048936589e9ff1baf746e08d6d034a19850d3f",
+    "archive": "packages/xllama_1.6.0.122_final_pre-fa2.msix"
+  },
+  "local_FA2_check": "GPU-layer params case1/1,12assertionsPASS; nativepatch apply--checkPASS; no modelCPU inference",
+  "xbox_owner": "gemini_records",
+  "source_status": "C++/HLSL/buildscripts frozen afterFA2; agent owns future changes",
+  "build123": {
+    "seconds": 270.52,
+    "native_cl_commands": 1,
+    "c4653": 0,
+    "WDP_deploy_success": true
+  },
+  "fa2_first_gate": {
+    "prompt": "standard-512",
+    "tokens": 256,
+    "full_parity_runs": 3,
+    "token166": 421,
+    "seq_tps": 22.73,
+    "mtp_tps": 27.13
+  },
+  "neighbor_probes": {
+    "r123-fa2-t1-std256-mtp": 23.62,
+    "r123-fa2-std256-d2p25": 26.32,
+    "r123-fa2-std256-d2p75": 25.76,
+    "r123-fa2-std256-d1p50": 26.66
+  },
+  "final_acceptance": "final124-acceptance.json",
+  "api_status": "xllama process: pid=1684 image=xllama.exe running=True ws=3867283456",
+  "delivered_profile": {
+    "threads": 2,
+    "draft": 1,
+    "depth": 2,
+    "pmin": 50,
+    "q6": 0,
+    "gdn": 1,
+    "fa": 2,
+    "q8_gpu": 1,
+    "batch": 64,
+    "ubatch": 64,
+    "ctx": 2048,
+    "gpu_layers": 34,
+    "kv_q8": 0,
+    "twocol": "auto",
+    "repack_scope": 2
+  },
+  "final_state_checked_utc": "2026-10-07T14:16:24.571162+00:00"
+}

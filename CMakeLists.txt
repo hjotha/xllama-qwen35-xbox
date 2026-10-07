@@ -60,6 +60,7 @@ add_subdirectory(llama.cpp)
 add_library(xllama STATIC
     src/bridge/inference.cpp
     src/bridge/session.cpp
+    src/bridge/mtp_draft.cpp
     src/bridge/embedding.cpp
     src/bridge/kv_store.cpp
     src/bridge/bench.cpp
@@ -87,7 +88,11 @@ if(XLLAMA_BUILD_PROBES)
         src/bridge/gpubw.cpp
         src/bridge/gpugemv.cpp
         src/bridge/gpustep.cpp
+        src/bridge/tttarget.cpp
         src/bridge/ramceil.cpp
+        src/bridge/replay.cpp
+        src/bridge/diverge.cpp
+        src/bridge/termgate.cpp
     )
 endif()
 

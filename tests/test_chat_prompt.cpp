@@ -4,6 +4,7 @@
 #include <doctest/doctest.h>
 
 #include "xllama/chat_prompt.h"
+#include "xllama/termgate.h"
 
 using namespace xllama;
 
@@ -135,6 +136,40 @@ TEST_CASE("apply_stop_sequences: suffix match trims and reports") {
     std::string f = "text";
     CHECK_FALSE(apply_stop_sequences(f, {}));
     CHECK(f == "text");
+}
+
+TEST_CASE("apply_stop_sequences: boundary-spanning stop fires only when its last piece lands") {
+    // The termgate picks stop = piece0 + piece1 from recorded emissions.
+    // Streaming semantics: emit_token appends one piece then scans the
+    // SUFFIX, so a partial stop (first piece only) must NOT fire, and the
+    // match must complete exactly when the second piece lands — that is the
+    // boundary-spanning contract the termgate stop scenario asserts on device.
+    const std::vector<std::string> pieces = {"one", " two", " and on"};
+    const StopSpan span = pick_boundary_spanning_stop(pieces);
+    REQUIRE(span.stop == "one two");
+    REQUIRE(span.text_start == 0);
+
+    std::string out;
+    std::vector<int> fired_idx;
+    for (size_t i = 0; i < pieces.size(); ++i) {
+        out += pieces[i];
+        if (apply_stop_sequences(out, {span.stop})) {
+            fired_idx.push_back(static_cast<int>(i));
+            break; // emit_token stops generation on a suffix match
+        }
+    }
+    REQUIRE(fired_idx.size() == 1);
+    CHECK(fired_idx[0] == 1); // fires on piece 1, the stop's final piece
+    CHECK(out == "");         // span started at 0: everything stripped
+    // Starting later in the stream: prefix kept up to the span start.
+    std::string g = "keep ";
+    CHECK_FALSE(apply_stop_sequences(g, {span.stop}));
+    g += "one";
+    CHECK_FALSE(apply_stop_sequences(g, {span.stop})); // partial: no fire
+    CHECK(g == "keep one");
+    g += " two";
+    CHECK(apply_stop_sequences(g, {span.stop}));
+    CHECK(g == "keep "); // stripped exactly to the span start
 }
 
 TEST_CASE("gemma detection") {

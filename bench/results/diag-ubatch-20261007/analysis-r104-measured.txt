@@ -1,0 +1,53 @@
+tagon segments: 3 (bench --runs 3 => seg0 = warmup, seg1/seg2 = measured run_index 2/3)
+  warmup: joined=14 invalid=0
+  measured-r2: joined=14 invalid=0
+  measured-r3: joined=14 invalid=0
+classes (all segments): {'prefill': 3, 'draft-wu': 124, 'classic': 87, 'draft': 252} total invalid: 0
+
+== MEASURED runs (run_index 2/3) — primary claims (n=28) ==
+residual%: med 0.56%, max 5.56%, min 0.43% (all positive: True)
+d3 vs d3w: med 0.9% max 1.0% -> VALID
+  top apply      0.01%
+  top build      1.53%
+  top seti       0.01%
+  top orch       0.00%
+  top comp      97.30%
+  top final      0.00%
+  top sync_in    0.00%
+  child(comp) cpu       67.85%
+  child(comp) d3        29.42%
+  child(comp) glue       0.03%
+  top sum 98.85% + residual 1.15% = 100.00%
+  wall med 87.87; widths {2: 18, 4: 6, 3: 4}; reused 6/28
+
+== warmup run (run_index 1) — reported separately, not used for claims (n=14) ==
+residual%: med 0.55%, max 6.24%, min 0.51% (all positive: True)
+d3 vs d3w: med 0.9% max 1.0% -> VALID
+  top apply      0.01%
+  top build      1.55%
+  top seti       0.01%
+  top orch       0.00%
+  top comp      97.16%
+  top final      0.00%
+  top sync_in    0.00%
+  child(comp) cpu       68.33%
+  child(comp) d3        28.80%
+  child(comp) glue       0.03%
+  top sum 98.73% + residual 1.27% = 100.00%
+  wall med 89.43; widths {2: 9, 4: 3, 3: 2}; reused 3/14
+
+== ALL joined (reference only) (n=42) ==
+residual%: med 0.56%, max 6.24%, min 0.43% (all positive: True)
+d3 vs d3w: med 0.9% max 1.0% -> VALID
+  top apply      0.01%
+  top build      1.53%
+  top seti       0.01%
+  top orch       0.00%
+  top comp      97.25%
+  top final      0.00%
+  top sync_in    0.00%
+  child(comp) cpu       68.01%
+  child(comp) d3        29.22%
+  child(comp) glue       0.03%
+  top sum 98.81% + residual 1.19% = 100.00%
+  wall med 87.87; widths {2: 27, 4: 9, 3: 6}; reused 9/42

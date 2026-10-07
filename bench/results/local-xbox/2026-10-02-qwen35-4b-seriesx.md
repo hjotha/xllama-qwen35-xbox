@@ -11,9 +11,9 @@ Model: `Qwen3.5-4B-Q4_K_M.gguf` 2740937888 B, sha256
 Bench knobs: `prompt.txt` 2309 B (469 prompt tok), `bench_npredict.txt` 128.
 
 | prompt tok/s | decode tok/s | peak WS MB | load ms | n_ctx | threads | backend |
-| ------------ | ------------- | ---------- | ------- | ----- | ------- | ------- |
-| 23.86        | 9.66          | 2924       | 24084   | 2048  | 6       | cpu     |
-| 24.21        | 9.64          | 2924       | 23858   | 2048  | 6       | cpu     |
+| ------------ | ------------ | ---------- | ------- | ----- | ------- | ------- |
+| 23.86        | 9.66         | 2924       | 24084   | 2048  | 6       | cpu     |
+| 24.21        | 9.64         | 2924       | 23858   | 2048  | 6       | cpu     |
 
 Two repeats of the same CPU configuration; peak 2924 MB is under the Phi-4-mini
 validated 2765 MB band by 159 MB and far under the heap ceiling. Both runs

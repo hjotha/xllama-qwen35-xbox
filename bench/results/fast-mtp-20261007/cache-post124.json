@@ -1,0 +1,2727 @@
+﻿[
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-alloc.obj",
+        "bytes":  103019,
+        "modified":  "2026-10-07T08:32:43.6571691Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-backend-dl.obj",
+        "bytes":  108336,
+        "modified":  "2026-10-07T08:32:56.6884454Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-backend-meta.obj",
+        "bytes":  1086050,
+        "modified":  "2026-10-07T08:33:06.0321989Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-backend-reg.obj",
+        "bytes":  279244,
+        "modified":  "2026-10-07T08:32:58.5790719Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-backend.obj",
+        "bytes":  514588,
+        "modified":  "2026-10-07T08:32:58.3134134Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-opt.obj",
+        "bytes":  310843,
+        "modified":  "2026-10-07T08:33:02.7353148Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-quants.obj",
+        "bytes":  851870,
+        "modified":  "2026-10-07T08:32:50.8134440Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-threading.obj",
+        "bytes":  43974,
+        "modified":  "2026-10-07T08:33:00.7665055Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml.obj",
+        "bytes":  965861,
+        "modified":  "2026-10-07T08:32:45.8446701Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml_cxx.obj",
+        "bytes":  31072,
+        "modified":  "2026-10-07T08:32:51.8446939Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\gguf.obj",
+        "bytes":  1418945,
+        "modified":  "2026-10-07T08:33:07.7040736Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\binary-ops.obj",
+        "bytes":  347302,
+        "modified":  "2026-10-07T08:33:15.5165076Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.obj",
+        "bytes":  242147,
+        "modified":  "2026-10-07T08:33:38.2343435Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+        "bytes":  225327,
+        "modified":  "2026-10-07T08:33:41.9844614Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\hbm.obj",
+        "bytes":  1851,
+        "modified":  "2026-10-07T08:33:12.4852793Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\iqp.obj",
+        "bytes":  129263,
+        "modified":  "2026-10-07T08:33:14.2978132Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ops.obj",
+        "bytes":  1928906,
+        "modified":  "2026-10-07T12:57:05.4524239Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\quants.obj",
+        "bytes":  247766,
+        "modified":  "2026-10-07T08:33:39.0313698Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\repack.obj",
+        "bytes":  1128729,
+        "modified":  "2026-10-07T08:33:30.8906207Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\traits.obj",
+        "bytes":  38744,
+        "modified":  "2026-10-07T08:33:15.9540436Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\unary-ops.obj",
+        "bytes":  948923,
+        "modified":  "2026-10-07T08:33:27.6562164Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\vec.obj",
+        "bytes":  56879,
+        "modified":  "2026-10-07T08:33:19.8749706Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\cpu-feats.obj",
+        "bytes":  37397,
+        "modified":  "2026-10-07T08:33:44.0000042Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\quants.obj",
+        "bytes":  219553,
+        "modified":  "2026-10-07T08:33:50.4062468Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\repack.obj",
+        "bytes":  280963,
+        "modified":  "2026-10-07T08:33:48.5312473Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-local-split\\ggml-local-split.obj",
+        "bytes":  216859,
+        "modified":  "2026-10-07T08:33:12.0478810Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-remote-attn\\ggml-remote-attn.obj",
+        "bytes":  198963,
+        "modified":  "2026-10-07T08:33:09.7665055Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-adapter.obj",
+        "bytes":  713820,
+        "modified":  "2026-10-07T08:34:05.7500000Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-arch.obj",
+        "bytes":  413146,
+        "modified":  "2026-10-07T08:34:05.2812437Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-batch.obj",
+        "bytes":  658301,
+        "modified":  "2026-10-07T08:34:04.3593450Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-block-manager.obj",
+        "bytes":  143555,
+        "modified":  "2026-10-07T08:33:53.8593731Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-chat.obj",
+        "bytes":  433859,
+        "modified":  "2026-10-07T08:34:09.1093683Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-context.obj",
+        "bytes":  2620276,
+        "modified":  "2026-10-07T08:35:50.2053139Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-cparams.obj",
+        "bytes":  37672,
+        "modified":  "2026-10-07T08:34:07.0468700Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-grammar.obj",
+        "bytes":  1573378,
+        "modified":  "2026-10-07T08:34:25.1406247Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-graph.obj",
+        "bytes":  1679401,
+        "modified":  "2026-10-07T08:34:46.1764266Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-hparams.obj",
+        "bytes":  83228,
+        "modified":  "2026-10-07T08:34:11.2034162Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-impl.obj",
+        "bytes":  252237,
+        "modified":  "2026-10-07T08:34:18.2968701Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-io.obj",
+        "bytes":  67900,
+        "modified":  "2026-10-07T08:34:23.7499967Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-dsa-iswa.obj",
+        "bytes":  476941,
+        "modified":  "2026-10-07T08:34:52.6295835Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-dsa.obj",
+        "bytes":  429893,
+        "modified":  "2026-10-07T08:34:51.1451801Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-dsv4.obj",
+        "bytes":  1644229,
+        "modified":  "2026-10-07T08:36:15.4709128Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-iswa.obj",
+        "bytes":  711601,
+        "modified":  "2026-10-07T08:35:18.3836696Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-kvarn-handoff.obj",
+        "bytes":  156122,
+        "modified":  "2026-10-07T08:34:58.9108327Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-kvarn.obj",
+        "bytes":  3330629,
+        "modified":  "2026-10-07T08:37:01.2834052Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-msa.obj",
+        "bytes":  455633,
+        "modified":  "2026-10-07T08:36:15.9865626Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-paged.obj",
+        "bytes":  1247566,
+        "modified":  "2026-10-07T08:36:26.6584053Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-placement.obj",
+        "bytes":  88185,
+        "modified":  "2026-10-07T08:36:19.7053126Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache-tail.obj",
+        "bytes":  1478278,
+        "modified":  "2026-10-07T08:36:38.7209456Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-cache.obj",
+        "bytes":  5061943,
+        "modified":  "2026-10-07T08:37:46.8303111Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-kvarn-materializer.obj",
+        "bytes":  137595,
+        "modified":  "2026-10-07T08:36:32.8615613Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-handoff.obj",
+        "bytes":  322762,
+        "modified":  "2026-10-07T08:36:41.9865599Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-io.obj",
+        "bytes":  699016,
+        "modified":  "2026-10-07T08:36:54.0646847Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-mtp-budget.obj",
+        "bytes":  199380,
+        "modified":  "2026-10-07T08:36:54.1584070Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-placement.obj",
+        "bytes":  114713,
+        "modified":  "2026-10-07T08:37:00.0490646Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-state-stream.obj",
+        "bytes":  409987,
+        "modified":  "2026-10-07T08:37:07.9553178Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-mixed-state.obj",
+        "bytes":  524419,
+        "modified":  "2026-10-07T08:37:11.4396908Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-qx-convert.obj",
+        "bytes":  104917,
+        "modified":  "2026-10-07T08:37:05.2521916Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kv-tail-request.obj",
+        "bytes":  475765,
+        "modified":  "2026-10-07T08:37:21.7053112Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-kvarn.obj",
+        "bytes":  405142,
+        "modified":  "2026-10-07T08:37:19.8459410Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory-hybrid-idx.obj",
+        "bytes":  681758,
+        "modified":  "2026-10-07T08:37:31.6896953Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory-hybrid-iswa.obj",
+        "bytes":  443334,
+        "modified":  "2026-10-07T08:37:35.5646902Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory-hybrid-paged.obj",
+        "bytes":  418516,
+        "modified":  "2026-10-07T08:37:34.6583955Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory-hybrid.obj",
+        "bytes":  483069,
+        "modified":  "2026-10-07T08:37:42.5959355Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory-recurrent.obj",
+        "bytes":  684084,
+        "modified":  "2026-10-07T08:37:46.0959403Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-memory.obj",
+        "bytes":  97339,
+        "modified":  "2026-10-07T08:37:40.3146920Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-mmap.obj",
+        "bytes":  142788,
+        "modified":  "2026-10-07T08:37:45.7053117Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-model-loader.obj",
+        "bytes":  2363587,
+        "modified":  "2026-10-07T08:38:09.3903124Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-model-saver.obj",
+        "bytes":  334656,
+        "modified":  "2026-10-07T08:37:53.8928166Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-model.obj",
+        "bytes":  4317736,
+        "modified":  "2026-10-07T08:38:51.9082883Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-paged-scheduler-impl.obj",
+        "bytes":  344160,
+        "modified":  "2026-10-07T08:37:54.2365636Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-paged-scheduler.obj",
+        "bytes":  222021,
+        "modified":  "2026-10-07T08:38:01.6583842Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-quant.obj",
+        "bytes":  1664567,
+        "modified":  "2026-10-07T08:38:36.3573136Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-sampler.obj",
+        "bytes":  1679069,
+        "modified":  "2026-10-07T08:38:40.2773103Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-state-q4.obj",
+        "bytes":  166572,
+        "modified":  "2026-10-07T08:38:20.5443151Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-vocab.obj",
+        "bytes":  1891243,
+        "modified":  "2026-10-07T08:39:06.2113090Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama.obj",
+        "bytes":  579243,
+        "modified":  "2026-10-07T08:38:56.0863073Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\unicode-data.obj",
+        "bytes":  441371,
+        "modified":  "2026-10-07T08:41:19.8800038Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\unicode.obj",
+        "bytes":  1791630,
+        "modified":  "2026-10-07T08:39:13.5803887Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\afmoe.obj",
+        "bytes":  219367,
+        "modified":  "2026-10-07T08:41:26.1923107Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\apertus.obj",
+        "bytes":  213319,
+        "modified":  "2026-10-07T08:41:26.0361185Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\arcee.obj",
+        "bytes":  210006,
+        "modified":  "2026-10-07T08:41:25.9736190Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\arctic.obj",
+        "bytes":  211340,
+        "modified":  "2026-10-07T08:41:26.1454899Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\arwkv7.obj",
+        "bytes":  220591,
+        "modified":  "2026-10-07T08:41:31.6298705Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\baichuan.obj",
+        "bytes":  209026,
+        "modified":  "2026-10-07T08:41:31.7548690Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bailingmoe.obj",
+        "bytes":  222935,
+        "modified":  "2026-10-07T08:41:31.6298705Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bailingmoe2.obj",
+        "bytes":  218385,
+        "modified":  "2026-10-07T08:41:31.7080023Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bailingmoe3.obj",
+        "bytes":  343248,
+        "modified":  "2026-10-07T08:41:38.7079668Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bert.obj",
+        "bytes":  251769,
+        "modified":  "2026-10-07T08:41:37.0986169Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bitnet.obj",
+        "bytes":  213157,
+        "modified":  "2026-10-07T08:41:36.8329964Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\bloom.obj",
+        "bytes":  209781,
+        "modified":  "2026-10-07T08:41:36.9111274Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\chameleon.obj",
+        "bytes":  213450,
+        "modified":  "2026-10-07T08:41:42.8642196Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\chatglm.obj",
+        "bytes":  208878,
+        "modified":  "2026-10-07T08:41:42.8642196Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\clip.obj",
+        "bytes":  180194,
+        "modified":  "2026-10-07T08:41:42.6454994Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\codeshell.obj",
+        "bytes":  209911,
+        "modified":  "2026-10-07T08:41:44.0673126Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\cogvlm.obj",
+        "bytes":  210681,
+        "modified":  "2026-10-07T08:41:47.3954668Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\cohere2.obj",
+        "bytes":  209146,
+        "modified":  "2026-10-07T08:41:47.5361234Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\cohere2moe.obj",
+        "bytes":  311188,
+        "modified":  "2026-10-07T08:41:48.3173142Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\command-r.obj",
+        "bytes":  209155,
+        "modified":  "2026-10-07T08:41:49.1298657Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dbrx.obj",
+        "bytes":  220612,
+        "modified":  "2026-10-07T08:41:52.3642223Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deci.obj",
+        "bytes":  212700,
+        "modified":  "2026-10-07T08:41:52.6454943Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deepseek.obj",
+        "bytes":  226658,
+        "modified":  "2026-10-07T08:41:53.2392431Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deepseek2.obj",
+        "bytes":  330889,
+        "modified":  "2026-10-07T08:41:55.4423083Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deepseek2ocr.obj",
+        "bytes":  203764,
+        "modified":  "2026-10-07T08:41:57.8954694Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deepseek32.obj",
+        "bytes":  368865,
+        "modified":  "2026-10-07T08:42:00.6611173Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\deepseek4.obj",
+        "bytes":  498835,
+        "modified":  "2026-10-07T08:42:01.9892444Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\delta-net-base.obj",
+        "bytes":  263468,
+        "modified":  "2026-10-07T08:42:01.3954940Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dflash.obj",
+        "bytes":  495583,
+        "modified":  "2026-10-07T08:42:07.3798716Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dots1.obj",
+        "bytes":  226230,
+        "modified":  "2026-10-07T08:42:06.8173055Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dots3note.obj",
+        "bytes":  292007,
+        "modified":  "2026-10-07T08:42:09.5048727Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dream.obj",
+        "bytes":  209256,
+        "modified":  "2026-10-07T08:42:07.8486137Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\dspark.obj",
+        "bytes":  371895,
+        "modified":  "2026-10-07T08:42:14.4423101Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\eagle3.obj",
+        "bytes":  259007,
+        "modified":  "2026-10-07T08:42:12.8955008Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\ernie4-5-moe.obj",
+        "bytes":  203847,
+        "modified":  "2026-10-07T08:42:13.1923093Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\ernie4-5.obj",
+        "bytes":  213293,
+        "modified":  "2026-10-07T08:42:14.9736236Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\eurobert.obj",
+        "bytes":  207437,
+        "modified":  "2026-10-07T08:42:17.8954699Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\exaone-moe.obj",
+        "bytes":  230848,
+        "modified":  "2026-10-07T08:42:18.1611212Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\exaone.obj",
+        "bytes":  210064,
+        "modified":  "2026-10-07T08:42:19.3173083Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\exaone4.obj",
+        "bytes":  225530,
+        "modified":  "2026-10-07T08:42:20.3329898Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\falcon-h1.obj",
+        "bytes":  219099,
+        "modified":  "2026-10-07T08:42:23.4423105Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\falcon.obj",
+        "bytes":  209419,
+        "modified":  "2026-10-07T08:42:23.5829929Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma-embedding.obj",
+        "bytes":  214309,
+        "modified":  "2026-10-07T08:42:24.8954969Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma.obj",
+        "bytes":  208441,
+        "modified":  "2026-10-07T08:42:25.3798682Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma2.obj",
+        "bytes":  211273,
+        "modified":  "2026-10-07T08:42:28.3173123Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma3.obj",
+        "bytes":  226390,
+        "modified":  "2026-10-07T08:42:28.6298739Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma3n.obj",
+        "bytes":  261943,
+        "modified":  "2026-10-07T08:42:30.5517503Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma4-assistant.obj",
+        "bytes":  237966,
+        "modified":  "2026-10-07T08:42:30.3642470Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gemma4.obj",
+        "bytes":  258309,
+        "modified":  "2026-10-07T08:42:34.2548737Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\glm-dsa.obj",
+        "bytes":  374180,
+        "modified":  "2026-10-07T08:42:36.7080007Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\glm4-moe.obj",
+        "bytes":  302119,
+        "modified":  "2026-10-07T08:42:36.9267470Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\glm4.obj",
+        "bytes":  216745,
+        "modified":  "2026-10-07T08:42:36.6298734Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gpt2.obj",
+        "bytes":  210010,
+        "modified":  "2026-10-07T08:42:39.7079971Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\gptneox.obj",
+        "bytes":  212314,
+        "modified":  "2026-10-07T08:42:41.5517450Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\granite-hybrid.obj",
+        "bytes":  230728,
+        "modified":  "2026-10-07T08:42:41.7236153Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\granite-moe.obj",
+        "bytes":  192426,
+        "modified":  "2026-10-07T08:42:41.6454666Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\granite-swa.obj",
+        "bytes":  380386,
+        "modified":  "2026-10-07T08:42:46.5986268Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\granite-switch.obj",
+        "bytes":  347206,
+        "modified":  "2026-10-07T08:42:48.3329691Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\granite.obj",
+        "bytes":  382212,
+        "modified":  "2026-10-07T08:42:49.7704971Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\grok.obj",
+        "bytes":  254334,
+        "modified":  "2026-10-07T08:42:47.5517398Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\grovemoe.obj",
+        "bytes":  215128,
+        "modified":  "2026-10-07T08:42:52.4892498Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\hunyuan-dense.obj",
+        "bytes":  179723,
+        "modified":  "2026-10-07T08:42:52.6767427Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\hunyuan-moe.obj",
+        "bytes":  213882,
+        "modified":  "2026-10-07T08:42:53.5517145Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\hunyuan-vl.obj",
+        "bytes":  215807,
+        "modified":  "2026-10-07T08:42:54.7392190Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\hy-v3.obj",
+        "bytes":  297250,
+        "modified":  "2026-10-07T08:42:57.8798681Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\hy-v4.obj",
+        "bytes":  321411,
+        "modified":  "2026-10-07T08:42:59.2861186Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\internlm2.obj",
+        "bytes":  208672,
+        "modified":  "2026-10-07T08:42:58.5204965Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\jais.obj",
+        "bytes":  209056,
+        "modified":  "2026-10-07T08:43:00.3798648Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\jais2.obj",
+        "bytes":  210096,
+        "modified":  "2026-10-07T08:43:03.4736241Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\jamba.obj",
+        "bytes":  215550,
+        "modified":  "2026-10-07T08:43:04.1611187Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\jina-bert-v2.obj",
+        "bytes":  195689,
+        "modified":  "2026-10-07T08:43:04.5204930Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\jina-bert-v3.obj",
+        "bytes":  227401,
+        "modified":  "2026-10-07T08:43:05.4267440Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\kimi-k3.obj",
+        "bytes":  289270,
+        "modified":  "2026-10-07T08:43:08.8486167Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\kimi-linear.obj",
+        "bytes":  268106,
+        "modified":  "2026-10-07T08:43:09.7704668Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\laguna.obj",
+        "bytes":  225582,
+        "modified":  "2026-10-07T08:43:09.6454935Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\lfm2.obj",
+        "bytes":  313437,
+        "modified":  "2026-10-07T08:43:12.3825110Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\lfm2moe.obj",
+        "bytes":  243143,
+        "modified":  "2026-10-07T08:43:15.9449794Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\llada-moe.obj",
+        "bytes":  211593,
+        "modified":  "2026-10-07T08:43:15.1950074Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\llada.obj",
+        "bytes":  210531,
+        "modified":  "2026-10-07T08:43:15.1793220Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\llama-embed.obj",
+        "bytes":  179726,
+        "modified":  "2026-10-07T08:43:17.5700070Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\llama.obj",
+        "bytes":  228669,
+        "modified":  "2026-10-07T08:43:20.0700089Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\llama4.obj",
+        "bytes":  269698,
+        "modified":  "2026-10-07T08:43:20.3200084Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\maincoder.obj",
+        "bytes":  210272,
+        "modified":  "2026-10-07T08:43:20.9137580Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mamba-base.obj",
+        "bytes":  274099,
+        "modified":  "2026-10-07T08:43:22.9606034Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mamba.obj",
+        "bytes":  219486,
+        "modified":  "2026-10-07T08:43:24.8668919Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mamba2.obj",
+        "bytes":  189223,
+        "modified":  "2026-10-07T08:43:25.1012291Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mellum.obj",
+        "bytes":  236951,
+        "modified":  "2026-10-07T08:43:26.3825063Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mimo2.obj",
+        "bytes":  296197,
+        "modified":  "2026-10-07T08:43:28.9606316Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\minicpm.obj",
+        "bytes":  192742,
+        "modified":  "2026-10-07T08:43:30.5075078Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\minicpm3.obj",
+        "bytes":  217446,
+        "modified":  "2026-10-07T08:43:30.7731329Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\minimax-01.obj",
+        "bytes":  297140,
+        "modified":  "2026-10-07T08:43:32.3668872Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\minimax-m2.obj",
+        "bytes":  211664,
+        "modified":  "2026-10-07T08:43:33.9293221Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\minimax-m3.obj",
+        "bytes":  335188,
+        "modified":  "2026-10-07T08:43:38.0075040Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mistral3.obj",
+        "bytes":  227685,
+        "modified":  "2026-10-07T08:43:35.7262597Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mistral4.obj",
+        "bytes":  179657,
+        "modified":  "2026-10-07T08:43:37.1168571Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\modern-bert.obj",
+        "bytes":  215408,
+        "modified":  "2026-10-07T08:43:39.3043202Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\mpt.obj",
+        "bytes":  212649,
+        "modified":  "2026-10-07T08:43:41.3356325Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\muse-glimmer.obj",
+        "bytes":  215338,
+        "modified":  "2026-10-07T08:43:42.5856321Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nanbeige.obj",
+        "bytes":  212903,
+        "modified":  "2026-10-07T08:43:43.5856289Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nemotron-h-moe.obj",
+        "bytes":  218717,
+        "modified":  "2026-10-07T08:43:44.5075140Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nemotron-h.obj",
+        "bytes":  248054,
+        "modified":  "2026-10-07T08:43:46.5075137Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nemotron.obj",
+        "bytes":  209580,
+        "modified":  "2026-10-07T08:43:47.5387573Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\neo-bert.obj",
+        "bytes":  208331,
+        "modified":  "2026-10-07T08:43:48.3668812Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nomic-bert-moe.obj",
+        "bytes":  228529,
+        "modified":  "2026-10-07T08:43:49.4137533Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\nomic-bert.obj",
+        "bytes":  227583,
+        "modified":  "2026-10-07T08:43:51.3824801Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\olmo.obj",
+        "bytes":  207971,
+        "modified":  "2026-10-07T08:43:52.7262611Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\olmo2.obj",
+        "bytes":  224464,
+        "modified":  "2026-10-07T08:43:53.8512583Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\olmoe.obj",
+        "bytes":  222189,
+        "modified":  "2026-10-07T08:43:54.9918829Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\openai-moe.obj",
+        "bytes":  211941,
+        "modified":  "2026-10-07T08:43:56.8512582Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\openelm.obj",
+        "bytes":  210643,
+        "modified":  "2026-10-07T08:43:57.7418808Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\orion.obj",
+        "bytes":  209115,
+        "modified":  "2026-10-07T08:43:58.7731311Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\paddleocr.obj",
+        "bytes":  205194,
+        "modified":  "2026-10-07T08:43:59.8356366Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\pangu-embed.obj",
+        "bytes":  211027,
+        "modified":  "2026-10-07T08:44:01.6793187Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\phi2.obj",
+        "bytes":  209116,
+        "modified":  "2026-10-07T08:44:02.5543233Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\phi3.obj",
+        "bytes":  223401,
+        "modified":  "2026-10-07T08:44:03.8043230Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\phimoe.obj",
+        "bytes":  192077,
+        "modified":  "2026-10-07T08:44:04.7262601Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\plamo.obj",
+        "bytes":  207753,
+        "modified":  "2026-10-07T08:44:06.9762563Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\plamo2.obj",
+        "bytes":  286264,
+        "modified":  "2026-10-07T08:44:08.4918853Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\plamo3.obj",
+        "bytes":  226186,
+        "modified":  "2026-10-07T08:44:09.4449818Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\plm.obj",
+        "bytes":  213529,
+        "modified":  "2026-10-07T08:44:10.3668899Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\pockettts.obj",
+        "bytes":  209089,
+        "modified":  "2026-10-07T08:44:12.1168856Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen.obj",
+        "bytes":  208398,
+        "modified":  "2026-10-07T08:44:13.3043220Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen2.obj",
+        "bytes":  210552,
+        "modified":  "2026-10-07T08:44:14.2106320Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen2moe.obj",
+        "bytes":  225159,
+        "modified":  "2026-10-07T08:44:15.2887567Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen2vl.obj",
+        "bytes":  212571,
+        "modified":  "2026-10-07T08:44:17.0074804Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3.obj",
+        "bytes":  210628,
+        "modified":  "2026-10-07T08:44:18.4137536Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen35.obj",
+        "bytes":  361085,
+        "modified":  "2026-10-07T08:44:20.9449821Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen35moe.obj",
+        "bytes":  316808,
+        "modified":  "2026-10-07T08:44:21.8199818Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3moe.obj",
+        "bytes":  223372,
+        "modified":  "2026-10-07T08:44:23.0387531Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3next.obj",
+        "bytes":  352331,
+        "modified":  "2026-10-07T08:44:25.6481060Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3tts.obj",
+        "bytes":  175121,
+        "modified":  "2026-10-07T08:44:26.7887281Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3vl.obj",
+        "bytes":  216692,
+        "modified":  "2026-10-07T08:44:28.3825098Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen3vlmoe.obj",
+        "bytes":  227951,
+        "modified":  "2026-10-07T08:44:29.6325122Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen4exp.obj",
+        "bytes":  547433,
+        "modified":  "2026-10-07T08:44:44.0834609Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\refact.obj",
+        "bytes":  212643,
+        "modified":  "2026-10-07T08:44:33.9293223Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rnd1.obj",
+        "bytes":  223087,
+        "modified":  "2026-10-07T08:44:40.6771833Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rwkv6-base.obj",
+        "bytes":  225591,
+        "modified":  "2026-10-07T08:44:44.1459592Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rwkv6.obj",
+        "bytes":  220060,
+        "modified":  "2026-10-07T08:44:47.1302779Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rwkv6qwen2.obj",
+        "bytes":  215896,
+        "modified":  "2026-10-07T08:44:48.2240832Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rwkv7-base.obj",
+        "bytes":  221590,
+        "modified":  "2026-10-07T08:44:50.5209348Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\rwkv7.obj",
+        "bytes":  219255,
+        "modified":  "2026-10-07T08:44:50.6459577Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\seed-oss.obj",
+        "bytes":  209430,
+        "modified":  "2026-10-07T08:44:56.2397108Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\smallthinker.obj",
+        "bytes":  225510,
+        "modified":  "2026-10-07T08:44:57.4584682Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\smollm3.obj",
+        "bytes":  209707,
+        "modified":  "2026-10-07T08:44:59.1147139Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\spark2-5.obj",
+        "bytes":  213491,
+        "modified":  "2026-10-07T08:44:59.1772102Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\stablelm.obj",
+        "bytes":  210794,
+        "modified":  "2026-10-07T08:45:01.9428402Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\starcoder.obj",
+        "bytes":  210248,
+        "modified":  "2026-10-07T08:45:02.9740912Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\starcoder2.obj",
+        "bytes":  210261,
+        "modified":  "2026-10-07T08:45:04.1147078Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\step35.obj",
+        "bytes":  313156,
+        "modified":  "2026-10-07T08:45:04.9115617Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\t5.obj",
+        "bytes":  266242,
+        "modified":  "2026-10-07T08:45:07.5365929Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\t5encoder.obj",
+        "bytes":  189676,
+        "modified":  "2026-10-07T08:45:07.9428378Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\talkie.obj",
+        "bytes":  210192,
+        "modified":  "2026-10-07T08:45:09.2396841Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\wavtokenizer-dec.obj",
+        "bytes":  217561,
+        "modified":  "2026-10-07T08:45:09.8178362Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\xverse.obj",
+        "bytes":  208579,
+        "modified":  "2026-10-07T08:45:12.0522126Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-alloc.obj",
+        "bytes":  178692,
+        "modified":  "2026-10-07T12:36:11.2263317Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-backend-dl.obj",
+        "bytes":  2105443,
+        "modified":  "2026-10-07T12:36:18.1169116Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-backend-meta.obj",
+        "bytes":  2191089,
+        "modified":  "2026-10-07T12:36:18.1169116Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-backend-reg.obj",
+        "bytes":  2409583,
+        "modified":  "2026-10-07T12:36:18.6325822Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-backend.obj",
+        "bytes":  829820,
+        "modified":  "2026-10-07T12:36:15.9763295Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-opt.obj",
+        "bytes":  1529365,
+        "modified":  "2026-10-07T12:36:19.8357130Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-quants.obj",
+        "bytes":  623255,
+        "modified":  "2026-10-07T12:36:11.1950891Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-threading.obj",
+        "bytes":  511173,
+        "modified":  "2026-10-07T12:36:19.9607128Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml.obj",
+        "bytes":  675788,
+        "modified":  "2026-10-07T12:36:11.2107115Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml_cxx.obj",
+        "bytes":  247852,
+        "modified":  "2026-10-07T12:36:12.8044636Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\gguf.obj",
+        "bytes":  1775233,
+        "modified":  "2026-10-07T12:36:21.3046178Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\binary-ops.obj",
+        "bytes":  496915,
+        "modified":  "2026-10-07T12:36:28.2221144Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.obj",
+        "bytes":  387408,
+        "modified":  "2026-10-07T12:36:32.5658663Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+        "bytes":  632534,
+        "modified":  "2026-10-07T12:36:34.9721221Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\hbm.obj",
+        "bytes":  3240,
+        "modified":  "2026-10-07T12:36:26.7533414Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\iqp.obj",
+        "bytes":  389901,
+        "modified":  "2026-10-07T12:36:28.0502469Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ops.obj",
+        "bytes":  1905134,
+        "modified":  "2026-10-07T13:10:54.3577498Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\quants.obj",
+        "bytes":  296310,
+        "modified":  "2026-10-07T12:36:32.0034316Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\repack.obj",
+        "bytes":  1396843,
+        "modified":  "2026-10-07T12:36:29.3627411Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\traits.obj",
+        "bytes":  262946,
+        "modified":  "2026-10-07T12:36:29.5033705Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\unary-ops.obj",
+        "bytes":  859567,
+        "modified":  "2026-10-07T12:36:30.4564915Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\vec.obj",
+        "bytes":  345060,
+        "modified":  "2026-10-07T12:36:30.9721232Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\cpu-feats.obj",
+        "bytes":  483368,
+        "modified":  "2026-10-07T12:36:37.0033676Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\quants.obj",
+        "bytes":  320710,
+        "modified":  "2026-10-07T12:36:38.1752194Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\arch\\x86\\repack.obj",
+        "bytes":  942972,
+        "modified":  "2026-10-07T12:36:37.2845902Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-local-split\\ggml-local-split.obj",
+        "bytes":  941570,
+        "modified":  "2026-10-07T12:36:26.1283669Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-remote-attn\\ggml-remote-attn.obj",
+        "bytes":  793381,
+        "modified":  "2026-10-07T12:36:23.6127458Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-adapter.obj",
+        "bytes":  2479213,
+        "modified":  "2026-10-07T12:36:44.2221204Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-arch.obj",
+        "bytes":  1076212,
+        "modified":  "2026-10-07T12:36:42.1908728Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-batch.obj",
+        "bytes":  2455859,
+        "modified":  "2026-10-07T12:36:43.6439324Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-block-manager.obj",
+        "bytes":  622875,
+        "modified":  "2026-10-07T12:36:40.8314918Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-chat.obj",
+        "bytes":  1471019,
+        "modified":  "2026-10-07T12:36:44.8158723Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-context.obj",
+        "bytes":  5554582,
+        "modified":  "2026-10-07T12:36:51.5831579Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-cparams.obj",
+        "bytes":  391154,
+        "modified":  "2026-10-07T12:36:45.7377206Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-grammar.obj",
+        "bytes":  3095111,
+        "modified":  "2026-10-07T12:36:49.3799674Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-graph.obj",
+        "bytes":  4369695,
+        "modified":  "2026-10-07T12:36:52.0987737Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-hparams.obj",
+        "bytes":  417679,
+        "modified":  "2026-10-07T12:36:47.6596207Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-impl.obj",
+        "bytes":  1253060,
+        "modified":  "2026-10-07T12:36:49.9425311Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-io.obj",
+        "bytes":  506443,
+        "modified":  "2026-10-07T12:36:50.7549710Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-dsa-iswa.obj",
+        "bytes":  2005283,
+        "modified":  "2026-10-07T12:36:53.6776803Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-dsa.obj",
+        "bytes":  1954879,
+        "modified":  "2026-10-07T12:36:54.4589014Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-dsv4.obj",
+        "bytes":  3856399,
+        "modified":  "2026-10-07T12:36:57.2558414Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-iswa.obj",
+        "bytes":  2198926,
+        "modified":  "2026-10-07T12:36:56.1620836Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-kvarn-handoff.obj",
+        "bytes":  1685663,
+        "modified":  "2026-10-07T12:36:57.1777096Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-kvarn.obj",
+        "bytes":  7329116,
+        "modified":  "2026-10-07T12:37:04.6620795Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-msa.obj",
+        "bytes":  1990315,
+        "modified":  "2026-10-07T12:37:00.3808281Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-paged.obj",
+        "bytes":  2926869,
+        "modified":  "2026-10-07T12:37:01.6933282Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-placement.obj",
+        "bytes":  540932,
+        "modified":  "2026-10-07T12:36:58.7089029Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache-tail.obj",
+        "bytes":  2654820,
+        "modified":  "2026-10-07T12:37:02.3495785Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-cache.obj",
+        "bytes":  7927429,
+        "modified":  "2026-10-07T12:37:09.5370802Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-kvarn-materializer.obj",
+        "bytes":  432536,
+        "modified":  "2026-10-07T12:37:02.8652080Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-handoff.obj",
+        "bytes":  885659,
+        "modified":  "2026-10-07T12:37:04.1620817Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-io.obj",
+        "bytes":  1537158,
+        "modified":  "2026-10-07T12:37:05.4433345Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-mtp-budget.obj",
+        "bytes":  1732396,
+        "modified":  "2026-10-07T12:37:07.4902049Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-placement.obj",
+        "bytes":  477811,
+        "modified":  "2026-10-07T12:37:06.0526781Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-state-stream.obj",
+        "bytes":  974490,
+        "modified":  "2026-10-07T12:37:07.3964301Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-mixed-state.obj",
+        "bytes":  1207988,
+        "modified":  "2026-10-07T12:37:08.2088965Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-qx-convert.obj",
+        "bytes":  365959,
+        "modified":  "2026-10-07T12:37:08.4745782Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kv-tail-request.obj",
+        "bytes":  2113492,
+        "modified":  "2026-10-07T12:37:11.5370548Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-kvarn.obj",
+        "bytes":  1077972,
+        "modified":  "2026-10-07T12:37:10.2402070Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory-hybrid-idx.obj",
+        "bytes":  2239748,
+        "modified":  "2026-10-07T12:37:13.0683022Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory-hybrid-iswa.obj",
+        "bytes":  2051572,
+        "modified":  "2026-10-07T12:37:14.0058351Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory-hybrid-paged.obj",
+        "bytes":  1516616,
+        "modified":  "2026-10-07T12:37:14.0838931Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory-hybrid.obj",
+        "bytes":  2073579,
+        "modified":  "2026-10-07T12:37:15.6152034Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory-recurrent.obj",
+        "bytes":  1919962,
+        "modified":  "2026-10-07T12:37:16.4433319Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-memory.obj",
+        "bytes":  1035809,
+        "modified":  "2026-10-07T12:37:16.3183321Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-mmap.obj",
+        "bytes":  644215,
+        "modified":  "2026-10-07T12:37:16.0527033Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-model-loader.obj",
+        "bytes":  4416690,
+        "modified":  "2026-10-07T12:37:22.0028714Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-model-saver.obj",
+        "bytes":  1383532,
+        "modified":  "2026-10-07T12:37:18.9559326Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-model.obj",
+        "bytes":  7236157,
+        "modified":  "2026-10-07T12:37:28.3126458Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-paged-scheduler-impl.obj",
+        "bytes":  1531204,
+        "modified":  "2026-10-07T12:37:19.7216183Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-paged-scheduler.obj",
+        "bytes":  1339841,
+        "modified":  "2026-10-07T12:37:22.9884038Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-quant.obj",
+        "bytes":  3925036,
+        "modified":  "2026-10-07T12:37:27.7813925Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-sampler.obj",
+        "bytes":  3518336,
+        "modified":  "2026-10-07T12:37:28.8282427Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-state-q4.obj",
+        "bytes":  961539,
+        "modified":  "2026-10-07T12:37:26.0626474Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-vocab.obj",
+        "bytes":  2840602,
+        "modified":  "2026-10-07T12:37:31.8126465Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama.obj",
+        "bytes":  2267111,
+        "modified":  "2026-10-07T12:37:33.4376451Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\unicode-data.obj",
+        "bytes":  1455775,
+        "modified":  "2026-10-07T12:37:33.3126177Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\unicode.obj",
+        "bytes":  3381157,
+        "modified":  "2026-10-07T12:37:34.2344860Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\afmoe.obj",
+        "bytes":  1774455,
+        "modified":  "2026-10-07T12:37:40.3907724Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\apertus.obj",
+        "bytes":  1763823,
+        "modified":  "2026-10-07T12:37:40.6407705Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\arcee.obj",
+        "bytes":  1756489,
+        "modified":  "2026-10-07T12:37:40.5001436Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\arctic.obj",
+        "bytes":  1760835,
+        "modified":  "2026-10-07T12:37:40.4219601Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\arwkv7.obj",
+        "bytes":  1772448,
+        "modified":  "2026-10-07T12:37:44.5782698Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\baichuan.obj",
+        "bytes":  1755748,
+        "modified":  "2026-10-07T12:37:44.5782698Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bailingmoe.obj",
+        "bytes":  1761269,
+        "modified":  "2026-10-07T12:37:44.7032409Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bailingmoe2.obj",
+        "bytes":  1772808,
+        "modified":  "2026-10-07T12:37:44.8751436Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bailingmoe3.obj",
+        "bytes":  1937355,
+        "modified":  "2026-10-07T12:37:49.0157693Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bert.obj",
+        "bytes":  1778204,
+        "modified":  "2026-10-07T12:37:48.7970274Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bitnet.obj",
+        "bytes":  1762101,
+        "modified":  "2026-10-07T12:37:48.8751443Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\bloom.obj",
+        "bytes":  1758070,
+        "modified":  "2026-10-07T12:37:49.1251424Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\chameleon.obj",
+        "bytes":  1762519,
+        "modified":  "2026-10-07T12:37:53.6563967Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\chatglm.obj",
+        "bytes":  1755474,
+        "modified":  "2026-10-07T12:37:53.6719919Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\clip.obj",
+        "bytes":  1717211,
+        "modified":  "2026-10-07T12:37:53.8126505Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\codeshell.obj",
+        "bytes":  1758299,
+        "modified":  "2026-10-07T12:37:53.9219922Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\cogvlm.obj",
+        "bytes":  1759120,
+        "modified":  "2026-10-07T12:37:57.8282680Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\cohere2.obj",
+        "bytes":  1756519,
+        "modified":  "2026-10-07T12:37:57.8438589Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\cohere2moe.obj",
+        "bytes":  1851964,
+        "modified":  "2026-10-07T12:37:58.1407674Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\command-r.obj",
+        "bytes":  1756459,
+        "modified":  "2026-10-07T12:37:58.1251184Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dbrx.obj",
+        "bytes":  1756699,
+        "modified":  "2026-10-07T12:38:02.0628799Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deci.obj",
+        "bytes":  1764557,
+        "modified":  "2026-10-07T12:38:02.0628799Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deepseek.obj",
+        "bytes":  1765519,
+        "modified":  "2026-10-07T12:38:02.4378672Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deepseek2.obj",
+        "bytes":  1878991,
+        "modified":  "2026-10-07T12:38:02.5316454Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deepseek2ocr.obj",
+        "bytes":  1749185,
+        "modified":  "2026-10-07T12:38:06.8441497Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deepseek32.obj",
+        "bytes":  2451635,
+        "modified":  "2026-10-07T12:38:08.2504018Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\deepseek4.obj",
+        "bytes":  2573439,
+        "modified":  "2026-10-07T12:38:08.6878794Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\delta-net-base.obj",
+        "bytes":  1833552,
+        "modified":  "2026-10-07T12:38:07.5628671Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dflash.obj",
+        "bytes":  2625096,
+        "modified":  "2026-10-07T12:38:12.6410291Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dots1.obj",
+        "bytes":  1767118,
+        "modified":  "2026-10-07T12:38:11.8441575Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dots3note.obj",
+        "bytes":  2380027,
+        "modified":  "2026-10-07T12:38:13.7347495Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dream.obj",
+        "bytes":  1756731,
+        "modified":  "2026-10-07T12:38:13.0159988Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\dspark.obj",
+        "bytes":  2030243,
+        "modified":  "2026-10-07T12:38:16.5003701Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\eagle3.obj",
+        "bytes":  1807641,
+        "modified":  "2026-10-07T12:38:17.0941535Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\ernie4-5-moe.obj",
+        "bytes":  1747586,
+        "modified":  "2026-10-07T12:38:17.5003965Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\ernie4-5.obj",
+        "bytes":  1764129,
+        "modified":  "2026-10-07T12:38:18.5785239Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\eurobert.obj",
+        "bytes":  1752996,
+        "modified":  "2026-10-07T12:38:21.3753980Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\exaone-moe.obj",
+        "bytes":  1775661,
+        "modified":  "2026-10-07T12:38:21.9847784Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\exaone.obj",
+        "bytes":  1756695,
+        "modified":  "2026-10-07T12:38:22.1410269Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\exaone4.obj",
+        "bytes":  1787706,
+        "modified":  "2026-10-07T12:38:23.0160242Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\falcon-h1.obj",
+        "bytes":  1775720,
+        "modified":  "2026-10-07T12:38:25.6722792Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\falcon.obj",
+        "bytes":  1757251,
+        "modified":  "2026-10-07T12:38:26.2816503Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma-embedding.obj",
+        "bytes":  1765053,
+        "modified":  "2026-10-07T12:38:26.4534990Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma.obj",
+        "bytes":  1754553,
+        "modified":  "2026-10-07T12:38:27.3128722Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma2.obj",
+        "bytes":  1760085,
+        "modified":  "2026-10-07T12:38:29.9535230Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma3.obj",
+        "bytes":  1789618,
+        "modified":  "2026-10-07T12:38:30.7504072Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma3n.obj",
+        "bytes":  1818844,
+        "modified":  "2026-10-07T12:38:30.8909966Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma4-assistant.obj",
+        "bytes":  1784481,
+        "modified":  "2026-10-07T12:38:32.1566497Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gemma4.obj",
+        "bytes":  1817820,
+        "modified":  "2026-10-07T12:38:34.9222779Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\glm-dsa.obj",
+        "bytes":  2460223,
+        "modified":  "2026-10-07T12:38:36.7816467Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\glm4-moe.obj",
+        "bytes":  1857634,
+        "modified":  "2026-10-07T12:38:35.7972783Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\glm4.obj",
+        "bytes":  1774763,
+        "modified":  "2026-10-07T12:38:36.5941480Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gpt2.obj",
+        "bytes":  1757824,
+        "modified":  "2026-10-07T12:38:39.2504030Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\gptneox.obj",
+        "bytes":  1763761,
+        "modified":  "2026-10-07T12:38:40.1254052Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\granite-hybrid.obj",
+        "bytes":  1790668,
+        "modified":  "2026-10-07T12:38:40.8910313Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\granite-moe.obj",
+        "bytes":  1752215,
+        "modified":  "2026-10-07T12:38:41.0316227Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\granite-swa.obj",
+        "bytes":  2586347,
+        "modified":  "2026-10-07T12:38:45.0206352Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\granite-switch.obj",
+        "bytes":  1927866,
+        "modified":  "2026-10-07T12:38:45.0518653Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\granite.obj",
+        "bytes":  2593262,
+        "modified":  "2026-10-07T12:38:46.5675064Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\grok.obj",
+        "bytes":  1777437,
+        "modified":  "2026-10-07T12:38:45.9268667Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\grovemoe.obj",
+        "bytes":  1766307,
+        "modified":  "2026-10-07T12:38:49.5050093Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\hunyuan-dense.obj",
+        "bytes":  1729205,
+        "modified":  "2026-10-07T12:38:49.6143885Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\hunyuan-moe.obj",
+        "bytes":  1763779,
+        "modified":  "2026-10-07T12:38:50.3487319Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\hunyuan-vl.obj",
+        "bytes":  1773428,
+        "modified":  "2026-10-07T12:38:50.9893595Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\hy-v3.obj",
+        "bytes":  1843395,
+        "modified":  "2026-10-07T12:38:53.8800058Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\hy-v4.obj",
+        "bytes":  2398842,
+        "modified":  "2026-10-07T12:38:55.0675132Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\internlm2.obj",
+        "bytes":  1755174,
+        "modified":  "2026-10-07T12:38:54.7550163Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\jais.obj",
+        "bytes":  1756601,
+        "modified":  "2026-10-07T12:38:55.3800074Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\jais2.obj",
+        "bytes":  1758007,
+        "modified":  "2026-10-07T12:38:58.8643870Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\jamba.obj",
+        "bytes":  1767267,
+        "modified":  "2026-10-07T12:38:59.5206396Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\jina-bert-v2.obj",
+        "bytes":  1750006,
+        "modified":  "2026-10-07T12:38:59.7706073Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\jina-bert-v3.obj",
+        "bytes":  1753160,
+        "modified":  "2026-10-07T12:39:00.3175117Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\kimi-k3.obj",
+        "bytes":  1875744,
+        "modified":  "2026-10-07T12:39:03.4893836Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\kimi-linear.obj",
+        "bytes":  1861312,
+        "modified":  "2026-10-07T12:39:04.0831389Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\laguna.obj",
+        "bytes":  1777024,
+        "modified":  "2026-10-07T12:39:04.3018616Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\lfm2.obj",
+        "bytes":  2462998,
+        "modified":  "2026-10-07T12:39:05.9425068Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\lfm2moe.obj",
+        "bytes":  2375159,
+        "modified":  "2026-10-07T12:39:09.0518589Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\llada-moe.obj",
+        "bytes":  1759911,
+        "modified":  "2026-10-07T12:39:08.3956070Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\llada.obj",
+        "bytes":  1758404,
+        "modified":  "2026-10-07T12:39:08.5831077Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\llama-embed.obj",
+        "bytes":  1729397,
+        "modified":  "2026-10-07T12:39:10.2237631Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\llama.obj",
+        "bytes":  1788044,
+        "modified":  "2026-10-07T12:39:13.2550076Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\llama4.obj",
+        "bytes":  1808859,
+        "modified":  "2026-10-07T12:39:13.4581369Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\maincoder.obj",
+        "bytes":  1757747,
+        "modified":  "2026-10-07T12:39:13.8799838Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mamba-base.obj",
+        "bytes":  1833381,
+        "modified":  "2026-10-07T12:39:15.2862629Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mamba.obj",
+        "bytes":  1755932,
+        "modified":  "2026-10-07T12:39:17.6721771Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mamba2.obj",
+        "bytes":  1746995,
+        "modified":  "2026-10-07T12:39:18.2034223Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mellum.obj",
+        "bytes":  1789727,
+        "modified":  "2026-10-07T12:39:18.5628021Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mimo2.obj",
+        "bytes":  1840138,
+        "modified":  "2026-10-07T12:39:20.5940513Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\minicpm.obj",
+        "bytes":  1752299,
+        "modified":  "2026-10-07T12:39:23.6721755Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\minicpm3.obj",
+        "bytes":  1769439,
+        "modified":  "2026-10-07T12:39:24.1096746Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\minimax-01.obj",
+        "bytes":  1886962,
+        "modified":  "2026-10-07T12:39:25.3440483Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\minimax-m2.obj",
+        "bytes":  1761450,
+        "modified":  "2026-10-07T12:39:27.3908640Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\minimax-m3.obj",
+        "bytes":  2440221,
+        "modified":  "2026-10-07T12:39:37.5098662Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mistral3.obj",
+        "bytes":  1771120,
+        "modified":  "2026-10-07T12:39:36.2130572Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mistral4.obj",
+        "bytes":  1729121,
+        "modified":  "2026-10-07T12:39:36.5880565Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\modern-bert.obj",
+        "bytes":  1760997,
+        "modified":  "2026-10-07T12:39:38.2598660Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\mpt.obj",
+        "bytes":  1764190,
+        "modified":  "2026-10-07T12:39:44.2130519Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\muse-glimmer.obj",
+        "bytes":  1766099,
+        "modified":  "2026-10-07T12:39:44.9630548Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nanbeige.obj",
+        "bytes":  1763593,
+        "modified":  "2026-10-07T12:39:46.5568044Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nemotron-h-moe.obj",
+        "bytes":  1777035,
+        "modified":  "2026-10-07T12:39:47.5098672Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nemotron-h.obj",
+        "bytes":  1799367,
+        "modified":  "2026-10-07T12:39:50.1333948Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nemotron.obj",
+        "bytes":  1757439,
+        "modified":  "2026-10-07T12:39:50.3594770Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\neo-bert.obj",
+        "bytes":  1755067,
+        "modified":  "2026-10-07T12:39:50.9688470Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nomic-bert-moe.obj",
+        "bytes":  1755511,
+        "modified":  "2026-10-07T12:39:51.7969135Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\nomic-bert.obj",
+        "bytes":  1753691,
+        "modified":  "2026-10-07T12:39:54.9063472Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\olmo.obj",
+        "bytes":  1754238,
+        "modified":  "2026-10-07T12:39:55.1094750Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\olmo2.obj",
+        "bytes":  1788573,
+        "modified":  "2026-10-07T12:39:55.8282298Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\olmoe.obj",
+        "bytes":  1759786,
+        "modified":  "2026-10-07T12:39:56.7813473Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\openai-moe.obj",
+        "bytes":  1762654,
+        "modified":  "2026-10-07T12:39:59.3281981Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\openelm.obj",
+        "bytes":  1759456,
+        "modified":  "2026-10-07T12:39:59.4532287Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\orion.obj",
+        "bytes":  1756329,
+        "modified":  "2026-10-07T12:40:00.2813560Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\paddleocr.obj",
+        "bytes":  1754415,
+        "modified":  "2026-10-07T12:40:01.1719121Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\pangu-embed.obj",
+        "bytes":  1759374,
+        "modified":  "2026-10-07T12:40:59.7003561Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\phi2.obj",
+        "bytes":  1756576,
+        "modified":  "2026-10-07T12:41:07.5285047Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\phi3.obj",
+        "bytes":  1785018,
+        "modified":  "2026-10-07T12:41:08.6378208Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\phimoe.obj",
+        "bytes":  1757411,
+        "modified":  "2026-10-07T12:41:09.6535148Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\plamo.obj",
+        "bytes":  1753636,
+        "modified":  "2026-10-07T12:41:12.4659809Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\plamo2.obj",
+        "bytes":  1864847,
+        "modified":  "2026-10-07T12:41:12.9972592Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\plamo3.obj",
+        "bytes":  1787491,
+        "modified":  "2026-10-07T12:41:13.6066066Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\plm.obj",
+        "bytes":  1762822,
+        "modified":  "2026-10-07T12:41:14.2628235Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\pockettts.obj",
+        "bytes":  1756118,
+        "modified":  "2026-10-07T12:41:16.7472574Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen.obj",
+        "bytes":  1755267,
+        "modified":  "2026-10-07T12:41:17.2785135Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen2.obj",
+        "bytes":  1757925,
+        "modified":  "2026-10-07T12:41:17.9035122Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen2moe.obj",
+        "bytes":  1763364,
+        "modified":  "2026-10-07T12:41:18.5910147Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen2vl.obj",
+        "bytes":  1767224,
+        "modified":  "2026-10-07T12:41:21.6222571Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3.obj",
+        "bytes":  1759917,
+        "modified":  "2026-10-07T12:41:22.0285109Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen35.obj",
+        "bytes":  1986862,
+        "modified":  "2026-10-07T12:41:22.9972546Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen35moe.obj",
+        "bytes":  1939783,
+        "modified":  "2026-10-07T12:41:23.9035085Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3moe.obj",
+        "bytes":  1761486,
+        "modified":  "2026-10-07T12:41:26.0322339Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3next.obj",
+        "bytes":  1937527,
+        "modified":  "2026-10-07T12:41:26.7041036Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3tts.obj",
+        "bytes":  1714892,
+        "modified":  "2026-10-07T12:41:27.2509542Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3vl.obj",
+        "bytes":  1774183,
+        "modified":  "2026-10-07T12:41:28.2197301Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen3vlmoe.obj",
+        "bytes":  1774086,
+        "modified":  "2026-10-07T12:41:30.3603585Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen4exp.obj",
+        "bytes":  2827881,
+        "modified":  "2026-10-07T12:41:32.8447296Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\refact.obj",
+        "bytes":  1762255,
+        "modified":  "2026-10-07T12:41:31.5478155Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rnd1.obj",
+        "bytes":  1760235,
+        "modified":  "2026-10-07T12:41:32.5478154Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rwkv6-base.obj",
+        "bytes":  1791957,
+        "modified":  "2026-10-07T12:41:35.2197273Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rwkv6.obj",
+        "bytes":  1774738,
+        "modified":  "2026-10-07T12:41:36.6416037Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rwkv6qwen2.obj",
+        "bytes":  1766796,
+        "modified":  "2026-10-07T12:41:37.5322280Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rwkv7-base.obj",
+        "bytes":  1787144,
+        "modified":  "2026-10-07T12:41:37.9228129Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\rwkv7.obj",
+        "bytes":  1775730,
+        "modified":  "2026-10-07T12:41:39.7353566Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\seed-oss.obj",
+        "bytes":  1756634,
+        "modified":  "2026-10-07T12:41:41.0322283Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\smallthinker.obj",
+        "bytes":  1786805,
+        "modified":  "2026-10-07T12:41:41.9072295Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\smollm3.obj",
+        "bytes":  1756886,
+        "modified":  "2026-10-07T12:41:42.2666095Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\spark2-5.obj",
+        "bytes":  1761116,
+        "modified":  "2026-10-07T12:41:44.0166094Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\stablelm.obj",
+        "bytes":  1759295,
+        "modified":  "2026-10-07T12:41:45.3447356Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\starcoder.obj",
+        "bytes":  1758130,
+        "modified":  "2026-10-07T12:41:46.1572354Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\starcoder2.obj",
+        "bytes":  1759069,
+        "modified":  "2026-10-07T12:41:46.6103530Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\step35.obj",
+        "bytes":  1876809,
+        "modified":  "2026-10-07T12:41:48.9853549Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\t5.obj",
+        "bytes":  1836053,
+        "modified":  "2026-10-07T12:41:50.3759801Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\t5encoder.obj",
+        "bytes":  1744528,
+        "modified":  "2026-10-07T12:41:50.9853548Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\talkie.obj",
+        "bytes":  1756388,
+        "modified":  "2026-10-07T12:41:51.5947326Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\wavtokenizer-dec.obj",
+        "bytes":  1773623,
+        "modified":  "2026-10-07T12:41:53.2666148Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\xverse.obj",
+        "bytes":  1755065,
+        "modified":  "2026-10-07T12:41:54.3604928Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\api-server.obj",
+        "bytes":  6395115,
+        "modified":  "2026-10-07T12:59:07.5270737Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\App.obj",
+        "bytes":  3277682,
+        "modified":  "2026-10-07T12:59:03.7927027Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\chat-history.obj",
+        "bytes":  656530,
+        "modified":  "2026-10-07T12:58:57.5427046Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\diffuse.obj",
+        "bytes":  2245722,
+        "modified":  "2026-10-07T08:48:16.7771360Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\inference-bridge.obj",
+        "bytes":  5838281,
+        "modified":  "2026-10-07T12:59:12.4020827Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\MainPage.obj",
+        "bytes":  20905732,
+        "modified":  "2026-10-07T12:59:28.5895131Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\model-downloader.obj",
+        "bytes":  10465178,
+        "modified":  "2026-10-07T12:59:22.7302024Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\module.obj",
+        "bytes":  688418,
+        "modified":  "2026-10-07T12:59:14.4958031Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\native_capture.obj",
+        "bytes":  1604453,
+        "modified":  "2026-10-07T12:59:23.4802044Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\op-repro.obj",
+        "bytes":  830061,
+        "modified":  "2026-10-07T08:48:06.7615049Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\pch.obj",
+        "bytes":  8541866,
+        "modified":  "2026-10-07T12:58:18.4210186Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\autopilot.obj",
+        "bytes":  206159,
+        "modified":  "2026-10-07T08:47:42.8240096Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\bench.obj",
+        "bytes":  174991,
+        "modified":  "2026-10-07T08:46:39.5271337Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\capture_probe.obj",
+        "bytes":  527103,
+        "modified":  "2026-10-07T12:58:31.5304006Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\chat_prompt.obj",
+        "bytes":  359057,
+        "modified":  "2026-10-07T08:47:19.5896335Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\d3d12_compute.obj",
+        "bytes":  222526,
+        "modified":  "2026-10-07T08:47:14.9021320Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\device_train.obj",
+        "bytes":  1556301,
+        "modified":  "2026-10-07T08:47:40.8083832Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\diskbw.obj",
+        "bytes":  280212,
+        "modified":  "2026-10-07T08:46:49.1208806Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\diverge.obj",
+        "bytes":  1242266,
+        "modified":  "2026-10-07T12:58:31.6710524Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\embedding.obj",
+        "bytes":  139868,
+        "modified":  "2026-10-07T08:46:31.6677573Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\ggml_d3d12.obj",
+        "bytes":  1609041,
+        "modified":  "2026-10-07T12:02:34.9586150Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\gpubw.obj",
+        "bytes":  338427,
+        "modified":  "2026-10-07T08:46:56.8708538Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\gpugemv.obj",
+        "bytes":  614729,
+        "modified":  "2026-10-07T08:46:59.2302121Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\gpustep.obj",
+        "bytes":  1184340,
+        "modified":  "2026-10-07T08:47:06.3865044Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\inference.obj",
+        "bytes":  1146210,
+        "modified":  "2026-10-07T12:58:38.0616787Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\kv_store.obj",
+        "bytes":  660919,
+        "modified":  "2026-10-07T08:46:42.5427588Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\membw.obj",
+        "bytes":  220195,
+        "modified":  "2026-10-07T08:46:47.1677588Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\mtp_draft.obj",
+        "bytes":  334210,
+        "modified":  "2026-10-07T12:02:06.3272310Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\path_utils.obj",
+        "bytes":  1435330,
+        "modified":  "2026-10-07T12:58:38.2179219Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\personalize.obj",
+        "bytes":  487078,
+        "modified":  "2026-10-07T08:47:40.0740120Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\platform.obj",
+        "bytes":  742199,
+        "modified":  "2026-10-07T12:58:43.1191805Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\preference_capture.obj",
+        "bytes":  319886,
+        "modified":  "2026-10-07T08:47:32.4646352Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\prompt_budget.obj",
+        "bytes":  134111,
+        "modified":  "2026-10-07T08:47:22.2302075Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\ramceil.obj",
+        "bytes":  126608,
+        "modified":  "2026-10-07T08:47:13.6365125Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\replay.obj",
+        "bytes":  597759,
+        "modified":  "2026-10-07T12:58:43.0566781Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\session.obj",
+        "bytes":  1440461,
+        "modified":  "2026-10-07T12:58:53.5410263Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\termgate.obj",
+        "bytes":  105435,
+        "modified":  "2026-10-07T08:47:09.6990079Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\training.obj",
+        "bytes":  492194,
+        "modified":  "2026-10-07T08:47:25.8083790Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\tttarget.obj",
+        "bytes":  870039,
+        "modified":  "2026-10-07T12:58:50.5254255Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\utf8_utils.obj",
+        "bytes":  100855,
+        "modified":  "2026-10-07T08:47:18.2771338Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\api-server.obj",
+        "bytes":  46291418,
+        "modified":  "2026-10-07T12:17:32.3500061Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\App.obj",
+        "bytes":  46033591,
+        "modified":  "2026-10-07T12:17:32.8812653Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\chat-history.obj",
+        "bytes":  43466215,
+        "modified":  "2026-10-07T12:17:40.6625340Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\diffuse.obj",
+        "bytes":  3794892,
+        "modified":  "2026-10-07T12:13:43.3393262Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\inference-bridge.obj",
+        "bytes":  9846054,
+        "modified":  "2026-10-07T13:11:44.9412232Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\MainPage.obj",
+        "bytes":  50235533,
+        "modified":  "2026-10-07T12:19:14.0781047Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\model-downloader.obj",
+        "bytes":  46750332,
+        "modified":  "2026-10-07T12:19:18.2499708Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\module.obj",
+        "bytes":  45601908,
+        "modified":  "2026-10-07T12:19:17.1562275Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\native_capture.obj",
+        "bytes":  44399237,
+        "modified":  "2026-10-07T12:17:17.5261891Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\op-repro.obj",
+        "bytes":  2386727,
+        "modified":  "2026-10-07T12:13:40.7767956Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\autopilot.obj",
+        "bytes":  604474,
+        "modified":  "2026-10-07T12:13:17.9014907Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\bench.obj",
+        "bytes":  546486,
+        "modified":  "2026-10-07T12:12:51.4203541Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\capture_probe.obj",
+        "bytes":  4046766,
+        "modified":  "2026-10-07T12:13:22.3858697Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\chat_prompt.obj",
+        "bytes":  531750,
+        "modified":  "2026-10-07T12:13:06.6613687Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\d3d12_compute.obj",
+        "bytes":  861645,
+        "modified":  "2026-10-07T12:13:04.6145271Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\device_train.obj",
+        "bytes":  2666559,
+        "modified":  "2026-10-07T12:13:14.9483445Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\diskbw.obj",
+        "bytes":  1438391,
+        "modified":  "2026-10-07T12:12:56.2551786Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\diverge.obj",
+        "bytes":  2050660,
+        "modified":  "2026-10-07T13:11:22.7188107Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\embedding.obj",
+        "bytes":  528903,
+        "modified":  "2026-10-07T12:12:48.0766334Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\ggml_d3d12.obj",
+        "bytes":  3097343,
+        "modified":  "2026-10-07T12:13:29.8077457Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\gpubw.obj",
+        "bytes":  964723,
+        "modified":  "2026-10-07T12:12:57.4426801Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\gpugemv.obj",
+        "bytes":  1332322,
+        "modified":  "2026-10-07T12:12:58.2707402Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\gpustep.obj",
+        "bytes":  2038338,
+        "modified":  "2026-10-07T12:13:01.5208073Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\inference.obj",
+        "bytes":  2687869,
+        "modified":  "2026-10-07T13:11:24.4375726Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\kv_store.obj",
+        "bytes":  2126800,
+        "modified":  "2026-10-07T12:12:52.9985050Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\membw.obj",
+        "bytes":  737666,
+        "modified":  "2026-10-07T12:12:55.7551780Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\mtp_draft.obj",
+        "bytes":  719046,
+        "modified":  "2026-10-07T12:12:48.7172585Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\path_utils.obj",
+        "bytes":  6431797,
+        "modified":  "2026-10-07T12:13:16.0889955Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\personalize.obj",
+        "bytes":  1326349,
+        "modified":  "2026-10-07T12:13:17.7139965Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\platform.obj",
+        "bytes":  4864737,
+        "modified":  "2026-10-07T12:13:12.8051057Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\preference_capture.obj",
+        "bytes":  1269952,
+        "modified":  "2026-10-07T12:13:13.4639969Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\prompt_budget.obj",
+        "bytes":  666854,
+        "modified":  "2026-10-07T12:13:08.3645272Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\ramceil.obj",
+        "bytes":  542017,
+        "modified":  "2026-10-07T12:13:03.7707881Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\replay.obj",
+        "bytes":  1716092,
+        "modified":  "2026-10-07T13:11:22.1875573Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\session.obj",
+        "bytes":  3026325,
+        "modified":  "2026-10-07T13:11:24.7656798Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\termgate.obj",
+        "bytes":  431298,
+        "modified":  "2026-10-07T12:13:02.6613667Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\training.obj",
+        "bytes":  1327895,
+        "modified":  "2026-10-07T12:13:09.2863659Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\tttarget.obj",
+        "bytes":  1715932,
+        "modified":  "2026-10-07T13:11:26.9062592Z"
+    },
+    {
+        "path":  "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\utf8_utils.obj",
+        "bytes":  444632,
+        "modified":  "2026-10-07T12:13:06.0833071Z"
+    }
+]

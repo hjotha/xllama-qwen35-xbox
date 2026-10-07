@@ -31,7 +31,7 @@
     <!-- Pin to 22621 (22H2): the 26100 XAML compiler has a NullReferenceException
          (WMC9999) at MarkupCompilePass2 for C++/WinRT projects (no C++/CX metadata).
          SDK 22621 is installed on the windows-2022 CI runner. -->
-    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
 
@@ -76,6 +76,7 @@
   </PropertyGroup>
 
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="iteration.props" />
 
   <!-- NuGet props — imported AFTER Microsoft.Cpp.props so $(IntDir) and
        $(GeneratedFilesDir) are already resolved when CppWinRT.props runs. -->
@@ -187,10 +188,10 @@
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <AdditionalOptions>/arch:AVX2 /Oi /Ot %(AdditionalOptions)</AdditionalOptions>
-      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <WholeProgramOptimization Condition="'$(XllamaIteration)' != 'true'">true</WholeProgramOptimization>
     </ClCompile>
     <Link>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration Condition="'$(XllamaIteration)' != 'true'">UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
 
@@ -316,6 +317,7 @@
   <ItemGroup>
     <ClCompile Include="..\src\bridge\inference.cpp" />
     <ClCompile Include="..\src\bridge\session.cpp" />
+    <ClCompile Include="..\src\bridge\mtp_draft.cpp" />
     <ClCompile Include="..\src\bridge\embedding.cpp" />
     <ClCompile Include="..\src\bridge\kv_store.cpp" />
     <ClCompile Include="..\src\bridge\bench.cpp" />
@@ -324,6 +326,10 @@
     <ClCompile Include="..\src\bridge\gpubw.cpp" />
     <ClCompile Include="..\src\bridge\gpugemv.cpp" />
     <ClCompile Include="..\src\bridge\gpustep.cpp" />
+    <ClCompile Include="..\src\bridge\tttarget.cpp" />
+    <ClCompile Include="..\src\bridge\replay.cpp" />
+    <ClCompile Include="..\src\bridge\diverge.cpp" />
+    <ClCompile Include="..\src\bridge\termgate.cpp" />
     <ClCompile Include="..\src\bridge\d3d12_compute.cpp" />
     <!-- d3d12 ggml backend: implements ggml-backend-impl.h, internal to ggml. -->
     <ClCompile Include="..\src\bridge\ggml_d3d12.cpp">
@@ -362,6 +368,27 @@
     <ClCompile Include="module.cpp" />
   </ItemGroup>
 
+  <!-- UI glue is not the inference hot path. Cache its existing WinRT PCH and
+       skip its optimizer during iteration; bridge/ggml kernels remain /O2. -->
+  <ItemDefinitionGroup Condition="'$(XllamaIteration)' == 'true'">
+    <ClCompile>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <PrecompiledHeaderOutputFile>$(IntDir)iteration.pch</PrecompiledHeaderOutputFile>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup Condition="'$(XllamaIteration)' == 'true'">
+    <ClCompile Include="pch.cpp"><PrecompiledHeader>Create</PrecompiledHeader><Optimization>Disabled</Optimization></ClCompile>
+    <ClCompile Update="App.cpp;MainPage.cpp;module.cpp;api-server.cpp;chat-history.cpp;model-downloader.cpp;native_capture.cpp">
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+    <ClCompile Update="inference-bridge.cpp">
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <Optimization>Disabled</Optimization>
+    </ClCompile>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 
   <!-- NuGet package targets (restored to packages\ relative to this vcxproj) -->

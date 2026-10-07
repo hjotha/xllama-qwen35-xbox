@@ -1,0 +1,58 @@
+[
+  {
+    "cell": "r114-d1-p0",
+    "tps": 20.67,
+    "ttft_ms": 1815.3,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d2-p0",
+    "tps": 20.02,
+    "ttft_ms": 1817.5,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d2-p75",
+    "tps": 20.02,
+    "ttft_ms": 1735.0,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d4-p50",
+    "tps": 19.88,
+    "ttft_ms": 1848.7,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d4-p75",
+    "tps": 19.88,
+    "ttft_ms": 1711.6,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d1-p75",
+    "tps": 19.78,
+    "ttft_ms": 1734.3,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d4-p90",
+    "tps": 19.22,
+    "ttft_ms": 1815.8,
+    "full_ids_exact": true,
+    "measurements": 1
+  },
+  {
+    "cell": "r114-d4-p0",
+    "tps": 17.69,
+    "ttft_ms": 1869.8,
+    "full_ids_exact": true,
+    "measurements": 1
+  }
+]

@@ -25,7 +25,10 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: "3.12"
+
+      - name: Apply maintained llama.cpp bridge patches
+        run: bash scripts/apply-uwp-patches.sh
 
       - name: Install dependencies
         run: |
@@ -56,6 +59,7 @@ jobs:
             -path ./llama.cpp -prune -o \
             -path ./build -prune -o \
             -path ./build-uwp-test -prune -o \
+            -path ./bench/results -prune -o \
             \( -name '*.cpp' -o -name '*.h' -o -name '*.c' \) -type f -print |
             xargs clang-format --dry-run --Werror
 
@@ -197,7 +201,9 @@ jobs:
           sudo apt-get install -y cmake build-essential libcurl4-openssl-dev
 
       - name: Configure (ASan + tests)
-        run: cmake --preset linux-asan
+        run: |
+          bash scripts/apply-uwp-patches.sh
+          cmake --preset linux-asan
 
       - name: Build
         run: cmake --build build/linux-asan -j$(nproc)

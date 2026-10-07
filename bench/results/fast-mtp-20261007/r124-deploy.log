@@ -1,0 +1,6 @@
+Deploying xllama_1.6.0.124_final_fa2.msix to Xbox at 192.168.1.26 ...
+Response: {"Reason" : "Deploy request accepted and being processed"}
+Upload complete. Monitor installation at: https://192.168.1.26:11443/#apps
+Polling installation status ...
+  [1] code=0 reason='Success' success=true
+Installation succeeded.

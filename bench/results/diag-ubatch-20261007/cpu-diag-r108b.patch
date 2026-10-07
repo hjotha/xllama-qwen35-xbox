@@ -1,0 +1,329 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r108/llama.cpp_ggml_src_ggml-cpu_ggml-cpu.cpp	2026-10-02 21:44:36.461209396 +0200
++++ llama.cpp/ggml/src/ggml-cpu/ggml-cpu.cpp	2026-10-07 06:45:35.833669182 +0200
+@@ -7,7 +7,16 @@
+ #include "amx/amx.h"
+ 
+ #include <cctype>
++#include <cstdio>
++#include <cstdlib>
+ #include <string>
++
++// [plan004 rev108] gate accessors defined in ggml-cpu.c (C linkage);
++// initialized only from caller threads before any kickoff.
++extern "C" {
++void ggml_diag_ensure_init(void);
++int ggml_diag_is_on(void);
++}
+ #include <vector>
+ 
+ #ifdef GGML_USE_CPU_HBM
+@@ -170,24 +179,105 @@
+ static enum ggml_status ggml_backend_cpu_graph_compute(ggml_backend_t backend, struct ggml_cgraph * cgraph) {
+     struct ggml_backend_cpu_context * cpu_ctx = (struct ggml_backend_cpu_context *)backend->context;
+ 
++    // [plan004 rev108 minimal CPU diagnostic — default OFF via
++    // LLAMA_UBATCH_DIAG] Caller-thread wall scopes only, ggml_time_us
++    // (QPC on Xbox). T/P/A/C are measured; resid1 = T-(P+A+C) is reported,
++    // never assumed zero. Runtime census printed once per graph topology
++    // signature (exact package, executed node set incl. fused skips).
++    // Gate is initialized only from caller threads before any kickoff
++    // (workers only read it afterwards); C-linkage decls are at file scope.
++    ggml_diag_ensure_init();
++    const bool diag = ggml_diag_is_on() != 0;
++    static unsigned long long diag_id = 0;   // diagnostic only (0-based)
++    static unsigned long long diag_sig = 0;
++    static int d_act = 0;                    // serialized-entry guard (fail-fast)
++    static int d_ov = 0;
++    if (diag) {
++        if (d_act) d_ov = 1;
++        d_act = 1;
++    }
++    const int64_t t0 = diag ? ggml_time_us() : 0;
++
+     struct ggml_cplan cplan = ggml_graph_plan(cgraph, cpu_ctx->n_threads, cpu_ctx->threadpool);
++    const int64_t t1 = diag ? ggml_time_us() : 0;
+ 
++    const int64_t t2 = t1;
+     if (cpu_ctx->work_size < cplan.work_size) {
+         delete[] cpu_ctx->work_data;
+         cpu_ctx->work_data = new uint8_t[cplan.work_size];
+         if (cpu_ctx->work_data == NULL) {
+             cpu_ctx->work_size = 0;
+-            return GGML_STATUS_ALLOC_FAILED;
++            return GGML_STATUS_ALLOC_FAILED; // gap: failure return not instrumented (fails fast)
+         }
+         cpu_ctx->work_size = cplan.work_size;
+     }
++    const int64_t t3 = diag ? ggml_time_us() : 0;
++
+     cplan.work_data = (uint8_t *)cpu_ctx->work_data;
+ 
+     cplan.abort_callback      = cpu_ctx->abort_callback;
+     cplan.abort_callback_data = cpu_ctx->abort_callback_data;
+     cplan.use_ref             = cpu_ctx->use_ref;
+ 
+-    return ggml_graph_compute(cgraph, &cplan);
++    const int64_t t4 = diag ? ggml_time_us() : 0;
++    const enum ggml_status st = ggml_graph_compute(cgraph, &cplan);
++    const int64_t t5 = diag ? ggml_time_us() : 0;
++
++    if (diag) {
++        const double T = (t5 - t0) / 1000.0, P = (t1 - t0) / 1000.0;
++        const double A = (t3 - t2) / 1000.0, C = (t5 - t4) / 1000.0;
++        const double resid1 = T - (P + A + C);
++        const unsigned long long id = diag_id++;
++        // runtime CPU-placement census: exact executed node set of this
++        // topology (all nodes; fused/skips accounted on the exec line)
++        unsigned long long sig = (unsigned long long)cgraph->n_nodes * 1315423911u;
++        int hist[GGML_OP_COUNT] = {0};
++        for (int i = 0; i < cgraph->n_nodes; i++) {
++            const int op = (int)cgraph->nodes[i]->op;
++            if (op >= 0 && op < GGML_OP_COUNT) hist[op]++;
++            sig = sig * 31u + (unsigned long long)(op + 1);
++        }
++        sig ^= (unsigned long long)cgraph->n_leafs << 32;
++        if (sig != diag_sig) {
++            diag_sig = sig;
++            char ops[640];
++            int off = 0;
++            int trunc = 0;
++            for (int op = 0; op < GGML_OP_COUNT && off < (int)sizeof(ops) - 32; op++) {
++                if (hist[op] > 0) {
++                    int n = snprintf(ops + off, sizeof(ops) - off, "%s%s:%d", off ? "," : "",
++                                     ggml_op_name((enum ggml_op)op), hist[op]);
++                    if (n < 0 || off + n >= (int)sizeof(ops) - 32) {
++                        trunc = 1;
++                        break;
++                    }
++                    off += n;
++                } else if (hist[op] > 0) {
++                    trunc = 1; // unreachable; kept for clarity
++                }
++            }
++            // for-op truncation: any remaining nonzero op after loop end
++            if (!trunc) {
++                for (int op = 0; op < GGML_OP_COUNT; op++) {
++                    if (hist[op] > 0 && off >= (int)sizeof(ops) - 32) {
++                        trunc = 1;
++                        break;
++                    }
++                }
++            }
++            GGML_LOG_INFO(
++                "[diag] cpu-census g=%p sig=%llu nodes=%d leafs=%d trunc=%d ops=%s\n",
++                (void *) cgraph, (unsigned long long) sig, cgraph->n_nodes, cgraph->n_leafs,
++                trunc, ops);
++        }
++        GGML_LOG_INFO(
++            "[diag] cpu id=%llu g=%p sig=%llu ov=%d nodes=%d leafs=%d t=%.3f p=%.3f a=%.3f "
++            "c=%.3f resid1=%.3f\n",
++            id, (void *) cgraph, (unsigned long long) sig, d_ov, cgraph->n_nodes, cgraph->n_leafs,
++            T, P, A, C, resid1);
++        d_act = 0;
++    }
++    return st;
+ }
+ 
+ static const struct ggml_backend_i ggml_backend_cpu_i = {
+--- bench/results/diag-ubatch-20261007/snapshot-r108/llama.cpp_ggml_src_ggml-cpu_ggml-cpu.c	2026-10-02 21:44:36.460208890 +0200
++++ llama.cpp/ggml/src/ggml-cpu/ggml-cpu.c	2026-10-07 06:44:32.387482642 +0200
+@@ -3213,6 +3213,41 @@
+     return 0;
+ }
+ 
++// [plan004 rev108 minimal CPU diagnostic — default OFF via LLAMA_UBATCH_DIAG]
++// ggml_time_us only (QPC on Xbox). Caller-thread (ith==0) scopes: node
++// buckets + between-node barrier wall (observed caller wait only), kickoff
++// wall, executed-unit coverage. No thread-CPU APIs; no saturation claims.
++// Gate: written ONLY by caller-thread init before any kickoff (workers are
++// ordered after the init via the kickoff atomics, so they only read it).
++static int d_gate = -1;
++// Serialized-entry / fail-fast overlap: diagnostic records if two CPU graph
++// computes ever run concurrently (normal scheduling unchanged); any overlap
++// sets the sticky d_ov flag reported on every line -> evidence invalid.
++static int d_act = 0, d_ov = 0;
++void ggml_diag_ensure_init(void) {
++    if (d_gate < 0) {
++        const char * e = getenv("LLAMA_UBATCH_DIAG");
++        d_gate = (e != NULL && atoi(e) != 0) ? 1 : 0;
++    }
++}
++int ggml_diag_is_on(void) { return d_gate == 1; }
++static bool ggml_diag_on(void) { return d_gate == 1; }
++static long long d_call_id = 0;
++static long long d_k_us = 0, d_fm_us = 0, d_fs_us = 0, d_fn_us = 0, d_fo_us = 0, d_b_us = 0;
++static long long d_exec = 0, d_fused_spans = 0, d_fused_nodes = 0, d_skip_nop = 0, d_skip_nc = 0;
++
++static void ggml_diag_bucket(int op, long long dt) {
++    if (op == GGML_OP_MUL_MAT) {
++        d_fm_us += dt;
++    } else if (op == GGML_OP_SSM_CONV || op == GGML_OP_SCALE || op == GGML_OP_GLU) {
++        d_fs_us += dt;
++    } else if (op == GGML_OP_RMS_NORM || op == GGML_OP_ROPE) {
++        d_fn_us += dt;
++    } else {
++        d_fo_us += dt;
++    }
++}
++
+ static thread_ret_t ggml_graph_compute_thread(void * data) {
+     struct ggml_compute_state * state = (struct ggml_compute_state *) data;
+     struct ggml_threadpool    * tp    = state->threadpool;
+@@ -3241,25 +3276,40 @@
+     GGML_PRINT_DEBUG("thread #%d compute-start cplan %p last-graph %d\n", state->ith, (const void *)cplan, state->last_graph);
+ #endif
+ 
++    const bool d_caller = ggml_diag_on() && state->ith == 0;
+     for (int node_n = 0; node_n < cgraph->n_nodes && atomic_load_explicit(&tp->abort, memory_order_relaxed) != node_n; node_n++) {
+         struct ggml_tensor * node = cgraph->nodes[node_n];
+ 
+         if (ggml_op_is_empty(node->op)) {
+             // skip NOPs
++            if (d_caller) d_skip_nop++;
+             continue;
+         }
+ 
+         if ((node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0) {
++            if (d_caller) d_skip_nc++;
+             continue;
+         }
+ 
+         // TODO: move fused-op detection into ggml_graph_plan so fusion decisions are made once at planning time
+         // Try fused ops, fall back to normal compute
++        const int64_t d_tf0 = d_caller ? ggml_time_us() : 0;
+         const int n_fused = ggml_cpu_try_fuse_ops(cgraph, node_n, &params, cplan);
+         if (n_fused > 0) {
++            if (d_caller) {
++                // fused span = ONE timed unit, bucketed by the span's first node class
++                ggml_diag_bucket((int)node->op, ggml_time_us() - d_tf0);
++                d_fused_spans++;
++                d_fused_nodes += (long long)n_fused + 1;
++            }
+             node_n += n_fused;
+         } else {
++            const int64_t d_tfe = d_caller ? ggml_time_us() : 0; // after failed fuse attempt
+             ggml_compute_forward(&params, node);
++            if (d_caller) {
++                ggml_diag_bucket((int)node->op, ggml_time_us() - d_tfe);
++                d_exec++;
++            }
+         }
+ 
+         if (state->ith == 0 && cplan->abort_callback &&
+@@ -3269,7 +3319,9 @@
+         }
+ 
+         if (node_n + 1 < cgraph->n_nodes) {
++            const int64_t d_tb0 = d_caller ? ggml_time_us() : 0;
+             ggml_barrier(state->threadpool);
++            if (d_caller) d_b_us += ggml_time_us() - d_tb0;
+         }
+     }
+ 
+@@ -3279,7 +3331,11 @@
+     GGML_PRINT_DEBUG("thread #%d compute-done cplan %p last-graph %d\n", state->ith, (const void *)cplan, state->last_graph);
+ #endif
+ 
+-    ggml_barrier(state->threadpool);
++    {
++        const int64_t d_tb0 = d_caller ? ggml_time_us() : 0;
++        ggml_barrier(state->threadpool);
++        if (d_caller) d_b_us += ggml_time_us() - d_tb0;
++    }
+ 
+ #ifdef GGML_USE_CPU_RISCV64_SPACEMIT
+     ggml_backend_cpu_riscv64_spacemit_clear_numa_thread_affinity_threaded(state->ith);
+@@ -3506,6 +3562,15 @@
+ enum ggml_status ggml_graph_compute(struct ggml_cgraph * cgraph, struct ggml_cplan * cplan) {
+     ggml_cpu_init();
+ 
++    ggml_diag_ensure_init(); // caller thread, before any kickoff
++    if (ggml_diag_on()) { // rev108: per-call accumulator reset (gated)
++        if (d_act) d_ov = 1; // sticky overlap flag -> evidence invalid
++        d_act = 1;
++        d_call_id++;
++        d_k_us = d_fm_us = d_fs_us = d_fn_us = d_fo_us = d_b_us = 0;
++        d_exec = d_fused_spans = d_fused_nodes = d_skip_nop = d_skip_nc = 0;
++    }
++
+     GGML_ASSERT(cplan);
+     GGML_ASSERT(cplan->n_threads > 0);
+     GGML_ASSERT(cplan->work_size == 0 || cplan->work_data != NULL);
+@@ -3562,7 +3627,11 @@
+     }
+ 
+     // Kick all threads to start the new graph
+-    ggml_graph_compute_kickoff(threadpool, n_threads);
++    {
++        const int64_t d_tk0 = ggml_diag_on() ? ggml_time_us() : 0;
++        ggml_graph_compute_kickoff(threadpool, n_threads);
++        if (ggml_diag_on()) d_k_us += ggml_time_us() - d_tk0;
++    }
+ 
+     // This is a work thread too
+     ggml_graph_compute_thread(&threadpool->workers[0]);
+@@ -3577,6 +3646,16 @@
+         ggml_threadpool_free(threadpool);
+     }
+ 
++    if (ggml_diag_on()) {
++        GGML_LOG_INFO(
++            "[diag] cpuexec id=%lld g=%p ov=%d k=%.3f fm=%.3f fs=%.3f fn=%.3f fo=%.3f b=%.3f "
++            "x=%lld fu=%lld fun=%lld sn=%lld sc=%lld n_nodes=%d\n",
++            d_call_id, (void *) cgraph, d_ov, d_k_us / 1000.0, d_fm_us / 1000.0,
++            d_fs_us / 1000.0, d_fn_us / 1000.0, d_fo_us / 1000.0, d_b_us / 1000.0, d_exec,
++            d_fused_spans, d_fused_nodes, d_skip_nop, d_skip_nc, cgraph->n_nodes);
++        d_act = 0;
++    }
++
+     return ret;
+ }
+ 
+--- bench/results/diag-ubatch-20261007/snapshot-r108/src_bridge_llama_gpu.h	2026-10-07 04:43:35.542516032 +0200
++++ src/bridge/llama_gpu.h	2026-10-07 06:26:04.392270507 +0200
+@@ -23,7 +23,8 @@
+         return;
+     const bool keep = level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR ||
+                       std::strstr(text, "buffer size") || std::strstr(text, "offload") ||
+-                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12");
++                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12") ||
++                      std::strstr(text, "[diag]"); // plan004 rev104 gated phase diag
+     if (keep)
+         log_output(std::string("[llama] ") + text);
+ }
+--- bench/results/diag-ubatch-20261007/snapshot-r108/uwp_inference-bridge.cpp	2026-10-07 05:35:57.687146515 +0200
++++ uwp/inference-bridge.cpp	2026-10-07 06:26:04.389269301 +0200
+@@ -175,6 +175,8 @@
+         var = "LLAMA_GRAPH_REUSE_DISABLE=1";
+     else if (raw == "singlesync")
+         var = "SPEC_OPT_SINGLE_SYNC=1";
++    else if (raw == "ubdiag")
++        var = "LLAMA_UBATCH_DIAG=1";
+     if (var)
+         _putenv(var);
+     char lb[224];
+--- bench/results/diag-ubatch-20261007/snapshot-r108/src_bridge_decode_loop.h	2026-10-07 04:43:35.545282294 +0200
++++ src/bridge/decode_loop.h	2026-10-07 06:26:04.398609710 +0200
+@@ -894,6 +894,12 @@
+                 cpu0 = process_cpu_ms();
+                 reuse0 = llama_perf_context(p.ctx).n_reused; // rebuild vs reuse
+             }
++            if (p.profile_phases) { // rev104: deterministic verify-window tag
++                char vrc[96];
++                snprintf(vrc, sizeof(vrc), "[xllama] VRCALL seq=%zu width=%d ctx=%p\n",
++                         out.vr_width.size(), n_feed, (void*)p.ctx);
++                log_output(vrc);
++            }
+             detail::ScopeTag scope("target", "verify");
+             const bool vok = detail::decode_verify_batch(p.ctx, feed);
+             if (p.profile_phases) {
+@@ -908,6 +914,9 @@
+                 out.vr_cpu.push_back(process_cpu_ms() - cpu0);
+                 out.vr_reuse.push_back(llama_perf_context(p.ctx).n_reused - reuse0);
+                 out.vr_acc0.push_back(out.n_accepted);
++                char vre[64];
++                snprintf(vre, sizeof(vre), "[xllama] VREND seq=%zu\n", out.vr_width.size() - 1);
++                log_output(vre);
+             }
+             if (!vok) {
+                 log_output("[xllama] speculative draft batch failed — classic for first "

@@ -1,0 +1,148 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r104/llama.cpp_src_llama-context.cpp	2026-10-07 02:34:45.493095294 +0200
++++ llama.cpp/src/llama-context.cpp	2026-10-07 03:15:15.502107711 +0200
+@@ -2212,10 +2212,31 @@
+     }
+ }
+ 
++// [plan004 rev104/105] gate + call id for the default-OFF diagnostic (used
++// by synchronize() below and process_ubatch further down). Function-local
++// static => the env is read lazily on first use, i.e. AFTER main_loop's
++// _putenv (a file-scope static would initialize at load time, before the
++// knob is applied — found the hard way in the rev104 attempt).
++static bool k_ub_diag() {
++    static const bool v = [] {
++        const char * e = getenv("LLAMA_UBATCH_DIAG");
++        return e != nullptr && atoi(e) != 0;
++    }();
++    return v;
++}
++static unsigned long long s_ub_diag_id = 0;
++
+ void llama_context::synchronize() {
+     if (!sched) {
+         return;
+     }
++    const int64_t diag_sync0 = k_ub_diag() ? ggml_time_us() : 0;
++    auto diag_sync_log = [&](bool early) {
++        if (!k_ub_diag())
++            return;
++        const double ms = (ggml_time_us() - diag_sync0) / 1000.0;
++        LLAMA_LOG_INFO("[diag] sync ctx=%p ms=%.3f%s\n", (void *) this, ms, early ? " early" : "");
++    };
+ 
+     // Item 2: within one sampling pass, every output getter (logits/probs/ids/
+     // embeddings) re-enters synchronize(). After the first barrier the outputs are
+@@ -2229,6 +2250,7 @@
+                                 std::string(v) == "yes" || std::string(v) == "on");
+     }();
+     if (single_sync && outputs_synced) {
++        diag_sync_log(true);
+         return;
+     }
+ 
+@@ -2260,6 +2282,7 @@
+ 
+     n_queued_tokens = 0;
+     t_compute_start_us = 0;
++    diag_sync_log(false);
+ }
+ 
+ const llama_model & llama_context::get_model() const {
+@@ -2999,14 +3022,30 @@
+     return res;
+ }
+ 
++// [plan004 rev104 isolated diagnostic — default OFF] Scheduler-stage
++// accumulators (ggml-backend.cpp); declared locally so no header changes.
++double ggml_diag_alloc_ms();
++double ggml_diag_comp_ms();
++double ggml_diag_comp_cpu_ms();
++double ggml_diag_comp_d3d12_ms();
++
+ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
+     llama_memory_context_finish_guard memory_finish_guard(mctx);
++    int64_t diag_apply0 = 0, diag_apply1 = 0;
++    int64_t diag_build0 = 0, diag_build1 = 0;
++    int64_t diag_set0 = 0, diag_set1 = 0;
++    double diag_alloc0 = 0, diag_comp0 = 0, diag_cpu0 = 0, diag_d30 = 0;
++    double diag_alloc1 = 0, diag_comp1 = 0, diag_cpu1 = 0, diag_d31 = 0;
++    int64_t diag_fin0 = 0, diag_fin1 = 0;
++    bool diag_reused = false;
++    diag_apply0 = k_ub_diag() ? ggml_time_us() : 0;
+     if (mctx && !mctx->apply()) {
+         LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
+         ret = GGML_STATUS_FAILED;
+         memory_finish_guard.finish(ret);
+         return nullptr;
+     }
++    diag_apply1 = k_ub_diag() ? ggml_time_us() : 0;
+ 
+     auto * res = gf_res_prev.get();
+     auto * gf  = res->get_gf();
+@@ -3026,7 +3065,9 @@
+         }
+ 
+         n_reused++;
++        diag_reused = true;
+     } else {
++        diag_build0 = k_ub_diag() ? ggml_time_us() : 0;
+         res->reset();
+ 
+         ggml_backend_sched_reset(sched.get());
+@@ -3051,26 +3092,56 @@
+             memory_finish_guard.finish(ret);
+             return nullptr;
+         }
++        diag_build1 = k_ub_diag() ? ggml_time_us() : 0;
+     }
+ 
+     // set the input data for the input tensors
+     {
+         //const auto t_start_us = ggml_time_us();
++        diag_set0 = k_ub_diag() ? ggml_time_us() : 0;
+ 
+         // FIXME this call causes a crash if any model inputs were not used in the graph and were therefore not allocated
+         res->set_inputs(&ubatch);
+ 
+         //LLAMA_LOG_INFO("graph set inputs time: %.3f ms\n", (ggml_time_us() - t_start_us)/1000.0);
++        diag_set1 = k_ub_diag() ? ggml_time_us() : 0;
+     }
+ 
+     if (mctx) {
+         mctx->graph_compute_start();
+     }
++    if (k_ub_diag()) {
++        diag_alloc0 = ggml_diag_alloc_ms();
++        diag_comp0 = ggml_diag_comp_ms();
++        diag_cpu0 = ggml_diag_comp_cpu_ms();
++        diag_d30 = ggml_diag_comp_d3d12_ms();
++    }
+     const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
++    if (k_ub_diag()) {
++        diag_alloc1 = ggml_diag_alloc_ms();
++        diag_comp1 = ggml_diag_comp_ms();
++        diag_cpu1 = ggml_diag_comp_cpu_ms();
++        diag_d31 = ggml_diag_comp_d3d12_ms();
++    }
+     memory_finish_guard.finish(status);
++    diag_fin0 = k_ub_diag() ? ggml_time_us() : 0;
+     if (mctx) {
+         mctx->graph_compute_complete(sched.get(), status);
+     }
++    diag_fin1 = k_ub_diag() ? ggml_time_us() : 0;
++    if (k_ub_diag()) {
++        const double orch = diag_alloc1 - diag_alloc0;
++        const double comp = diag_comp1 - diag_comp0;
++        const double cpu = diag_cpu1 - diag_cpu0;
++        const double d3 = diag_d31 - diag_d30;
++        LLAMA_LOG_INFO(
++            "[diag] ubatch id=%llu ctx=%p nt=%d gt=%d apply=%.3f build=%.3f set_inputs=%.3f "
++            "orch=%.3f comp=%.3f cpu=%.3f d3=%.3f glue=%.3f final=%.3f reused=%d\n",
++            s_ub_diag_id++, (void *) this, (int) ubatch.n_tokens, (int) gtype,
++            (diag_apply1 - diag_apply0) / 1000.0, (diag_build1 - diag_build0) / 1000.0,
++            (diag_set1 - diag_set0) / 1000.0, orch, comp, cpu, d3, comp - cpu - d3,
++            (diag_fin1 - diag_fin0) / 1000.0, diag_reused ? 1 : 0);
++    }
+     if (status != GGML_STATUS_SUCCESS) {
+         LLAMA_LOG_ERROR("%s: failed to compute graph, compute status: %d\n", __func__, status);
+         ret = status;

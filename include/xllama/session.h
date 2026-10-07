@@ -57,11 +57,29 @@ struct SessionParams {
     // ORT sessions ignore this field. Hybrid caches that refuse tail rewind
     // disable speculation at runtime for that generation (no KV corruption).
     bool prompt_lookup = false;
+
+    // MTP (multi-token prediction) drafting against the beellama fork. Requires a
+    // model whose GGUF carries the MTP head (llama_model_params::load_mtp), which
+    // the session sets when this is on. Default OFF: the console measurement decides,
+    // and a model without an MTP head cannot use it at all.
+    bool mtp = false;
+    int mtp_n_max = 4;       // tokens proposed per step
+    float mtp_p_min = 0.75f; // stop drafting below this candidate probability
+
+    // Set by the config parser on a rejected combination (e.g. another model
+    // while the immutable scope2 startup profile is active). Session::create
+    // fails with this message; empty = admissible. Populate-only — the parser
+    // never mutates global state.
+    std::string config_reject;
 };
 
 struct GenerateParams {
     std::string prompt;
     int n_predict = 96;
+    // Phase instrumentation on/off; see InferenceParams::profile_phases. Counters
+    // stay on either way — this only drops the chrono snapshots, so the ON/OFF
+    // comparison measures the instrumentation cost.
+    bool profile_phases = true;
     // Shared with InferenceParams via xllama/sampling.h — see #125. The two
     // surfaces ran different samplers until these were made one source.
     float temperature = sampling_defaults::kTemperature;
@@ -113,6 +131,12 @@ struct GenerateParams {
     // holds no cells in the evicted range, only its absorbed history —
     // an approximation the quality gates measure.
     int n_keep = 0;
+
+    // Parity/diagnostic: write this turn's accepted token ids, one per line, to
+    // this path. Empty = no dump. Exists because the Session decode path does
+    // not go through run_inference(), so InferenceParams::dump_tokens_path does
+    // not reach it; plan 003 stage 1 compares integral ids per turn.
+    std::string dump_tokens_path;
 
     // on_token receives a view into a per-iteration buffer: copy it before
     // the callback returns.

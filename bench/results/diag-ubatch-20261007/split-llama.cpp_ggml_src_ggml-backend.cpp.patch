@@ -1,0 +1,73 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r104/llama.cpp_ggml_src_ggml-backend.cpp	2026-10-02 21:43:16.304377613 +0200
++++ llama.cpp/ggml/src/ggml-backend.cpp	2026-10-07 03:15:15.508110629 +0200
+@@ -80,6 +80,28 @@
+     return ggml_nbytes(tensor);
+ }
+ 
++// [plan004 rev104 isolated diagnostic — default OFF] Stage accumulators for
++// the process_ubatch phase split. Clocks are read only when
++// LLAMA_UBATCH_DIAG=1 (absent/0 -> no clock, no output, no state change).
++// Single decode-thread usage; deltas are taken by the caller around its own
++// graph_compute window. Removed wholesale at rollback with the delta patch.
++static bool ggml_diag_on() {
++    static const bool v = [] {
++        const char * e = std::getenv("LLAMA_UBATCH_DIAG");
++        return e != nullptr && std::atoi(e) != 0;
++    }();
++    return v;
++}
++static long long ggml_diag_alloc_us = 0;
++static long long ggml_diag_comp_us = 0;
++static long long ggml_diag_cpu_us = 0;
++static long long ggml_diag_d3_us = 0;
++
++double ggml_diag_alloc_ms() { return ggml_diag_alloc_us / 1000.0; }
++double ggml_diag_comp_ms() { return ggml_diag_comp_us / 1000.0; }
++double ggml_diag_comp_cpu_ms() { return ggml_diag_cpu_us / 1000.0; }
++double ggml_diag_comp_d3d12_ms() { return ggml_diag_d3_us / 1000.0; }
++
+ bool ggml_backend_buft_is_host(ggml_backend_buffer_type_t buft) {
+     GGML_ASSERT(buft);
+     if (buft->iface.is_host) {
+@@ -1923,7 +1945,16 @@
+         }
+ 
+         if (!sched->callback_eval) {
++            const long long t0 = ggml_diag_on() ? ggml_time_us() : 0;
+             enum ggml_status ec = ggml_backend_graph_compute_async(split_backend, &split->graph);
++            if (ggml_diag_on()) {
++                const long long dt = ggml_time_us() - t0;
++                const char * bname = ggml_backend_name(split_backend);
++                if (bname != nullptr && std::strcmp(bname, "CPU") == 0)
++                    ggml_diag_cpu_us += dt;
++                else
++                    ggml_diag_d3_us += dt;
++            }
+             if (ec != GGML_STATUS_SUCCESS) {
+                 return ec;
+             }
+@@ -2150,12 +2181,22 @@
+     }
+ 
+     if (!sched->is_alloc) {
+-        if (!ggml_backend_sched_alloc_graph(sched, graph)) {
++        const long long t0 = ggml_diag_on() ? ggml_time_us() : 0;
++        const bool alloc_ok = ggml_backend_sched_alloc_graph(sched, graph);
++        if (ggml_diag_on())
++            ggml_diag_alloc_us += ggml_time_us() - t0;
++        if (!alloc_ok) {
+             return GGML_STATUS_ALLOC_FAILED;
+         }
+     }
+ 
+-    return ggml_backend_sched_compute_splits(sched);
++    {
++        const long long t0 = ggml_diag_on() ? ggml_time_us() : 0;
++        const enum ggml_status st = ggml_backend_sched_compute_splits(sched);
++        if (ggml_diag_on())
++            ggml_diag_comp_us += ggml_time_us() - t0;
++        return st;
++    }
+ }
+ 
+ void ggml_backend_sched_synchronize(ggml_backend_sched_t sched) {

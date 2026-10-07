@@ -1,0 +1,15 @@
+{
+  "revision": 124,
+  "package": "packages/xllama_1.6.0.124_final_fa2.msix",
+  "sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+  "bytes": 21797403,
+  "build_seconds": 712.31,
+  "pfn": "GianlucaMazza.xllama_1.6.0.124_x64__pj67f1fcj4n14",
+  "source_status": "frozen since R123; no clean; incremental Final",
+  "native_final_objects_recompiled": 1,
+  "native_iteration_objects_changed": 0,
+  "archived_utc": "2026-10-07T13:30:11.402315+00:00",
+  "build_start_windows_local": "2026-10-07T15:09:42",
+  "build_end_windows_local": "2026-10-07T15:21:34",
+  "app_final_objects_recompiled": 6
+}

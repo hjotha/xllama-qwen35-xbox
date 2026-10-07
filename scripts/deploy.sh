@@ -13,6 +13,7 @@
 #   deploy.sh delete-file <pfn> <name> [subdir]          Delete a LocalState file (best-effort)
 #   deploy.sh list-localstate [pfn] [subdir]             List LocalState (or a subdir, e.g. models\\x)
 #   deploy.sh list-dumps                                 List user-mode crash dumps
+#   deploy.sh status [pfn]                               Print xllama process state (pid/running/ws)
 #   deploy.sh start-app [pfn]                            Launch xllama through WDP
 #   deploy.sh stop-app [pfn]                             Stop xllama through WDP
 #   deploy.sh diagnose-startup [pfn]                     Start app and print startup diagnostics
@@ -348,6 +349,14 @@ fi
 
 if [[ "${1:-}" == "list-dumps" ]]; then
 	list_dumps
+	exit 0
+fi
+
+# Sub-command: status
+#   status [pfn]   Print whether the xllama process is running (pid, working set).
+# Read-only; used by bench runners to tell "still computing" from "app is gone".
+if [[ "${1:-}" == "status" ]]; then
+	print_process_status
 	exit 0
 fi
 

@@ -1,0 +1,184 @@
+[xllama] znarrow.flag detected -> headless narrow z-0 capture (diagnostic, never a gate)
+[xllama] headless znarrow: starting
+[xllama] znarrow: narrow z-0 capture (diagnostic)
+[xllama] znarrow: d3d12zdispatch.txt=1 (z-0 dispatch lines on)
+[xllama] znarrow: d3d12zpin.txt=off (default placement)
+[xllama] znarrow: cpurepackforcegemv.txt=1 (repack force-gemv engaged)
+[xllama] znarrow model=Q:\Users\UserMgr1\AppData\Local\Packages\GianlucaMazza.xllama_pj67f1fcj4n14\LocalState\models\qwen35-4b-mtp\Qwen3.5-4B-MTP-Q4_K_M.gguf gguf=f3559ed1a2922585 bytes=2834975040 gpu_layers=28
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: MUL_MAT refused: q8_0 5120x2560 x [5120,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B3 off rep=0 ctx-ready n=3 capture=0
+[xllama] d3d12: MUL_MAT refused: q6_K 2560x248320 x [2560,0,1,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] znarrow znarrow B3 off rep=0 done rows=3 node_count=0 asked=0 captured=0
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1224.1 ms wall (828.6 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B3 on rep=0 ctx-ready n=3 capture=1
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] diverge zsrc idx=62 z=z-0[f32 4096x3x1x1] src0=blk.0.attn_gate.weight[q4_K 2560x4096x1x1] src1=attn_norm-0[f32 2560x3x1x1] buf=D3D12_Host/CPU_REPACK/D3D12_Host srcx read=1 full=6027c2d4f4d6080a first3=6027c2d4f4d6080a
+[xllama] znarrow znarrow B3 on rep=0 done rows=3 node_count=2183 asked=2183 captured=5
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1117.6 ms wall (827.3 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B4 off rep=0 ctx-ready n=4 capture=0
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 3.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] znarrow znarrow B4 off rep=0 done rows=4 node_count=0 asked=0 captured=0
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1125.4 ms wall (835.0 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B4 on rep=0 ctx-ready n=4 capture=1
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 3.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] diverge zsrc idx=62 z=z-0[f32 4096x4x1x1] src0=blk.0.attn_gate.weight[q4_K 2560x4096x1x1] src1=attn_norm-0[f32 2560x4x1x1] buf=D3D12_Host/CPU_REPACK/D3D12_Host srcx read=1 full=e28987f121a2e012 first3=6027c2d4f4d6080a
+[xllama] znarrow znarrow B4 on rep=0 done rows=4 node_count=2183 asked=2183 captured=5
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1126.2 ms wall (835.4 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B3 off rep=1 ctx-ready n=3 capture=0
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] znarrow znarrow B3 off rep=1 done rows=3 node_count=0 asked=0 captured=0
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1120.7 ms wall (827.6 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B3 on rep=1 ctx-ready n=3 capture=1
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=3 quant=scalar-all compute=gemv-all forced=1
+[xllama] diverge zsrc idx=62 z=z-0[f32 4096x3x1x1] src0=blk.0.attn_gate.weight[q4_K 2560x4096x1x1] src1=attn_norm-0[f32 2560x3x1x1] buf=D3D12_Host/CPU_REPACK/D3D12_Host srcx read=1 full=6027c2d4f4d6080a first3=6027c2d4f4d6080a
+[xllama] znarrow znarrow B3 on rep=1 done rows=3 node_count=2183 asked=2183 captured=5
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1119.1 ms wall (827.7 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B4 off rep=1 ctx-ready n=4 capture=0
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 3.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] znarrow znarrow B4 off rep=1 done rows=4 node_count=0 asked=0 captured=0
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1138.5 ms wall (835.8 ms GPU)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] znarrow znarrow B4 on rep=1 ctx-ready n=4 capture=1
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor token_embd.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 3.8 MiB
+[llama] [xllama] repack z0 M=4096 K=2560 nrows=4 quant=scalar-all compute=gemv-all forced=1
+[xllama] diverge zsrc idx=62 z=z-0[f32 4096x4x1x1] src0=blk.0.attn_gate.weight[q4_K 2560x4096x1x1] src1=attn_norm-0[f32 2560x4x1x1] buf=D3D12_Host/CPU_REPACK/D3D12_Host srcx read=1 full=e28987f121a2e012 first3=6027c2d4f4d6080a
+[xllama] znarrow znarrow B4 on rep=1 done rows=4 node_count=2183 asked=2183 captured=5
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3274 graph_compute calls, 4099 matmuls (0 2col), 1142.2 ms wall (834.5 ms GPU)
+[xllama] diverge rep=0 tensors=5 matched=5 skipped=0 first_diff=-1
+[xllama] diverge rep=1 tensors=5 matched=5 skipped=0 first_diff=-1
+[xllama] diverge done rows=20 fail=- msix=3d333812dd43fd15541c9785098814a12130d0f53da3aea9b76b5175d6032a6f

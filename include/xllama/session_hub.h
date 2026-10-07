@@ -46,7 +46,21 @@ struct SessionHub {
     std::unique_ptr<Session> session; // guarded by mtx
     std::string model;                // model id loaded into `session`; guarded by mtx
     int gpu_layers = 0;               // n_gpu_layers `session` was loaded with; guarded by mtx
-    uint64_t generation = 0;          // bumps on every resident-session change; guarded by mtx
+    // Full effective identity of the resident session's shaping config
+    // (guarded by mtx; review): any change here is a different load — the
+    // hub recreates rather than reusing (editing 64/64 must not reuse a
+    // stale context). The twocol/repack startup profile is process-immutable
+    // (restart required), so it cannot change under a live session and needs
+    // no identity term.
+    bool mtp = false;
+    int mtp_depth = 0;
+    float mtp_pmin = 0.0f;
+    int n_ctx = 0;
+    int n_batch = 0;
+    int n_ubatch = 0;
+    int n_threads = 0;
+    bool kv_q8 = false;
+    uint64_t generation = 0; // bumps on every resident-session change; guarded by mtx
 
     // True while a background pre-load holds (or is about to take) mtx.
     // Lets the LAN API distinguish "warming up, wait briefly" from "another
@@ -62,7 +76,10 @@ struct SessionHub {
                            std::string* err = nullptr) {
         // A different GPU-layer request is a different load (weights move
         // between CPU and d3d12 buffers), so it reloads like a model switch.
-        if (session && model == model_id && gpu_layers == sp.n_gpu_layers)
+        if (session && model == model_id && gpu_layers == sp.n_gpu_layers && mtp == sp.mtp &&
+            mtp_depth == sp.mtp_n_max && mtp_pmin == sp.mtp_p_min && n_ctx == sp.n_ctx &&
+            n_batch == sp.n_batch && n_ubatch == sp.n_ubatch && n_threads == sp.n_threads &&
+            kv_q8 == sp.kv_q8)
             return session.get();
         session.reset(); // release the old model before loading the new one
         model.clear();
@@ -73,6 +90,14 @@ struct SessionHub {
         session = std::move(s);
         model = model_id;
         gpu_layers = sp.n_gpu_layers;
+        mtp = sp.mtp;
+        mtp_depth = sp.mtp_n_max;
+        mtp_pmin = sp.mtp_p_min;
+        n_ctx = sp.n_ctx;
+        n_batch = sp.n_batch;
+        n_ubatch = sp.n_ubatch;
+        n_threads = sp.n_threads;
+        kv_q8 = sp.kv_q8;
         ++generation;
         return session.get();
     }
