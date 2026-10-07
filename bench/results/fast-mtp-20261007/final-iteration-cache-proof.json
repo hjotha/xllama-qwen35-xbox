@@ -1,0 +1,241 @@
+{
+  "metadata_proof": [
+    {
+      "project": "xllama",
+      "iteration": "false",
+      "source": "..\\src\\bridge\\mtp_draft.cpp",
+      "relative": "..\\src\\bridge\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\mtp_draft.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\xllama\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "false",
+      "source": "..\\src\\bridge\\ggml_d3d12.cpp",
+      "relative": "..\\src\\bridge\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\src\\bridge\\ggml_d3d12.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\xllama\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "false",
+      "source": "inference-bridge.cpp",
+      "relative": "",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\inference-bridge.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\xllama\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "true",
+      "source": "..\\src\\bridge\\mtp_draft.cpp",
+      "relative": "..\\src\\bridge\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\mtp_draft.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "true",
+      "source": "..\\src\\bridge\\ggml_d3d12.cpp",
+      "relative": "..\\src\\bridge\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\src\\bridge\\ggml_d3d12.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "true",
+      "source": "inference-bridge.cpp",
+      "relative": "",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\inference-bridge.obj",
+      "optimization": "Disabled",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "xllama",
+      "iteration": "true",
+      "source": "pch.cpp",
+      "relative": "",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\pch.obj",
+      "optimization": "Disabled",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\xllama\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "false",
+      "source": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.c",
+      "relative": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\ggml-uwp\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "false",
+      "source": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.cpp",
+      "relative": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\ggml-uwp\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "false",
+      "source": "..\\llama.cpp\\src\\llama-context.cpp",
+      "relative": "..\\llama.cpp\\src\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\llama-context.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\ggml-uwp\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "false",
+      "source": "..\\llama.cpp\\src\\models\\qwen35.cpp",
+      "relative": "..\\llama.cpp\\src\\models\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\llama.cpp\\src\\models\\qwen35.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "true",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp-final\\x64\\Release\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release\\ggml-uwp\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "true",
+      "source": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.c",
+      "relative": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "true",
+      "source": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu.cpp",
+      "relative": "..\\llama.cpp\\ggml\\src\\ggml-cpu\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\..\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\ggml\\src\\ggml-cpu\\ggml-cpu_cxx.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "true",
+      "source": "..\\llama.cpp\\src\\llama-context.cpp",
+      "relative": "..\\llama.cpp\\src\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\llama-context.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    },
+    {
+      "project": "ggml-uwp",
+      "iteration": "true",
+      "source": "..\\llama.cpp\\src\\models\\qwen35.cpp",
+      "relative": "..\\llama.cpp\\src\\models\\",
+      "object_template": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\%(RelativeDir)",
+      "obj": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\llama.cpp\\src\\models\\qwen35.obj",
+      "optimization": "MaxSpeed",
+      "wpo": "false",
+      "intdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\ggml-uwp\\x64\\Release-iteration\\",
+      "outdir": "C:\\Users\\hjotha\\worktrees\\xllama-mtp-fast\\uwp\\x64\\Release-iteration\\"
+    }
+  ],
+  "final124": {
+    "revision": 124,
+    "package": "packages/xllama_1.6.0.124_final_fa2.msix",
+    "sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+    "bytes": 21797403,
+    "build_seconds": 712.31,
+    "pfn": "GianlucaMazza.xllama_1.6.0.124_x64__pj67f1fcj4n14",
+    "source_status": "frozen since R123; no clean; incremental Final",
+    "native_final_objects_recompiled": 1,
+    "native_iteration_objects_changed": 0,
+    "archived_utc": "2026-10-07T13:30:11.402315+00:00",
+    "build_start_windows_local": "2026-10-07T15:09:42",
+    "build_end_windows_local": "2026-10-07T15:21:34",
+    "app_final_objects_recompiled": 6
+  },
+  "actual_compiler_flags": {
+    "native-final": {
+      "entries": 233,
+      "O2": 233,
+      "Od": 0,
+      "GL": 233,
+      "tlog": "cache-native-final-command-post124.txt"
+    },
+    "native-iteration": {
+      "entries": 233,
+      "O2": 233,
+      "Od": 0,
+      "GL": 0,
+      "tlog": "cache-native-iteration-command-post124.txt"
+    },
+    "app-final": {
+      "entries": 39,
+      "O2": 39,
+      "Od": 0,
+      "GL": 39,
+      "tlog": "cache-app-final-command-post124.txt"
+    },
+    "app-iteration": {
+      "entries": 40,
+      "O2": 31,
+      "Od": 9,
+      "GL": 0,
+      "tlog": "cache-app-iteration-command-post124.txt"
+    }
+  },
+  "warm_iteration125": {
+    "status": "PASS",
+    "seconds": 41.12,
+    "deployed": false,
+    "final_objects_changed": 0,
+    "native_iteration_objects_changed": 0,
+    "changed_objects": [],
+    "snapshot_pre": "cache-post124.json",
+    "snapshot_post": "cache-post125.json",
+    "driver": "r125-build-driver.log",
+    "build_log": "r125-build.log"
+  }
+}

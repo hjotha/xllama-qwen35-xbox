@@ -6,6 +6,7 @@
 
 #include "xllama/session.h"
 #include "xllama/chat_prompt.h"
+#include "xllama/ggml_d3d12.h"
 #include "xllama/inference_params.h"
 #include "xllama/mtp_draft.h"
 #include "xllama/path_utils.h"
@@ -490,6 +491,11 @@ class LlamaSession final : public Session {
             llama_context_params cparams = llama_context_default_params();
             cparams.n_ctx = m_n_ctx;
             cparams.n_threads = m_n_threads;
+            // Built-in perf counters (numerics-neutral): llama_perf_context()
+            // stays zero while the default no_perf=true — we need n_reused per
+            // verify call to split rebuild-vs-reuse in the wall-d3w lump
+            // (plan004 rev102). Cost is a ggml_time_us() per synchronize().
+            cparams.no_perf = false;
             // Prefill (any ubatch > 1 token) runs on n_threads_batch, whose
             // default is GGML_DEFAULT_N_THREADS (4) regardless of n_threads —
             // left unset it caps prefill at 4 threads while decode gets 6 (#168).
@@ -594,6 +600,11 @@ class LlamaSession final : public Session {
 
     InferenceResult generate(const GenerateParams& gp) override {
         InferenceResult res;
+        // Wall clock for the WHOLE call, started here so it covers load + prefill +
+        // decode. Reported as res.t_total_ms only: res.t_eval_ms stays the decode
+        // interval because published throughput divides n_eval by it, and the phase
+        // line needs the wider interval to attribute the difference.
+        const auto t_total0 = std::chrono::steady_clock::now();
 
         if (!ensure_ctx(&res.error_msg))
             return res;
@@ -685,7 +696,38 @@ class LlamaSession final : public Session {
                 }
                 llama_memory_clear(mem, true);
             }
+            // Plan 003 F3.5: a real rewind leaves the mirror without the hidden row
+            // the divergent tail needs, and those kept rows cannot be rebuilt from
+            // a different prefix. Re-prefill the whole prompt in the target too:
+            // mirror and target then both start at 0, the prefill catch-up rebuilds
+            // them from validated state, and MTP stays active instead of being
+            // dropped. Only reached when the mirror cannot present the carry at
+            // |kv_keep|; a full clear (kv_keep == 0) needs none of this.
+            if (m_mtp_drafter && m_mtp_drafter->ready() && kv_keep > 0 &&
+                !m_mtp_drafter->can_carry_from(static_cast<llama_pos>(kv_keep))) {
+                llama_memory_clear(mem, true);
+                m_kv_tokens.clear();
+                kv_keep = 0;
+                log_output("[xllama] mtp: draft mirror cannot carry the reused prefix; "
+                           "full re-prefill so the catch-up rebuilds it\n");
+            }
+
             m_kv_tokens.resize(kv_keep);
+
+            // Plan 003 F3.5: the private draft mirror must follow the target's
+            // rewind. The prefill catch-up below replays the divergent tail
+            // starting at |kv_keep|; when the mirror still holds the discarded
+            // prefix, that replay targets positions it already occupies and
+            // llama_decode refuses it, which used to disable drafting for the
+            // rest of the session. Aligning here keeps the positions and the
+            // carry consistent, and lets the catch-up rebuild the mirror from
+            // the new prefix instead of dropping the drafter.
+            if (m_mtp_drafter && m_mtp_drafter->ready() &&
+                !m_mtp_drafter->align_to(static_cast<llama_pos>(kv_keep))) {
+                log_output("[xllama] mtp: private draft context could not follow the KV "
+                           "rewind; drafting disabled\n");
+                m_mtp_drafter.reset();
+            }
         }
 
         // #173: the KV length is exact and free to read (seq_pos_max is -1 on
@@ -700,6 +742,17 @@ class LlamaSession final : public Session {
         // prompt, the whole delta on a continuation.
         llama_token* pf = tokens.data() + (full_prompt ? kv_keep : 0);
         const int n_pf = static_cast<int>(tokens.size()) - (full_prompt ? (int)kv_keep : 0);
+        {
+            // Termination-state gates (plan 003): one line disambiguating
+            // prefix-reuse (pf = tail) from continuation-append (pf = whole
+            // prompt) — the ambiguity that made a stop-resume verdict
+            // unreadable. Log-only.
+            char tl[160];
+            snprintf(tl, sizeof(tl),
+                     "[xllama] session: turn full=%d kv_before=%d pf=%d prompt=%d\n",
+                     full_prompt ? 1 : 0, kv_len, n_pf, static_cast<int>(tokens.size()));
+            log_output(tl);
+        }
         if (n_pf <= 0) {
             // Both callers always render at least one token (a delta carries the
             // turn close + user turn; a full prompt keeps size-1 at most), so
@@ -776,6 +829,19 @@ class LlamaSession final : public Session {
         // LOGICAL batch only — the physical ubatch stays 512 (#172 optimum),
         // which is what the prefill rate was measured on.
         const auto t_prefill0 = std::chrono::steady_clock::now();
+        // Plan 003 stage 2: snapshot the d3d12 counters around THIS prefill. The
+        // lifetime counters are zeroed in backend_free, so they cannot attribute
+        // time to a phase; a delta around the real prefill can. No extra decode and
+        // no state change — only observation, and only when profiling is on.
+        const bool profile_t = gp.profile_phases && m_ctx != nullptr;
+        detail::ScopeTag prefill_scope("target", "prefill");
+        // The per-shape histogram builds strings inside graph_compute, so it has
+        // its own switch tied to the same bench knob: OFF means no aggregation work
+        // in the hot path at all, which is what the cost arm must measure.
+        d3d12_set_shape_log(!gp.profile_phases);
+        const std::uint64_t pf_calls0 = profile_t ? d3d12_graph_calls() : 0;
+        const std::uint64_t pf_mm0 = profile_t ? d3d12_matmul_count() : 0;
+        const double pf_gpu0 = profile_t ? d3d12_gpu_ms() : 0.0;
         // MTP catch-up (plan 003, F2): replay each prefill chunk into the
         // private draft context, right after the target decoded it (the nextn
         // buffer describes only the last batch). The drafter's own n_batch is
@@ -785,7 +851,8 @@ class LlamaSession final : public Session {
             prefill_chunked(ctx, pf, n_pf, [&](int off, int n_rows, llama_pos pos0) {
                 if (m_mtp_drafter && m_mtp_drafter->ready()) {
                     if (!detail::mtp_catchup_batch(m_mtp_drafter.get(), ctx, pf + off, n_rows, pos0,
-                                                   llama_model_n_embd_out(m_model.get()))) {
+                                                   llama_model_n_embd_out(m_model.get()),
+                                                   gp.profile_phases)) {
                         log_output("[xllama] mtp: session prefill catch-up failed; drafting "
                                    "disabled\n");
                         m_mtp_drafter.reset();
@@ -804,6 +871,16 @@ class LlamaSession final : public Session {
             return res;
         }
         mtp_prefill_rows = pf_rows;
+
+        if (profile_t) {
+            log_output("[xllama] PHASE_PREFILL n_prompt=" + std::to_string(n_pf) +
+                       " rows_kept=" + std::to_string(mtp_prefill_rows) +
+                       " n_ubatch=" + std::to_string(llama_n_ubatch(ctx)) +
+                       " calls=" + std::to_string(d3d12_graph_calls() - pf_calls0) +
+                       " matmuls=" + std::to_string(d3d12_matmul_count() - pf_mm0) +
+                       " gpu_ms=" + std::to_string(d3d12_gpu_ms() - pf_gpu0) + "\n");
+        }
+
         res.t_p_eval_ms =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_prefill0)
                 .count();
@@ -853,17 +930,61 @@ class LlamaSession final : public Session {
         // W2: seed + live history is m_kv_tokens (prefill already recorded above).
         dlp.prompt_lookup = m_prompt_lookup;
         dlp.token_history = &m_kv_tokens;
+        dlp.profile_phases = gp.profile_phases;
+        // Leaving the prefill window: drain what the prefill graphs accumulated and
+        // restore the tag so the decode-phase graphs are classified as decode.
+        d3d12_set_scope("target", "decode");
+        d3d12_shape_drain("session_prefill");
         if (m_mtp_drafter) {
             dlp.mtp = m_mtp_drafter.get();
             dlp.mtp_n_embd = llama_model_n_embd_out(m_model.get());
             dlp.mtp_prefill_rows = mtp_prefill_rows;
         }
+        // Parity/diagnostic: collect this turn's accepted ids so a caller can
+        // compare an integral sequence (plan 003 stage 1). Empty request = no
+        // sink, no cost.
+        std::vector<llama_token> turn_ids;
+        if (!gp.dump_tokens_path.empty())
+            dlp.out_token_ids = &turn_ids;
+
         const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
+
+        if (!gp.dump_tokens_path.empty()) {
+            if (FILE* tf = std::fopen(gp.dump_tokens_path.c_str(), "w")) {
+                for (llama_token t : turn_ids)
+                    std::fprintf(tf, "%d\n", static_cast<int>(t));
+                std::fclose(tf);
+            } else {
+                log_output("[xllama] WARN: per-turn token dump failed: " + gp.dump_tokens_path +
+                           "\n");
+            }
+            // The ids THIS turn decoded. Together with the previous turns' dumps they
+            // reconstruct the exact resident history, token for token — which is what
+            // a cold reference has to reproduce. Comparing output ids alone cannot
+            // prove that: text concatenation may retokenize at the boundaries.
+            const std::string pf_path = gp.dump_tokens_path + ".prefill";
+            if (FILE* pf2 = std::fopen(pf_path.c_str(), "w")) {
+                for (int i = 0; i < n_pf; ++i)
+                    std::fprintf(pf2, "%d\n", static_cast<int>(pf[i]));
+                std::fclose(pf2);
+            }
+        }
         const int n_generated = dlr.n_generated;
         const bool stopped_by_seq = dlr.ended_with_stop;
+        res.eog_token = dlr.eog_token;
+        res.eog_branch = dlr.eog_branch ? dlr.eog_branch : "";
+        res.stop_branch = dlr.stop_branch ? dlr.stop_branch : "";
+        res.stop_round = dlr.stop_round;
 
+        // t_eval_ms KEEPS its published meaning (decode interval only): bench.cpp,
+        // main.cpp and the CSV's decode_tok_s all divide n_eval by it, so widening
+        // it to the whole generate() would silently fold prefill and load into
+        // every throughput number. The generate-wide clock goes to t_total_ms.
         res.t_eval_ms =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_decode0)
+                .count();
+        res.t_total_ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_total0)
                 .count();
         res.t_first_token_ms =
             dlr.first_token_ms > 0.0 ? res.t_p_eval_ms + dlr.first_token_ms : 0.0;
@@ -871,6 +992,14 @@ class LlamaSession final : public Session {
         res.ended_with_stop = stopped_by_seq;
         res.n_drafted = dlr.n_drafted;
         res.n_spec_accepted = dlr.n_accepted;
+        // Per-source split: n_drafted alone cannot answer "did MTP propose".
+        res.n_mtp_drafted = dlr.n_mtp_drafted;
+        res.n_mtp_accepted = dlr.n_mtp_accepted;
+        res.n_lookup_drafted = dlr.n_lookup_drafted;
+        res.n_lookup_accepted = dlr.n_lookup_accepted;
+        res.n_mtp_rounds = dlr.n_mtp_rounds;
+        res.t_decode_ms = dlr.t_decode_ms;
+        res.t_decode_accounted_ms = dlr.t_decode_accounted_ms;
         res.mtp_active = m_mtp_active;
         if (dlr.rewind_failed) {
             // History and KV are untrustworthy — same class as a decode failure.
@@ -888,10 +1017,59 @@ class LlamaSession final : public Session {
         char log_buf[320];
         snprintf(log_buf, sizeof(log_buf),
                  "[xllama] session generate: n=%d prefill=%.1fms (%d tok) reuse=%d "
-                 "drafted=%d spec_accept=%d\n",
+                 "drafted=%d (mtp=%d lookup=%d) spec_accept=%d (mtp=%d lookup=%d)\n",
                  n_generated, res.t_p_eval_ms, res.n_p_eval, gp.reuse_kv && !gp.reset_kv,
-                 dlr.n_drafted, dlr.n_accepted);
+                 dlr.n_drafted, dlr.n_mtp_drafted, dlr.n_lookup_drafted, dlr.n_accepted,
+                 dlr.n_mtp_accepted, dlr.n_lookup_accepted);
         log_output(log_buf);
+        // Same-interval accounting: total covers this generate() call, decode is
+        // the loop alone, and the phase timers sum to accounted. The three gaps
+        // are named so nothing is hidden: load+setup, prefill, uninstrumented.
+        {
+            const double total = res.t_total_ms; // generate-wide, NOT the decode interval
+            const double prefill = res.t_p_eval_ms;
+            const double dec = dlr.t_decode_ms;
+            const double acct = dlr.t_decode_accounted_ms;
+            // Verify sub-cost split (plan003): sums of the per-round backend
+            // snapshots. Units ms; nesting gpu <= d3w <= verify_ms keeps the
+            // aggregates disjoint from verify_ms (never counted twice).
+            // rounds_split=0 with profile OFF or without MTP verify rounds.
+            double v_d3w = 0.0, v_d3g = 0.0, v_cpu = 0.0;
+            for (size_t i = 0; i < dlr.vr_d3w.size(); ++i) {
+                v_d3w += dlr.vr_d3w[i];
+                v_d3g += dlr.vr_d3g[i];
+                v_cpu += dlr.vr_cpu[i];
+            }
+            char tlog[640];
+            snprintf(tlog, sizeof(tlog),
+                     "[xllama] PHASE total_ms=%.1f prefill_ms=%.1f decode_ms=%.1f "
+                     "accounted_ms=%.1f residual_decode_ms=%.1f load_plus_setup_ms=%.1f "
+                     "draft_ms=%.1f sample_ms=%.1f topprob_ms=%.1f catchup_ms=%.1f "
+                     "verify_ms=%.1f verify_d3w=%.1f verify_d3g=%.1f verify_cpu=%.1f "
+                     "rounds_split=%zu "
+                     "corrective_ms=%.1f classic_decode_ms=%.1f "
+                     "classic_catchup_ms=%.1f lookup_ms=%.1f sample_target_ms=%.1f "
+                     "emit_ms=%.1f maintain_ms=%.1f profile=%d\n",
+                     total, prefill, dec, acct, dec - acct, total - prefill - dec, dlr.mtp_draft_ms,
+                     dlr.mtp_sample_ms, dlr.mtp_top_prob_ms, dlr.mtp_catchup_ms, dlr.verify_ms,
+                     v_d3w, v_d3g, v_cpu, dlr.vr_width.size(), dlr.corrective_ms, dlr.t_classic_ms,
+                     dlr.t_classic_catchup_ms, dlr.t_lookup_ms, dlr.t_sample_target_ms,
+                     dlr.t_emit_ms, dlr.t_maintain_ms, gp.profile_phases ? 1 : 0);
+            log_output(tlog);
+            // Reconciliation stated, not asserted: the phases sum to `accounted`,
+            // the loop to `decode`, and the leftover is the instrumentation's own
+            // residual plus any path not yet timed. It is printed so a reader can
+            // see the gap instead of inferring coverage from the small numbers.
+            if (dec - acct > 0.05 * dec && dec > 1.0) {
+                char rlog[256];
+                snprintf(rlog, sizeof(rlog),
+                         "[xllama] PHASE_RESIDUAL decode_ms=%.1f accounted_ms=%.1f "
+                         "unaccounted_ms=%.1f (%.1f%% of decode)\n",
+                         dec, acct, dec - acct, 100.0 * (dec - acct) / dec);
+                log_output(rlog);
+            }
+        }
+        d3d12_shape_drain("session_decode");
         if (m_mtp) {
             char mlog[384];
             snprintf(mlog, sizeof(mlog),
@@ -1347,6 +1525,28 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
 namespace xllama {
 
 std::unique_ptr<Session> Session::create(const SessionParams& sp, std::string* err) {
+    // Rejected configuration (set by the config parser, e.g. immutable scope2
+    // startup profile + a different model): fail fast with the reason.
+    if (!sp.config_reject.empty()) {
+        if (err)
+            *err = sp.config_reject;
+        log_output("[xllama] session config REJECTED: " + sp.config_reject + "\n");
+        return nullptr;
+    }
+    // Effective per-session configuration (no secrets): shared by GUI/API/
+    // hub entry points; printed before any load so the log proves what the
+    // session actually got (plan004 normal-session MTP delivery).
+    {
+        char cfg[320];
+        snprintf(cfg, sizeof(cfg),
+                 "[xllama] session config: model=%s mtp=%d depth=%d pmin=%.2f n_ctx=%d "
+                 "n_batch=%d n_ubatch=%d gpu=%d kv_q8=%d\n",
+                 sp.model_path.c_str(), sp.mtp ? 1 : 0, sp.mtp_n_max,
+                 static_cast<double>(sp.mtp_p_min), static_cast<int>(sp.n_ctx),
+                 static_cast<int>(sp.n_batch), static_cast<int>(sp.n_ubatch), sp.n_gpu_layers,
+                 sp.kv_q8 ? 1 : 0);
+        log_output(cfg);
+    }
 #if defined(XLLAMA_USE_ORT) && defined(XLLAMA_USE_LLAMA)
     Backend b = sp.backend;
     if (b == Backend::Auto) {

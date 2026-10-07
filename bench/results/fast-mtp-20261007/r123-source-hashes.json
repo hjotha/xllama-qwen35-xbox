@@ -1,0 +1,11 @@
+{
+  "src/bridge/llama_gpu.h": "5ae054a7b2e75983986cdad25776f24b1ec78322bdbfbe9ede73b8b43641d315",
+  "uwp/inference-bridge.cpp": "5223c55bc885493c430a50a64f26b065b133cdbf803b970b7663b90fde2844cd",
+  "patches/0006-cpu-flash-attn-consistent-kv-reduction.patch": "440875f57474fc6ea9519a1adf26fec07c6ad3aee8078a614cc951e1f77e72d9",
+  "scripts/build-uwp.ps1": "c5ec8a75009b9202cf4819714f07e11701ab6b8caa14611565db15a7d2751df2",
+  "scripts/build-xbox-local.ps1": "f3f4f99ce10b1583680dd22b597b602f8f425b0e1083d6e81a8be70d2cf4a435",
+  "scripts/run-xbox-build.ps1": "adf01d735e979e4ccd32bfb58775a971f31efcf474cfa6597ee7998b38bb845f",
+  "uwp/iteration.props": "4f15f5c298c685025aef4347a7992b295ab1e4159ccc1cf90f02ab97ae5afb2d",
+  "uwp/xllama.vcxproj": "10c52ac67c7761d684c8950ad143f35f61980d3134e8856bfad2bba4145eb1cd",
+  "uwp/ggml-uwp.vcxproj": "e23135dce795f8f419620d828c3fc7edcd0d3f489efbe57f0247fd05191048d9"
+}

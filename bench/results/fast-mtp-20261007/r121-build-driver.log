@@ -1,0 +1,27 @@
+PASS source hashes: 8/8
+Started revision 121, instance={EDD26931-06F5-4844-B232-B354F3A7EF84}
+14:03:52 sha256=1D11EF0237D03D0B6954F4BAC32D6F50CA4C51697FF7815766C30D3DFCE70629
+14:03:52 3/4 makeappx unpack
+14:03:53 Package extraction succeeded.
+14:03:53 
+14:03:54 VCLibs MinVersion: 14.0.33519.0 -> 14.0.0.0
+14:03:54 4/4 makeappx pack + signtool sign
+14:03:59 
+14:03:59 Package creation succeeded.
+14:03:59 
+14:04:00 Done Adding Additional Store
+14:04:00 Successfully signed: C:\Users\hjotha\build\xllama-q5k\xllama-q5k-fixed.msix
+14:04:00 
+14:04:01 File: C:\Users\hjotha\build\xllama-q5k\xllama-q5k-fixed.msix
+14:04:01 Index  Algorithm  Timestamp    
+14:04:01 ========================================
+14:04:01 
+14:04:01 Number of errors: 1
+14:04:01 
+14:04:01 SignTool Error: A certificate chain processed, but terminated in a root
+14:04:01 	certificate which is not trusted by the trust provider.
+14:04:02 verify warning: untrusted self-signed root on build host; signer matches expected certificate (status=UnknownError)
+14:04:02 sha256-fixed=202E930BF36944A96AC8D8053CBC6F903ADD7B65C66E36405AB4287D598A8706
+14:04:02 elapsed_seconds=279.07
+14:04:02 === DONE ===
+Total seconds: 280.04

@@ -1,0 +1,39 @@
+admitted tagon segments (rev105 genuine: vrcall+diag): 3
+classes: {'prefill': 3, 'draft': 376, 'classic': 87, 'sync_out': 2868, 'verify': 42} invalid: 0 width-invariant: True
+verify calls joined (exact, code-ordered): 42
+
+== exact tagged conservation (top-level non-overlapping) ==
+residual = wall - sum: pooled 1.19% of wall; per-call med 0.51 ms (0.6%), max 6.1, min 0.4
+d3 vs VROUND d3w cross-check: med abs err 0.9%, max 1.0% -> VALID (<=10%)
+
+nested accounting, shares of verify wall:
+  top  apply      0.01%
+  top  build      1.53%
+  top  seti       0.01%
+  top  orch       0.00%
+  top  comp      97.25%
+  top  final      0.00%
+  top  sync_in    0.00%
+  child(comp) cpu       68.01%   [never added to top-level]
+  child(comp) d3        29.22%   [never added to top-level]
+  child(comp) glue       0.03%   [never added to top-level]
+  top-level sum 98.81% + residual 1.19% = 100.00%
+  orch med=   0.00 ms/call
+  comp med=  82.78 ms/call
+  cpu med=  58.16 ms/call
+  d3 med=  22.77 ms/call
+  glue med=   0.03 ms/call
+  final med=   0.00 ms/call
+  sync_in med=   0.00 ms/call
+  wall med=87.87 d3w med=22.55 width mix {2: 27, 4: 9, 3: 6} reused 9/42
+
+== OFF/ON overhead (identity: installed 1.6.0.105, build sha 82A06F64, diag engaged) ==
+diag-OFF vs rev103 OFF pairs (cross-pkg): decode +35.9 ms (+0.94%)
+diag-ON profile OFF (tagoff vs p1off, same pkg): decode +25.8 ms (+0.67%)
+diag+profile ON vs diag-only: decode -4.7 ms (-0.12%)
+
+== fresh full-ID parity (all vsplit fixtures, full sha256) ==
+  run1: 57 files; primary 56 identical; outliers ['vsplit-20261006-r102-kvq8b.run1.tokens'] (kvq8b-only: True)
+  run2: 57 files; primary 56 identical; outliers ['vsplit-20261006-r102-kvq8b.run2.tokens'] (kvq8b-only: True)
+  run3: 34 files identical
+IDs: ALL EXACT (sole outlier kvq8b by design)

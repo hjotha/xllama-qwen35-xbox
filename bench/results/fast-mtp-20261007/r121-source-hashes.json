@@ -1,0 +1,10 @@
+{
+  "src/bridge/ggml_d3d12.cpp": "fae1da800fd4f3f169f6bdc5317988640e440ce7568be39c6ae30d3e47c7d5f2",
+  "include/xllama/ggml_d3d12.h": "1c9abafd2cf4b280a067b7b600685cd8713835a2f8514c8240e5cb7c6a96ae87",
+  "src/bridge/mtp_draft.cpp": "6f882064fbe42540647a781a59332625143cbd8804dc8f2cd4d7eb7d5647e622",
+  "uwp/xllama.vcxproj": "10c52ac67c7761d684c8950ad143f35f61980d3134e8856bfad2bba4145eb1cd",
+  "uwp/ggml-uwp.vcxproj": "e23135dce795f8f419620d828c3fc7edcd0d3f489efbe57f0247fd05191048d9",
+  "uwp/iteration.props": "4f15f5c298c685025aef4347a7992b295ab1e4159ccc1cf90f02ab97ae5afb2d",
+  "scripts/build-xbox-local.ps1": "b30eb785a78044328f6e5aa9e84ca6c39ca05328c962c2d126dd68f3ebf2dd45",
+  "scripts/run-xbox-build.ps1": "adf01d735e979e4ccd32bfb58775a971f31efcf474cfa6597ee7998b38bb845f"
+}

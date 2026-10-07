@@ -1,0 +1,54 @@
+admitted tagon segments (VRCALL + dspan): 3  (seg0=warmup, seg1/2=measured)
+out-of-window classes: {'out_class_prefill': 3, 'out_class_draft': 373, 'out_class_classic': 87} | integrity issues: {'dspan_outside': 471}
+
+== MEASURED runs (primary claims) (n=28) ==
+residual%: med 0.20%, max 0.72%, min 0.13%; all positive: True
+GATE (per-call residual <=5%, unchanged): PASS
+d3 vs d3w: med 0.9% max 1.1% -> VALID
+top-level: prep 0.78% + inter 0.00% + ub_top 98.76% + tail 0.24%
+  sum 99.78% + residual 0.22% = 100.00%
+  children of ub_top: cpu 68.37%, d3 28.78%, glue 0.03%, build 1.55%
+  sync-inside-span (subset evidence, NOT added): 0.003 ms = 0.0001% of wall
+  wall med 84.52; widths {2: 18, 4: 6, 3: 4}; multi-ubatch calls: 0
+
+== warmup run (separate) (n=14) ==
+residual%: med 0.21%, max 0.72%, min 0.14%; all positive: True
+GATE (per-call residual <=5%, unchanged): PASS
+d3 vs d3w: med 0.9% max 1.1% -> VALID
+top-level: prep 0.73% + inter 0.00% + ub_top 98.80% + tail 0.24%
+  sum 99.77% + residual 0.23% = 100.00%
+  children of ub_top: cpu 67.36%, d3 29.83%, glue 0.03%, build 1.55%
+  sync-inside-span (subset evidence, NOT added): 0.000 ms = 0.0000% of wall
+  wall med 88.48; widths {2: 9, 4: 3, 3: 2}; multi-ubatch calls: 0
+
+seq0 (first-call) all segments:
+  warmup(run1): prep=4.14 inter=0.00 tail=0.18 ub_top=81.79 resid=0.62ms (0.72%) wall=86.7
+  measured(run2): prep=4.14 inter=0.00 tail=0.17 ub_top=82.28 resid=0.59ms (0.67%) wall=87.2
+  measured(run3): prep=3.94 inter=0.00 tail=0.17 ub_top=81.53 resid=0.62ms (0.72%) wall=86.3
+
+resid% by seq (measured):
+  seq0: [0.67, 0.72] med 0.70%
+  seq1: [0.21, 0.2] med 0.20%
+  seq2: [0.2, 0.22] med 0.21%
+  seq3: [0.2, 0.21] med 0.21%
+  seq4: [0.26, 0.21] med 0.24%
+  seq5: [0.13, 0.15] med 0.14%
+  seq6: [0.2, 0.21] med 0.20%
+  seq7: [0.18, 0.19] med 0.18%
+  seq8: [0.23, 0.21] med 0.22%
+  seq9: [0.22, 0.22] med 0.22%
+  seq10: [0.15, 0.18] med 0.17%
+  seq11: [0.16, 0.16] med 0.16%
+  seq12: [0.19, 0.17] med 0.18%
+  seq13: [0.19, 0.25] med 0.22%
+
+== same-package OFF/ON overhead (single-pass) ==
+OFF pair 3878.3 (p1 3895.4 p2 3861.2) ref 3853.1
+diag-ON prof OFF: +49.7 ms (+1.28%);  prof atop diag: +2.6 ms (+0.07%)
+
+== fresh full-token parity (pt106 family) ==
+  run1: 5 dumps, 1 distinct EXACT
+  run2: 5 dumps, 1 distinct EXACT
+  run3: 5 dumps, 1 distinct EXACT
+IDs: ALL EXACT
+cross-package pt106 family == legacy family (run1 digest in bucket): True

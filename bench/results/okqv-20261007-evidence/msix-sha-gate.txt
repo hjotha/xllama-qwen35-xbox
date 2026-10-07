@@ -1,0 +1,6 @@
+SHA-GATE (independent hard equality, enforced before admission):
+  build-local.log sha256-fixed = 7f81636db72cb71ba7829af4aeac592d4a302dd3d5caee12229d5914263669fb
+  builder msix certutil        = 7f81636db72cb71ba7829af4aeac592d4a302dd3d5caee12229d5914263669fb
+  local fetched msix           = 7f81636db72cb71ba7829af4aeac592d4a302dd3d5caee12229d5914263669fb
+  driver argument / intended   = 7f81636db72cb71ba7829af4aeac592d4a302dd3d5caee12229d5914263669fb
+  RESULT: PASS (4/4 sources equal)

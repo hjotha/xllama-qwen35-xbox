@@ -1,0 +1,99 @@
+--- bench/results/diag-ubatch-20261007/snapshot/llama.cpp_src_llama-context.cpp	2026-10-04 05:08:07.275829021 +0200
++++ llama.cpp/src/llama-context.cpp	2026-10-07 02:07:43.760971121 +0200
+@@ -3001,12 +3001,27 @@
+ 
+ llm_graph_result * llama_context::process_ubatch(const llama_ubatch & ubatch, llm_graph_type gtype, llama_memory_context_i * mctx, ggml_status & ret) {
+     llama_memory_context_finish_guard memory_finish_guard(mctx);
++    // [plan004 isolated diagnostic — default OFF: with LLAMA_UBATCH_DIAG
++    // unset/0 no clock is read and nothing is logged (behavior identical
++    // to baseline). With =1 (host knob ggmlprof=ubdiag) one [diag] line
++    // reports the four phases; rollback removes exactly this delta.]
++    static const bool ub_diag = [] {
++        const char * v = getenv("LLAMA_UBATCH_DIAG");
++        return v != nullptr && atoi(v) != 0;
++    }();
++    int64_t diag_apply0 = 0, diag_apply1 = 0;
++    int64_t diag_build0 = 0, diag_build1 = 0;
++    int64_t diag_set0 = 0, diag_set1 = 0;
++    int64_t diag_graph0 = 0, diag_graph1 = 0;
++    bool diag_reused = false;
++    diag_apply0 = ub_diag ? ggml_time_us() : 0;
+     if (mctx && !mctx->apply()) {
+         LLAMA_LOG_ERROR("%s: failed to apply memory context\n", __func__);
+         ret = GGML_STATUS_FAILED;
+         memory_finish_guard.finish(ret);
+         return nullptr;
+     }
++    diag_apply1 = ub_diag ? ggml_time_us() : 0;
+ 
+     auto * res = gf_res_prev.get();
+     auto * gf  = res->get_gf();
+@@ -3026,7 +3041,9 @@
+         }
+ 
+         n_reused++;
++        diag_reused = true;
+     } else {
++        diag_build0 = ub_diag ? ggml_time_us() : 0;
+         res->reset();
+ 
+         ggml_backend_sched_reset(sched.get());
+@@ -3051,22 +3068,35 @@
+             memory_finish_guard.finish(ret);
+             return nullptr;
+         }
++        diag_build1 = ub_diag ? ggml_time_us() : 0;
+     }
+ 
+     // set the input data for the input tensors
+     {
+         //const auto t_start_us = ggml_time_us();
++        diag_set0 = ub_diag ? ggml_time_us() : 0;
+ 
+         // FIXME this call causes a crash if any model inputs were not used in the graph and were therefore not allocated
+         res->set_inputs(&ubatch);
+ 
+         //LLAMA_LOG_INFO("graph set inputs time: %.3f ms\n", (ggml_time_us() - t_start_us)/1000.0);
++        diag_set1 = ub_diag ? ggml_time_us() : 0;
+     }
+ 
+     if (mctx) {
+         mctx->graph_compute_start();
+     }
++    diag_graph0 = ub_diag ? ggml_time_us() : 0;
+     const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
++    diag_graph1 = ub_diag ? ggml_time_us() : 0;
++    if (ub_diag) {
++        LLAMA_LOG_INFO("[diag] ubatch apply=%.3f build=%.3f set_inputs=%.3f graph=%.3f reused=%d\n",
++                       (diag_apply1 - diag_apply0) / 1000.0,
++                       (diag_build1 - diag_build0) / 1000.0,
++                       (diag_set1 - diag_set0) / 1000.0,
++                       (diag_graph1 - diag_graph0) / 1000.0,
++                       diag_reused ? 1 : 0);
++    }
+     memory_finish_guard.finish(status);
+     if (mctx) {
+         mctx->graph_compute_complete(sched.get(), status);
+--- bench/results/diag-ubatch-20261007/snapshot/uwp_inference-bridge.cpp	2026-10-07 01:18:30.147390893 +0200
++++ uwp/inference-bridge.cpp	2026-10-07 02:07:43.764382286 +0200
+@@ -175,6 +175,8 @@
+         var = "LLAMA_GRAPH_REUSE_DISABLE=1";
+     else if (raw == "singlesync")
+         var = "SPEC_OPT_SINGLE_SYNC=1";
++    else if (raw == "ubdiag")
++        var = "LLAMA_UBATCH_DIAG=1";
+     if (var)
+         _putenv(var);
+     char lb[224];
+--- bench/results/diag-ubatch-20261007/snapshot/src_bridge_llama_gpu.h	2026-10-02 21:40:35.980063146 +0200
++++ src/bridge/llama_gpu.h	2026-10-07 02:07:43.766048246 +0200
+@@ -23,7 +23,8 @@
+         return;
+     const bool keep = level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR ||
+                       std::strstr(text, "buffer size") || std::strstr(text, "offload") ||
+-                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12");
++                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12") ||
++                      std::strstr(text, "[diag] ubatch"); // plan004 gated phase diag
+     if (keep)
+         log_output(std::string("[llama] ") + text);
+ }

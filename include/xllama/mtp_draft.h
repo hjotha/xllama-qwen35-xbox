@@ -58,6 +58,12 @@ struct llama_mtp_weights_info llama_model_mtp_weights_get_info(const struct llam
 
 namespace xllama {
 
+// The Xbox has at most six application CPU workers; reject malformed overrides.
+inline int mtp_draft_threads(const char* value, int fallback) {
+    return value && value[0] >= '1' && value[0] <= '6' && value[1] == '\0' ? value[0] - '0'
+                                                                           : fallback;
+}
+
 // Knobs mirrored from common_params_speculative in the fork's common layer.
 // The defaults match its draft defaults: up to 4 proposed tokens, minimum 1,
 // and only keep drafting while the sampled candidate is at least this likely.
@@ -71,6 +77,10 @@ struct MtpDraftParams {
 // budget goes (plan 003, stage 2). Times are milliseconds; counters are
 // counts. The drafter accumulates into this struct during draft() and
 // process(); the loop reads it after each call and resets it.
+//
+// Every chrono snapshot below is gated on the caller's `profile` flag. With it
+// off the counters still increment but the time fields stay 0, so an ON/OFF pair
+// measures the instrumentation's own cost instead of inferring it from a residual.
 struct MtpDraftStats {
     double decode_ms = 0.0;   // llama_decode inside draft() / process()
     double sample_ms = 0.0;   // draft sampler (including the p_min gate)
@@ -104,6 +114,21 @@ class MtpDrafter {
         return m_ctx;
     }
 
+    // Bring the private mirror in line with a target KV that was rewound or
+    // cleared. |pos| is how many positions the target now keeps: 0 clears the
+    // mirror, a positive value drops the speculative tail at or above it. The
+    // pending row describes the mirror, so it cannot survive either. Fails
+    // closed when the mirror refuses the trim.
+    bool align_to(llama_pos pos);
+
+    // True when the pending row is exactly the hidden state a replay starting at
+    // |pos| needs: the mirror holds the prefix below |pos| and the pending row
+    // describes position |pos - 1|. The caller must have proven that prefix
+    // holds the same tokens as the target's before believing this.
+    bool can_carry_from(llama_pos pos) const {
+        return m_pending_valid && m_pending_pos == pos - 1;
+    }
+
     // Proposed tokens for the next decode position. |last_token| is the token
     // just committed at |pos|; |h_row| is the target's hidden state for that
     // token (llama_get_embeddings_nextn_ith on the target context). Returns an
@@ -113,7 +138,7 @@ class MtpDrafter {
     // |n_max_eff| clamps this call's depth below params().n_max (context or
     // output budget already consumed); -1 keeps the configured depth.
     std::vector<llama_token> draft(llama_token last_token, llama_pos pos, const float* h_row,
-                                   int n_embd, int n_max_eff = -1);
+                                   int n_embd, int n_max_eff = -1, bool profile = true);
 
     // Replay a committed prefix into the private context so the draft head
     // attends to the same history the target has. Mirrors the catch-up decode
@@ -127,7 +152,7 @@ class MtpDrafter {
     // of tokens[0] in the target cache. Returns false on decode failure, in
     // which case the drafter must be re-validated before drafting again.
     bool process(const llama_token* tokens, const float* h_rows, const float* h_pending, int n,
-                 llama_pos pos0);
+                 llama_pos pos0, bool profile = true);
 
     // Phase accounting for the last draft()/process() calls (see MtpDraftStats).
     const MtpDraftStats& stats() const {

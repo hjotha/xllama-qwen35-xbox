@@ -1,0 +1,42 @@
+PROVENANCE — rev105 tagged diagnostic cells (evidence repair, 2026-10-07T02:01:05Z)
+
+ORIGINALS: every vsplit-20261006-r105-<cell>.csv is UNMODIFIED (bench appends
+one row per recorded run — scripts/bench-xbox-ort.sh lines 17 and 57: 'runs 2..N are
+each appended individually'). Original SHA-256:
+4f8d9af3f529fb539aa25cf42d4a7e377239b555d24c7d6e0744caf906e7d605  vsplit-20261006-r105-ref.csv
+a2427a083b1026732aef24d614d381e5591abbd729e46bee281c57f9faa101de  vsplit-20261006-r105-p1off.csv
+4d1b61c86fb6d5514920ef471a790e1c42149d41c01728eacd840458a1e7d422  vsplit-20261006-r105-p2off.csv
+6cba6df624c3b2eb6f9c991d9c924ed4e8d6f3085a9d3bfff7210455dcddda07  vsplit-20261006-r105-tagoff.csv
+6ba698851ad2b53b941028bf70de697787bfedb2e03a5e2c2f593a1e200ba7f8  vsplit-20261006-r105-tagon.csv
+
+ADMISSION RULE: row admitted iff date >= 2026-10-07T01:35:00Z.
+  Boundary: last mislabeled-pass row 2026-10-07T01:33:59Z (tagon, pass 1)
+            first genuine-pass row     2026-10-07T01:35:09Z (ref, pass 2)
+  The gap contains the successful rev105 deploy+install of the pass-2 shell call.
+  Pass 1 = driver execution whose deploy was skipped (wrong working directory) and
+  which therefore ran the still-installed rev104 package.
+
+IDENTITY ANCHORS for admitted rows:
+  - installed PFN GianlucaMazza.xllama_1.6.0.105 (deploy success=true)
+  - build-local.log: build exit=0, sha256-fixed=82A0FA401C55C7C2045BEEBA64604075E4773C1E5BB3A976A1ECFE0E575503FA
+  - local msix sha256 matches that value
+  - device log: 2052 '[diag] ubatch id=' lines (rev105 format with id/ctx/nt/gt);
+    the rev104 package emitted ZERO (file-scope static initialized before _putenv)
+  - both passes follow the fixed driver order ref->p1off->p2off->tagoff->tagon
+    with strictly monotonic dates within each pass
+
+WARMUP: bench --runs 3 = warmup + 2 measured; only run_index 2/3 reach the CSV, so
+  admitted rows are measured runs only. The warmup exists only as the first log
+  segment and is reported separately, never used for claims.
+
+TOKEN SIDECARS: unlike CSVs, run*.tokens OVERWRITE per run (script lines 1102-1110);
+  r105 sidecars are single-pass (334 B, 65 tokens, mtimes inside the genuine
+  windows 01:35:41-01:40:48Z, one sha d9d23039f70e5f32...) -> genuine-only; no row
+  filter needed for parity.
+
+LOG-JOIN ADMISSION (independent of CSV rows): a segment joins only if it contains
+  BOTH VRCALL markers and '[diag] ubatch id=' lines (VRCALL+[diag] presence filter);
+  rev104-pass segments fail it by construction.
+
+FILTERED TABLES: vsplit-20261006-r105-<cell>.provenance.csv (header + 2 admitted
+  rows each; generated without touching originals).

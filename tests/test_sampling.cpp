@@ -245,25 +245,240 @@ TEST_CASE("mtp: session KV-reuse delta parity with MTP (opt-in: XLLAMA_TEST_MODE
     REQUIRE(r2.success);
     CHECK(r2.n_eval > 0);
 
-    // Cold reference: the same two turns as one full prompt, same session rules.
+    // The continuation must continue the same greedy text the cold run
+    // produced: the cold output starts with turn-1's text and the turn-2 delta
+    // must be the continuation the cold run generated after that prefix.
+    // Drafting must also survive the delta prefill: F3 replays the delta chunk
+    // into the private draft context, so a reuse turn keeps proposing instead
+    // of degrading to classic decoding.
+    CHECK(r2.n_drafted > 0);
+    INFO("r1 n_eval=" << r1.n_eval << " mtp_active=" << r1.mtp_active
+                      << " n_drafted=" << r1.n_drafted << " text=[" << r1.output_text << "]");
+    INFO("r2 n_eval=" << r2.n_eval << " mtp_active=" << r2.mtp_active
+                      << " n_drafted=" << r2.n_drafted << " text=[" << r2.output_text << "]");
+
+    // Cold reference over the EXACT cumulative text: the session state after
+    // turn 2 is prompt + turn-1 output + delta as one token stream, so a cold
+    // run over that text must produce the same continuation.
     auto session2 = Session::create(sp, &err);
     REQUIRE_MESSAGE(session2 != nullptr, err);
     GenerateParams g3;
-    g3.prompt = "The capital of France is and its largest city is";
-    g3.n_predict = 24;
+    g3.prompt = "The capital of France is" + r1.output_text + " and its largest city is";
+    g3.n_predict = static_cast<int32_t>(r2.n_eval);
     g3.temperature = 0.0f;
     g3.reuse_kv = true;
     g3.reset_kv = true;
     const InferenceResult r3 = session2->generate(g3);
     REQUIRE(r3.success);
+    INFO("r3 n_eval=" << r3.n_eval << " mtp_active=" << r3.mtp_active
+                      << " n_drafted=" << r3.n_drafted << " text=[" << r3.output_text << "]");
+    CHECK(r3.output_text == r2.output_text);
+}
 
-    // The continuation must continue the same greedy text the cold run
-    // produced: the cold output starts with turn-1's text and the turn-2 delta
-    // must be the continuation the cold run generated after that prefix.
-    CHECK(r3.output_text.size() >= r1.output_text.size() + r2.output_text.size());
-    if (r3.output_text.size() >= r1.output_text.size() + r2.output_text.size()) {
-        CHECK(r3.output_text.compare(0, r1.output_text.size(), r1.output_text) == 0);
-        CHECK(r3.output_text.compare(r1.output_text.size(), r2.output_text.size(),
-                                     r2.output_text) == 0);
+// Plan 003 §3.4: a prefill larger than n_batch arrives in chunks, so the drafter
+// is fed several replay batches instead of one. Chunking must not change what the
+// model reads, and it must not leave the drafter unable to propose.
+// Opt-in: XLLAMA_TEST_MODEL=/path/to/model.gguf
+TEST_CASE("mtp: chunked prefill keeps parity and keeps drafting (opt-in: XLLAMA_TEST_MODEL)") {
+    const char* model_env = std::getenv("XLLAMA_TEST_MODEL");
+    if (!model_env) {
+        MESSAGE("XLLAMA_TEST_MODEL not set — skipping mtp chunked prefill");
+        return;
     }
+
+    SessionParams sp;
+    sp.model_path = model_env;
+    sp.n_ctx = 512;
+    sp.n_batch = 16;
+    sp.mtp = true;
+    sp.mtp_n_max = 4;
+    sp.mtp_p_min = 0.75f;
+    std::string err;
+    auto chunked = Session::create(sp, &err);
+    REQUIRE_MESSAGE(chunked != nullptr, err);
+
+    // Grow past n_batch with the model's own tokenizer, as the non-MTP chunking
+    // case does, so the test does not depend on one vocabulary's density. The
+    // batch is deliberately small: what is under test is that a prefill split
+    // across chunks reaches the drafter intact, not how long a large prefill
+    // takes on a slow host.
+    std::string prompt = "Summarize the following log.\n";
+    int n_prompt = 0;
+    for (int i = 0; i < 200 && n_prompt <= 24; ++i) {
+        prompt += "line " + std::to_string(i) + ": nothing happened\n";
+        if ((i % 4) == 3)
+            n_prompt = chunked->count_tokens(prompt);
+    }
+    n_prompt = chunked->count_tokens(prompt);
+    REQUIRE(n_prompt > sp.n_batch);
+    REQUIRE(n_prompt < 64);
+    INFO("exercised config: n_ctx=" << sp.n_ctx << " n_batch=" << sp.n_batch
+                                    << " n_prompt=" << n_prompt
+                                    << " chunks=" << ((n_prompt + sp.n_batch - 1) / sp.n_batch));
+
+    GenerateParams g;
+    g.prompt = prompt;
+    g.n_predict = 8;
+    g.temperature = 0.0f;
+    const InferenceResult r_chunked = chunked->generate(g);
+    REQUIRE_MESSAGE(r_chunked.success, r_chunked.error_msg);
+    CHECK(r_chunked.n_p_eval == n_prompt);
+    CHECK(r_chunked.mtp_active);
+    CHECK(r_chunked.n_drafted > 0);
+    INFO("chunked n_eval=" << r_chunked.n_eval << " drafted=" << r_chunked.n_drafted << " text=["
+                           << r_chunked.output_text << "]");
+
+    // Same prompt, same MTP config, one batch: n_batch = 0 restores the default,
+    // well above this prompt.
+    sp.n_batch = 0;
+    auto whole = Session::create(sp, &err);
+    REQUIRE_MESSAGE(whole != nullptr, err);
+    const InferenceResult r_whole = whole->generate(g);
+    REQUIRE(r_whole.success);
+    CHECK(r_whole.mtp_active);
+    CHECK(r_whole.n_drafted > 0);
+    INFO("whole n_eval=" << r_whole.n_eval << " drafted=" << r_whole.n_drafted << " text=["
+                         << r_whole.output_text << "]");
+
+    // Full-sequence parity, not a leading character: the chunked prefill and the
+    // single-batch prefill must produce the same greedy continuation. If they do
+    // not, the first divergence is reported so a near-tie can be told apart from
+    // a real state difference.
+    CHECK(r_chunked.n_eval == r_whole.n_eval);
+    const std::string& chunked_text = r_chunked.output_text;
+    const std::string& whole_text = r_whole.output_text;
+    size_t first_diff = 0;
+    while (first_diff < chunked_text.size() && first_diff < whole_text.size() &&
+           chunked_text[first_diff] == whole_text[first_diff])
+        ++first_diff;
+    INFO("first divergence at char " << first_diff << " (sizes " << chunked_text.size() << " vs "
+                                     << whole_text.size() << ")");
+    CHECK(chunked_text == whole_text);
+}
+
+// Plan 003 §3.5: reset and prompt swap are part of the draft lifetime. After a
+// reset the private draft context describes a history the target no longer has,
+// so the drafter must either rebuild it or decline explicitly — never speculate
+// on the stale mirror. What is under test is that drafting survives the swap and
+// that the post-reset text is the cold text.
+// Opt-in: XLLAMA_TEST_MODEL=/path/to/model.gguf
+TEST_CASE("mtp: reset and prompt swap keep the drafter honest (opt-in: XLLAMA_TEST_MODEL)") {
+    const char* model_env = std::getenv("XLLAMA_TEST_MODEL");
+    if (!model_env) {
+        MESSAGE("XLLAMA_TEST_MODEL not set — skipping mtp reset/prompt swap");
+        return;
+    }
+
+    SessionParams sp;
+    sp.model_path = model_env;
+    sp.n_ctx = 1024;
+    sp.mtp = true;
+    sp.mtp_n_max = 4;
+    sp.mtp_p_min = 0.75f;
+    std::string err;
+    auto session = Session::create(sp, &err);
+    REQUIRE_MESSAGE(session != nullptr, err);
+
+    GenerateParams g1;
+    g1.prompt = "The capital of France is";
+    g1.n_predict = 8;
+    g1.temperature = 0.0f;
+    g1.reuse_kv = true;
+    g1.reset_kv = true;
+    const InferenceResult r1 = session->generate(g1);
+    REQUIRE(r1.success);
+    CHECK(r1.mtp_active);
+    CHECK(r1.n_drafted > 0);
+    INFO("r1 n_eval=" << r1.n_eval << " drafted=" << r1.n_drafted << " text=[" << r1.output_text
+                      << "]");
+
+    // Unrelated prompt with reset_kv: the KV is wiped, so every position the
+    // drafter mirrored is gone. Drafting must come back from the new prefill.
+    GenerateParams g2;
+    g2.prompt = "A thermometer measures";
+    g2.n_predict = 8;
+    g2.temperature = 0.0f;
+    g2.reuse_kv = true;
+    g2.reset_kv = true;
+    const InferenceResult r2 = session->generate(g2);
+    REQUIRE(r2.success);
+    CHECK(r2.mtp_active);
+    CHECK(r2.n_drafted > 0);
+    INFO("r2 n_eval=" << r2.n_eval << " drafted=" << r2.n_drafted << " text=[" << r2.output_text
+                      << "]");
+
+    // Cold reference for the swapped prompt: after a reset the session state is
+    // that prompt alone, so a fresh session must produce the same continuation.
+    auto cold = Session::create(sp, &err);
+    REQUIRE_MESSAGE(cold != nullptr, err);
+    GenerateParams g3 = g2;
+    g3.reset_kv = true;
+    const InferenceResult r3 = cold->generate(g3);
+    REQUIRE(r3.success);
+    INFO("r3 n_eval=" << r3.n_eval << " drafted=" << r3.n_drafted << " text=[" << r3.output_text
+                      << "]");
+    CHECK(r3.output_text == r2.output_text);
+}
+
+// Plan 003 F3.5: the other full_prompt shape. kv_keep > 0 — the prompt was edited
+// but still shares its prefix with the resident tokens — so the prefill catch-up
+// has to replay a tail that starts above position 0. Rebuilding the mirror from a
+// full re-prefill is allowed; dropping the drafter is not.
+// Opt-in: XLLAMA_TEST_MODEL=/path/to/model.gguf
+TEST_CASE(
+    "mtp: edited full prompt with a reused prefix keeps drafting (opt-in: XLLAMA_TEST_MODEL)") {
+    const char* model_env = std::getenv("XLLAMA_TEST_MODEL");
+    if (!model_env) {
+        MESSAGE("XLLAMA_TEST_MODEL not set — skipping mtp reused-prefix edit");
+        return;
+    }
+
+    SessionParams sp;
+    sp.model_path = model_env;
+    sp.n_ctx = 1024;
+    sp.mtp = true;
+    sp.mtp_n_max = 4;
+    sp.mtp_p_min = 0.75f;
+    std::string err;
+    auto session = Session::create(sp, &err);
+    REQUIRE_MESSAGE(session != nullptr, err);
+
+    GenerateParams g1;
+    g1.prompt = "The capital of France is";
+    g1.n_predict = 8;
+    g1.temperature = 0.0f;
+    g1.reuse_kv = true;
+    g1.reset_kv = true;
+    const InferenceResult r1 = session->generate(g1);
+    REQUIRE(r1.success);
+    CHECK(r1.mtp_active);
+    CHECK(r1.n_drafted > 0);
+    INFO("r1 n_eval=" << r1.n_eval << " drafted=" << r1.n_drafted << " text=[" << r1.output_text
+                      << "]");
+
+    // reset_kv forces the full_prompt path and the prompt still shares its prefix
+    // with the resident tokens, so kv_keep > 0.
+    GenerateParams g2;
+    g2.prompt = "The capital of France is Paris, and its largest city is";
+    g2.n_predict = 8;
+    g2.temperature = 0.0f;
+    g2.reuse_kv = true;
+    g2.reset_kv = true;
+    const InferenceResult r2 = session->generate(g2);
+    REQUIRE(r2.success);
+    CHECK(r2.mtp_active);
+    CHECK(r2.n_drafted > 0);
+    INFO("r2 n_eval=" << r2.n_eval << " drafted=" << r2.n_drafted << " text=[" << r2.output_text
+                      << "]");
+
+    // Cold reference over the same prompt: whether the tail was replayed on the
+    // kept prefix or the whole prompt was re-prefilled, the resulting state is
+    // that prompt from position 0, so a fresh session must produce the same text.
+    auto cold = Session::create(sp, &err);
+    REQUIRE_MESSAGE(cold != nullptr, err);
+    const InferenceResult r3 = cold->generate(g2);
+    REQUIRE(r3.success);
+    INFO("r3 n_eval=" << r3.n_eval << " drafted=" << r3.n_drafted << " text=[" << r3.output_text
+                      << "]");
+    CHECK(r3.output_text == r2.output_text);
 }

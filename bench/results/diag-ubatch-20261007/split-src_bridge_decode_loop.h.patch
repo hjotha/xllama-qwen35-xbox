@@ -1,0 +1,25 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r104/src_bridge_decode_loop.h	2026-10-07 01:18:30.144354253 +0200
++++ src/bridge/decode_loop.h	2026-10-07 02:52:47.387629910 +0200
+@@ -894,6 +894,12 @@
+                 cpu0 = process_cpu_ms();
+                 reuse0 = llama_perf_context(p.ctx).n_reused; // rebuild vs reuse
+             }
++            if (p.profile_phases) { // rev104: deterministic verify-window tag
++                char vrc[96];
++                snprintf(vrc, sizeof(vrc), "[xllama] VRCALL seq=%zu width=%d ctx=%p\n",
++                         out.vr_width.size(), n_feed, (void*)p.ctx);
++                log_output(vrc);
++            }
+             detail::ScopeTag scope("target", "verify");
+             const bool vok = detail::decode_verify_batch(p.ctx, feed);
+             if (p.profile_phases) {
+@@ -908,6 +914,9 @@
+                 out.vr_cpu.push_back(process_cpu_ms() - cpu0);
+                 out.vr_reuse.push_back(llama_perf_context(p.ctx).n_reused - reuse0);
+                 out.vr_acc0.push_back(out.n_accepted);
++                char vre[64];
++                snprintf(vre, sizeof(vre), "[xllama] VREND seq=%zu\n", out.vr_width.size() - 1);
++                log_output(vre);
+             }
+             if (!vok) {
+                 log_output("[xllama] speculative draft batch failed — classic for first "

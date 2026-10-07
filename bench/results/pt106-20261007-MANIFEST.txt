@@ -1,0 +1,29 @@
+MANIFEST — pt106 prep/tail diagnostic collection (rev106)
+generated_utc=2026-10-07T02:42:06Z
+
+PACKAGE IDENTITY (verified BEFORE admitting rows):
+  msix sha256 = 203966786459bb6e3584f29d7f7a092a6a6d4c643c5c61aa2d2c137d20baf33e
+  build-local.log sha256-fixed matches; install success=true; PFN =
+  GianlucaMazza.xllama_1.6.0.106_x64__pj67f1fcj4n14 (driver asserted _1.6.0.106_)
+  engagement (probe cell, before remaining collection):
+    [diag] dspan = 513, [diag] ubatch id= = 1539, ubdiag knob line = 27  -> OK (>=3 each)
+
+RUN IDS: bench/results/pt106-20261007-<tag>.csv — prefix NEVER used before,
+  no prior content possible; each cell collected in exactly ONE pass (driver
+  probe is resume-guarded: tagoff skipped if its CSV already exists).
+
+  ref    : rows=2 run_index=['2', '3'] dates=['2026-10-07T02:37:22Z', '2026-10-07T02:37:47Z'] single_pass=YES
+           sha256=a9af0846e3c92bdf6b2eb3bac185c6042f9a81477311ecbc4c69c0b2727dd312
+  p1off  : rows=2 run_index=['2', '3'] dates=['2026-10-07T02:38:38Z', '2026-10-07T02:39:04Z'] single_pass=YES
+           sha256=a10bf9d8efbad331b229aebdc8def8212d6946badf17b59eb84f9e2fedeee9b9
+  p2off  : rows=2 run_index=['2', '3'] dates=['2026-10-07T02:39:55Z', '2026-10-07T02:40:21Z'] single_pass=YES
+           sha256=49b826b2dcd8180bad9ca5983b2fd09fde9a96b581dda7912b51f37060a89ecc
+  tagoff : rows=2 run_index=['2', '3'] dates=['2026-10-07T02:35:34Z', '2026-10-07T02:35:59Z'] single_pass=YES
+           sha256=6e8c6456c4173975bc7b576a5129e2a3482b3fadb72b6392fef5cd60099f2e76
+  tagon  : rows=2 run_index=['2', '3'] dates=['2026-10-07T02:41:11Z', '2026-10-07T02:41:36Z'] single_pass=YES
+           sha256=c51d9f64f02e908ebf1dee49bd1c9750e96ff74b869bc5042e5d2bf0756e52ae
+
+SINGLE-PASS ALL CELLS: YES
+
+Token sidecars: pt106-20261007-<tag>.run{1,2,3}.tokens (overwrite semantics, one pass).
+Originals immutable: this manifest records hashes; nothing was rewritten.

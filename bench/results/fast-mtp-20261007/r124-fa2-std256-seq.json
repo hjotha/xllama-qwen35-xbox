@@ -1,0 +1,56 @@
+{
+  "requested": {
+    "stem": "r124-fa2-std256-seq",
+    "threads": 2,
+    "draft": 1,
+    "depth": 0,
+    "pmin": 50,
+    "q6": 0,
+    "gdn": 1,
+    "fa": 2,
+    "runs": 3,
+    "predict": 256,
+    "prompt": "bench/prompts/standard-512.txt",
+    "reference": null,
+    "ignore_eog": true,
+    "profile": 0
+  },
+  "profile": {
+    "d3d12q8.txt": "1",
+    "d3d12q6tile.txt": "0",
+    "d3d12gdn.txt": "1",
+    "flashattn.txt": "2",
+    "mtp_threads.txt": "1",
+    "mtp_catchup_logits.txt": "0",
+    "cpurepackforcegemv.txt": "2",
+    "d3d12twocol.txt": "auto"
+  },
+  "package_sha256": "04b5bae6186a501916190f453c675619a883ef63215b36c4bff13b0a9ab860ea",
+  "package_pfn": "GianlucaMazza.xllama_1.6.0.124_x64__pj67f1fcj4n14",
+  "classification": "repeated",
+  "status": "complete",
+  "rows": 2,
+  "stats": [
+    {
+      "run": 1,
+      "drafted": 0,
+      "accepted": 0
+    },
+    {
+      "run": 2,
+      "drafted": 0,
+      "accepted": 0
+    },
+    {
+      "run": 3,
+      "drafted": 0,
+      "accepted": 0
+    }
+  ],
+  "token_sha256": "57ecbb560ae5c99b22d39b5cb4531ed91e60ff2cceb60088ec80b3f41f3fd569",
+  "median": {
+    "decode_tok_s": 22.91,
+    "ttft_ms": 3136.0,
+    "peak_ws_mb": 3461.0
+  }
+}

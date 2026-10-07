@@ -11,6 +11,7 @@
 #include "xllama/ggml_d3d12.h"
 #include "xllama/platform.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -63,6 +64,11 @@ inline int apply_gguf_gpu_layers(int requested, llama_model_params& mparams) {
 inline void apply_gguf_gpu_context(int applied_layers, llama_context_params& cparams) {
     if (applied_layers > 0)
         cparams.offload_kqv = false;
+    // Explicit fused-attention control; AUTO otherwise falls back to the
+    // separate CPU QK/softmax/PV graph when the device lacks FLASH_ATTN_EXT.
+    const char* fa = std::getenv("XLLAMA_FLASH_ATTN");
+    if (fa && (std::strcmp(fa, "1") == 0 || std::strcmp(fa, "2") == 0))
+        cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
 }
 
 // Persistent CPU threadpools for a context that alternates CPU and d3d12

@@ -1,0 +1,12 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r104/src_bridge_llama_gpu.h	2026-10-07 02:34:45.514104919 +0200
++++ src/bridge/llama_gpu.h	2026-10-07 02:52:36.125013902 +0200
+@@ -23,7 +23,8 @@
+         return;
+     const bool keep = level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR ||
+                       std::strstr(text, "buffer size") || std::strstr(text, "offload") ||
+-                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12");
++                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12") ||
++                      std::strstr(text, "[diag]"); // plan004 rev104 gated phase diag
+     if (keep)
+         log_output(std::string("[llama] ") + text);
+ }

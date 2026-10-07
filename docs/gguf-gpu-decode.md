@@ -29,13 +29,14 @@ A **ggml backend `d3d12`**, owned by xllama (`src/bridge/`, not the
 (`ggml-backend.h`); no dlopen ([uwp-constraints.md](uwp-constraints.md) §3).
 
 - **Shape:** the `ggml-blas` template — `supports_op` claims `MUL_MAT` plus the
-  view ops (`NONE/RESHAPE/VIEW/PERMUTE/TRANSPOSE`). Everything else stays on
-  the CPU backend.
+  view ops (`NONE/RESHAPE/VIEW/PERMUTE/TRANSPOSE`), and an opt-in Qwen
+  `GATED_DELTA_NET` kernel. Other operations stay on the CPU backend.
 - **Placement:** weights go to the backend's buffer type through
   `n_gpu_layers` (already `SessionParams::n_gpu_layers`, default 0). The
   scheduler runs an op where its weight lives; weights of a type the backend
-  does not support (Q5_K, Q8_0, …) stay on the CPU through
-  `weight_buft_supported`. `token_embd` / `GET_ROWS` are always CPU.
+  does not support stay on the CPU through `weight_buft_supported`.
+  Supported matmul weights are Q4_0, Q4_K, Q5_K, Q6_K and Q8_0; Q8_0 can
+  be disabled for a same-package CPU control. `token_embd` / `GET_ROWS` are always CPU.
 - **Kernels:** the H6.3 `rows` shape (64 threads × 4 rows, X in registers) per
   weight type: Q4_K and Q4_0 (same density, 0.5625 B/weight) and Q6_K (tied
   `lm_head` of every target model, `attn_v`/`ffn_down` on Q4_K_M
@@ -200,6 +201,46 @@ ncols 1 / 7 / 512) within `rel_err ≤ 1e-2` of ggml's dequantizers, and every
 decode case (ncols = 1) at ≥ 100 GB/s packed (GPU timestamps). Host tests
 emulate each kernel's lane mapping against the same dequantizers.
 
+**Shape-cost bench (same flag, separate CSV, reported not gated):** after the
+gate rows and their `.done` are written, `run_d3d12_shape_cost` costs the 11
+real `(type, N, K)` triples of the `tttarget` histogram at batch widths
+1/2/3/5 — smallest weights first, the Q6_K 248320×2560 lm_head last — into
+`d3d12sc-result.csv` (+ `.done`), with wall time next to the GPU timestamp
+plus the packed weight size and the process peak working set per row. Each
+row is the median of 5 consecutive timed runs with the max-min range next to
+it, so variance is measured rather than sampled once; the D2a gate rows keep
+their exact single-sample methodology. Weights
+are generated in bounded 16 MiB chunks from the same shape-only seed, so the
+large shapes never need their full fp32 source; host tests prove the bytes
+(and the rng continuation) identical to the one-shot path. The D2a gate above
+keeps its exact inputs: nothing in this CSV can pass or fail it.
+
+**Paired OLD/NEW experiment (q4_k, B ≥ 2):** each such case runs 4 OLD+NEW
+pairs on the same resident tensors with alternating order (both variants
+warmed), emitting one row per pair per variant (`variant`, `pair` columns)
+plus synthetic edge rows (odd N = 1023, single-row N = 1, documented as
+non-histogram). The bench script aggregates same-run pair deltas
+(NEW−OLD); a speedup is claimed only from those pairs, never across runs.
+Both variants meet the unchanged `rel_err ≤ 1e-2` threshold per row.
+
+**Real-decode knob (variant 2, allowlisted):** `d3d12twocol.txt` with content
+`auto` in LocalState engages the two-column tile in real decode (read by the
+tttarget bench with scoped restoration; default OLD). Variant 2 dispatches NEW
+only on the hardcoded allowlist — the rev57 same-run pair winners (five q4_k
+shapes at B=2/3/5); B=1, B=4, prefill widths, small shapes and other types
+stay OLD until measured and validated. Variant 1 (force, bench internals only)
+never comes from the knob. Broadening the allowlist is a code change with
+fresh evidence, never a knob edit.
+
+**Padded-stride gate (same bench):** strided X/Y rows and weight rows with
+sentinel padding (`pads` column, `x/y` floats and `w` bytes, odd values to
+catch alignment assumptions) on winner shapes with column tails. Padding is
+verified untouched against sentinels on device readback per variant, and
+outputs must match the strided reference; a clobbered pad fails the row even
+when the numerics match. supports_op routes strided inputs to CPU in
+production (it requires contiguity), so this is defense in depth: the bench
+bypasses it with direct graph_compute to prove the kernels honor strides.
+
 ### D2a result (2026-10-01/02, three console runs)
 
 `scripts/bench-d3d12-selftest.sh`, GPU timestamps, rel_err against ggml's
@@ -305,6 +346,46 @@ multi-column prefill #313.
 
 Default on/off per model in `docs/model-matrix.md` after D2; the
 measured-is-not-shipped ladder applies.
+
+## Xbox MTP backend experiments
+
+The 2026-10-07 campaign extends the experimental backend for Qwen3.5 MTP.
+Controls below are LocalState files read before model loading; restart the
+app after changing them. They do not replace the model validation ladder.
+
+- `d3d12q8.txt`: absent or `1` enables GPU Q8_0 matmul; `0` selects the CPU
+  control. The MTP hidden-state projection uses this weight type.
+- `d3d12gdn.txt`: `1` enables supported gated-delta graphs on the GPU;
+  `2` uses CPU for one token and GPU for larger supported batches; absent
+  or `0` keeps the CPU control. The shader preserves the fork's recurrent
+  snapshot layout and rejects unsupported shapes.
+- `d3d12q6tile.txt`: `1` keeps the original Q6 kernel; `2` or `4` selects
+  column reuse for the Qwen LM-head at batch widths 2, 3 and 5. Other shapes
+  use the original kernel. Experimental `0` selects two columns at width 2
+  and four columns at widths 3 and 5, using the same allowlist. This is independent of `d3d12twocol.txt`, which
+  controls the existing Q4 tile allowlist.
+- `mtp_threads.txt`: draft worker count, bounded by the existing target
+  threadpool's capacity. Both frontends already attach that shared pool;
+  there is no separate draft pool.
+- `mtp_catchup_logits.txt`: absent or `0` avoids logits for committed-row
+  catch-up, matching the native reference; `1` retains the legacy control.
+  Empty output matmuls remain assigned to their owning GPU weights and are
+  skipped before dispatch. Rejecting those empty nodes would make the
+  scheduler copy the LM-head weights to CPU despite no output being needed.
+- `flashattn.txt`: `1` forces the native fused CPU attention route; absent
+  or `0` retains auto selection. This does not enable a GPU attention shader.
+  Experimental `2` also disables native single-query split-KV reduction
+  through patch 0006. The same per-query reduction then serves sequential
+  decode and multi-query MTP verification; this addresses the observed F16
+  split/unsplit argmax drift. Performance and full-token parity still require
+  paired hardware confirmation. The R123 FA2 grid records identical outputs
+  across the three prompts at both generation caps; final package receipts
+  remain in the same evidence directory.
+
+Hardware receipts, paired kernel results and complete token dumps are in
+[`bench/results/fast-mtp-20261007/`](../bench/results/fast-mtp-20261007/).
+The [Windows runbook](windows-dev-vm.md#incremental-xbox-iteration-on-the-windows-build-host)
+describes separate incremental and final optimized builds.
 
 ## Decision log
 

@@ -96,11 +96,10 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     // Three deviations from the target params, each mirroring what the fork's
     // common layer does when it stands up a draft MTP context:
     //
-    //  * ctx_other = the target, so the two contexts share one KV cache. The
-    //    draft reads the target's committed prefix instead of asking for a
-    //    second full-size cache, which is what made creation fail on a 4 GB
-    //    console. The failure path degrades to single-token decoding, so the
-    //    symptom was a flat A/B rather than an error.
+    //  * ctx_other = the target, as in the native bootstrap. The fork enables
+    //    sharing only for architectures that support it; Qwen3.5 clears this
+    //    pointer and retains a private draft KV, so committed-prefix catch-up
+    //    remains necessary. Passing ctx_other does not prove shared storage.
     //  * ctx_type = LLAMA_CONTEXT_TYPE_MTP, which is what makes the graph
     //    builder emit the NextN head rather than a duplicate target decoder.
 
@@ -108,6 +107,9 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     // mixed-cache footprint the KVarN path wants; the fork keeps it off by
     // default so a model that merely has an MTP head does not phantom-reserve.
     llama_context_params cparams = target_cparams;
+    cparams.n_threads = std::min(
+        cparams.n_threads, mtp_draft_threads(std::getenv("XLLAMA_MTP_THREADS"), cparams.n_threads));
+    cparams.n_threads_batch = cparams.n_threads;
     // Read target_ctx directly, not m_target_ctx: the member is only
     // assigned after a successful init, so it is still null here.
     cparams.ctx_other = target_ctx;
@@ -149,6 +151,8 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     }
 
     m_target_ctx = target_ctx;
+    log_output("[xllama] mtp: draft CPU threads=" + std::to_string(cparams.n_threads) +
+               " (within the target's shared pool capacity)\n");
     m_n_embd = n_embd;
     m_pending_h.assign(static_cast<size_t>(n_embd), 0.0f);
 
@@ -172,8 +176,8 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
     m_smpl = llama_sampler_chain_init(sparams);
     llama_sampler_chain_add(m_smpl, llama_sampler_init_greedy());
 
-    // masked = false: the draft head sees the raw hidden row, not the selector
-    // lattice the target produces.
+    // Masked draft outputs follow the rows requesting logits. The target is
+    // unmasked so process() can read every committed row during catch-up.
     llama_set_embeddings_nextn(m_ctx, true, /*masked=*/true);
 
     log_output("[xllama] mtp: draft ready, n_max=" + std::to_string(m_params.n_max) +
@@ -198,7 +202,8 @@ bool MtpDrafter::init(llama_model* model, llama_context* target_ctx,
 }
 
 std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos,
-                                           const float* h_row, int n_embd, int n_max_eff) {
+                                           const float* h_row, int n_embd, int n_max_eff,
+                                           bool profile) {
     std::vector<llama_token> out;
     if (!m_ctx || !m_smpl || !h_row || n_embd != m_n_embd)
         return out;
@@ -282,11 +287,14 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
     int i_last = m_batch.n_tokens - 1;
 
     for (int depth = 0; depth < n_max; ++depth) {
-        const auto t_dec0 = std::chrono::steady_clock::now();
+        // Counters always; chrono snapshots only with instrumentation on.
+        const auto t_dec0 =
+            profile ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
         const int rc = llama_decode(m_ctx, m_batch);
-        m_stats.decode_ms +=
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_dec0)
-                .count();
+        if (profile)
+            m_stats.decode_ms +=
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_dec0)
+                    .count();
         ++m_stats.n_decodes;
         if (rc != 0) {
             log_output("[xllama] mtp: draft decode failed at depth " + std::to_string(depth) +
@@ -302,11 +310,13 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // context is configured masked (unlike the target), so the accessor
             // resolves the index through output_resolve_row -- and every draft
             // row carries logits=true, so the output index is the batch index.
-            const auto t_smpl0 = std::chrono::steady_clock::now();
+            const auto t_smpl0 = profile ? std::chrono::steady_clock::now()
+                                         : std::chrono::steady_clock::time_point{};
             const llama_token cand = llama_sampler_sample(m_smpl, m_ctx, i_last);
-            m_stats.sample_ms += std::chrono::duration<double, std::milli>(
-                                     std::chrono::steady_clock::now() - t_smpl0)
-                                     .count();
+            if (profile)
+                m_stats.sample_ms += std::chrono::duration<double, std::milli>(
+                                         std::chrono::steady_clock::now() - t_smpl0)
+                                         .count();
             if (cand < 0 || cand == LLAMA_TOKEN_NULL)
                 break;
 
@@ -315,17 +325,19 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             // net loss. The MTP graph emits real logits (qwen35.cpp sets
             // res->t_logits), so this reads the CPU logits.
             //
-            // top_prob is a full softmax over the vocabulary -- 152064 std::exp on
-            // the CPU, per depth, per token -- so only pay for it when the
+            // top_prob sums the vocabulary on the CPU (early exit for rejected
+            // candidates), per depth and token, so only pay for it when the
             // threshold is actually in use. With p_min <= 0 every candidate passes
             // and the result is discarded. The sum itself early-exits once the
             // verdict is decided (plan 003, stage 4.4).
             if (m_params.p_min > 0.0f) {
-                const auto t_p0 = std::chrono::steady_clock::now();
+                const auto t_p0 = profile ? std::chrono::steady_clock::now()
+                                          : std::chrono::steady_clock::time_point{};
                 const float p = top_prob(m_ctx, i_last, m_params.p_min);
-                m_stats.top_prob_ms += std::chrono::duration<double, std::milli>(
-                                           std::chrono::steady_clock::now() - t_p0)
-                                           .count();
+                if (profile)
+                    m_stats.top_prob_ms += std::chrono::duration<double, std::milli>(
+                                               std::chrono::steady_clock::now() - t_p0)
+                                               .count();
                 if (p < m_params.p_min) {
                     ++m_stats.n_discarded;
                     break;
@@ -355,12 +367,37 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
         }
     }
 
-    m_pending_valid = false;
+    m_pending_valid = true;
     return out;
 }
 
+bool MtpDrafter::align_to(llama_pos pos) {
+    if (!m_ctx)
+        return false;
+
+    llama_memory_t mem = llama_get_memory(m_ctx);
+    if (pos <= 0) {
+        llama_memory_clear(mem, true);
+    } else if (!llama_memory_seq_rm(mem, 0, pos, -1)) {
+        return false;
+    }
+
+    // A positive |pos| keeps the mirror's [0, pos) prefix and the caller proved
+    // those positions hold the same tokens as the target's, so a pending row at
+    // |pos - 1| is still the carry the next replay needs and must survive. Any
+    // other pending position describes a token this trim just dropped, and a full
+    // clear leaves nothing to carry: splicing either would feed the draft head a
+    // hidden state from a token the mirror no longer holds.
+    if (pos <= 0 || !can_carry_from(pos)) {
+        m_pending_valid = false;
+        m_pending_pos = -1;
+        std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
+    }
+    return true;
+}
+
 bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
-                         int n, llama_pos pos0) {
+                         int n, llama_pos pos0, bool profile) {
     if (!m_ctx || !tokens || n <= 0)
         return false;
     if (!h_rows && !m_pending_valid)
@@ -382,13 +419,39 @@ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const f
         // The very first prompt row has no predecessor: the reference zero-fills
         // the pending row at position 0 (speculative.cpp reset_seq_state).
         std::memset(pending.data(), 0, row_bytes);
-    } else if (m_pending_valid) {
+    } else if (m_pending_valid && m_pending_pos == pos0 - 1) {
         std::memcpy(pending.data(), m_pending_h.data(), row_bytes);
     } else {
+        // No carry for the first replay row: the draft context cannot mirror
+        // the target's prefix, and speculating on an unknown state is worse
+        // than not speculating (F2.3 fail-closed). A stale carry (a rewrite or
+        // rewind between process() calls) is dropped the same way draft()
+        // drops it.
+        log_output("[xllama] mtp: catch-up has no carry for pos0=" + std::to_string(pos0) +
+                   " (pending_pos=" +
+                   std::to_string(m_pending_valid ? static_cast<int>(m_pending_pos) : -1) +
+                   ", pending_valid=" + (m_pending_valid ? "1" : "0") + ")\n");
+        if (m_pending_valid) {
+            m_pending_valid = false;
+            std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
+        }
         return false;
     }
 
-    const auto t0 = std::chrono::steady_clock::now();
+    const auto t0 =
+        profile ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+    // The private cache may still hold this round's speculative rows above the
+    // committed prefix (draft() wrote them; the target never decoded them into
+    // this context). The replay must start at |pos0| with the cache ending at
+    // |pos0 - 1| — llama_decode rejects a batch whose start is not past the
+    // cache end. Drop the tail first; a refused rewind leaves the cache in an
+    // unknown state (F2.3 fail-closed).
+    if (pos0 > 0 && !llama_memory_seq_rm(llama_get_memory(m_ctx), 0, pos0, -1)) {
+        log_output("[xllama] mtp: catch-up seq_rm refused at pos0=" + std::to_string(pos0) + "\n");
+        return false;
+    }
+    const char* legacy = std::getenv("XLLAMA_MTP_CATCHUP_LOGITS");
+    const bool catchup_logits = legacy && std::strcmp(legacy, "1") == 0;
     for (int off = 0; off < n; off += n_batch_eff) {
         const int chunk = std::min(n_batch_eff, n - off);
         m_batch.n_tokens = 0;
@@ -398,7 +461,10 @@ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const f
             m_batch.pos[idx] = pos0 + static_cast<llama_pos>(off + i);
             m_batch.n_seq_id[idx] = 1;
             m_batch.seq_id[idx][0] = 0;
-            m_batch.logits[idx] = 1;
+            // Native common_speculative catch-up requests no outputs: only KV
+            // must advance. These logits were never read, but streamed the
+            // 521 MB output matrix for every prompt/committed token.
+            m_batch.logits[idx] = catchup_logits;
             // Row i carries the target's hidden state of token off+i-1; the
             // first row of the whole prefix carries the carry (pending).
             const float* src = (off + i == 0)
@@ -417,8 +483,10 @@ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const f
         }
         m_batch.n_tokens = 0;
     }
-    m_stats.catchup_ms +=
-        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    if (profile)
+        m_stats.catchup_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
+                .count();
 
     // Carry for the next draft/round is the target's hidden state of the LAST
     // token this prefix ends with — the accept() contract of the reference

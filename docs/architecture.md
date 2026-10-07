@@ -120,8 +120,8 @@ Two text backends, selected by build variant **and** per model at runtime:
   DML RMSNorm kernel, fixed by the `-v2` decomposed graph); any other
   `gpu_model` forces CPU in every mode. Diffusion stays on GPU.
 - **llama.cpp / GGUF** (`XLLAMA_USE_LLAMA`) — `LlamaSession` in
-  `src/bridge/session.cpp`. Runs `.gguf` models (`kind: "gguf"`); CPU-only on Xbox
-  (no ggml GPU backend), with KV-cache reuse. The UWP build compiles ggml with
+  `src/bridge/session.cpp`. Runs `.gguf` models (`kind: "gguf"`) with KV-cache
+  reuse and an opt-in [D3D12 backend](gguf-gpu-decode.md) on Xbox. The UWP build compiles ggml with
   `GGML_USE_CPU_REPACK` (PR #155 — it was silently dead code before; enabling
   the repacked-weight GEMM raised GGUF prefill ~62% on Q4_K).
 
@@ -142,6 +142,18 @@ to the screen. Because the app streams, the latency that matters is
 **time-to-first-token**, not total turn time; `InferenceResult::t_p_eval_ms`
 carries it and `StartInference` surfaces it (`§5d`, #139). The LAN endpoint below
 is the one path that does **not** stream — it returns a completed response.
+
+### Qwen3.5 MTP on Xbox
+
+`MtpDrafter` in `src/bridge/mtp_draft.cpp` drives the fork's native
+`LLAMA_CONTEXT_TYPE_MTP` context and Qwen MTP graph. Both `run_inference_llama`
+and `LlamaSession` use this adapter through `decode_loop.h`; the UWP project
+does not compile the fork's `common/speculative.cpp` orchestrator.
+The draft shares model weights and the target's CPU threadpool. Qwen has
+private draft KV/recurrent state: `ctx_other` does not enable shared KV for
+this architecture, so committed hidden rows still require catch-up.
+The [GPU design](gguf-gpu-decode.md#xbox-mtp-backend-experiments) documents
+the experimental kernels and their hardware evidence.
 
 ## Chat templates (`ChatFormat`)
 
@@ -639,8 +651,10 @@ host Release smoke (quality + peak)
 
 ## Unit test map (host suite)
 
-Every `include/xllama/X.h` has a corresponding `tests/test_X.cpp`. The suite
-is **290 test cases / 8819 assertions** (doctest, without opt-in model checks).
+Host checks live in `tests/test_*.cpp` and use doctest. Read registered case
+counts with `xllama-tests --count`; assertion counts come from the actual
+run. Model-dependent cases require their opt-in fixtures and do not establish
+Xbox correctness without the corresponding hardware gates.
 
 | Test file                     | Tests | Header under test                  |
 | ----------------------------- | ----- | ---------------------------------- |
@@ -661,6 +675,7 @@ is **290 test cases / 8819 assertions** (doctest, without opt-in model checks).
 | `test_manifest_merge.cpp`     | —     | `manifest_merge.h`                 |
 | `test_llama_ini.cpp`          | 6     | `llama_ini.h`                      |
 | `test_path.cpp`               | —     | `path_utils.h`                     |
+| `test_platform.cpp`           | 3     | `platform.h` / `ggml_d3d12.h`      |
 | `test_utf8.cpp`               | —     | `utf8_utils.h`                     |
 | `test_bench.cpp`              | —     | `bench.cpp`                        |
 | `test_chat_history.cpp`       | —     | `chat-history.h`                   |
@@ -682,24 +697,24 @@ is **290 test cases / 8819 assertions** (doctest, without opt-in model checks).
 or XAML compositor, giving D3D12-clean hosts for DirectML work. The following
 flags are supported:
 
-| Flag                  | Entry point              | Purpose                                                             |
-| --------------------- | ------------------------ | ------------------------------------------------------------------- |
-| `bench.flag`          | `main_loop`              | Model benchmark (tok/s, peak, latency)                              |
-| `diffuse.flag`        | `run_diffuse`            | SD-Turbo diffusion pipeline (headless)                              |
-| `diffuse-inproc.flag` | `run_diffuse` in-process | Diffusion on background MTA thread inside XAML process              |
-| `membw.flag`          | `run_membw`              | CPU STREAM bandwidth probe                                          |
-| `diskbw.flag`         | `run_diskbw`             | NVMe sequential + random read probe                                 |
-| `gpubw.flag`          | `run_gpubw`              | GPU STREAM probe (D3D12 compute shader)                             |
-| `gpugemv.flag`        | `run_gpugemv`            | Q4_K GEMV density probe (D3D12 compute shader)                      |
-| `gpustep.flag`        | `run_gpustep(false)`     | GGUF GPU decode probe D1 ([gguf-gpu-decode.md](gguf-gpu-decode.md)) |
-| `gpustep-inproc.flag` | `run_gpustep(true)`      | D1d: the same probe inside the XAML process                         |
-| `d3d12be.flag`        | `run_d3d12_selftest`     | d3d12 ggml backend selftest vs ggml dequant (D2a)                   |
-| `ramceil.flag`        | `run_ramceil`            | Heap ceiling probe (commit in steps)                                |
-| `mic.flag`            | `run_mic_probe`          | Microphone / AudioGraph probe                                       |
-| `logits.flag`         | `run_logits`             | Logit-parity dump (float32 + JSON sidecar)                          |
-| `oprepro.flag`        | `run_oprepro`            | Single-op CPU-vs-DML diagnostic (`repro.onnx`)                      |
-| `train.flag`          | `run_train`              | On-device training (Lane B partial FT)                              |
-| `api.flag`            | `run_server`             | LAN API server (persistence via `LocalState\api.flag`)              |
+| Flag                  | Entry point              | Purpose                                                                                                                      |
+| --------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `bench.flag`          | `main_loop`              | Model benchmark (tok/s, peak, latency)                                                                                       |
+| `diffuse.flag`        | `run_diffuse`            | SD-Turbo diffusion pipeline (headless)                                                                                       |
+| `diffuse-inproc.flag` | `run_diffuse` in-process | Diffusion on background MTA thread inside XAML process                                                                       |
+| `membw.flag`          | `run_membw`              | CPU STREAM bandwidth probe                                                                                                   |
+| `diskbw.flag`         | `run_diskbw`             | NVMe sequential + random read probe                                                                                          |
+| `gpubw.flag`          | `run_gpubw`              | GPU STREAM probe (D3D12 compute shader)                                                                                      |
+| `gpugemv.flag`        | `run_gpugemv`            | Q4_K GEMV density probe (D3D12 compute shader)                                                                               |
+| `gpustep.flag`        | `run_gpustep(false)`     | GGUF GPU decode probe D1 ([gguf-gpu-decode.md](gguf-gpu-decode.md))                                                          |
+| `gpustep-inproc.flag` | `run_gpustep(true)`      | D1d: the same probe inside the XAML process                                                                                  |
+| `d3d12be.flag`        | `run_d3d12_selftest`     | d3d12 ggml backend selftest vs ggml dequant (D2a), then the shape-cost bench into `d3d12sc-result.csv` (reported, not gated) |
+| `ramceil.flag`        | `run_ramceil`            | Heap ceiling probe (commit in steps)                                                                                         |
+| `mic.flag`            | `run_mic_probe`          | Microphone / AudioGraph probe                                                                                                |
+| `logits.flag`         | `run_logits`             | Logit-parity dump (float32 + JSON sidecar)                                                                                   |
+| `oprepro.flag`        | `run_oprepro`            | Single-op CPU-vs-DML diagnostic (`repro.onnx`)                                                                               |
+| `train.flag`          | `run_train`              | On-device training (Lane B partial FT)                                                                                       |
+| `api.flag`            | `run_server`             | LAN API server (persistence via `LocalState\api.flag`)                                                                       |
 
 ## UWP front-end summary
 
@@ -791,14 +806,15 @@ Machine-readable output: `SPEC_STATS` line on stderr for bench scripts.
 
 `shaders/` contains HLSL compute shaders and their AOT-compiled DXIL headers:
 
-| Shader                                         | Purpose                                             | Output                                |
-| ---------------------------------------------- | --------------------------------------------------- | ------------------------------------- |
-| `gpubw_stream.hlsl`                            | GPU STREAM read (~1 GiB VRAM)                       | `generated/gpubw_stream_dxil.h`       |
-| `gpugemv_q4k.hlsl`                             | Naive Q4_K GEMV                                     | `generated/gpugemv_q4k_dxil.h`        |
-| `gpugemv_q4k_wave32.hlsl`                      | Wave32-optimized Q4_K GEMV                          | `generated/gpugemv_q4k_wave32_dxil.h` |
-| `gpugemv_q4k_rows.hlsl`                        | Multi-row Q4_K GEMV (H6.3; also the gpustep kernel) | `generated/gpugemv_q4k_rows_dxil.h`   |
-| `gpugemv_q4k_dot4.hlsl`                        | Multi-row Q4_K × q8 GEMV, cs_6_4 (H6.3)             | `generated/gpugemv_q4k_dot4_dxil.h`   |
-| `ggml_d3d12_mmv_q4_0.hlsl` / `_q4_k` / `_q6_k` | d3d12 ggml backend MUL_MAT kernels (D2)             | `generated/ggml_d3d12_mmv_*_dxil.h`   |
+| Shader                                                             | Purpose                                                | Output                                        |
+| ------------------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------------- |
+| `gpubw_stream.hlsl`                                                | GPU STREAM read (~1 GiB VRAM)                          | `generated/gpubw_stream_dxil.h`               |
+| `gpugemv_q4k.hlsl`                                                 | Naive Q4_K GEMV                                        | `generated/gpugemv_q4k_dxil.h`                |
+| `gpugemv_q4k_wave32.hlsl`                                          | Wave32-optimized Q4_K GEMV                             | `generated/gpugemv_q4k_wave32_dxil.h`         |
+| `gpugemv_q4k_rows.hlsl`                                            | Multi-row Q4_K GEMV (H6.3; also the gpustep kernel)    | `generated/gpugemv_q4k_rows_dxil.h`           |
+| `gpugemv_q4k_dot4.hlsl`                                            | Multi-row Q4_K × q8 GEMV, cs_6_4 (H6.3)                | `generated/gpugemv_q4k_dot4_dxil.h`           |
+| `ggml_d3d12_mmv_q4_0.hlsl` / `_q4_k` / `_q5_k` / `_q6_k` / `_q8_0` | d3d12 ggml backend MUL_MAT kernels; Q4/Q6 column tiles | `generated/ggml_d3d12_mmv_*_dxil.h`           |
+| `ggml_d3d12_gated_delta_net.hlsl`                                  | Qwen gated delta network with recurrent snapshots      | `generated/ggml_d3d12_gated_delta_net_dxil.h` |
 
 Compile scripts: `scripts/compile-gpubw-shader.sh`,
 `scripts/compile-gpugemv-shader.sh` (dxc → binary → C header; takes per-target

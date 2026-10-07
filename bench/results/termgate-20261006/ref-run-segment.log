@@ -1,0 +1,665 @@
+[xllama] TERM_GATE_CONFIG arm=ref threads=0 n_ctx=2048 gpu_layers=28 mtp=4 p_min=0.75 twocol=0 repack_scope=0 scenarios=cancel,stop,eog greedy=1 gguf=f3559ed1a2922585
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: MUL_MAT refused: q8_0 5120x2560 x [5120,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] session: speculative n_rs_seq=4
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[llama] resolve_fused_ops: layer 32 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 5.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     5.85 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft ready, n_max=4 p_min=0.750000 dft_n_batch=6
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=10 prompt=10
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[xllama] d3d12: D3D12_Host buffer 5.7 MiB
+[xllama] PHASE_PREFILL n_prompt=10 rows_kept=10 n_ubatch=512 calls=143 matmuls=180 gpu_ms=71.506005
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=10 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=10 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=10 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=10 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=10 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=10 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=10 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=10 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=10 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=10 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] mtp: first draft pos=10 n_embd=2560 n_max=4 row[min,max]=[-35.029339,21.436333] dft_n_batch=6 dft_pos_max=9
+[xllama] d3d12: D3D12_Host buffer 24.7 MiB
+[xllama] abort: mid-round trim i=3/5 n_generated=6
+[xllama] session generate: n=6 prefill=255.8ms (10 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=924.8 prefill_ms=255.8 decode_ms=549.7 accounted_ms=544.5 residual_decode_ms=5.2 load_plus_setup_ms=119.3 draft_ms=39.6 sample_ms=8.2 topprob_ms=30.1 catchup_ms=7.9 verify_ms=330.3 corrective_ms=61.6 classic_decode_ms=61.6 classic_catchup_ms=3.9 lookup_ms=0.0 sample_target_ms=5.2 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=47 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=10 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=20 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=10 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=10 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=19 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=19 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=52 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=12
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=47 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=17 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=7 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=14 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=3
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=47 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=3 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=47 | ctx=target phase=decode t=14 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=target phase=decode t=12 N=4096 K=2560 B=1 thr=64 mm=19 | ctx=target phase=decode t=13 N=2560 K=4096 B=1 thr=128 mm=19 | ctx=target phase=decode t=12 N=9216 K=2560 B=1 thr=64 mm=52 | ctx=target phase=decode t=14 N=2560 K=9216 B=1 thr=128 mm=12 | ctx=target phase=decode t=12 N=8192 K=2560 B=1 thr=64 mm=17 | ctx=target phase=decode t=12 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=target phase=decode t=12 N=2560 K=4096 B=1 thr=128 mm=7 | ctx=target phase=decode t=12 N=2560 K=9216 B=1 thr=128 mm=14 | ctx=target phase=decode t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=target phase=decode t=14 N=248320 K=2560 B=1 thr=64 mm=1
+[xllama] MTP_STATS rounds=2 decodes=12 discarded=2 catchup_tok=2 draft_ms=39.6 sample_ms=8.2 topprob_ms=30.1 catchup_ms=7.9 verify_ms=330.3 corrective_ms=61.6
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=15 resident=16 prompt=16
+[xllama] session: turn full=1 kv_before=0 pf=16 prompt=16
+[xllama] PHASE_PREFILL n_prompt=16 rows_kept=16 n_ubatch=512 calls=149 matmuls=188 gpu_ms=112.120702
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=16 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=16 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=16 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=16 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=16 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=16 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=16 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=16 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=16 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=16 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=2 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=4 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=2 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] session generate: n=12 prefill=329.1ms (16 tok) reuse=0 drafted=9 (mtp=9 lookup=0) spec_accept=9 (mtp=9 lookup=0)
+[xllama] PHASE total_ms=821.5 prefill_ms=329.1 decode_ms=472.4 accounted_ms=472.1 residual_decode_ms=0.3 load_plus_setup_ms=20.0 draft_ms=35.8 sample_ms=7.0 topprob_ms=29.0 catchup_ms=34.2 verify_ms=357.1 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=8.9 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=43 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=9 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=9 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=9 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=18 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=9 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=9 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=43 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=43 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=9 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=19 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=19 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=52 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=12 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=17 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=11 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=7 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=14 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=3 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=1
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=43 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=2 thr=64 mm=1
+[xllama] MTP_STATS rounds=3 decodes=12 discarded=0 catchup_tok=12 draft_ms=35.8 sample_ms=7.0 topprob_ms=29.0 catchup_ms=34.2 verify_ms=357.1 corrective_ms=0.0
+[llama] ~llama_context: D3D12_Host compute buffer size is   5.8489 MiB, matches expectation of   5.8489 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 1359 graph_compute calls, 1716 matmuls (0 2col), 574.7 ms wall (432.5 ms GPU)
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[llama] model has unused tensor blk.32.attn_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.post_attention_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q.weight (size = 11796480 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k.weight (size = 1474560 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_v.weight (size = 2150400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_output.weight (size = 5898240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_gate.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_down.weight (size = 19353600 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_up.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.eh_proj.weight (size = 13926400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.enorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.hnorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.shared_head_norm.weight (size = 10240 bytes) -- ignoring
+[xllama] d3d12: D3D12_Weights buffer 2191.6 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   675.46 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2191.55 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =    50.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=10 prompt=10
+[xllama] PHASE_PREFILL n_prompt=10 rows_kept=10 n_ubatch=512 calls=131 matmuls=164 gpu_ms=51.553404
+[xllama] d3d12_shape label=session_prefill part=1/1 keys_total=11 | ctx=target phase=prefill t=14 N=8192 K=2560 B=10 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=10 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=10 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=10 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=10 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=10 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=10 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=10 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=10 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=10 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1
+[xllama] session generate: n=18 prefill=197.4ms (10 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=1374.1 prefill_ms=197.4 decode_ms=1108.3 accounted_ms=1108.3 residual_decode_ms=0.1 load_plus_setup_ms=68.4 draft_ms=0.0 sample_ms=0.0 topprob_ms=0.0 catchup_ms=0.0 verify_ms=0.0 corrective_ms=0.0 classic_decode_ms=1092.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=16.2 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/1 keys_total=11 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=162 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=342 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=342 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=936 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=216 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=306 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=198 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=126 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=252 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=54 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=18
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 2489 graph_compute calls, 3116 matmuls (0 2col), 406.5 ms wall (212.4 ms GPU)
+[xllama] TERMGATE scenario=cancel@6 arm=ref ok=1 reason=- n_ids=6 n_ref=18 parity=1 first_diff=-1 active=1 drafted=8 rounds=2 lookup=0 ews=0 n_eval=6 eog_tok=-1 eog_branch=- stop_branch=- stop_round=-1
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] session: speculative n_rs_seq=4
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[llama] resolve_fused_ops: layer 32 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 5.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     5.85 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft ready, n_max=4 p_min=0.750000 dft_n_batch=6
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=10 prompt=10
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[xllama] d3d12: D3D12_Host buffer 5.7 MiB
+[xllama] PHASE_PREFILL n_prompt=10 rows_kept=10 n_ubatch=512 calls=143 matmuls=180 gpu_ms=71.718216
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=10 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=10 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=10 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=10 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=10 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=10 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=10 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=10 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=10 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=10 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] d3d12: D3D12_Host buffer 24.7 MiB
+[xllama] abort: mid-round trim i=1/4 n_generated=13
+[xllama] session generate: n=13 prefill=249.3ms (10 tok) reuse=0 drafted=14 (mtp=14 lookup=0) spec_accept=7 (mtp=7 lookup=0)
+[xllama] PHASE total_ms=1269.3 prefill_ms=249.3 decode_ms=895.1 accounted_ms=890.6 residual_decode_ms=4.5 load_plus_setup_ms=125.0 draft_ms=71.6 sample_ms=16.3 topprob_ms=61.2 catchup_ms=34.8 verify_ms=571.8 corrective_ms=61.4 classic_decode_ms=61.5 classic_catchup_ms=4.0 lookup_ms=0.0 sample_target_ms=12.0 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/6 keys_total=72 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=18 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=18 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=18 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=36 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=18 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=18 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=19 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=19 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=52 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=12
+[xllama] d3d12_shape label=session_decode part=2/6 keys_total=72 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=17 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=7 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=14 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=3
+[xllama] d3d12_shape label=session_decode part=3/6 keys_total=72 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=3 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2
+[xllama] d3d12_shape label=session_decode part=4/6 keys_total=72 | ctx=target phase=decode t=14 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=target phase=decode t=12 N=4096 K=2560 B=1 thr=64 mm=19 | ctx=target phase=decode t=13 N=2560 K=4096 B=1 thr=128 mm=19 | ctx=target phase=decode t=12 N=9216 K=2560 B=1 thr=64 mm=52 | ctx=target phase=decode t=14 N=2560 K=9216 B=1 thr=128 mm=12 | ctx=target phase=decode t=12 N=8192 K=2560 B=1 thr=64 mm=17 | ctx=target phase=decode t=12 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=target phase=decode t=12 N=2560 K=4096 B=1 thr=128 mm=7 | ctx=target phase=decode t=12 N=2560 K=9216 B=1 thr=128 mm=14 | ctx=target phase=decode t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=target phase=decode t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=1
+[xllama] d3d12_shape label=session_decode part=5/6 keys_total=72 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=4 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=4 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=4 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=4 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=4 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=4 thr=64 mm=34
+[xllama] d3d12_shape label=session_decode part=6/6 keys_total=72 | ctx=target phase=verify t=12 N=1024 K=2560 B=4 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=4 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=4 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=4 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=4 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=4 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=4 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=4 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] MTP_STATS rounds=4 decodes=22 discarded=4 catchup_tok=11 draft_ms=71.6 sample_ms=16.3 topprob_ms=61.2 catchup_ms=34.8 verify_ms=571.8 corrective_ms=61.4
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=22 resident=23 prompt=23
+[xllama] session: turn full=1 kv_before=0 pf=23 prompt=23
+[xllama] PHASE_PREFILL n_prompt=23 rows_kept=23 n_ubatch=512 calls=155 matmuls=196 gpu_ms=159.375559
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=23 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=23 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=23 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=23 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=23 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=23 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=23 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=23 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=23 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=23 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=3
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=3 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=6 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=5 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] session generate: n=12 prefill=462.3ms (23 tok) reuse=0 drafted=9 (mtp=9 lookup=0) spec_accept=9 (mtp=9 lookup=0)
+[xllama] PHASE total_ms=1028.3 prefill_ms=462.3 decode_ms=550.8 accounted_ms=550.4 residual_decode_ms=0.4 load_plus_setup_ms=15.2 draft_ms=40.1 sample_ms=9.2 topprob_ms=36.9 catchup_ms=35.2 verify_ms=418.4 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=10.5 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/6 keys_total=61 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=10 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=20 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=10 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=10 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=9 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=19 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=19 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=52 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=12
+[xllama] d3d12_shape label=session_decode part=2/6 keys_total=61 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=17 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=11 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=7 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=14 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/6 keys_total=61 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=9 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=19 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=19 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=52 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=12 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=17 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=11 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=7 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=14 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=3 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] d3d12_shape label=session_decode part=4/6 keys_total=61 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=4 thr=64 mm=9 | ctx=target phase=verify t=12 N=4096 K=2560 B=4 thr=64 mm=19 | ctx=target phase=verify t=13 N=2560 K=4096 B=4 thr=128 mm=19 | ctx=target phase=verify t=12 N=9216 K=2560 B=4 thr=64 mm=52 | ctx=target phase=verify t=14 N=2560 K=9216 B=4 thr=128 mm=12
+[xllama] d3d12_shape label=session_decode part=5/6 keys_total=61 | ctx=target phase=verify t=12 N=8192 K=2560 B=4 thr=64 mm=17 | ctx=target phase=verify t=12 N=1024 K=2560 B=4 thr=64 mm=11 | ctx=target phase=verify t=12 N=2560 K=4096 B=4 thr=128 mm=7 | ctx=target phase=verify t=12 N=2560 K=9216 B=4 thr=128 mm=14 | ctx=target phase=verify t=14 N=1024 K=2560 B=4 thr=64 mm=3 | ctx=target phase=verify t=14 N=248320 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=4 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=4 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=4 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=4 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=6/6 keys_total=61 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] MTP_STATS rounds=3 decodes=13 discarded=1 catchup_tok=12 draft_ms=40.1 sample_ms=9.2 topprob_ms=36.9 catchup_ms=35.2 verify_ms=418.4 corrective_ms=0.0
+[llama] ~llama_context: D3D12_Host compute buffer size is   5.8489 MiB, matches expectation of   5.8489 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 1693 graph_compute calls, 2140 matmuls (0 2col), 775.7 ms wall (576.2 ms GPU)
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[llama] model has unused tensor blk.32.attn_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.post_attention_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q.weight (size = 11796480 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k.weight (size = 1474560 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_v.weight (size = 2150400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_output.weight (size = 5898240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_gate.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_down.weight (size = 19353600 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_up.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.eh_proj.weight (size = 13926400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.enorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.hnorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.shared_head_norm.weight (size = 10240 bytes) -- ignoring
+[xllama] d3d12: D3D12_Weights buffer 2191.6 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   675.46 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2191.55 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =    50.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=10 prompt=10
+[xllama] PHASE_PREFILL n_prompt=10 rows_kept=10 n_ubatch=512 calls=131 matmuls=164 gpu_ms=51.334095
+[xllama] d3d12_shape label=session_prefill part=1/1 keys_total=11 | ctx=target phase=prefill t=14 N=8192 K=2560 B=10 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=10 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=10 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=10 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=10 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=10 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=10 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=10 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=10 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=10 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1
+[xllama] session generate: n=25 prefill=197.7ms (10 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=1861.8 prefill_ms=197.7 decode_ms=1595.7 accounted_ms=1595.5 residual_decode_ms=0.1 load_plus_setup_ms=68.5 draft_ms=0.0 sample_ms=0.0 topprob_ms=0.0 catchup_ms=0.0 verify_ms=0.0 corrective_ms=0.0 classic_decode_ms=1573.5 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=21.9 emit_ms=0.1 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/1 keys_total=11 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=225 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=475 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=475 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=1300 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=300 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=425 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=275 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=175 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=350 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=75 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=25
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 3406 graph_compute calls, 4264 matmuls (0 2col), 582.6 ms wall (275.3 ms GPU)
+[xllama] TERMGATE scenario=cancel@13 arm=ref ok=1 reason=- n_ids=13 n_ref=25 parity=1 first_diff=-1 active=1 drafted=14 rounds=4 lookup=0 ews=0 n_eval=13 eog_tok=-1 eog_branch=- stop_branch=- stop_round=-1
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] session: speculative n_rs_seq=4
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[llama] resolve_fused_ops: layer 32 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 5.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     5.85 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft ready, n_max=4 p_min=0.750000 dft_n_batch=6
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=11 prompt=11
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[xllama] d3d12: D3D12_Host buffer 5.7 MiB
+[xllama] PHASE_PREFILL n_prompt=11 rows_kept=11 n_ubatch=512 calls=143 matmuls=180 gpu_ms=78.554346
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=11 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=11 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=11 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=11 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=11 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=11 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=11 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=11 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=11 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=11 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=5 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] d3d12: D3D12_Host buffer 24.7 MiB
+[xllama] EOG after 10 tokens (spec reject) tok=248044 branch=spec-reject
+[xllama] session generate: n=10 prefill=287.0ms (11 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=6 (mtp=6 lookup=0)
+[xllama] PHASE total_ms=914.0 prefill_ms=287.0 decode_ms=517.2 accounted_ms=516.7 residual_decode_ms=0.5 load_plus_setup_ms=109.9 draft_ms=39.4 sample_ms=9.1 topprob_ms=31.3 catchup_ms=21.3 verify_ms=278.8 corrective_ms=0.0 classic_decode_ms=126.8 classic_catchup_ms=7.6 lookup_ms=0.0 sample_target_ms=9.9 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=43 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=10 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=20 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=10 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=10 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=38 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=38 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=104 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=24
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=43 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=34 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=22 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=14 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=28 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=43 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=43 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] MTP_STATS rounds=2 decodes=13 discarded=2 catchup_tok=7 draft_ms=39.4 sample_ms=9.1 topprob_ms=31.3 catchup_ms=21.3 verify_ms=278.8 corrective_ms=0.0
+[xllama] TERMGATE scenario=stop@probe arm=ref ok=1 reason=eos n_ids=10 n_ref=-1 parity=-1 first_diff=-1 active=1 drafted=8 rounds=2 lookup=0 ews=0 n_eval=10 eog_tok=248044 eog_branch=spec-reject stop_branch=- stop_round=-1
+[xllama] TERMGATE stop_span pieces=10 start=9 stop_len=2 probe_n_eval=10
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=10 resident=21 prompt=11
+[xllama] session: turn full=1 kv_before=0 pf=11 prompt=11
+[xllama] PHASE_PREFILL n_prompt=11 rows_kept=11 n_ubatch=512 calls=143 matmuls=180 gpu_ms=78.687118
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=11 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=11 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=11 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=11 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=11 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=11 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=11 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=11 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=11 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=11 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=5 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] session generate: n=10 prefill=257.1ms (11 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=6 (mtp=6 lookup=0)
+[xllama] PHASE total_ms=825.9 prefill_ms=257.1 decode_ms=555.3 accounted_ms=555.0 residual_decode_ms=0.3 load_plus_setup_ms=13.6 draft_ms=46.0 sample_ms=9.2 topprob_ms=32.7 catchup_ms=21.6 verify_ms=274.4 corrective_ms=0.0 classic_decode_ms=162.2 classic_catchup_ms=7.8 lookup_ms=0.0 sample_target_ms=8.9 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=43 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=10 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=20 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=10 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=10 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=38 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=38 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=104 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=24
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=43 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=34 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=22 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=14 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=28 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=43 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=43 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] MTP_STATS rounds=2 decodes=13 discarded=2 catchup_tok=7 draft_ms=46.0 sample_ms=9.2 topprob_ms=32.7 catchup_ms=21.6 verify_ms=274.4 corrective_ms=0.0
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=18 resident=20 prompt=19
+[xllama] session: turn full=1 kv_before=0 pf=19 prompt=19
+[xllama] PHASE_PREFILL n_prompt=19 rows_kept=19 n_ubatch=512 calls=155 matmuls=196 gpu_ms=132.564010
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=24 | ctx=target phase=prefill t=14 N=8192 K=2560 B=19 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=19 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=19 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=19 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=19 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=19 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=19 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=19 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=19 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=19 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=3
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=24 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=3 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=6 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=3 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] EOG after 2 tokens (spec reject) tok=248044 branch=spec-reject
+[xllama] session generate: n=2 prefill=395.2ms (19 tok) reuse=0 drafted=3 (mtp=3 lookup=0) spec_accept=1 (mtp=1 lookup=0)
+[xllama] PHASE total_ms=603.6 prefill_ms=395.2 decode_ms=194.9 accounted_ms=194.7 residual_decode_ms=0.2 load_plus_setup_ms=13.5 draft_ms=23.9 sample_ms=3.4 topprob_ms=16.6 catchup_ms=0.0 verify_ms=147.8 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=3.0 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/2 keys_total=18 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=4 thr=64 mm=9 | ctx=target phase=verify t=12 N=4096 K=2560 B=4 thr=64 mm=19 | ctx=target phase=verify t=13 N=2560 K=4096 B=4 thr=128 mm=19 | ctx=target phase=verify t=12 N=9216 K=2560 B=4 thr=64 mm=52 | ctx=target phase=verify t=14 N=2560 K=9216 B=4 thr=128 mm=12
+[xllama] d3d12_shape label=session_decode part=2/2 keys_total=18 | ctx=target phase=verify t=12 N=8192 K=2560 B=4 thr=64 mm=17 | ctx=target phase=verify t=12 N=1024 K=2560 B=4 thr=64 mm=11 | ctx=target phase=verify t=12 N=2560 K=4096 B=4 thr=128 mm=7 | ctx=target phase=verify t=12 N=2560 K=9216 B=4 thr=128 mm=14 | ctx=target phase=verify t=14 N=1024 K=2560 B=4 thr=64 mm=3 | ctx=target phase=verify t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] MTP_STATS rounds=1 decodes=4 discarded=1 catchup_tok=0 draft_ms=23.9 sample_ms=3.4 topprob_ms=16.6 catchup_ms=0.0 verify_ms=147.8 corrective_ms=0.0
+[llama] ~llama_context: D3D12_Host compute buffer size is   5.8489 MiB, matches expectation of   5.8489 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 1800 graph_compute calls, 2272 matmuls (0 2col), 786.9 ms wall (578.1 ms GPU)
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[llama] model has unused tensor blk.32.attn_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.post_attention_norm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q.weight (size = 11796480 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k.weight (size = 1474560 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_v.weight (size = 2150400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_output.weight (size = 5898240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_gate.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_down.weight (size = 19353600 bytes) -- ignoring
+[llama] model has unused tensor blk.32.ffn_up.weight (size = 13271040 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.eh_proj.weight (size = 13926400 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.enorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.hnorm.weight (size = 10240 bytes) -- ignoring
+[llama] model has unused tensor blk.32.nextn.shared_head_norm.weight (size = 10240 bytes) -- ignoring
+[xllama] d3d12: D3D12_Weights buffer 2191.6 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   675.46 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2191.55 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =    50.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=19 prompt=19
+[xllama] PHASE_PREFILL n_prompt=19 rows_kept=19 n_ubatch=512 calls=131 matmuls=164 gpu_ms=95.141053
+[xllama] d3d12_shape label=session_prefill part=1/1 keys_total=11 | ctx=target phase=prefill t=14 N=8192 K=2560 B=19 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=19 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=19 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=19 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=19 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=19 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=19 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=19 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=19 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=19 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1
+[xllama] EOG after 2 tokens tok=248044 branch=classic
+[xllama] session generate: n=2 prefill=330.8ms (19 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=520.6 prefill_ms=330.8 decode_ms=121.2 accounted_ms=121.1 residual_decode_ms=0.1 load_plus_setup_ms=68.6 draft_ms=0.0 sample_ms=0.0 topprob_ms=0.0 catchup_ms=0.0 verify_ms=0.0 corrective_ms=0.0 classic_decode_ms=118.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=3.1 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/1 keys_total=11 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=38 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=38 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=104 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=24 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=34 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=22 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=14 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=28 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=2
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 393 graph_compute calls, 492 matmuls (0 2col), 139.9 ms wall (113.1 ms GPU)
+[xllama] TERMGATE scenario=stop@run arm=ref ok=1 reason=- n_ids=10 n_ref=-1 parity=1 first_diff=-1 active=1 drafted=8 rounds=2 lookup=0 ews=1 n_eval=10 eog_tok=-1 eog_branch=- stop_branch=spec stop_round=4
+[xllama] gguf gpu layers: 28 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: D3D12_Weights buffer 2255.7 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 27 repeating layers to GPU
+[llama] load_tensors: offloaded 28/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   688.79 MiB
+[llama] load_tensors:   CPU_REPACK model buffer size =   246.09 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2255.66 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] session: speculative n_rs_seq=4
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   251.25 MiB
+[llama] resolve_fused_ops: layer 7 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 504.0 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =   504.02 MiB
+[llama] sched_reserve: graph splits = 262
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[llama] resolve_fused_ops: layer 32 is assigned to device D3D12 but Flash Attention is assigned to device CPU (usually due to missing support)
+[llama] resolve_fused_ops: Flash Attention not supported, set to disabled
+[xllama] d3d12: D3D12_Host buffer 5.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     5.85 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft ready, n_max=4 p_min=0.750000 dft_n_batch=6
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=7 prompt=7
+[xllama] d3d12: D3D12_Host buffer 20.9 MiB
+[xllama] d3d12: D3D12_Host buffer 5.7 MiB
+[xllama] PHASE_PREFILL n_prompt=7 rows_kept=7 n_ubatch=512 calls=143 matmuls=180 gpu_ms=51.567398
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=24 | ctx=target phase=prefill t=14 N=8192 K=2560 B=7 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=7 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=7 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=7 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=7 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=7 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=7 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=7 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=7 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=7 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=24 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] d3d12: D3D12_Host buffer 24.7 MiB
+[xllama] session generate: n=64 prefill=196.2ms (7 tok) reuse=0 drafted=51 (mtp=51 lookup=0) spec_accept=42 (mtp=42 lookup=0)
+[xllama] PHASE total_ms=3574.5 prefill_ms=196.2 decode_ms=3269.0 accounted_ms=3266.8 residual_decode_ms=2.2 load_plus_setup_ms=109.3 draft_ms=256.2 sample_ms=55.2 topprob_ms=203.4 catchup_ms=195.1 verify_ms=2256.9 corrective_ms=0.0 classic_decode_ms=244.9 classic_catchup_ms=15.5 lookup_ms=0.0 sample_target_ms=55.0 emit_ms=0.1 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/9 keys_total=97 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=63 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=63 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=63 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=63 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=126 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=63 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=63 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=36 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=76 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=76 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=208 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=48
+[xllama] d3d12_shape label=session_decode part=2/9 keys_total=97 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=68 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=44 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=28 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=56 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=6 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=12 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=6
+[xllama] d3d12_shape label=session_decode part=3/9 keys_total=97 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=6 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=72 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=152 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=152 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=416 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=96 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=136 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=88 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=56 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=112 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=24 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=8
+[xllama] d3d12_shape label=session_decode part=4/9 keys_total=97 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=5 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=5 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=5 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=5 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=10 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=5 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=5 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=4 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=4 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=4 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=4 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=4 thr=64 mm=8
+[xllama] d3d12_shape label=session_decode part=5/9 keys_total=97 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=4 thr=128 mm=4 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=4 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=36 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=76 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=76 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=208 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=48 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=68 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=44 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=28 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=56 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=12
+[xllama] d3d12_shape label=session_decode part=6/9 keys_total=97 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=4 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=2 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=27 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=57 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=57 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=156
+[xllama] d3d12_shape label=session_decode part=7/9 keys_total=97 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=36 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=51 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=33 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=21 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=42 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=9 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=6
+[xllama] d3d12_shape label=session_decode part=8/9 keys_total=97 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=3 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=3 thr=64 mm=3 | ctx=target phase=verify t=14 N=8192 K=2560 B=4 thr=64 mm=27 | ctx=target phase=verify t=12 N=4096 K=2560 B=4 thr=64 mm=57 | ctx=target phase=verify t=13 N=2560 K=4096 B=4 thr=128 mm=57 | ctx=target phase=verify t=12 N=9216 K=2560 B=4 thr=64 mm=156 | ctx=target phase=verify t=14 N=2560 K=9216 B=4 thr=128 mm=36 | ctx=target phase=verify t=12 N=8192 K=2560 B=4 thr=64 mm=51 | ctx=target phase=verify t=12 N=1024 K=2560 B=4 thr=64 mm=33 | ctx=target phase=verify t=12 N=2560 K=4096 B=4 thr=128 mm=21 | ctx=target phase=verify t=12 N=2560 K=9216 B=4 thr=128 mm=42 | ctx=target phase=verify t=14 N=1024 K=2560 B=4 thr=64 mm=9
+[xllama] d3d12_shape label=session_decode part=9/9 keys_total=97 | ctx=target phase=verify t=14 N=248320 K=2560 B=4 thr=64 mm=3
+[xllama] MTP_STATS rounds=18 decodes=85 discarded=12 catchup_tok=64 draft_ms=256.2 sample_ms=55.2 topprob_ms=203.4 catchup_ms=195.1 verify_ms=2256.9 corrective_ms=0.0
+[xllama] TERMGATE eog_probe idx=0 n_eval=64 reason=cap[xllama] TERMGATE scenario=eog@0 arm=ref ok=1 reason=cap n_ids=64 n_ref=-1 parity=-1 first_diff=-1 active=1 drafted=51 rounds=18 lookup=0 ews=0 n_eval=64 eog_tok=-1 eog_branch=- stop_branch=- stop_round=-1
+[xllama] session: KV prefix reuse none — resident 71 tok, prompt 1 tok (first mismatch at 0) (#170)
+[xllama] session: turn full=1 kv_before=0 pf=1 prompt=1
+[xllama] PHASE_PREFILL n_prompt=1 rows_kept=1 n_ubatch=512 calls=137 matmuls=172 gpu_ms=11.254617
+[xllama] d3d12_shape label=session_prefill part=1/1 keys_total=11 | ctx=target phase=prefill t=14 N=8192 K=2560 B=1 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=1 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=1 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=54 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=13 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=1 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=2
+[xllama] session generate: n=64 prefill=86.8ms (1 tok) reuse=0 drafted=26 (mtp=26 lookup=0) spec_accept=26 (mtp=26 lookup=0)
+[xllama] PHASE total_ms=3681.9 prefill_ms=86.8 decode_ms=3581.7 accounted_ms=3579.4 residual_decode_ms=2.3 load_plus_setup_ms=13.4 draft_ms=229.7 sample_ms=51.9 topprob_ms=107.6 catchup_ms=211.2 verify_ms=1308.0 corrective_ms=0.0 classic_decode_ms=1615.1 classic_catchup_ms=99.6 lookup_ms=0.0 sample_target_ms=55.7 emit_ms=0.2 maintain_ms=0.1 profile=1
+[xllama] d3d12_shape label=session_decode part=1/7 keys_total=79 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=59 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=59 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=59 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=59 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=118 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=59 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=59 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=234 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=494 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=494 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=1352 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=312
+[xllama] d3d12_shape label=session_decode part=2/7 keys_total=79 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=442 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=286 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=182 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=364 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=78 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=26 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=26 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=26 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=26 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=52 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=26
+[xllama] d3d12_shape label=session_decode part=3/7 keys_total=79 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=26 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=54 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=114 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=114 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=312 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=72 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=102 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=66 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=42 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=84 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=18 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=6
+[xllama] d3d12_shape label=session_decode part=4/7 keys_total=79 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=6 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=12 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=6 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=2 thr=64 mm=6 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=24
+[xllama] d3d12_shape label=session_decode part=5/7 keys_total=79 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=6/7 keys_total=79 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=36 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=76 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=76 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=208 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=48 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=68 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=44 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=28 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=56 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=12 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=4
+[xllama] d3d12_shape label=session_decode part=7/7 keys_total=79 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=4 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=4
+[xllama] MTP_STATS rounds=12 decodes=97 discarded=33 catchup_tok=64 draft_ms=229.7 sample_ms=51.9 topprob_ms=107.6 catchup_ms=211.2 verify_ms=1308.0 corrective_ms=0.0
+[xllama] TERMGATE eog_probe idx=1 n_eval=64 reason=cap[xllama] TERMGATE scenario=eog@1 arm=ref ok=1 reason=cap n_ids=64 n_ref=-1 parity=-1 first_diff=-1 active=1 drafted=26 rounds=12 lookup=0 ews=0 n_eval=64 eog_tok=-1 eog_branch=- stop_branch=- stop_round=-1
+[xllama] session: KV prefix reuse none — resident 65 tok, prompt 4 tok (first mismatch at 0) (#170)
+[xllama] session: turn full=1 kv_before=0 pf=4 prompt=4
+[xllama] PHASE_PREFILL n_prompt=4 rows_kept=4 n_ubatch=512 calls=137 matmuls=172 gpu_ms=31.290586
+[xllama] d3d12_shape label=session_prefill part=1/1 keys_total=12 | ctx=target phase=prefill t=14 N=8192 K=2560 B=4 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=4 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=4 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=54 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=13 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=18 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=4 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=4 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=4 thr=64 mm=1
+[xllama] session generate: n=64 prefill=128.8ms (4 tok) reuse=0 drafted=46 (mtp=46 lookup=0) spec_accept=43 (mtp=43 lookup=0)
+[xllama] PHASE total_ms=3068.9 prefill_ms=128.8 decode_ms=2926.8 accounted_ms=2924.9 residual_decode_ms=1.9 load_plus_setup_ms=13.3 draft_ms=236.0 sample_ms=51.4 topprob_ms=184.4 catchup_ms=187.5 verify_ms=1968.9 corrective_ms=0.0 classic_decode_ms=242.9 classic_catchup_ms=15.3 lookup_ms=0.0 sample_target_ms=53.7 emit_ms=0.1 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/9 keys_total=97 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=60 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=60 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=60 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=60 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=120 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=60 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=60 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=36 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=76 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=76 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=208 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=48
+[xllama] d3d12_shape label=session_decode part=2/9 keys_total=97 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=68 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=44 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=28 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=56 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=5 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=5 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=5 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=5 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=5
+[xllama] d3d12_shape label=session_decode part=3/9 keys_total=97 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=5 | ctx=target phase=verify t=14 N=8192 K=2560 B=4 thr=64 mm=36 | ctx=target phase=verify t=12 N=4096 K=2560 B=4 thr=64 mm=76 | ctx=target phase=verify t=13 N=2560 K=4096 B=4 thr=128 mm=76 | ctx=target phase=verify t=12 N=9216 K=2560 B=4 thr=64 mm=208 | ctx=target phase=verify t=14 N=2560 K=9216 B=4 thr=128 mm=48 | ctx=target phase=verify t=12 N=8192 K=2560 B=4 thr=64 mm=68 | ctx=target phase=verify t=12 N=1024 K=2560 B=4 thr=64 mm=44 | ctx=target phase=verify t=12 N=2560 K=4096 B=4 thr=128 mm=28 | ctx=target phase=verify t=12 N=2560 K=9216 B=4 thr=128 mm=56 | ctx=target phase=verify t=14 N=1024 K=2560 B=4 thr=64 mm=12 | ctx=target phase=verify t=14 N=248320 K=2560 B=4 thr=64 mm=4
+[xllama] d3d12_shape label=session_decode part=4/9 keys_total=97 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=4 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=4 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=4 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=4 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=4 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=4 thr=128 mm=3 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=4 thr=64 mm=3 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=54 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=114 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=114 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=312 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=72
+[xllama] d3d12_shape label=session_decode part=5/9 keys_total=97 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=102 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=66 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=42 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=84 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=6 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=12 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=6
+[xllama] d3d12_shape label=session_decode part=6/9 keys_total=97 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=36 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=76 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=76 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=208 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=48 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=68 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=44 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=28 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=56 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=12 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=4
+[xllama] d3d12_shape label=session_decode part=7/9 keys_total=97 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=4 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=2 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=27 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=57 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=57 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=156 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=36
+[xllama] d3d12_shape label=session_decode part=8/9 keys_total=97 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=51 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=33 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=21 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=42 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=9 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=3
+[xllama] d3d12_shape label=session_decode part=9/9 keys_total=97 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=3 thr=64 mm=3
+[xllama] MTP_STATS rounds=17 decodes=81 discarded=14 catchup_tok=64 draft_ms=236.0 sample_ms=51.4 topprob_ms=184.4 catchup_ms=187.5 verify_ms=1968.9 corrective_ms=0.0
+[xllama] TERMGATE eog_probe idx=2 n_eval=64 reason=cap[xllama] TERMGATE scenario=eog@2 arm=ref ok=1 reason=cap n_ids=64 n_ref=-1 parity=-1 first_diff=-1 active=1 drafted=46 rounds=17 lookup=0 ews=0 n_eval=64 eog_tok=-1 eog_branch=- stop_branch=- stop_round=-1
+[xllama] session: KV prefix reuse none — resident 68 tok, prompt 11 tok (first mismatch at 0) (#170)
+[xllama] session: turn full=1 kv_before=0 pf=11 prompt=11
+[xllama] PHASE_PREFILL n_prompt=11 rows_kept=11 n_ubatch=512 calls=143 matmuls=180 gpu_ms=78.416642
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=11 thr=64 mm=9 | ctx=target phase=prefill t=12 N=4096 K=2560 B=11 thr=64 mm=19 | ctx=target phase=prefill t=13 N=2560 K=4096 B=11 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=11 thr=64 mm=52 | ctx=target phase=prefill t=14 N=2560 K=9216 B=11 thr=128 mm=12 | ctx=target phase=prefill t=12 N=8192 K=2560 B=11 thr=64 mm=17 | ctx=target phase=prefill t=12 N=1024 K=2560 B=11 thr=64 mm=11 | ctx=target phase=prefill t=12 N=2560 K=4096 B=11 thr=128 mm=7 | ctx=target phase=prefill t=12 N=2560 K=9216 B=11 thr=128 mm=14 | ctx=target phase=prefill t=14 N=1024 K=2560 B=11 thr=64 mm=3 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=6 thr=64 mm=1
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=14 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=6 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=6 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=6 thr=128 mm=1 | ctx=target phase=prefill t=14 N=248320 K=2560 B=6 thr=64 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=5 thr=128 mm=1
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] EOG after 10 tokens (spec reject) tok=248044 branch=spec-reject
+[xllama] session generate: n=10 prefill=253.7ms (11 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=6 (mtp=6 lookup=0)
+[xllama] PHASE total_ms=773.0 prefill_ms=253.7 decode_ms=506.0 accounted_ms=505.6 residual_decode_ms=0.3 load_plus_setup_ms=13.3 draft_ms=38.9 sample_ms=8.6 topprob_ms=31.9 catchup_ms=21.4 verify_ms=274.1 corrective_ms=0.0 classic_decode_ms=121.4 classic_catchup_ms=7.7 lookup_ms=0.0 sample_target_ms=9.3 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=43 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=10 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=10 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=20 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=10 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=10 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=18 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=38 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=38 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=104 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=24
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=43 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=34 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=22 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=14 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=28 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=6 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=43 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=5 thr=64 mm=18 | ctx=target phase=verify t=12 N=4096 K=2560 B=5 thr=64 mm=38 | ctx=target phase=verify t=13 N=2560 K=4096 B=5 thr=128 mm=38 | ctx=target phase=verify t=12 N=9216 K=2560 B=5 thr=64 mm=104 | ctx=target phase=verify t=14 N=2560 K=9216 B=5 thr=128 mm=24 | ctx=target phase=verify t=12 N=8192 K=2560 B=5 thr=64 mm=34 | ctx=target phase=verify t=12 N=1024 K=2560 B=5 thr=64 mm=22 | ctx=target phase=verify t=12 N=2560 K=4096 B=5 thr=128 mm=14 | ctx=target phase=verify t=12 N=2560 K=9216 B=5 thr=128 mm=28 | ctx=target phase=verify t=14 N=1024 K=2560 B=5 thr=64 mm=6 | ctx=target phase=verify t=14 N=248320 K=2560 B=5 thr=64 mm=2
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=43 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=5 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=5 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=5 thr=128 mm=1 | ctx=draft phase=catchup t=14 N=248320 K=2560 B=5 thr=64 mm=1
+[xllama] MTP_STATS rounds=2 decodes=13 discarded=2 catchup_tok=7 draft_ms=38.9 sample_ms=8.6 topprob_ms=31.9 catchup_ms=21.4 verify_ms=274.1 corrective_ms=0.0
+[xllama] TERMGATE eog_probe idx=3 n_eval=10 reason=eos[xllama] TERMGATE scenario=eog@3 arm=ref ok=1 reason=eos n_ids=10 n_ref=-1 parity=-1 first_diff=-1 active=1 drafted=8 rounds=2 lookup=0 ews=0 n_eval=10 eog_tok=248044 eog_branch=spec-reject stop_branch=- stop_round=-1
+[llama] ~llama_context: D3D12_Host compute buffer size is   5.8489 MiB, matches expectation of   5.8489 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 13351 graph_compute calls, 16852 matmuls (0 2col), 3743.0 ms wall (2640.7 ms GPU)
+[llama] ~llama_context: D3D12_Host compute buffer size is 504.0198 MiB, matches expectation of 504.0198 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (0.0 ms GPU)
+[xllama] termgate done rows=8 fail=- msix=3e4c02de64de60631221777c6055ea3f0550731c7215e5cbba8001062ae56f80
+[xllama] termgate-result.csv written
+[xllama] headless termgate: done, exiting

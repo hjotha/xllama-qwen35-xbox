@@ -1,0 +1,5 @@
+RUN r121-isolate-fa0-seq
+{"cell": "r121-isolate-fa0-seq", "n": 1, "decode_tok_s": 20.18, "ttft_ms": 3381.9, "peak_ws_mb": 3462.0, "stats": [{"run": 1, "drafted": 0, "accepted": 0}, {"run": 2, "drafted": 0, "accepted": 0}]}
+RUN r121-isolate-fa0-mtp
+{"cell": "r121-isolate-fa0-mtp", "n": 1, "decode_tok_s": 24.37, "ttft_ms": 3818.8, "peak_ws_mb": 3667.0, "stats": [{"run": 1, "drafted": 110, "accepted": 94}, {"run": 2, "drafted": 110, "accepted": 94}]}
+FA0 isolation complete

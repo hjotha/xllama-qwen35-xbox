@@ -1,0 +1,18 @@
+{
+  "seq": {
+    "rows": 8,
+    "dumps": 24,
+    "natural_eog": [
+      "eog@3"
+    ],
+    "stop_branch": "classic"
+  },
+  "cand": {
+    "rows": 8,
+    "dumps": 24,
+    "natural_eog": [
+      "eog@3"
+    ],
+    "stop_branch": "spec"
+  }
+}

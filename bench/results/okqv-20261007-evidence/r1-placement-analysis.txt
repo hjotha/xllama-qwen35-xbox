@@ -1,0 +1,26 @@
+sched knob line positions: [623, 7172]
+run-start lines: 25
+  cell#5 start=623 sched-knob ON=True
+  cell#24 start=7172 sched-knob ON=False
+
+sched cells (cell#, start, offload, #D3D12-splits):
+  #5 start=623 ON=True d3d12_splits=4158
+  #24 start=7172 ON=False d3d12_splits=4158
+
+ON cell splits=4158  OFF cell splits=4158
+distinct input names: ON=0 OFF=0
+ONLY-IN-ON (0): []
+ONLY-IN-OFF (0): []
+
+attention/KQV-relevant names only-ON: []
+attention/KQV-relevant names only-OFF: []
+total D3D12 split headers: ON=4158 OFF=4158
+matched pair: cell#5 ON=True n=4158 | cell#24 ON=False n=4158
+sequence (index,n_inputs) identical: True
+first 5 headers ON : [(1, 0), (3, 0), (5, 0), (7, 0), (9, 0)]
+first 5 headers OFF: [(1, 0), (3, 0), (5, 0), (7, 0), (9, 0)]
+input-count histograms equal: True
+ON hist: {0: 4158}
+OFF hist: {0: 4158}
+cell5 summaries: ['[xllama] d3d12: 6526 graph_compute calls, 8232 matmuls (1251 2col), 2113.3 ms wall (1596.1 ms GPU)']
+cell24 summaries: ['[xllama] d3d12: 6526 graph_compute calls, 8232 matmuls (1251 2col), 2155.4 ms wall (1598.9 ms GPU)']

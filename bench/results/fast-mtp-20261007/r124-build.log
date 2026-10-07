@@ -1,0 +1,35 @@
+﻿=== START 2026-10-07T15:09:42 session=1 user=hpbeats\hjotha ===
+15:09:42 mode=final
+15:09:42 1/4 apply-uwp-patches.sh
+15:09:44 patches exit=0
+15:09:47 VS dev env: cl.exe na PATH = True
+15:09:47 dirs de saida garantidos
+15:09:47 2/4 build-uwp.ps1 -Backend unified -BuildRevision 124
+15:09:47 build flags=-WindowsSdkVersion 10.0.26100.0
+15:21:19 build exit=0
+15:21:19 msix=C:\Users\hjotha\worktrees\xllama-mtp-fast\uwp\AppPackages\xllama\xllama_1.6.0.124_x64_Test\xllama_1.6.0.124_x64.msix size=21797418
+15:21:20 sha256=4897D1C99A09A587E4254CD860B4EAA0E27D935DB67858EE106FD628ACB627B4
+15:21:20 3/4 makeappx unpack
+15:21:22 Package extraction succeeded.
+15:21:22 
+15:21:22 VCLibs MinVersion: 14.0.33519.0 -> 14.0.0.0
+15:21:22 4/4 makeappx pack + signtool sign
+15:21:29 
+15:21:29 Package creation succeeded.
+15:21:29 
+15:21:32 Done Adding Additional Store
+15:21:32 Successfully signed: C:\Users\hjotha\build\xllama-q5k\xllama-q5k-fixed.msix
+15:21:32 
+15:21:32 File: C:\Users\hjotha\build\xllama-q5k\xllama-q5k-fixed.msix
+15:21:32 Index  Algorithm  Timestamp    
+15:21:32 ========================================
+15:21:32 
+15:21:32 Number of errors: 1
+15:21:32 
+15:21:32 SignTool Error: A certificate chain processed, but terminated in a root
+15:21:32 	certificate which is not trusted by the trust provider.
+15:21:34 verify warning: untrusted self-signed root on build host; signer matches expected certificate (status=UnknownError)
+15:21:34 sha256-fixed=04B5BAE6186A501916190F453C675619A883EF63215B36C4BFF13B0A9AB860EA
+15:21:34 elapsed_seconds=712.31
+15:21:34 === DONE ===
+

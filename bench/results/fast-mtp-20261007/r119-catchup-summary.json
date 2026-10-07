@@ -1,0 +1,20 @@
+{
+  "r119-catchup1": {
+    "decode_tok_s": 21.89,
+    "ttft_ms": 1660.6,
+    "peak_ws_mb": 3778.0
+  },
+  "r119-catchup0": {
+    "decode_tok_s": 22.58,
+    "ttft_ms": 1402.0,
+    "peak_ws_mb": 3770.0
+  },
+  "r119-ref": {
+    "decode_tok_s": 20.615000000000002,
+    "ttft_ms": 1289.5,
+    "peak_ws_mb": 3462.0
+  },
+  "native_vs_legacy_decode_gain_percent": 3.152124257651878,
+  "native_vs_ref_decode_gain_percent": 9.531894251758398,
+  "ids_exact": true
+}

@@ -1,0 +1,51 @@
+--- bench/results/diag-ubatch-20261007/snapshot-r107/include_xllama_inference_params.h	2026-10-06 21:25:19.533646908 +0200
++++ include/xllama/inference_params.h	2026-10-07 04:54:32.963836528 +0200
+@@ -62,6 +62,12 @@
+     /// Quantize KV cache to q8_0 (GGUF path only).
+     bool kv_q8 = false;
+ 
++    /// Run KQV/attention node chain off the forced-CPU pin (GGUF path only).
++    /// Default false = today's forced-off behavior byte-for-byte; true
++    /// re-enables the existing llama.cpp offload_kqv setting (host knob
++    /// offloadkqv.txt). Device/engagement/memory limits checked per run.
++    bool offload_kqv = false;
++
+     /// GGUF layers whose weight matmuls run on the d3d12 backend (0 = CPU,
+     /// docs/gguf-gpu-decode.md). Ignored where D3D12 is unavailable.
+     int n_gpu_layers = 0;
+--- bench/results/diag-ubatch-20261007/snapshot-r107/src_bridge_inference.cpp	2026-10-06 21:25:19.535855032 +0200
++++ src/bridge/inference.cpp	2026-10-07 04:54:32.964782576 +0200
+@@ -489,6 +489,13 @@
+                    " n_ubatch=" + std::to_string(cparams.n_ubatch) + "\n");
+ 
+     apply_gguf_gpu_context(gpu_layers, cparams);
++    if (params.offload_kqv) {
++        // Host-only default-OFF A/B override (plan004 okqv): re-enable the
++        // existing llama setting that apply_gguf_gpu_context forces off.
++        // Default (absent knob) never reaches this branch -> baseline bytes.
++        cparams.offload_kqv = true;
++        log_output("[xllama] offload_kqv=1 (host knob; default 0 = forced off)\n");
++    }
+     if (params.n_batch > 0 || params.n_ubatch > 0)
+         log_output("[xllama] prefill batch override: n_batch=" + std::to_string(cparams.n_batch) +
+                    " n_ubatch=" + std::to_string(cparams.n_ubatch) + "\n");
+--- bench/results/diag-ubatch-20261007/snapshot-r107/uwp_inference-bridge.cpp	2026-10-07 04:43:35.538610144 +0200
++++ uwp/inference-bridge.cpp	2026-10-07 04:55:49.759008547 +0200
+@@ -1012,11 +1012,12 @@
+     if (bench_ctx > 0)
+         params.n_ctx = bench_ctx;
+     params.max_length_override = bench_maxlen;
+-    params.n_threads = bench_threads;                // 0 = auto; set by bench-xbox-ort.sh
+-    params.n_ubatch = bench_ubatch;                  // #172: 0 = llama default (512)
+-    params.kv_q8 = bench_kvq8 != 0;                  // #171: q8_0 KV + flash attention
+-    params.prompt_lookup = bench_prompt_lookup != 0; // #210 W2
+-    params.mtp = bench_mtp > 0;                      // MTP drafting; requires the MTP GGUF
++    params.n_threads = bench_threads; // 0 = auto; set by bench-xbox-ort.sh
++    params.n_ubatch = bench_ubatch;   // #172: 0 = llama default (512)
++    params.kv_q8 = bench_kvq8 != 0;   // #171: q8_0 KV + flash attention
++    params.offload_kqv = read_local_int("offloadkqv.txt", 0) != 0; // plan004 okqv A/B (default off)
++    params.prompt_lookup = bench_prompt_lookup != 0;               // #210 W2
++    params.mtp = bench_mtp > 0; // MTP drafting; requires the MTP GGUF
+     params.mtp_n_max = bench_mtp > 0 ? bench_mtp : 4;
+     if (bench_mtp_pmin >= 0)
+         params.mtp_p_min = static_cast<float>(bench_mtp_pmin) / 100.0f;

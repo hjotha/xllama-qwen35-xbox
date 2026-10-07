@@ -1,0 +1,13 @@
+{
+  "model": "qwen35-4b-mtp",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Write a concise Python function that returns the greatest common divisor of two positive integers."
+    }
+  ],
+  "temperature": 0,
+  "seed": 1,
+  "max_tokens": 64,
+  "stream": false
+}

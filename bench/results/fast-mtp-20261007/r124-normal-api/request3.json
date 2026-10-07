@@ -1,0 +1,13 @@
+{
+  "model": "qwen35-4b-mtp",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain briefly how a target model checks tokens proposed by a draft model."
+    }
+  ],
+  "temperature": 0,
+  "seed": 1,
+  "max_tokens": 64,
+  "stream": false
+}

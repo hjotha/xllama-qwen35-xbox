@@ -1,0 +1,52 @@
+MANIFEST — okqv offload_kqv A/B (rev107)
+generated_utc=2026-10-07T03:35:17Z
+
+SHA-GATE (admission): build-local.log sha256-fixed == builder msix certutil ==
+  local fetched msix == driver arg == 7f81636db72cb71ba7829af4aeac592d4a302dd3d5caee12229d5914263669fb
+  RESULT: PASS (4/4) — see evidence/msix-sha-gate.txt
+  install success=true; PFN GianlucaMazza.xllama_1.6.0.107_x64__pj67f1fcj4n14
+
+DEFAULT-OFF BASELINE CLEAN GATE: device xllama.log reset before clean cell;
+  lines before first offload_kqv=1: [diag]=0, offload=0 -> PASS (raw prefix preserved)
+
+FAIL-FAST PROBE (offload ON, np16): peak_ws_mb=4273, gpu_mem_mb=2273 < budget 4147.
+  Suite max peak_ws across all cells = 4295 MB.
+  Reconciliation: predeclared bound 'not beyond prior peaks (~4300 MB)' -> PASSES
+  (probe 4273 <= 4300; suite max 4295 <= 4300). Script's 4600 threshold never bound;
+  predeclared bound governs and is NOT relaxed.
+
+CELLS (originals immutable, sha256):
+  okqv-20261007-clean.csv: rows=2 run_index=['1', '1'] date=['2026-10-07T03:20:00Z', '2026-10-07T03:20:41Z']
+     sha256=ce4b094108f2bb070263946e875011096998589d0859ab13da95d671bae2c9c9
+  okqv-20261007-eng-copies.csv: rows=1 run_index=['1'] date=['2026-10-07T03:22:10Z']
+     sha256=b7d0412e40951d8f30805d1b2fb684d17d98622f9609837474347dde0b64ee25
+  okqv-20261007-eng-off.csv: rows=1 run_index=['2'] date=['2026-10-07T03:21:43Z']
+     sha256=111776a9d8808a97c6d9d0f501ceb3923ac6d5ef147da05cee9b7a148dbfff9e
+  okqv-20261007-eng-sched-off.csv: rows=1 run_index=['1'] date=['2026-10-07T03:31:53Z']
+     sha256=5bff9d56b147b3455b117a175c65854bd93d9b9e1e644cda4b05b8344e44f3da
+  okqv-20261007-eng-sched.csv: rows=1 run_index=['1'] date=['2026-10-07T03:22:37Z']
+     sha256=ee0356227c2015c394637df6eda5619f0d3c864ed5fc06dfe543071358fc262b
+  okqv-20261007-p1off.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:26:04Z', '2026-10-07T03:26:30Z']
+     sha256=e799920c87eb34af36b54d2584d27654f9ee9345d85790251920b4bd836f11ba
+  okqv-20261007-p1on.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:27:22Z', '2026-10-07T03:27:47Z']
+     sha256=ea4e863041992d3ac99ae4d3fb83eb536851897817ad48c3da0cac8c4c7b5db3
+  okqv-20261007-p2off.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:28:39Z', '2026-10-07T03:29:04Z']
+     sha256=33f085406009fb5e1f8337c60b605284c8bd1ad43750ce308d43cbfaf691caa6
+  okqv-20261007-p2on.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:29:56Z', '2026-10-07T03:30:21Z']
+     sha256=ad5bdad288374f190b4e49d5905342ad84c7b6818043f1cc9f6521f065108fbe
+  okqv-20261007-probe.csv: rows=1 run_index=['1'] date=['2026-10-07T03:20:58Z']
+     sha256=efdb3ba3b566aff278bf69d545d2e0e0952112571fa2d02f342ca0a4be8ecfaa
+  okqv-20261007-ref-off.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:23:28Z', '2026-10-07T03:23:54Z']
+     sha256=06416955ac48d49858b5d69338f4fb1017b1934b87fb984f5bc2827390135031
+  okqv-20261007-ref-on.csv: rows=2 run_index=['2', '3'] date=['2026-10-07T03:24:46Z', '2026-10-07T03:25:12Z']
+     sha256=e6066e695d21cf48474ea7285c9aa8b6872e9df12c8a23737c3b134ccf1fa639
+  total rows=19
+
+RAW EVIDENCE (preserved):
+  msix-sha-gate.txt: 492 bytes sha256=7711dc9ddc263eca...
+  r1-placement-analysis.txt: 1062 bytes sha256=c773c55944f9b52c...
+  r2-r3-analysis.txt: 1806 bytes sha256=fdef0fe55f681128...
+  xllama-rev107-fresh.log: 560842 bytes sha256=5dc06bf30442679b...
+
+FIXTURES: np64 parity fixture (spec-chat-open@64 greedy seed1) + np16 probe fixture.
+CATCHUP: fresh log catchup_tok=63 in 17 np64 d4 runs, =16 in 2 np16 runs -> real catchup in parity fixture.

@@ -1,0 +1,1 @@
+{"error":{"message":"session create failed: startup scope2 profile is active: only qwen35-4b-mtp may load; restart the app with the default profile (remove d3d12twocol.txt/cpurepackforcegemv.txt) to load other models","type":"xllama_error"}}

@@ -1,0 +1,12 @@
+RUN r121-trace-fa1-seq
+{"cell": "r121-trace-fa1-seq", "n": 1, "decode_tok_s": 22.83, "ttft_ms": 3123.1, "peak_ws_mb": 3461.0, "stats": [{"run": 1, "drafted": 0, "accepted": 0}, {"run": 2, "drafted": 0, "accepted": 0}]}
+RUN r121-trace-fa1-mtp
+Traceback (most recent call last):
+  File "/home/hjotha/worktrees/xllama-mtp/bench/results/fast-mtp-20261007/cell.py", line 106, in <module>
+    raise RuntimeError(f"full-token mismatch vs {ref.name}, run {run}")
+RuntimeError: full-token mismatch vs r121-trace-fa1-seq.run1.tokens, run 1
+Traceback (most recent call last):
+  File "<stdin>", line 7, in <module>
+  File "/usr/lib/python3.12/subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['python3', 'bench/results/fast-mtp-20261007/cell.py', 'r121-trace-fa1-mtp', '--threads', '2', '--draft', '1', '--depth', '2', '--pmin', '50', '--q6', '0', '--gdn', '1', '--fa', '1', '--runs', '2', '--predict', '180', '--prompt', 'bench/prompts/standard-512.txt', '--ignore-eog', '--reference', 'r121-trace-fa1-seq']' returned non-zero exit status 1.

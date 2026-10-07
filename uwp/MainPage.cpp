@@ -2320,6 +2320,7 @@ fire_and_forget MainPageController::EnsureModelAsync() {
     std::wstring model_name =
         self->m_model_filename.empty() ? DefaultChatModelId() : self->m_model_filename;
     self->EnsureModelNamedAsync(model_name, true);
+    return {};
 }
 
 fire_and_forget MainPageController::EnsureModelNamedAsync(std::wstring model_name,
@@ -2707,6 +2708,11 @@ bool MainPageController::EnsureSession(const std::string& model, std::string* er
         }
     }
     std::string err;
+    if (sp.backend == ::xllama::Backend::LlamaCpp) {
+        // Shared config parser (same as the API entry): llama.ini session
+        // keys + selected-profile knobs. MTP stays OFF unless ini says so.
+        ::xllama::bridge::apply_llama_ini_session(sp);
+    }
     ::xllama::Session* s = ::xllama::session_hub().ensure_locked(model, sp, &err);
     if (!s) {
         if (err_out)

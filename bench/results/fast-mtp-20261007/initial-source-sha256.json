@@ -1,0 +1,11 @@
+{
+  "scripts/build-uwp.ps1": "11887fbd2702e9f31c7e4802880760d96f86ac2bb2b504f2d62496441e165524",
+  "scripts/build-xbox-local.ps1": "8e67144c4822bb44324abba80d4c863d288ffe736cc255b50e750cab8d79b574",
+  "scripts/run-xbox-build.ps1": "3d671108b98be9e95447360dd6555112a0a6973e838a9cbe0a3e70ac5bd55693",
+  "uwp/iteration.props": "607fdfe20c42be81614f646fa6ec0d2a3f2775e5bd5717d5933781015babca34",
+  "uwp/xllama.vcxproj": "e7f053515441eac39d5d734a5a5cfb28bc471ddd78a5f2107ebd1e4f137472e5",
+  "uwp/ggml-uwp.vcxproj": "95d922d7902ddb9f09babd080bb3745cc03718f8295450b3b142194a6804624b",
+  "shaders/ggml_d3d12_mmv_q8_0.hlsl": "59a5dd719ea54465acda8bc9d2c16e5f17cf9649da81101183ea07cd4304de69",
+  "shaders/generated/ggml_d3d12_mmv_q8_0_t64_dxil.h": "0ad2f46ed60252f3b20d0056736d602a0bc091864d040a780037046b93170f3b",
+  "shaders/generated/ggml_d3d12_mmv_q8_0_t128_dxil.h": "950f0bce2079712dd020a986fd30dec316bf4f4ad94ee5f3974a9d86a4945f44"
+}

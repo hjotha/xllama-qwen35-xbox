@@ -5,6 +5,7 @@
 
 #if defined(_WIN32)
 
+    #include <chrono>
     #include <cstdio>
 
     #include "xllama/d3d12_dyn.h"
@@ -154,14 +155,22 @@ bool QueueFence::init(ID3D12Device* device, std::string* err) {
     return true;
 }
 
-bool QueueFence::signal_and_wait(ID3D12CommandQueue* queue, bool spin) {
+bool QueueFence::signal_and_wait(ID3D12CommandQueue* queue, bool spin, int spin_us) {
     const UINT64 v = ++value_;
     if (FAILED(queue->Signal(fence_.Get(), v)))
         return false;
     if (spin) {
-        while (fence_->GetCompletedValue() < v)
+        if (spin_us < 0) { // historical default: unbounded spin
+            while (fence_->GetCompletedValue() < v)
+                YieldProcessor();
+            return true;
+        }
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::microseconds(spin_us);
+        while (fence_->GetCompletedValue() < v && std::chrono::steady_clock::now() < deadline)
             YieldProcessor();
-        return true;
+        if (fence_->GetCompletedValue() >= v)
+            return true;
+        // budget exhausted -> same event wait spin=false would take
     }
     if (fence_->GetCompletedValue() < v) {
         fence_->SetEventOnCompletion(v, event_.h);

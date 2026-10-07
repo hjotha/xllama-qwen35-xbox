@@ -1,0 +1,13 @@
+{
+  "model": "qwen35-4b-mtp",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Explain in three short sentences why speculative decoding verifies draft tokens."
+    }
+  ],
+  "temperature": 0,
+  "seed": 1,
+  "max_tokens": 64,
+  "stream": false
+}

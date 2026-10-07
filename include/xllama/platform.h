@@ -26,6 +26,18 @@ int detect_threads_llama() noexcept;
 void log_output(const char* msg) noexcept;
 void log_output(const std::string& msg) noexcept;
 
+// Process CPU time (kernel + user) consumed by ALL threads of this process,
+// in ms, from an arbitrary origin — always read it as a delta between two
+// calls. Limits of this metric (part of its contract, not caveats):
+// process-wide (it aggregates every thread, including sampler/IO threads, so
+// a delta may legitimately exceed the wall time of the phase that enclosed
+// it when threads run in parallel), and it cannot separate scheduler/kernel
+// work from waiting — time spent blocked is simply not counted, so a small
+// delta does not mean the phase was cheap, only that it burned little CPU.
+// Windows/UWP: GetProcessTimes. Linux: CLOCK_PROCESS_CPUTIME_ID.
+// Returns a negative value if unavailable.
+double process_cpu_ms() noexcept;
+
 // Peak working-set size in MB. Returns 0 on platforms where it is unavailable.
 std::size_t peak_working_set_mb() noexcept;
 

@@ -1,1 +1,7 @@
 *.sh text eol=lf
+
+# Preserve raw benchmark receipts and historical snapshots byte-for-byte.
+bench/results/** -text whitespace=-blank-at-eol,-blank-at-eof
+
+# A unified diff must retain its blank context-line prefix.
+*.patch whitespace=-blank-at-eol

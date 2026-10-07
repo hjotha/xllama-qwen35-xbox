@@ -1,0 +1,15 @@
+{
+  "rounds": 30,
+  "verify_sum_ms": {
+    "wall": 2007.98,
+    "d3w": 1197.58,
+    "d3g": 773.74,
+    "cpu": 6125.01
+  },
+  "exclusive_wall_components_ms": {
+    "GPU_shader": 773.74,
+    "submission_fence_driver": 423.8399999999999,
+    "CPU_scheduler_rest": 810.4000000000001
+  },
+  "note": "cpu is summed process CPU time and is not added to wall; diagnostic profile only"
+}

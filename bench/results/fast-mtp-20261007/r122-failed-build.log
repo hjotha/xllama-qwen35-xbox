@@ -1,0 +1,22 @@
+=== START 2026-10-07T14:06:09 session=1 user=hpbeats\hjotha ===
+14:06:09 mode=final
+14:06:09 1/4 apply-uwp-patches.sh
+14:06:11 patches exit=0
+14:06:15 VS dev env: cl.exe na PATH = True
+14:06:15 dirs de saida garantidos
+14:06:15 2/4 build-uwp.ps1 -Backend unified -BuildRevision 122
+14:06:15 build flags=-Clean -WindowsSdkVersion 10.0.26100.0
+14:19:34 build exit=1
+14:19:34 ERR pwsh.exe : [31;1mWrite-Error: [0mC:\Users\hjotha\worktrees\xllama-mtp-fast\scripts\build-uwp.ps1:282[0m
+14:19:34 ERR At C:\Users\hjotha\worktrees\xllama-mtp-fast\scripts\build-xbox-local.ps1:95 char:1
+14:19:34 ERR + & $pwsh -ExecutionPolicy Bypass -NoProfile -File "$repo\scripts\build ...
+14:19:34 ERR + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+14:19:34 ERR     + CategoryInfo          : NotSpecified: ([31;1mWrite-Er...uwp.ps1:282[0m:String) [], RemoteException
+14:19:34 ERR     + FullyQualifiedErrorId : NativeCommandError
+14:19:34 ERR  
+14:19:34 ERR [31;1m[0m[36;1mLine |[0m
+14:19:34 ERR [31;1m[0m[36;1m[36;1m 282 | [0m     [36;1mWrite-Error "MSBuild failed with exit code $buildExitCode"[0m
+14:19:34 ERR [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m     | [31;1m     
+14:19:34 ERR ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+14:19:34 ERR [31;1m[0m[36;1m[36;1m[0m[36;1m[0m[36;1m[31;1m[31;1m[36;1m     | [31;1mMSBuild failed with exit code 1[0m
+14:19:34 ABORT no build

@@ -1,0 +1,496 @@
+{
+  "schema_version": "plan003-mtp-v2",
+  "protocol": "plan003-paired-mtp",
+  "synthetic": false,
+  "title": "Historical negative diagnostic fixture (2026-10-05); identity placeholders are not verified provenance",
+  "provenance": {
+    "model": {
+      "declared_name": "qwen35-4b-mtp",
+      "file_sha256": "f3559ed1a2922585000000000000000000000000000000000000000000000000"
+    },
+    "package": {
+      "declared_identity": "GianlucaMazza.xllama_1.6.0.64_x64__pj67f1fcj4n14",
+      "digest_sha256": "069c52431faef633f8cfb99dbbb242eb0e5d4cb058e39f7be7308d5b8e97f59d"
+    },
+    "config": {
+      "config_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
+      "effective_params": {
+        "backend": "d3d12",
+        "gpu_layers": 28
+      }
+    },
+    "prompts": {
+      "spec-chat-open": {
+        "prompt_hash": "a000000000000000000000000000000000000000000000000000000000000001",
+        "length_tokens": 64
+      },
+      "spec-code-edit": {
+        "prompt_hash": "a000000000000000000000000000000000000000000000000000000000000002",
+        "length_tokens": 64
+      },
+      "standard-512": {
+        "prompt_hash": "a000000000000000000000000000000000000000000000000000000000000003",
+        "length_tokens": 512
+      }
+    },
+    "backend": "d3d12",
+    "gpu_layers": 28,
+    "sampling": {
+      "greedy": 1,
+      "seed": 1
+    },
+    "device_host": "xbox-series-s (192.168.1.26)",
+    "warmup_runs": 1,
+    "recorded_runs": 2
+  },
+  "grid": {
+    "prompts": ["spec-chat-open", "spec-code-edit", "standard-512"],
+    "output_lengths": [64, 256],
+    "arms": ["off", "old", "auto"]
+  },
+  "mandatory_gates": {
+    "build_and_host_tests": {
+      "status": "PASS",
+      "artifact_path": "build/linux-local/tests/xllama-tests",
+      "artifact_sha256": "3bccef8344fa4c32db739992f342fa92eacab2f3000000000000000000000000",
+      "details": "Linux host test suite doctest mtp:* passed",
+      "evidence_type": "assertion_only"
+    },
+    "active_mtp_engagement": {
+      "status": "PASS",
+      "artifact_path": "bench/results/protocol-20261005-standard-512-64-auto.run1.tokens",
+      "artifact_sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03",
+      "details": "MTP active and engaged on console; 452+ 2col matmuls in auto log",
+      "evidence_type": "assertion_only"
+    },
+    "cache_reuse_parity": {
+      "status": "PASS",
+      "artifact_path": "mtp-fix-batch8.log",
+      "artifact_sha256": "42f640361cc758fdfd52607c106fcfbbf730da81604c60c39b0c06e709199b6a",
+      "details": "Plan 004 batch8 KV-reuse parity test doctest 8/8 PASS",
+      "evidence_type": "assertion_only"
+    },
+    "rollback_under_mismatch": {
+      "status": "NOT_PROVEN",
+      "artifact_path": "",
+      "artifact_sha256": "",
+      "details": "Exercised implicitly in session scenarios; no isolated rollback-under-mismatch fixture on console",
+      "evidence_type": "assertion_only"
+    },
+    "phase_instrumentation_accounting": {
+      "status": "NOT_PROVEN",
+      "artifact_path": "",
+      "artifact_sha256": "",
+      "details": "Plan 004 rev64 logged aggregate stats but phase breakdown counters were not isolated",
+      "evidence_type": "assertion_only"
+    },
+    "eog_handling": {
+      "status": "PARTIALLY_PROVEN",
+      "artifact_path": "bench/results/eog-20261005-auto.csv",
+      "artifact_sha256": "3320000000000000000000000000000000000000000000000000000000000000",
+      "details": "EOG-on vs --ignore-eog AUTO identical on 64 tokens (no EOS observed on fixtures; limited to non-EOS length saturation)",
+      "evidence_type": "assertion_only"
+    },
+    "cancel_policy": {
+      "status": "UNTESTED",
+      "artifact_path": "",
+      "artifact_sha256": "",
+      "details": "No console runner exists for mid-generation cancellation",
+      "evidence_type": "assertion_only"
+    }
+  },
+  "cells": {
+    "spec-chat-open_64": {
+      "prompt": "spec-chat-open",
+      "n_gen_tok": 64,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-64-off.csv",
+          "csv_sha256": "7f4aa1eaa991b290b727f9c805b2ab95b111eaed93b8adf9efc97d1c27384fce",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-off.run1.tokens",
+              "sha256": "d9d23039f70e5f32c0b855bc3ac4ee7d036b5f8d8995012e7599066ab37d5009"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-off.run2.tokens",
+              "sha256": "d9d23039f70e5f32c0b855bc3ac4ee7d036b5f8d8995012e7599066ab37d5009"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-off.run3.tokens",
+              "sha256": "d9d23039f70e5f32c0b855bc3ac4ee7d036b5f8d8995012e7599066ab37d5009"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-64-old.csv",
+          "csv_sha256": "493a37017e53957d6235a66e9b105d4f5c08f99e3de19714b892bc81b84ed822",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-old.run1.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-old.run2.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-old.run3.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-64-auto.csv",
+          "csv_sha256": "7c37bf4dd48055405d2e973cbca0eba63f2aa3c441e6591490e879bdc28057eb",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-auto.run1.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-auto.run2.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-64-auto.run3.tokens",
+              "sha256": "20c6aacb69c7667be6c2c75ebb7c6c7feb85c9ff7338909787ee701c4b53f035"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    },
+    "spec-chat-open_256": {
+      "prompt": "spec-chat-open",
+      "n_gen_tok": 256,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-256-off.csv",
+          "csv_sha256": "f61b5111c60758fbcda5f61a1d7c03d58d4d726d6c357adb24b13d2ae96d6735",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-off.run1.tokens",
+              "sha256": "199bca7650b2eef0cde48fc3c50a8409f2e9f93c41ccc6ab77aeaead3ac89fe4"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-off.run2.tokens",
+              "sha256": "199bca7650b2eef0cde48fc3c50a8409f2e9f93c41ccc6ab77aeaead3ac89fe4"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-off.run3.tokens",
+              "sha256": "199bca7650b2eef0cde48fc3c50a8409f2e9f93c41ccc6ab77aeaead3ac89fe4"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-256-old.csv",
+          "csv_sha256": "514ed3b9011754c165f4ad1df6c84e04d5650432d849970894234357ec9b9424",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-old.run1.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-old.run2.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-old.run3.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-spec-chat-open-256-auto.csv",
+          "csv_sha256": "720b35d6280cb80fa51cb0278ea92f52caac342c4b8da938816a462b4d2ed915",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-auto.run1.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-auto.run2.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-chat-open-256-auto.run3.tokens",
+              "sha256": "2cd21170fc0892f47b5afeafd0457d2ecf56e555e01b329256b15a1cdd98ba01"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    },
+    "spec-code-edit_64": {
+      "prompt": "spec-code-edit",
+      "n_gen_tok": 64,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-64-off.csv",
+          "csv_sha256": "2a85d2b18bd933438812cc2d9bfb01723abd65582b657420c19dc8865e4bbaab",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-off.run1.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-off.run2.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-off.run3.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-64-old.csv",
+          "csv_sha256": "ddce1f401a4ab4a97c93c10f9248e4225f81f6a0408559e9566840e14f734903",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-old.run1.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-old.run2.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-old.run3.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-64-auto.csv",
+          "csv_sha256": "3231de7cba22264349c20af902a01d764de47bf358ec60731facf006e0036fa0",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-auto.run1.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-auto.run2.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-64-auto.run3.tokens",
+              "sha256": "ff42c5beec71ff491b458d0e48cbac4d98f8cdcf8153c78868c64aee687a4010"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    },
+    "spec-code-edit_256": {
+      "prompt": "spec-code-edit",
+      "n_gen_tok": 256,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-256-off.csv",
+          "csv_sha256": "e061a94d828cdfbf48c908a1c7ed637681b31c0ba34929815758fe3e07b055f7",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-off.run1.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-off.run2.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-off.run3.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-256-old.csv",
+          "csv_sha256": "f89b31cbd259356b21a49653fc5864d6996e4f70178786270b6f104a1c55e8df",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-old.run1.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-old.run2.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-old.run3.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-spec-code-edit-256-auto.csv",
+          "csv_sha256": "de0c60661cd78db79135500a4f40631f76aebf222e61c33005fd1f2ac6957793",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-auto.run1.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-auto.run2.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-spec-code-edit-256-auto.run3.tokens",
+              "sha256": "2b4f25fa861e5811544a3c869d35b12d3359e116f7881605e1961cf460057be6"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    },
+    "standard-512_64": {
+      "prompt": "standard-512",
+      "n_gen_tok": 64,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-standard-512-64-off.csv",
+          "csv_sha256": "a7223ff79605dd954bfa1ffb8ac537489da74b7b92b73c978182399decc6a203",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-64-off.run1.tokens",
+              "sha256": "865ecd7d07543848bd5842a863264efceb7a8f4796a06b8dd3c6f1d70e5b6418"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-64-off.run2.tokens",
+              "sha256": "865ecd7d07543848bd5842a863264efceb7a8f4796a06b8dd3c6f1d70e5b6418"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-64-off.run3.tokens",
+              "sha256": "865ecd7d07543848bd5842a863264efceb7a8f4796a06b8dd3c6f1d70e5b6418"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-standard-512-64-old.csv",
+          "csv_sha256": "9574e2a442b8797d9abfab308da00c1423c5753bb7767a47e49c49427850d384",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-64-old.run1.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-64-old.run2.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-64-old.run3.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-standard-512-64-auto.csv",
+          "csv_sha256": "ed239f479a65b99f2f24af3a6bd1d66cc1aea801ea9995ac1370765e86a06e18",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-64-auto.run1.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-64-auto.run2.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-64-auto.run3.tokens",
+              "sha256": "246934a6f4a006779d2a6d0137c8e173dd0050c2c62be77ab0f72c0a7ca48a03"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    },
+    "standard-512_256": {
+      "prompt": "standard-512",
+      "n_gen_tok": 256,
+      "arms": {
+        "off": {
+          "csv": "bench/results/protocol-20261005-standard-512-256-off.csv",
+          "csv_sha256": "66f338520369475425c13a96fcdac400a436c81a067fb862da252c4b912cb873",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-256-off.run1.tokens",
+              "sha256": "d45e2c08354432a2000f58f5ff8e7f62ee2d23f56c4d7c4814eeec36ae8f7a66"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-256-off.run2.tokens",
+              "sha256": "d45e2c08354432a2000f58f5ff8e7f62ee2d23f56c4d7c4814eeec36ae8f7a66"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-256-off.run3.tokens",
+              "sha256": "d45e2c08354432a2000f58f5ff8e7f62ee2d23f56c4d7c4814eeec36ae8f7a66"
+            }
+          },
+          "knob": "mtp=0 (baseline)"
+        },
+        "old": {
+          "csv": "bench/results/protocol-20261005-standard-512-256-old.csv",
+          "csv_sha256": "08449eefc88753e603e13db78e4396f4cef1cfd90ef157bd9eb7446a1d3c144d",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-256-old.run1.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-256-old.run2.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-256-old.run3.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=off"
+        },
+        "auto": {
+          "csv": "bench/results/protocol-20261005-standard-512-256-auto.csv",
+          "csv_sha256": "14d6767e55c3b6d54b9cda593ef84b1c4af2541d86845e5d76f88f548a1983da",
+          "token_sidecars": {
+            "1": {
+              "path": "bench/results/protocol-20261005-standard-512-256-auto.run1.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            },
+            "2": {
+              "path": "bench/results/protocol-20261005-standard-512-256-auto.run2.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            },
+            "3": {
+              "path": "bench/results/protocol-20261005-standard-512-256-auto.run3.tokens",
+              "sha256": "5cb254b313d7957caab64c47d01fa56f98c34371793cf781d2ede609d75df0cd"
+            }
+          },
+          "knob": "mtp=4, d3d12twocol=auto"
+        }
+      }
+    }
+  },
+  "_diagnostic_fixture": {
+    "classification": "NEGATIVE_REGRESSION_ONLY",
+    "artifact_origin": "Real historical console CSV/token sidecars copied by the AGY offline-validator task; raw files remain unchanged.",
+    "placeholder_origin": "Auto-generated identity placeholders retained for diagnostic/rejection tests. The model digest is an FNV64 label padded with zeros; config/prompt and some gate hashes are fabricated fixture values, not measured SHA-256 digests.",
+    "unverified_identity_fields": [
+      "provenance.model.file_sha256",
+      "provenance.package.digest_sha256",
+      "provenance.config.config_hash",
+      "provenance.prompts.*.prompt_hash",
+      "mandatory_gates.*.artifact_sha256"
+    ],
+    "gate_status_semantics": "Legacy assertion-only PASS labels are rejected as NOT_PROVEN. This fixture is expected to FAIL and cannot certify any product.",
+    "synthetic_flag_semantics": "synthetic=false identifies the real CSV/token data; it does not make placeholder provenance or assertions genuine."
+  }
+}
