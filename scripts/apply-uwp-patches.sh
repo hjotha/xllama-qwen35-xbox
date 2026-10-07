@@ -21,18 +21,12 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		skipped=$((skipped + 1))
 		continue
 	fi
-	# -3 (3-way) is required against the beellama fork: plain git apply fails
-	# on ggml-backend-dl.cpp, ggml-cpu.c and ggml-cpu.cpp, which drifted on both
-	# sides since the upstream pin. On src/llama-mmap.cpp the 3-way merge still
-	# conflicts — the fork guards the Windows branch with a LLAMA_WINDOWS_DESKTOP
-	# macro it never defines — so that one hunk is resolved in favour of the
-	# patch's AppContainer-aware test (correct on desktop and on Xbox alike).
-	# git apply -3 returns non-zero both when the 3-way merge conflicts and when
-	# it cannot run at all (missing base blobs in a shallow clone), so the exit
-	# code alone cannot gate this. Apply, then decide from the index: unmerged
-	# entries mean "resolvable conflict", no entries and non-zero means the
-	# submodule is missing the base commit and the build must not continue.
-	if ! git apply -3 "$patch" 2>/dev/null && ! git ls-files -u | grep -q .; then
+	# Current-pin patches apply directly, including in shallow CI checkouts.
+	# Only older contexts need a 3-way merge and its base blobs. Preserve the
+	# existing mmap conflict resolver for those older fork revisions.
+	if git apply --check "$patch" 2>/dev/null; then
+		git apply "$patch"
+	elif ! git apply -3 "$patch" 2>/dev/null && ! git ls-files -u | grep -q .; then
 		echo "apply-uwp-patches: ${name} does not apply (3-way could not run); aborting." >&2
 		exit 1
 	fi

@@ -209,6 +209,7 @@ shaders/            HLSL and generated DXIL for the GPU probes
 bench/              Raw results and comparison policy
 demo/               Capture scripts: what the demo video records, reviewable in a PR
 patches/            llama.cpp and vendor patches applied at UWP build time
+plans/              Engineering plans and historical implementation notes
 diffusion/          SD-Turbo → ONNX host toolchain (not inside the MSIX)
 paper/              Citable research package
 llama.cpp/          Submodule. Do not edit in place.

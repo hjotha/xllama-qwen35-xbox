@@ -436,13 +436,17 @@ inline std::string trace_topk(llama_context* ctx, const llama_vocab* vocab, int3
             }
         }
     }
-    char buf[256];
-    int len = 0;
-    for (int k = 0; k < 5 && top[k] >= 0; ++k)
-        len += snprintf(buf + len, sizeof(buf) - static_cast<size_t>(len), "%s%d:%.4f",
-                        k ? " " : "", top[k], static_cast<double>(logits[top[k]]));
+    char buf[256]{};
+    size_t len = 0;
+    for (int k = 0; k < 5 && top[k] >= 0; ++k) {
+        const int written = snprintf(buf + len, sizeof(buf) - len, "%s%d:%.4f", k ? " " : "",
+                                     top[k], static_cast<double>(logits[top[k]]));
+        if (written < 0 || static_cast<size_t>(written) >= sizeof(buf) - len)
+            return buf;
+        len += static_cast<size_t>(written);
+    }
     const double margin = top[1] >= 0 ? static_cast<double>(logits[top[0]]) - logits[top[1]] : 0.0;
-    len += snprintf(buf + len, sizeof(buf) - static_cast<size_t>(len), " margin=%.6f", margin);
+    snprintf(buf + len, sizeof(buf) - len, " margin=%.6f", margin);
     return buf;
 }
 
