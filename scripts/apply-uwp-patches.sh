@@ -22,21 +22,12 @@ for patch in "$ROOT"/patches/0*-*.patch; do
 		continue
 	fi
 	# Current-pin patches apply directly, including in shallow CI checkouts.
-	# Only older contexts need a 3-way merge and its base blobs. Preserve the
-	# existing mmap conflict resolver for those older fork revisions.
+	# Only older contexts need a 3-way merge and its base blobs.
 	if git apply --check "$patch" 2>/dev/null; then
 		git apply "$patch"
 	elif ! git apply -3 "$patch" 2>/dev/null && ! git ls-files -u | grep -q .; then
 		echo "apply-uwp-patches: ${name} does not apply (3-way could not run); aborting." >&2
 		exit 1
-	fi
-	if git ls-files -u --error-unmatch src/llama-mmap.cpp >/dev/null 2>&1; then
-		# "python", not "python3": on Windows python3 is the Microsoft Store
-		# alias stub, which prints "Python was not found" and exits non-zero.
-		PY_BIN=python
-		command -v python >/dev/null 2>&1 || PY_BIN=python3
-		"$PY_BIN" "$ROOT/scripts/resolve-llama-mmap-conflict.py"
-		git add src/llama-mmap.cpp
 	fi
 	# Any conflict left here belongs to a patch this script has no resolver for.
 	# Silently continuing let a 3-way conflict reach the compiler, which reported
