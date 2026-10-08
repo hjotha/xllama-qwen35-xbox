@@ -10,9 +10,11 @@
 
 ## Full-token parity (run1+run2, all cells)
 
-OK against the recorded baseline digests (chat64 `84e08196…`, code64
-`ff42c5be…`, chat256 `f78ce837…`, code256 `c7d84255…`, std512 `44546453…`)
-for both knob OFF and ON, sequential **and** MTP arms.
+OK against the recorded baseline digests for both knob OFF and ON: five
+sequential pairs (chat64 `84e08196…`, code64 `ff42c5be…`, chat256
+`f78ce837…`, code256 `c7d84255…`, std512 `44546453…`) plus three MTP pairs
+(chat64-mtp, code64-mtp, chat256-mtp — same digests), runs 1-2.
+**code256 and std512 were not run on the MTP arm in the final grid.**
 
 ## Timing (median of 2 rows/cell, profile OFF, knob OFF vs ON)
 

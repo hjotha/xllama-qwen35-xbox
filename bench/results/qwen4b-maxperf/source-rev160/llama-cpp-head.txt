@@ -1,0 +1,5 @@
+llama.cpp submodule at final source state (parent commit d960126 on feat/qwen4b-maxperf)
+HEAD: 982eaadaa9dbe761f00205bc20b6c04b7329b58d
+describe: b11089-12087-g982eaadaa
+branch: HEAD
+remote-tracked: none

@@ -227,8 +227,10 @@ Package `GianlucaMazza.xllama_1.6.0.160_x64__pj67f1fcj4n14`, MSIX sha256
 `74C9DEDDA15493A6673353F08E29A77EE16D21A124783BA023DC8956A03EF1C7` (builder ==
 fetched). Full evidence and tables: `acceptance-rev160/verdict.md`.
 
-- Full-token parity OK for every cell (chat64/code64/chat256/code256/std512,
-  seq and MTP, knob OFF and ON, runs 1-2) against the baseline digests.
+- Full-token parity OK against the baseline digests, knob OFF and ON, runs
+  1-2: five sequential pairs (chat64, code64, chat256, code256, std512) plus
+  three MTP pairs (chat64, code64, chat256). code256 and std512 were **not**
+  run on MTP in the final grid.
 - Seq timing (median of 2, knob OFF→ON): chat64 +9.81%, code64 +5.62%,
   chat256 +6.84%, code256 +5.19%, std512 +6.01%. Gate-run labels as measured:
   rev154 chat64-seq **+6.53%**, code64-seq **+5.65%**.

@@ -18,8 +18,10 @@
 
 `74C9DEDDA15493A6673353F08E29A77EE16D21A124783BA023DC8956A03EF1C7`, LTCG)
 
-- Full-token parity vs baseline digests on every cell (chat64/code64/chat256/
-  code256/std512 × seq/MTP × knob OFF/ON, runs 1-2).
+- Full-token parity vs baseline digests, knob OFF/ON, runs 1-2: **five
+  sequential pairs** (chat64, code64, chat256, code256, std512) plus **three
+  MTP pairs** (chat64, code64, chat256). code256 and std512 were not run on
+  the MTP arm in the final grid.
 - Seq FFN timing (median of 2, profile OFF, OFF→ON): chat64 +9.81%, code64
   +5.62%, chat256 +6.84%, code256 +5.19%, std512 +6.01%. Prior gate A/B
   (rev154, labels not swapped): chat64-seq **+6.53%**, code64-seq **+5.65%**.
@@ -34,6 +36,42 @@ The rev154 MTP rows (chat64 +4.42%, code64 +3.61%) were **FFN OFF/ON trials
 with C8 held fixed** gate-wide. They are the rejected FFN candidate's numbers
 — invalidated by the chat256 round-49 proposal divergence — and are **not C8
 evidence**. C8's gain stands on its own rev131 A/B.
+
+## Candidate disposition (bounded cycle, complete)
+
+Final rev160 dispositions — engineering confidence from the measured evidence
+in this cycle, not a universal maximum proof:
+
+- **C8 timestamp gating** — enabled (profile-bound default; own A/B rev131:
+  +1.6 to +3.2% per arm).
+- **C1 batch/verify thread split** — rejected (retained threads 2, batch 2).
+- **C2 draft threads** — no robust gain (retained `mtp_threads=1`).
+- **C7 joint n_batch/n_ubatch 32/32** — rejected (prefill −6.6%; retained
+  64/64).
+- **Q6 tile 2** — rejected (no gain / regression on the Q5_K kernel).
+- **C4 seq FFN SWIGLU** — optional, validated (default OFF); MTP arm rejected
+  (chat256 round-49 proposal divergence).
+- **C3 async waits, C6 shared-nextn** — higher risk; deferred, not
+  implemented.
+- **C5 top_prob/ceiling** — small ceiling; not claimed implemented (no
+  product evidence).
+
+Remaining research is explicit and bounded; the cycle is complete and no
+further implementation is planned here.
+
+## Source reproducibility
+
+Parent commit `d960126` alone does not pin the final source: `git status`
+reports `m llama.cpp` (modified submodule content). Recorded in
+`source-rev160/`: submodule HEAD
+`982eaadaa9dbe761f00205bc20b6c04b7329b58d`, porcelain status + diffstat, and
+the binary-safe worktree diff `llama-cpp-worktree.patch` (sha256
+`7cd11abc97cc2bb4fe196fb73a4465633f1b7d5aa5b7fa97b44184478b4eb144`; per-file
+sha256 in `llama-cpp-sha256.txt`). Reproduce with `git checkout <HEAD>` +
+`git apply --binary`.
+
+Excluded raw evidence logs are preserved and gzipped on disk (uncommitted
+because of size); the filesystem has ~20 GiB free.
 
 ## Limitations (remaining experimental)
 

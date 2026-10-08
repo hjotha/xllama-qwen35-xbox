@@ -1,0 +1,17 @@
+ M ggml/src/ggml-cpu/ops.cpp
+ M ggml/src/ggml-cpu/repack.cpp
+ M ggml/src/ggml-local-split/ggml-local-split.cpp
+ M ggml/src/ggml-remote-attn/ggml-remote-attn.cpp
+ M src/llama-context.cpp
+ M src/llama-ext.h
+ M src/llama-kv-mixed-state-stream.cpp
+ M src/llama-model.cpp
+ ggml/src/ggml-cpu/ops.cpp                      |  5 +-
+ ggml/src/ggml-cpu/repack.cpp                   | 89 ++++++++++++++++++++++++--
+ ggml/src/ggml-local-split/ggml-local-split.cpp | 47 ++++++++++----
+ ggml/src/ggml-remote-attn/ggml-remote-attn.cpp | 14 ++++
+ src/llama-context.cpp                          |  6 +-
+ src/llama-ext.h                                | 12 ++--
+ src/llama-kv-mixed-state-stream.cpp            |  9 ++-
+ src/llama-model.cpp                            |  2 +-
+ 8 files changed, 155 insertions(+), 29 deletions(-)

@@ -1,0 +1,11 @@
+--- patch sha256 ---
+7cd11abc97cc2bb4fe196fb73a4465633f1b7d5aa5b7fa97b44184478b4eb144  ../bench/results/qwen4b-maxperf/source-rev160/llama-cpp-worktree.patch
+--- modified file sha256 ---
+0c887a2486155dcce3cb902e7bc55029f6e4c3e3ee406ea90ec1a09a3e058ec3  ggml/src/ggml-cpu/ops.cpp
+e1d17e5e64bdb55c05f529d2bb4e70bacf24ec5874480952d35b85b02487f8b8  ggml/src/ggml-cpu/repack.cpp
+c3179bd70ffc5743aae8c2594389ec0d4ce7d014de207bd5b3249bd92c0bb281  ggml/src/ggml-local-split/ggml-local-split.cpp
+4a67ed969d04bb807a14e9d8cc38a35dc5deadbe63216bd86dfcd2f3da7c6b56  ggml/src/ggml-remote-attn/ggml-remote-attn.cpp
+32d18c98260982f9a11bcdefbc3fb0a5546bbb3c4a2b58b84afbffade57be276  src/llama-context.cpp
+125df89ab0c86c47c8cb8032766f9f06d1d62834b3d8163f21f93f1b63a8fa6d  src/llama-ext.h
+8fe62988cd985356cbf957be9fcda6ee6dea60332d451b380c5876dda166980c  src/llama-kv-mixed-state-stream.cpp
+074fdad39e0a5bc45cf85bdc6fe2e1ad2223d7a2b5f2a61b6dc4d1fc9f76afd0  src/llama-model.cpp

@@ -1,12 +1,18 @@
 # Plan 006 — Qwen 4B Xbox max-perf: ranked candidate analysis
 
-Status: active. The same-boundary DSPLIT/CSTEP/DSTEP instrumentation first
+> **Historical ranking, superseded (2026-10-08).** The ranked list below was
+> the working analysis during the optimization cycle. The final deliverable is
+> rev160; see `bench/results/qwen4b-maxperf/FINAL-REPORT.md` for the final
+> candidate dispositions and evidence. The bounded cycle is complete; nothing
+> here is pending implementation.
+
+The same-boundary DSPLIT/CSTEP/DSTEP instrumentation first
 shipped in rev129 and was superseded by the rev130 measurement-integrity fix
 before any device run; the corrected rev130 build was measured by the
 independent reviewer (`rev130-reviewed-dsplit/`, parity OK): chat64 OFF seq
 23.81 / MTP 28.22 tok/s; DSPLIT seq d3w ≈54% / d3g 29%, MTP d3w ≈53% /
-d3g 34-35%. C8 (timestamp gating) is now measured (+3.15% seq / +2.60% MTP
-decode, chat64) and its profile-bound default is being implemented.
+d3g 34-35%. C8 (timestamp gating) measured +3.15% seq / +2.60% MTP decode
+(chat64); its profile-bound default has since shipped (final: enabled).
 
 Evidence classes used throughout:
 
