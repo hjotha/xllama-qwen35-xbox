@@ -1,0 +1,537 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 33ef8db..d2c55df 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -61,6 +61,7 @@ add_library(xllama STATIC
+     src/bridge/inference.cpp
+     src/bridge/session.cpp
+     src/bridge/mtp_draft.cpp
++    src/bridge/mtp_top_prob.cpp
+     src/bridge/embedding.cpp
+     src/bridge/kv_store.cpp
+     src/bridge/bench.cpp
+diff --git a/include/xllama/mtp_top_prob.h b/include/xllama/mtp_top_prob.h
+new file mode 100644
+index 0000000..0796e68
+--- /dev/null
++++ b/include/xllama/mtp_top_prob.h
+@@ -0,0 +1,30 @@
++// Copyright (c) 2024 Gianluca Mazza
++// SPDX-License-Identifier: MIT
++//
++// top_prob core, split out of mtp_draft.cpp so the max scan and the p_min
++// gate can be tested bit-exactly (tests/test_mtp_top_prob.cpp). The only
++// difference between the two max implementations is the scan; the exp
++// accumulation, the early exit and the return stay byte-for-byte the same.
++#pragma once
++
++namespace xllama {
++
++// Maximum of |logits| with the exact semantics of the original scalar loop:
++// the first element seeds the scan (a NaN seed is sticky), later NaNs are
++// ignored, ties keep the first occurrence including its signed-zero bit
++// pattern. |mtp_logits_max_avx| is bit-identical to
++// |mtp_logits_max_scalar| (256-bit AVX path; scalar fallback when the
++// translation unit is built without __AVX__). Callers must pass n >= 1.
++float mtp_logits_max_scalar(const float* logits, int n);
++float mtp_logits_max_avx(const float* logits, int n);
++
++// Exact top_prob: max scan, then the exp accumulation in strict ascending
++// index order with the early exit (1/sum < p_min is already decided). |avx|
++// selects the max-scan implementation only.
++float mtp_top_prob_core(const float* logits, int n_vocab, float p_min, bool avx);
++
++// Bench knob (bench_topprob_avx.txt): process-wide max-scan selector.
++void mtp_set_top_prob_avx(bool enabled);
++bool mtp_top_prob_avx_enabled();
++
++} // namespace xllama
+diff --git a/src/bridge/mtp_draft.cpp b/src/bridge/mtp_draft.cpp
+index d7c4961..ccb3fb9 100644
+--- a/src/bridge/mtp_draft.cpp
++++ b/src/bridge/mtp_draft.cpp
+@@ -17,6 +17,7 @@
+ 
+ #include "xllama/mtp_draft.h"
+ 
++#include "xllama/mtp_top_prob.h"
+ #include "xllama/platform.h"
+ 
+ #include <algorithm>
+@@ -30,33 +31,15 @@ namespace xllama {
+ namespace {
+ 
+ // Softmax probability of the drafted token, from the draft context's own logits
+-// at |idx|. llama_sampler_get_candidates would do this, but it is declared in
+-// the fork's common layer, which this frontend does not link.
+-//
+-// Early exit (plan 003, stage 4.4): the candidate fails when 1/sum < p_min,
+-// i.e. sum > 1/p_min. Every term is positive and the maximum logit's term is
+-// exactly 1, so once the running sum exceeds the limit the verdict cannot
+-// change — stop instead of summing the whole vocabulary. The result is
+-// identical to the full sum; only the work is skipped. The limit is
+-// recomputed from the same p_min the caller gates on.
++// at |idx|. The core (max scan, exp accumulation, early exit, limit) lives in
++// mtp_top_prob.cpp so it is testable bit-exactly; plan 006 C5 replaced only the
++// max scan with a 256-bit AVX scan (bench_topprob_avx.txt selects it).
+ float top_prob(llama_context* ctx, int32_t idx, float p_min) {
+     const int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx)));
+     const float* logits = llama_get_logits_ith(ctx, idx);
+     if (!logits || n_vocab <= 0)
+         return 0.0f;
+-    float max_l = logits[0];
+-    for (int i = 1; i < n_vocab; ++i)
+-        if (logits[i] > max_l)
+-            max_l = logits[i];
+-    const double limit = 1.0 / static_cast<double>(p_min);
+-    double sum = 0.0;
+-    for (int i = 0; i < n_vocab; ++i) {
+-        sum += std::exp(static_cast<double>(logits[i] - max_l));
+-        if (sum > limit)
+-            return 0.0f; // 1/sum < p_min is already decided
+-    }
+-    // exp of the largest logit is 1 by construction, so it contributes exactly 1.
+-    return static_cast<float>(1.0 / sum);
++    return mtp_top_prob_core(logits, n_vocab, p_min, mtp_top_prob_avx_enabled());
+ }
+ 
+ } // namespace
+diff --git a/src/bridge/mtp_top_prob.cpp b/src/bridge/mtp_top_prob.cpp
+new file mode 100644
+index 0000000..eb53fcb
+--- /dev/null
++++ b/src/bridge/mtp_top_prob.cpp
+@@ -0,0 +1,91 @@
++// Copyright (c) 2024 Gianluca Mazza
++// SPDX-License-Identifier: MIT
++//
++// Plan 006 C5: top_prob max scan. The scalar loop is the original one; the
++// AVX path scans 8 elements per step with an ordered-greater blend, which
++// keeps the scalar semantics exactly (later NaNs are never selected, a NaN
++// seed is sticky, ties keep the earlier element). See the header for the
++// contract and tests/test_mtp_top_prob.cpp for the adversarial suite.
++#include "xllama/mtp_top_prob.h"
++
++#include <cmath>
++
++#if defined(__AVX__)
++#include <immintrin.h>
++#endif
++
++namespace xllama {
++
++namespace {
++// Default OFF until the on-console paired proposal/acceptance traces, full
++// token IDs and timing pass; bench_topprob_avx.txt="1" selects the AVX scan.
++bool g_top_prob_avx = false;
++}
++
++float mtp_logits_max_scalar(const float* logits, int n) {
++    float max_l = logits[0];
++    for (int i = 1; i < n; ++i)
++        if (logits[i] > max_l)
++            max_l = logits[i];
++    return max_l;
++}
++
++float mtp_logits_max_avx(const float* logits, int n) {
++#if defined(__AVX__)
++    float max_l = logits[0];
++    __m256 vmax = _mm256_set1_ps(logits[0]);
++    int i = 1;
++    for (; i + 8 <= n; i += 8) {
++        const __m256 v = _mm256_loadu_ps(logits + i);
++        // Ordered GT: a NaN in |v| leaves its lane untouched (later NaNs are
++        // ignored, exactly like the scalar loop), and a NaN seed lane stays
++        // NaN for the same reason.
++        vmax = _mm256_blendv_ps(vmax, v, _mm256_cmp_ps(v, vmax, _CMP_GT_OQ));
++    }
++    float lanes[8];
++    _mm256_storeu_ps(lanes, vmax);
++    for (int k = 0; k < 8; ++k)
++        if (lanes[k] > max_l)
++            max_l = lanes[k];
++    for (; i < n; ++i)
++        if (logits[i] > max_l)
++            max_l = logits[i];
++    if (max_l == 0.0f) {
++        // +0 and -0 compare equal, so a lane fold can keep the later sign
++        // where the scalar loop keeps the first zero it meets. Re-scan only
++        // in that (rare) case to stay bit-identical.
++        for (int j = 0; j < n; ++j)
++            if (logits[j] == 0.0f)
++                return logits[j];
++    }
++    return max_l;
++#else
++    return mtp_logits_max_scalar(logits, n);
++#endif
++}
++
++float mtp_top_prob_core(const float* logits, int n_vocab, float p_min, bool avx) {
++    // Softmax probability of the drafted token from the draft context's own
++    // logits at |idx|. The candidate fails when 1/sum < p_min, i.e.
++    // sum > 1/p_min; every term is positive and the maximum logit's term is
++    // exactly 1, so once the running sum exceeds the limit the verdict cannot
++    // change. The sum keeps strict ascending-index scalar order and the limit
++    // is recomputed from the same p_min the caller gates on.
++    const float max_l = avx ? mtp_logits_max_avx(logits, n_vocab)
++                            : mtp_logits_max_scalar(logits, n_vocab);
++    const double limit = 1.0 / static_cast<double>(p_min);
++    double sum = 0.0;
++    for (int i = 0; i < n_vocab; ++i) {
++        sum += std::exp(static_cast<double>(logits[i] - max_l));
++        if (sum > limit)
++            return 0.0f; // 1/sum < p_min is already decided
++    }
++    // exp of the largest logit is 1 by construction, so it contributes
++    // exactly 1.
++    return static_cast<float>(1.0 / sum);
++}
++
++void mtp_set_top_prob_avx(bool enabled) { g_top_prob_avx = enabled; }
++bool mtp_top_prob_avx_enabled() { return g_top_prob_avx; }
++
++} // namespace xllama
+diff --git a/tests/CMakeLists.txt b/tests/CMakeLists.txt
+index 9341869..74e99ee 100644
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -50,6 +50,7 @@ add_executable(xllama-tests
+     test_embedding.cpp
+     test_autopilot.cpp
+     test_speculative.cpp
++    test_mtp_top_prob.cpp
+     test_capture_probe.cpp
+ )
+ 
+diff --git a/tests/test_mtp_top_prob.cpp b/tests/test_mtp_top_prob.cpp
+new file mode 100644
+index 0000000..6f323d9
+--- /dev/null
++++ b/tests/test_mtp_top_prob.cpp
+@@ -0,0 +1,263 @@
++// Copyright (c) 2024 Gianluca Mazza
++// SPDX-License-Identifier: MIT
++//
++// Plan 006 C5: bit-exact adversarial tests for the top_prob max scan and the
++// p_min gate. The AVX path must return the same bits as the original scalar
++// loop for first-NaN (sticky), later-NaN (ignored), signed-zero/ties and
++// infinities, and the exp accumulation/early exit must be untouched.
++#include <doctest/doctest.h>
++
++#include <cmath>
++#include <cstdint>
++#include <cstring>
++#include <vector>
++
++#include "xllama/mtp_top_prob.h"
++
++using namespace xllama;
++
++namespace {
++
++uint32_t bits(float f) {
++    uint32_t u;
++    std::memcpy(&u, &f, sizeof(u));
++    return u;
++}
++
++// Independent reference: the original scalar semantics.
++float ref_max(const float* a, int n) {
++    float m = a[0];
++    for (int i = 1; i < n; ++i)
++        if (a[i] > m)
++            m = a[i];
++    return m;
++}
++
++float ref_core(const float* a, int n, float p_min) {
++    const float m = ref_max(a, n);
++    const double limit = 1.0 / static_cast<double>(p_min);
++    double sum = 0.0;
++    for (int i = 0; i < n; ++i) {
++        sum += std::exp(static_cast<double>(a[i] - m));
++        if (sum > limit)
++            return 0.0f;
++    }
++    return static_cast<float>(1.0 / sum);
++}
++
++void check_max_bits(const std::vector<float>& a) {
++    const float s = mtp_logits_max_scalar(a.data(), static_cast<int>(a.size()));
++    const float v = mtp_logits_max_avx(a.data(), static_cast<int>(a.size()));
++    const float r = ref_max(a.data(), static_cast<int>(a.size()));
++    CHECK_MESSAGE(bits(s) == bits(r), "scalar vs reference");
++    CHECK_MESSAGE(bits(v) == bits(s), "avx vs scalar");
++}
++
++void check_core_bits(const std::vector<float>& a, float p_min) {
++    const int n = static_cast<int>(a.size());
++    const float ref = ref_core(a.data(), n, p_min);
++    const float sc = mtp_top_prob_core(a.data(), n, p_min, false);
++    const float av = mtp_top_prob_core(a.data(), n, p_min, true);
++    CHECK_MESSAGE(bits(sc) == bits(ref), "scalar core vs reference");
++    CHECK_MESSAGE(bits(av) == bits(ref), "avx core vs reference");
++}
++
++} // namespace
++
++TEST_CASE("c5: max scan bit-exact on adversarial patterns and every tail length") {
++    // Lengths 1..33: no vector block (1..8), one block + tail (9..16),
++    // two blocks + tail (17..25), full blocks (33 = 4*8 + 1).
++    for (int n = 1; n <= 33; ++n) {
++        for (int t = 0; t < 64; ++t) {
++            std::vector<float> a(n);
++            for (int i = 0; i < n; ++i)
++                a[i] = static_cast<float>((t * 7 + i * 13) % 5) - 2.0f; // ties
++            const int p = (t * 3) % n;
++            switch ((t / 3) % 6) {
++            case 1: a[p] = NAN; break;
++            case 2: a[p] = (t % 2) ? -0.0f : 0.0f; break;
++            case 3: a[p] = (t % 2) ? INFINITY : -INFINITY; break;
++            case 4: a[0] = NAN; break; // sticky seed
++            case 5: a[n - 1] = NAN; break;
++            default: break;
++            }
++            check_max_bits(a);
++            check_core_bits(a, 50.0f);
++        }
++    }
++}
++
++TEST_CASE("c5: max scan bit-exact on randomized arrays with specials") {
++    uint64_t s = 0x9E3779B97F4A7C15ull;
++    auto rnd = [&s]() {
++        s = s * 6364136223846793005ull + 1442695040888963407ull;
++        return static_cast<uint32_t>(s >> 33);
++    };
++    for (int rep = 0; rep < 400; ++rep) {
++        const int n = 1 + static_cast<int>(rnd() % 300);
++        std::vector<float> a(n);
++        for (int i = 0; i < n; ++i)
++            a[i] = static_cast<float>(static_cast<int>(rnd() % 2001) - 1000) * 0.001f;
++        for (int k = 0; k < 3; ++k) {
++            const int p = static_cast<int>(rnd() % n);
++            switch (rnd() % 4) {
++            case 0: a[p] = NAN; break;
++            case 1: a[p] = -0.0f; break;
++            case 2: a[p] = INFINITY; break;
++            default: a[p] = -INFINITY; break;
++            }
++        }
++        check_max_bits(a);
++    }
++    // One large array, vocab-sized, with specials at both ends.
++    std::vector<float> big(248320);
++    for (size_t i = 0; i < big.size(); ++i)
++        big[i] = static_cast<float>(static_cast<int>(rnd() % 2001) - 1000) * 0.01f;
++    big[0] = -0.0f;
++    big[1] = NAN;
++    big[12345] = INFINITY;
++    big[big.size() - 1] = 0.0f;
++    check_max_bits(big);
++}
++
++TEST_CASE("c5: p_min threshold boundaries stay exact") {
++    // All-equal logits: each term is 1.0, so the sum crosses 1/p_min at an
++    // exactly known index; p_min=0.5 -> limit=2.0 -> exit at the third term.
++    {
++        std::vector<float> a(16, 0.0f);
++        check_core_bits(a, 0.5f); // sum 3.0 > 2.0 at i=2
++        check_core_bits(a, 2.0f); // limit 0.5 -> exit at i=0 (sum 1.0 > 0.5)
++        check_core_bits(a, 50.0f);
++        check_core_bits(a, 1.0f);
++    }
++    // Exact tie with the limit: sum reaches exactly 2.0 and never exceeds it
++    // (later terms are exp(-inf)=0), so the full sum decides: 1/2.
++    {
++        std::vector<float> a = {0.0f, 0.0f, -INFINITY, -INFINITY, -INFINITY};
++        check_core_bits(a, 0.5f);
++    }
++    // One more unit term pushes the sum above the limit.
++    {
++        std::vector<float> a = {0.0f, 0.0f, 0.0f, -INFINITY, -INFINITY};
++        check_core_bits(a, 0.5f);
++    }
++    // Terms at 2^-k scale: crafted to sit near the limit in ULP terms.
++    {
++        std::vector<float> a = {0.0f, -0.6931472f, -1.3862944f, -2.0794415f, -2.7725887f, -3.465736f};
++        for (float pm : {0.5f, 0.7f, 0.8f, 1.0f, 1.3f, 1.5f, 50.0f})
++            check_core_bits(a, pm);
++    }
++    // Non-finite inputs: all -inf (max -inf -> NaN terms), all +inf, one 0
++    // with the rest -inf (sum 1.0), NaN seed.
++    {
++        std::vector<float> a(12, -INFINITY);
++        check_core_bits(a, 50.0f);
++        std::vector<float> b(12, INFINITY);
++        check_core_bits(b, 50.0f);
++        std::vector<float> c(12, -INFINITY);
++        c[7] = 0.0f;
++        check_core_bits(c, 50.0f);
++        check_core_bits(c, 0.5f);
++        std::vector<float> d(12, 1.0f);
++        d[0] = NAN;
++        check_core_bits(d, 50.0f);
++    }
++    // Signed-zero seed and zero ties at every position.
++    for (int pos = 0; pos < 9; ++pos) {
++        std::vector<float> a(9, -1.0f);
++        a[pos] = -0.0f;
++        a[(pos + 3) % 9] = 0.0f;
++        check_max_bits(a);
++        check_core_bits(a, 50.0f);
++    }
++}
++
++TEST_CASE("c5: nextafter p_min boundaries around the returned probability (n > 8)") {
++    // Unit terms (the rest exp(-inf)=0) make the sum an exact integer k, so
++    // the returned probability is 1/k and the limit 1/p_min lands exactly on
++    // it: candidates one float ULP around the probability must flip the gate
++    // identically in both paths.
++    for (int n : {9, 10, 16, 17, 33, 64}) {
++        const int k = 9; // unit terms
++        std::vector<float> a(n, -INFINITY);
++        for (int i = 0; i < k; ++i)
++            a[i] = 0.0f;
++        const float prob = static_cast<float>(1.0 / k);
++        const float cands[5] = {
++            std::nextafter(std::nextafter(prob, -INFINITY), -INFINITY),
++            std::nextafter(prob, -INFINITY),
++            prob,
++            std::nextafter(prob, INFINITY),
++            std::nextafter(std::nextafter(prob, INFINITY), INFINITY),
++        };
++        int exits = 0, completes = 0;
++        for (float pm : cands) {
++            check_core_bits(a, pm);
++            const float r = mtp_top_prob_core(a.data(), n, pm, true);
++            (r == 0.0f ? exits : completes)++;
++        }
++        CHECK(exits > 0);
++        CHECK(completes > 0);
++    }
++    // Non-trivial distribution: probabilities from the reference, candidates
++    // within a few ULPs of each returned value, n > 8 (block + tail).
++    uint64_t s = 0xC0FFEE123456789ull;
++    auto rnd = [&s]() {
++        s = s * 6364136223846793005ull + 1442695040888963407ull;
++        return static_cast<uint32_t>(s >> 33);
++    };
++    for (int rep = 0; rep < 40; ++rep) {
++        const int n = 9 + static_cast<int>(rnd() % 120);
++        std::vector<float> a(n);
++        for (int i = 0; i < n; ++i)
++            a[i] = static_cast<float>(static_cast<int>(rnd() % 2001) - 1000) * 0.01f;
++        const float prob = ref_core(a.data(), n, 1.0f); // no early exit at p_min=1
++        float pm = prob;
++        for (int u = 0; u < 4; ++u)
++            pm = std::nextafter(pm, -INFINITY);
++        for (int u = 0; u < 8; ++u) {
++            check_core_bits(a, pm);
++            pm = std::nextafter(pm, INFINITY);
++        }
++    }
++}
++
++TEST_CASE("c5: signed-zero maxima crossing lane order") {
++    // First zero in a later lane than another zero: lane0's zero sits at
++    // index 9 while lane1's sits at index 2, so a plain lane fold would keep
++    // the -0 from index 9; the scalar loop keeps the first zero, +0 at index
++    // 2. The canonicalization must recover the scalar sign.
++    {
++        std::vector<float> a(17, -1.0f);
++        a[2] = 0.0f;
++        a[9] = -0.0f;
++        check_max_bits(a);
++        check_core_bits(a, 50.0f);
++    }
++    {
++        std::vector<float> b(17, -1.0f);
++        b[2] = -0.0f;
++        b[9] = 0.0f;
++        check_max_bits(b);
++        check_core_bits(b, 50.0f);
++    }
++    // Same-lane zeros plus a scalar-tail zero.
++    {
++        std::vector<float> c(33, -1.0f);
++        c[0] = -0.0f;
++        c[8] = 0.0f;
++        c[16] = -0.0f;
++        c[32] = 0.0f;
++        check_max_bits(c);
++        check_core_bits(c, 50.0f);
++    }
++}
++
++TEST_CASE("c5: selector default is OFF and the knob enables the avx scan") {
++    const bool prev = mtp_top_prob_avx_enabled();
++    mtp_set_top_prob_avx(false);
++    CHECK_FALSE(mtp_top_prob_avx_enabled());
++    mtp_set_top_prob_avx(true);
++    CHECK(mtp_top_prob_avx_enabled());
++    mtp_set_top_prob_avx(prev);
++}
+diff --git a/uwp/inference-bridge.cpp b/uwp/inference-bridge.cpp
+index 7ff6059..773b078 100644
+--- a/uwp/inference-bridge.cpp
++++ b/uwp/inference-bridge.cpp
+@@ -11,6 +11,7 @@
+ #include "xllama/gpubw.h"
+ #include "xllama/gpugemv.h"
+ #include "xllama/gpustep.h"
++#include "xllama/mtp_top_prob.h"
+ #include "xllama/termgate.h"
+ #include "xllama/tttarget.h"
+ #ifdef XLLAMA_USE_LLAMA
+@@ -170,6 +171,20 @@ void apply_spinwait_knob(const char* who) {
+     log_output(lb);
+ }
+ 
++// Plan 006 C5: top_prob max-scan selector. bench_topprob_avx.txt "0" forces
++// the scalar scan; "1" or absent keeps the 256-bit AVX scan (bit-identical,
++// see src/bridge/mtp_top_prob.cpp). Process-wide, read once per start.
++void apply_topprob_avx_knob(const char* who) {
++    const std::string raw = read_local_file("bench_topprob_avx.txt");
++    const bool avx = raw == "1";
++    ::xllama::mtp_set_top_prob_avx(avx);
++    char lb[224];
++    snprintf(lb, sizeof(lb), "[xllama] %s: bench_topprob_avx.txt='%s' -> max scan %s%s\n", who,
++             raw.empty() ? "(absent)" : raw.c_str(), avx ? "avx" : "scalar",
++             raw.empty() ? " (candidate default)" : "");
++    log_output(lb);
++}
++
+ // Existing-instrumentation switch (plan004 rev102): ggmlprof.txt strict
+ // single token -> _putenv of the matching env read by the PINNED ggml/llama
+ // (default-off facilities; no submodule change). Absent or anything else
+@@ -902,6 +917,7 @@ void apply_startup_profile() {
+     s_prof_repack = read_local_file("cpurepackforcegemv.txt");
+     apply_twocol_knob("startup");      // no-op when file absent
+     apply_repack_ctrl_knob("startup"); // _putenv only when file present
++    apply_topprob_avx_knob("startup");
+     char lb[256];
+     snprintf(lb, sizeof(lb),
+              "[xllama] startup profile: twocol='%s' repack='%s' (immutable for this "
+@@ -1024,6 +1040,7 @@ void main_loop() {
+     apply_repack_ctrl_knob("main_loop");
+     apply_spinwait_knob("main_loop");
+     apply_ggmlprof_knob("main_loop");
++    apply_topprob_avx_knob("main_loop");
+ 
+     // Real-decode two-column knob (plan 004): d3d12twocol.txt="auto" engages
+     // variant 2 (allowlisted NEW) for every decode in this bench process —
+diff --git a/uwp/xllama.vcxproj b/uwp/xllama.vcxproj
+index 819c178..d7e87ad 100644
+--- a/uwp/xllama.vcxproj
++++ b/uwp/xllama.vcxproj
+@@ -318,6 +318,7 @@
+     <ClCompile Include="..\src\bridge\inference.cpp" />
+     <ClCompile Include="..\src\bridge\session.cpp" />
+     <ClCompile Include="..\src\bridge\mtp_draft.cpp" />
++    <ClCompile Include="..\src\bridge\mtp_top_prob.cpp" />
+     <ClCompile Include="..\src\bridge\embedding.cpp" />
+     <ClCompile Include="..\src\bridge\kv_store.cpp" />
+     <ClCompile Include="..\src\bridge\bench.cpp" />

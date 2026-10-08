@@ -53,8 +53,10 @@ in this cycle, not a universal maximum proof:
   (chat256 round-49 proposal divergence).
 - **C3 async waits, C6 shared-nextn** — higher risk; deferred, not
   implemented.
-- **C5 top_prob/ceiling** — small ceiling; not claimed implemented (no
-  product evidence).
+- **C5 top_prob max-scan AVX** — tried and closed (rev161): bit-exact,
+  isolated scan 2.6x, but only −2.4/−2.5 ms/run on console (exp/sum-bound,
+  below noise); reverted, patch preserved in
+  `bench/results/qwen4b-maxperf/c5-rev161/`.
 
 Remaining research is explicit and bounded; the cycle is complete and no
 further implementation is planned here.
@@ -90,6 +92,11 @@ knobs absent, startup scope2 profile (`d3d12twocol.txt=auto`,
 `cpurepackforcegemv.txt=2`). API verified PASS on the installed package.
 Optional seq preset preserved: `presets/llama-ini-mtp0-seq.txt` (see
 `presets/README.md`).
+
+After the C5 trial the device runs the same verified rev160 source as
+**1.6.0.162** (fast-iteration rebuild; the 1.6.0.160 downgrade is blocked by
+UWP and uninstalling is forbidden — model data lives in LocalState). Receipt
+and verification: `c5-rev161/restore-receipt.txt`.
 
 Evidence: `bench/results/qwen4b-maxperf/` (`acceptance-rev160/verdict.md`,
 `seqgates-rev159/`, `swiglu-*/`, README). No publish or merge.

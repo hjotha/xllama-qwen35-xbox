@@ -1,0 +1,2 @@
+c5_avx_checks=4697 fails=0
+timing_us scan_scalar=185.0 scan_avx=70.7 speedup=2.62x core_scalar=185.8 core_avx=69.4 speedup=2.68x

@@ -414,3 +414,17 @@ g.last_gpu_ms` (`ggml_d3d12.cpp:1632`) accumulates unconditionally while
 - Device restored to the documented production profile (`llama.ini` mtp=2,
   `d3d12swiglu.txt=0`, profiling off); optional sequential preset preserved
   in `bench/results/qwen4b-maxperf/presets/`.
+- **C5 closed (rev161 trial, no practical gain).** The AVX max scan was
+  bit-exact (4697 adversarial checks; SIMD confirmed in the MSVC object) and
+  2.6x on the isolated loop, but on-console `top_prob` saved only 2.4-2.5
+  ms/run (~4.3%) — the scalar double exp/sum dominates — and the end-to-end
+  paired deltas (chat64 +0.43% mean, overlapping ranges; code64 +1.24%, ranges
+  touch) are not causal. Candidate reverted (patch preserved in
+  `bench/results/qwen4b-maxperf/c5-rev161/`); no LTCG spent. Device runs the
+  verified source as 1.6.0.162 (fast iteration; 1.6.0.160 downgrade blocked
+  and uninstall forbidden) with the production profile verified
+  (`c5-rev161/restore-receipt.txt`).
+- **Residual bottlenecks (unchanged):** MTP decode ≈ verify 64.5%, classic
+  20.3%, draft 8.5%, catchup 3.1%; verify split d3w ≈50% with ≈50% CPU-side
+  vs submission/fence; `top_prob` is exp/sum-bound (order-preserving
+  constraint), not scan-bound.

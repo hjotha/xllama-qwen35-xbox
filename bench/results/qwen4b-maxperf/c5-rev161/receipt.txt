@@ -1,0 +1,10 @@
+start_utc=2026-10-08T04:38:54Z
+pfn=GianlucaMazza.xllama_1.6.0.161_x64__pj67f1fcj4n14
+msix_sha256=823263EA5E57213769708AECCAA0F8D1FE669254DEC1271439AD3E20159ADC04
+trace cell=chat64 arm=0 utc=2026-10-08T04:39:20Z
+trace cell=chat64 arm=1 utc=2026-10-08T04:39:47Z
+trace cell=code64 arm=0 utc=2026-10-08T04:40:14Z
+trace cell=code64 arm=1 utc=2026-10-08T04:40:41Z
+timing cell=chat64 utc=2026-10-08T04:43:22Z
+timing cell=code64 utc=2026-10-08T04:46:02Z
+end_utc=2026-10-08T04:46:02Z

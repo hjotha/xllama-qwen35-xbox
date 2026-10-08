@@ -1,0 +1,1 @@
+[xllama] MTP_STATS rounds=23 decodes=86 discarded=20 catchup_tok=61 draft_ms=196.8 sample_ms=28.5 topprob_ms=53.1 catchup_ms=60.0 verify_ms=1411.1 corrective_ms=129.7

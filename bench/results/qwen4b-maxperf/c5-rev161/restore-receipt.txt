@@ -1,0 +1,10 @@
+restore receipt 2026-10-08T05:01:23Z
+pfn=GianlucaMazza.xllama_1.6.0.162_x64__pj67f1fcj4n14
+msix_sha256=249E4C3DBA078E00F3AAD90F666418647650D482C6AE4E33FFF17B46A5E3104C (builder log sha == fetched)
+source=verified rev160 state (commit d960126/7f20477), C5 edits reverted; UWP blocks 1.6.0.160 downgrade and app uninstall is forbidden, so the same source was rebuilt as 1.6.0.162 (fast iteration, no LTCG)
+knobs: d3d12swiglu.txt=0; bench_topprob_avx/bench_host_tag/termgate/ggmlprof/d3d12timestamps deleted
+llama.ini: n_gpu_layers=34 n_ctx=2048 n_threads=2 n_batch=64 n_ubatch=64 kv_q8=0 mtp=2 mtp_pmin=50
+[xllama] d3d12: FFN SWIGLU profile bound: off (mtp_capable=1)
+[xllama] startup profile: twocol='auto' repack='2' (immutable for this process lifetime; restart the app to change)
+[xllama] api: listening on 0.0.0.0:11434 (OpenAI-compat /v1/chat/completions)
+[xllama] d3d12: FFN SWIGLU profile bound: off (mtp_capable=1)
