@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090  # env file path is resolved at run time
 # Plan 005 baseline pilot on rev126: MTP toggle only, same qwen35-4b-mtp GGUF.
 # Interleaved seq/mtp cells, prose+code @64, profile OFF timings and one
 # profile ON attribution pair. Absolute cwd; XLLAMA_EXPECTED_PFN guards.
@@ -6,6 +7,7 @@ set -euo pipefail
 REPO=/home/hjotha/worktrees/xllama-qwen35-4b-maxperf
 BASE="$REPO/bench/results/qwen4b-maxperf/baseline-rev126"
 cd "$REPO"
+# shellcheck source=/dev/null
 set -a; source ~/.config/xllama/xbox-env; set +a
 export XLLAMA_MSIX_SHA256=5bde8869ab587350fa42fb4a81ef1d47744697db672abb0d9bb6ed521682105f
 export XLLAMA_EXPECTED_PFN=GianlucaMazza.xllama_1.6.0.126_x64__pj67f1fcj4n14

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090  # env file path is resolved at run time
 # Plan 005 experiment 2 (rev127): prefill n_batch/n_ubatch sweep.
 # Arms u64 (baseline) / u128 / u256, std-512 prompt, seq and MTP, two
 # opposite-order blocks, --runs 2 (warmup + 1 measured), profile OFF.
@@ -6,6 +7,7 @@ set -euo pipefail
 REPO=/home/hjotha/worktrees/xllama-qwen35-4b-maxperf
 BASE="$REPO/bench/results/qwen4b-maxperf/ubatch-rev127"
 cd "$REPO"
+# shellcheck source=/dev/null
 set -a; source ~/.config/xllama/xbox-env; set +a
 export XLLAMA_MSIX_SHA256=801f50eb5f4cf6a43fef4039563acc41a2e7b0f2096d4d39f0b8b706dc86a99e
 export XLLAMA_EXPECTED_PFN=GianlucaMazza.xllama_1.6.0.127_x64__pj67f1fcj4n14
