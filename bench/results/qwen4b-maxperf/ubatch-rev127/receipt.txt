@@ -1,0 +1,16 @@
+sha256=801f50eb5f4cf6a43fef4039563acc41a2e7b0f2096d4d39f0b8b706dc86a99e
+pfn=GianlucaMazza.xllama_1.6.0.127_x64__pj67f1fcj4n14
+start_utc=2026-10-07T17:16:26Z
+cell=std512-seq-u64 u=64 mtp=0 utc=2026-10-07T17:16:26Z
+done=std512-seq-u64 utc=2026-10-07T17:17:20Z
+cell=std512-seq-u128 u=128 mtp=0 utc=2026-10-07T17:17:20Z
+done=std512-seq-u128 utc=2026-10-07T17:18:12Z
+cell=std512-seq-u256 u=256 mtp=0 utc=2026-10-07T17:18:12Z
+done=std512-seq-u256 utc=2026-10-07T17:19:04Z
+cell=std512-mtp-u64 u=64 mtp=2 utc=2026-10-07T17:19:04Z
+done=std512-mtp-u64 utc=2026-10-07T17:19:57Z
+cell=std512-mtp-u128 u=128 mtp=2 utc=2026-10-07T17:19:57Z
+done=std512-mtp-u128 utc=2026-10-07T17:20:49Z
+cell=std512-mtp-u256 u=256 mtp=2 utc=2026-10-07T17:20:49Z
+done=std512-mtp-u256 utc=2026-10-07T17:30:31Z
+cell=std512-mtp-u256-b2 u=256 mtp=2 utc=2026-10-07T17:30:31Z

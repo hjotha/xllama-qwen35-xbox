@@ -1,0 +1,50 @@
+sha256=c97a109be5f12f8b2a44d017a15424b799b1cb74f795a73a09aec9cccfaa5914
+pfn=GianlucaMazza.xllama_1.6.0.132_x64__pj67f1fcj4n14
+start_utc=2026-10-07T19:57:15Z
+cell=chat64-seq-t2b2 mtp=0 t=2 tb=2 predict=64 utc=2026-10-07T19:57:15Z
+done=chat64-seq-t2b2 utc=2026-10-07T19:58:36Z
+cell=chat64-seq-t2b4 mtp=0 t=2 tb=4 predict=64 utc=2026-10-07T19:58:36Z
+done=chat64-seq-t2b4 utc=2026-10-07T19:59:56Z
+cell=chat64-seq-t2b6 mtp=0 t=2 tb=6 predict=64 utc=2026-10-07T19:59:56Z
+done=chat64-seq-t2b6 utc=2026-10-07T20:01:16Z
+cell=chat64-mtp-t2b2 mtp=2 t=2 tb=2 predict=64 utc=2026-10-07T20:01:16Z
+done=chat64-mtp-t2b2 utc=2026-10-07T20:02:36Z
+cell=chat64-mtp-t2b4 mtp=2 t=2 tb=4 predict=64 utc=2026-10-07T20:02:36Z
+done=chat64-mtp-t2b4 utc=2026-10-07T20:03:56Z
+cell=chat64-mtp-t2b6 mtp=2 t=2 tb=6 predict=64 utc=2026-10-07T20:03:56Z
+done=chat64-mtp-t2b6 utc=2026-10-07T20:05:15Z
+cell=chat64-mtp-t2b6-b2 mtp=2 t=2 tb=6 predict=64 utc=2026-10-07T20:05:15Z
+done=chat64-mtp-t2b6-b2 utc=2026-10-07T20:06:35Z
+cell=chat64-mtp-t2b4-b2 mtp=2 t=2 tb=4 predict=64 utc=2026-10-07T20:06:35Z
+done=chat64-mtp-t2b4-b2 utc=2026-10-07T20:07:54Z
+cell=chat64-mtp-t2b2-b2 mtp=2 t=2 tb=2 predict=64 utc=2026-10-07T20:07:54Z
+done=chat64-mtp-t2b2-b2 utc=2026-10-07T20:09:14Z
+cell=chat64-seq-t2b6-b2 mtp=0 t=2 tb=6 predict=64 utc=2026-10-07T20:09:14Z
+done=chat64-seq-t2b6-b2 utc=2026-10-07T20:10:34Z
+cell=chat64-seq-t2b4-b2 mtp=0 t=2 tb=4 predict=64 utc=2026-10-07T20:10:34Z
+done=chat64-seq-t2b4-b2 utc=2026-10-07T20:11:55Z
+cell=chat64-seq-t2b2-b2 mtp=0 t=2 tb=2 predict=64 utc=2026-10-07T20:11:55Z
+done=chat64-seq-t2b2-b2 utc=2026-10-07T20:13:15Z
+cell=std512-seq-t2b2 mtp=0 t=2 tb=2 predict=64 utc=2026-10-07T20:13:15Z
+done=std512-seq-t2b2 utc=2026-10-07T20:14:33Z
+cell=std512-seq-t2b4 mtp=0 t=2 tb=4 predict=64 utc=2026-10-07T20:14:33Z
+done=std512-seq-t2b4 utc=2026-10-07T20:15:52Z
+cell=std512-seq-t2b6 mtp=0 t=2 tb=6 predict=64 utc=2026-10-07T20:15:52Z
+done=std512-seq-t2b6 utc=2026-10-07T20:17:11Z
+parity=OK
+engage=chat64-seq-t2b2 effective='batch threads=2' host_tag='-tb2' expected_tb=
+engage=chat64-seq-t2b4 effective='batch threads=4' host_tag='-tb4' expected_tb=4
+engage=chat64-seq-t2b6 effective='batch threads=6' host_tag='-tb6' expected_tb=6
+engage=chat64-mtp-t2b2 effective='batch threads=2' host_tag='-tb2' expected_tb=
+engage=chat64-mtp-t2b4 effective='batch threads=4' host_tag='-tb4' expected_tb=4
+engage=chat64-mtp-t2b6 effective='batch threads=6' host_tag='-tb6' expected_tb=6
+engage=chat64-mtp-t2b6-b2 effective='batch threads=6' host_tag='-tb6' expected_tb=6
+engage=chat64-mtp-t2b4-b2 effective='batch threads=4' host_tag='-tb4' expected_tb=4
+engage=chat64-mtp-t2b2-b2 effective='batch threads=2' host_tag='-tb2' expected_tb=
+engage=chat64-seq-t2b6-b2 effective='batch threads=6' host_tag='-tb6' expected_tb=6
+engage=chat64-seq-t2b4-b2 effective='batch threads=4' host_tag='-tb4' expected_tb=4
+engage=chat64-seq-t2b2-b2 effective='batch threads=2' host_tag='-tb2' expected_tb=
+engage=std512-seq-t2b2 effective='batch threads=2' host_tag='-tb2' expected_tb=
+engage=std512-seq-t2b4 effective='batch threads=4' host_tag='-tb4' expected_tb=4
+engage=std512-seq-t2b6 effective='batch threads=6' host_tag='-tb6' expected_tb=6
+end_utc=2026-10-07T20:17:11Z

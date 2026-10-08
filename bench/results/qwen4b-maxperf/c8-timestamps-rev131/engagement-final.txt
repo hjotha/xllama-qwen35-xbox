@@ -1,0 +1,11 @@
+PASS cell=seq-tson expected=on summary complete ts_valid
+PASS cell=seq-tsoff expected=off summary unavailable
+PASS cell=seq-tson-b2 expected=on summary complete ts_valid
+PASS cell=seq-tsoff-b2 expected=off summary unavailable
+PASS cell=seq-tson-b3 expected=on summary complete ts_valid
+PASS cell=mtp-tson expected=on summary complete ts_valid
+PASS cell=mtp-tsoff expected=off summary unavailable
+PASS cell=mtp-tson-b2 expected=on summary complete ts_valid
+PASS cell=mtp-tsoff-b2 expected=off summary unavailable
+PASS cell=mtp-tson-b3 expected=on summary complete ts_valid
+total=10 failures=0

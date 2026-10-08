@@ -1,0 +1,41 @@
+sha256=5d589313c9640b1149ca42c8981f756f927107b48f1907bc2efcbaf3d769771d
+pfn=GianlucaMazza.xllama_1.6.0.154_x64__pj67f1fcj4n14
+start_utc=2026-10-08T01:12:26Z
+cell=chat64-mtp-p1-sw0 mtp=2 sw=0 prof=1 utc=2026-10-08T01:12:27Z
+done=chat64-mtp-p1-sw0 utc=2026-10-08T01:13:52Z
+cell=chat64-mtp-p1-sw1 mtp=2 sw=1 prof=1 utc=2026-10-08T01:13:52Z
+done=chat64-mtp-p1-sw1 utc=2026-10-08T01:15:19Z
+cell=code64-mtp-p1-sw1 mtp=2 sw=1 prof=1 utc=2026-10-08T01:15:19Z
+done=code64-mtp-p1-sw1 utc=2026-10-08T01:16:44Z
+cell=code64-mtp-p1-sw0 mtp=2 sw=0 prof=1 utc=2026-10-08T01:16:45Z
+done=code64-mtp-p1-sw0 utc=2026-10-08T01:18:10Z
+cell=chat64-mtp-sw0 mtp=2 sw=0 prof=0 utc=2026-10-08T01:18:10Z
+done=chat64-mtp-sw0 utc=2026-10-08T01:19:36Z
+cell=chat64-mtp-sw1 mtp=2 sw=1 prof=0 utc=2026-10-08T01:19:36Z
+done=chat64-mtp-sw1 utc=2026-10-08T01:21:04Z
+cell=code64-mtp-sw1 mtp=2 sw=1 prof=0 utc=2026-10-08T01:21:04Z
+done=code64-mtp-sw1 utc=2026-10-08T01:22:31Z
+cell=code64-mtp-sw0 mtp=2 sw=0 prof=0 utc=2026-10-08T01:22:31Z
+done=code64-mtp-sw0 utc=2026-10-08T01:23:58Z
+cell=chat64-seq-sw0 mtp=0 sw=0 prof=0 utc=2026-10-08T01:23:58Z
+done=chat64-seq-sw0 utc=2026-10-08T01:25:26Z
+cell=chat64-seq-sw1 mtp=0 sw=1 prof=0 utc=2026-10-08T01:25:26Z
+done=chat64-seq-sw1 utc=2026-10-08T01:26:55Z
+cell=code64-seq-sw1 mtp=0 sw=1 prof=0 utc=2026-10-08T01:26:55Z
+done=code64-seq-sw1 utc=2026-10-08T01:28:23Z
+cell=code64-seq-sw0 mtp=0 sw=0 prof=0 utc=2026-10-08T01:28:23Z
+done=code64-seq-sw0 utc=2026-10-08T01:29:50Z
+parity=OK
+engage=chat64-mtp-p1-sw0 knob='FFN SWIGLU D3D12=off' disp='3920 FFN SWIGLU dispatches'
+mtp=chat64-mtp-p1-sw0 'rounds=23 decodes=86 discarded=20'
+engage=chat64-mtp-p1-sw1 knob='FFN SWIGLU D3D12=on' disp='1270 FFN SWIGLU dispatches'
+mtp=chat64-mtp-p1-sw1 'rounds=23 decodes=86 discarded=20'
+engage=code64-mtp-p1-sw0 knob='FFN SWIGLU D3D12=off' disp='1041 FFN SWIGLU dispatches'
+mtp=code64-mtp-p1-sw0 'rounds=21 decodes=64 discarded=0'
+engage=code64-mtp-p1-sw1 knob='FFN SWIGLU D3D12=on' disp='1041 FFN SWIGLU dispatches'
+mtp=code64-mtp-p1-sw1 'rounds=21 decodes=64 discarded=0'
+knob=chat64-mtp-sw0 'FFN SWIGLU D3D12=off'
+knob=chat64-mtp-sw1 'FFN SWIGLU D3D12=on'
+knob=code64-mtp-sw0 'FFN SWIGLU D3D12=off'
+knob=code64-mtp-sw1 'FFN SWIGLU D3D12=on'
+end_utc=2026-10-08T01:29:58Z

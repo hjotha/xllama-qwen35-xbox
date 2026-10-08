@@ -24,7 +24,13 @@ inline void gguf_gpu_log(ggml_log_level level, const char* text, void*) {
         return;
     const bool keep = level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR ||
                       std::strstr(text, "buffer size") || std::strstr(text, "offload") ||
-                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12");
+                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12") ||
+                      // Scheduler placement audit (ggmlprof=sched/sched2): split
+                      // headers and per-node assignment lines, including
+                      // CPU-titled ones the normal filter drops. These only
+                      // exist when GGML_SCHED_DEBUG is set, so default runs are
+                      // unchanged.
+                      std::strstr(text, "## SPLIT") || std::strstr(text, "node #");
     if (keep)
         log_output(std::string("[llama] ") + text);
 }

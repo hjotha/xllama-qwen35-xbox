@@ -1,0 +1,16 @@
+=== same-package profile ON vs OFF (run2, decode tok/s) ===
+code64: ON [33.71] OFF [34.22] | ON med=33.71 OFF med=34.22 delta(ON-OFF)=-1.49% | ttft ON=[3810.3] OFF=[3768.7]
+chat256: ON [26.8] OFF [27.53] | ON med=26.80 OFF med=27.53 delta(ON-OFF)=-2.65% | ttft ON=[1465.7] OFF=[1422.1]
+
+== code64-mtp-prof1: VROUND n=21
+  width=3 n=21 wall_med=70.5 d3w_med=36.6 d3g_med=25.9 cpu_med=125.0 calls_med=185 mm_med=201
+    per-call: d3w=0.198ms sub+fence=0.058ms mm/call=1.1
+   [xllama] DSPLIT wall=1898.14 d3w=939.14 d3g=667.03 cpu=3609.38 calls=4496 mm=4976 classic_steps=1
+   [xllama] MTP_STATS rounds=21 decodes=64 discarded=0 catchup_tok=64 draft_ms=163.3 sample_ms=20.0 topprob_ms=64.4 catchup_ms=77.0 verify_ms=1491.7 corrective_ms=0.0
+== chat256-mtp-prof1: VROUND n=93
+  width=2 n=35 wall_med=54.9 d3w_med=27.3 d3g_med=17.3 cpu_med=93.8 calls_med=185 mm_med=201
+    per-call: d3w=0.148ms sub+fence=0.054ms mm/call=1.1
+  width=3 n=58 wall_med=70.4 d3w_med=36.7 d3g_med=25.8 cpu_med=140.6 calls_med=185 mm_med=201
+    per-call: d3w=0.198ms sub+fence=0.059ms mm/call=1.1
+   [xllama] DSPLIT wall=9552.74 d3w=4820.27 d3g=3192.88 cpu=18187.50 calls=27374 mm=30258 classic_steps=37
+   [xllama] MTP_STATS rounds=93 decodes=357 discarded=76 catchup_tok=251 draft_ms=829.9 sample_ms=106.5 topprob_ms=243.3 catchup_ms=306.4 verify_ms=6026.8 corrective_ms=230.4

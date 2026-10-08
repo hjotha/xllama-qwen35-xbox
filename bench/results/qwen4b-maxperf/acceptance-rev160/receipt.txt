@@ -1,0 +1,18 @@
+start_utc=2026-10-08T03:26:08Z
+msix_sha256=74C9DEDDA15493A6673353F08E29A77EE16D21A124783BA023DC8956A03EF1C7
+pfn=GianlucaMazza.xllama_1.6.0.160_x64__pj67f1fcj4n14
+cell=chat64 utc=2026-10-08T03:27:56Z
+cell=code64 utc=2026-10-08T03:29:40Z
+cell=chat256 utc=2026-10-08T03:31:24Z
+cell=code256 utc=2026-10-08T03:33:49Z
+cell=std512 utc=2026-10-08T03:35:33Z
+cell=chat64-mtp utc=2026-10-08T03:37:19Z
+cell=code64-mtp utc=2026-10-08T03:39:03Z
+cell=chat256-mtp utc=2026-10-08T03:40:47Z
+parity=OK
+arm=sw0-seq mtp=0 done_utc=2026-10-08T03:42:10Z
+arm=sw0-ref mtp=4 done_utc=2026-10-08T03:43:07Z
+arm=sw0-cand mtp=4 done_utc=2026-10-08T03:44:05Z
+arm=sw1-seq mtp=0 done_utc=2026-10-08T03:45:02Z
+arm=sw1-ref mtp=4 done_utc=2026-10-08T03:46:00Z
+arm=sw1-cand mtp=4 done_utc=2026-10-08T03:46:57Z

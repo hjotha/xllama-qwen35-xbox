@@ -1,0 +1,36 @@
+# wait_for_marker mocked tests + validation evidence
+utc=2026-10-07T17:57:55Z
+
+## bash -n scripts/bench-xbox-ort.sh
+OK
+
+## shellcheck scripts/bench-xbox-ort.sh
+OK
+
+## bash -n tests/test_wait_for_marker.sh
+OK
+
+## shellcheck tests/test_wait_for_marker.sh
+OK
+
+## bash -n bench/results/qwen4b-maxperf/rev129-runbook.sh
+OK
+
+## shellcheck bench/results/qwen4b-maxperf/rev129-runbook.sh
+OK
+
+## test output (function text extracted from scripts/bench-xbox-ort.sh; curl/sleep/date mocked; no console)
+PASS: done-newline succeeds
+PASS: done-newline one request
+PASS: done-no-newline accepted
+PASS: http-404 times out
+PASS: http-404 did poll
+PASS: http-404 diagnostic present
+PASS: partial-200 times out
+PASS: partial-200 bounded requests
+PASS: fail-then-ok succeeds
+PASS: fail-then-ok third request
+PASS: zero-timeout returns failure
+PASS: zero-timeout no requests
+
+wait_for_marker mocked tests: 12 passed, 0 failed

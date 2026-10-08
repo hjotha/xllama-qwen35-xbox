@@ -690,3 +690,75 @@ TEST_CASE("ggml_d3d12: z-0 weight identity is exact and narrow") {
     CHECK_FALSE(d3d12_is_z0_weight("blk.0.attn_gate.weight", 4096, 2560, true));
     CHECK_FALSE(d3d12_is_z0_weight("blk.0.attn_gate.weight", 2560, 4096, false));
 }
+
+TEST_CASE("ggml_d3d12: GPU timing state never reuses a stale sample") {
+    GpuTimingState st;
+    // Two valid samples and one unavailable: only valid samples accumulate.
+    st.begin_call();
+    st.add_sample(1.5);
+    st.begin_call();
+    st.add_unavailable();
+    st.begin_call();
+    st.add_sample(2.5);
+    CHECK(st.total_ms == doctest::Approx(4.0));
+    CHECK(st.valid == 2);
+    CHECK(st.unavailable == 1);
+    CHECK(st.last_ms == doctest::Approx(2.5));
+    // The rev130 defect shape: a disabled/failed call must not re-add the
+    // previous sample. ON-OFF-ON sequence leaves the total unchanged at OFF.
+    st.begin_call();
+    st.add_unavailable();
+    CHECK(st.total_ms == doctest::Approx(4.0));
+    CHECK(st.last_ms == doctest::Approx(0.0));
+    st.begin_call();
+    st.add_sample(0.0); // a genuinely measured zero is a valid sample
+    CHECK(st.total_ms == doctest::Approx(4.0));
+    CHECK(st.valid == 3);
+    CHECK(st.unavailable == 2);
+    st.reset();
+    CHECK(st.total_ms == doctest::Approx(0.0));
+    CHECK(st.valid == 0);
+    CHECK(st.unavailable == 0);
+}
+
+TEST_CASE("ggml_d3d12: sequential-only SWIGLU mode is forced off under MTP") {
+    CHECK(effective_swiglu_mode(0, false) == 0);
+    CHECK(effective_swiglu_mode(1, false) == 1);
+    CHECK(effective_swiglu_mode(2, false) == 2);
+    CHECK(effective_swiglu_mode(1, true) == 0);
+    CHECK(effective_swiglu_mode(2, true) == 0);
+}
+
+TEST_CASE("ggml_d3d12: SWIGLU profile binds once and rejects conflicting contexts") {
+    // Knob OFF: every context is acceptable and the capability stays off.
+    SwigluModePolicy off;
+    CHECK(off.accepts(0, false));
+    CHECK(off.accepts(0, true));
+    off.finalize(0, false);
+    CHECK(off.mode == 0);
+
+    // Seq first with the knob ON: bound seq/on; same-profile contexts are
+    // accepted, the MTP profile is refused BEFORE creation, and finalize on an
+    // already-bound policy never changes the mode.
+    SwigluModePolicy seq;
+    CHECK(seq.accepts(1, false));
+    CHECK(seq.accepts(1, true)); // not bound yet: first context may choose
+    seq.finalize(1, false);
+    CHECK(seq.mode == 1);
+    CHECK(seq.bound);
+    CHECK(seq.accepts(1, false));
+    CHECK_FALSE(seq.accepts(1, true)); // conflicting MTP context: restart
+    CHECK_FALSE(seq.accepts(0, true)); // bound ON: later knob=0 must not open it
+    seq.finalize(1, true);             // must be unreachable; must not flip the mode
+    CHECK(seq.mode == 1);
+    CHECK(seq.mtp_capable == false);
+
+    // MTP first: profile OFF, later seq contexts are accepted only because the
+    // capability was never enabled (mode 0 has nothing to protect).
+    SwigluModePolicy mtp;
+    mtp.finalize(2, true);
+    CHECK(mtp.mode == 0);
+    CHECK(mtp.mtp_capable);
+    CHECK(mtp.accepts(2, false));
+    CHECK(mtp.accepts(2, true));
+}

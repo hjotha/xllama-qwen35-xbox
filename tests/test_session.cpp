@@ -518,3 +518,57 @@ TEST_CASE("Session: divergent restored snapshot matches cold prefill (opt-in: XL
     std::error_code ec;
     std::filesystem::remove(path, ec);
 }
+
+namespace {
+// Minimal resident session for hub identity tests: ensure_locked's reuse path
+// returns the stored pointer without touching the backend.
+class StubSessionForHub : public xllama::Session {
+  public:
+    xllama::InferenceResult generate(const xllama::GenerateParams&) override {
+        return {};
+    }
+    int count_tokens(const std::string&) override {
+        return 0;
+    }
+};
+} // namespace
+
+TEST_CASE("SessionHub: batch-thread identity reuses or recreates the session") {
+    CHECK(xllama::SessionHub::effective_threads_batch(2, 0) == 2);
+    CHECK(xllama::SessionHub::effective_threads_batch(2, 4) == 4);
+
+    xllama::SessionHub hub;
+    xllama::SessionParams sp;
+    sp.model_path = "/nonexistent/batch-threads.gguf";
+    sp.n_threads = 2;
+    sp.n_threads_batch = 0; // 0 means "same as n_threads" -> effective 2
+
+    // Seed a resident session with the identity ensure_locked stores for sp.
+    hub.session = std::make_unique<StubSessionForHub>();
+    hub.model = "batch-threads";
+    hub.n_ctx = sp.n_ctx;
+    hub.n_batch = sp.n_batch;
+    hub.n_ubatch = sp.n_ubatch;
+    hub.n_threads = 2;
+    hub.n_threads_batch = 2; // stored effective value
+    hub.gpu_layers = sp.n_gpu_layers;
+    hub.mtp = sp.mtp;
+    hub.mtp_depth = sp.mtp_n_max;
+    hub.mtp_pmin = sp.mtp_p_min;
+    hub.kv_q8 = sp.kv_q8;
+    xllama::Session* resident = hub.session.get();
+
+    std::string err;
+    // Absent (0) batch threads resolve to the same identity: reuse.
+    CHECK(hub.ensure_locked("batch-threads", sp, &err) == resident);
+    // An explicit equal value is also the same identity: reuse.
+    sp.n_threads_batch = 2;
+    CHECK(hub.ensure_locked("batch-threads", sp, &err) == resident);
+    // Changing ONLY the batch count is a different load: the hub destroys the
+    // resident session first, then creation fails (no model) and leaves the hub
+    // empty — the old session must not survive.
+    sp.n_threads_batch = 4;
+    CHECK(hub.ensure_locked("batch-threads", sp, &err) == nullptr);
+    CHECK(hub.session == nullptr);
+    CHECK(hub.model.empty());
+}

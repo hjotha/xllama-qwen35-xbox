@@ -1,0 +1,26 @@
+pfn=GianlucaMazza.xllama_1.6.0.154_x64__pj67f1fcj4n14
+start_utc=2026-10-08T01:33:42Z
+cell=chat256-mtp-p1-sw0 mtp=2 sw=0 prof=1 predict=256 utc=2026-10-08T01:33:42Z
+done=chat256-mtp-p1-sw0 utc=2026-10-08T01:35:08Z
+cell=chat256-mtp-p1-sw1 mtp=2 sw=1 prof=1 predict=256 utc=2026-10-08T01:35:08Z
+done=chat256-mtp-p1-sw1 utc=2026-10-08T01:36:34Z
+cell=code256-mtp-p1-sw1 mtp=2 sw=1 prof=1 predict=256 utc=2026-10-08T01:36:34Z
+done=code256-mtp-p1-sw1 utc=2026-10-08T01:38:01Z
+cell=code256-mtp-p1-sw0 mtp=2 sw=0 prof=1 predict=256 utc=2026-10-08T01:38:01Z
+done=code256-mtp-p1-sw0 utc=2026-10-08T01:39:29Z
+cell=chat256-mtp-sw0 mtp=2 sw=0 prof=0 predict=256 utc=2026-10-08T01:39:29Z
+done=chat256-mtp-sw0 utc=2026-10-08T01:40:57Z
+cell=chat256-mtp-sw1 mtp=2 sw=1 prof=0 predict=256 utc=2026-10-08T01:40:57Z
+resume_start_utc=2026-10-08T01:52:33Z
+resume-cell=chat256-mtp-sw1 sw=1 utc=2026-10-08T01:52:33Z
+resume-done=chat256-mtp-sw1 utc=2026-10-08T01:53:51Z
+resume-cell=code256-mtp-sw1 sw=1 utc=2026-10-08T01:53:51Z
+resume-done=code256-mtp-sw1 utc=2026-10-08T01:55:08Z
+resume-cell=code256-mtp-sw0 sw=0 utc=2026-10-08T01:55:08Z
+resume-done=code256-mtp-sw0 utc=2026-10-08T01:56:25Z
+resume-session=session-sw0 sw=0 utc=2026-10-08T01:56:25Z
+resume-session-done=session-sw0 utc=2026-10-08T01:57:44Z
+resume-session=session-sw1 sw=1 utc=2026-10-08T01:57:44Z
+resume-session-done=session-sw1 utc=2026-10-08T01:59:03Z
+resume-parity=OK
+resume_end_utc=2026-10-08T01:59:03Z

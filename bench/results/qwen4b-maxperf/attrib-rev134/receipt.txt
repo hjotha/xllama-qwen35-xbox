@@ -1,0 +1,22 @@
+sha256=d7842e262e07daea1c14907f41838d82e3ffbec7dc3070fb75a65a3651cbc681
+pfn=GianlucaMazza.xllama_1.6.0.134_x64__pj67f1fcj4n14
+start_utc=2026-10-07T21:11:57Z
+cell=code64-mtp-prof1 mtp=2 prof=1 utc=2026-10-07T21:11:57Z
+done=code64-mtp-prof1 utc=2026-10-07T21:12:51Z
+cell=code64-mtp-off mtp=2 prof=0 utc=2026-10-07T21:12:51Z
+done=code64-mtp-off utc=2026-10-07T21:13:44Z
+cell=chat256-mtp-prof1 mtp=2 prof=1 utc=2026-10-07T21:13:44Z
+done=chat256-mtp-prof1 utc=2026-10-07T21:14:37Z
+cell=chat256-mtp-off mtp=2 prof=0 utc=2026-10-07T21:14:37Z
+done=chat256-mtp-off utc=2026-10-07T21:15:31Z
+PARITY_FAIL /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/csv/chat256-mtp-prof1.run2.tokens got=84e081965076a0c947bb9d45953ec5b8768c25f79db37075a933553c000129f2 want=f78ce8372ccc7281aaad5e726bf7c88a0317212e3b2ed397fb0fd83ffd53066c
+mislabelled cells moved: chat256-*-prof1/off actually ran n_predict=64 (runbook bug); kept for audit
+chat256-correction start_utc=2026-10-07T21:16:43Z
+cell=chat256-mtp-prof1 mtp=2 prof=1 predict=256 utc=2026-10-07T21:16:43Z
+done=chat256-mtp-prof1 utc=2026-10-07T21:17:36Z
+cell=chat256-mtp-off mtp=2 prof=0 predict=256 utc=2026-10-07T21:17:36Z
+done=chat256-mtp-off utc=2026-10-07T21:18:29Z
+chat256-parity=OK
+engage=chat256-mtp-prof1 'gpu timestamps=on (profile-bound default)'
+engage=chat256-mtp-off 'gpu timestamps=off (profile-bound default)'
+chat256-correction end_utc=2026-10-07T21:18:29Z

@@ -1,0 +1,13 @@
+rounds: off 93 all 94 target 94
+all vs OFF: sequences_identical=False
+   first diff at 49 arm= ('2', '1', '1817,369') off= ('3', '2', '16421,2972,16759')
+   round count differs: 94 vs 93
+target vs OFF: sequences_identical=False
+   first diff at 49 arm= ('2', '1', '1817,369') off= ('3', '2', '16421,2972,16759')
+   round count differs: 94 vs 93
+engage chat256-trace-off: knob=off dispatches=0
+engage chat256-trace-all: knob=all dispatches=4743
+engage chat256-trace-target: knob=target-only dispatches=4352
+tokens chat256-trace-off: f78ce8372ccc7281
+tokens chat256-trace-all: f78ce8372ccc7281
+tokens chat256-trace-target: f78ce8372ccc7281

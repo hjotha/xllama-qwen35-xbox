@@ -1,0 +1,22 @@
+sha256=5bde8869ab587350fa42fb4a81ef1d47744697db672abb0d9bb6ed521682105f
+pfn=GianlucaMazza.xllama_1.6.0.126_x64__pj67f1fcj4n14
+start_utc=2026-10-07T16:31:44Z
+cell=chat64-seq done_utc=2026-10-07T16:33:08Z
+cell=chat64-mtp done_utc=2026-10-07T16:34:27Z
+cell=code64-seq done_utc=2026-10-07T16:35:46Z
+cell=code64-mtp done_utc=2026-10-07T16:37:05Z
+cell=code64-mtp-b2 done_utc=2026-10-07T16:38:22Z
+cell=code64-seq-b2 done_utc=2026-10-07T16:39:41Z
+cell=chat64-mtp-b2 done_utc=2026-10-07T16:41:00Z
+cell=chat64-seq-b2 done_utc=2026-10-07T16:42:20Z
+cell=chat64-mtp-on done_utc=2026-10-07T16:43:39Z
+cell=chat64-seq-on done_utc=2026-10-07T16:44:59Z
+end_utc=2026-10-07T16:44:59Z
+part2_start_utc=2026-10-07T16:47:58Z
+cell=chat256-seq done_utc=2026-10-07T16:49:17Z
+cell=chat256-mtp done_utc=2026-10-07T16:50:34Z
+cell=code256-mtp done_utc=2026-10-07T16:51:51Z
+cell=code256-seq done_utc=2026-10-07T16:53:41Z
+cell=std512-seq done_utc=2026-10-07T16:54:59Z
+cell=std512-mtp done_utc=2026-10-07T16:56:17Z
+part2_end_utc=2026-10-07T16:56:17Z

@@ -1,0 +1,19 @@
+=== per-cell LAST-SEGMENT engagement (cumulative logs sliced at the last bench marker) ===
+chat64-mtp-p1-sw0      knob=off  dispatches=0 (absent)
+chat64-mtp-p1-sw1      knob=on   dispatches=2134
+code64-mtp-p1-sw1      knob=on   dispatches=1713
+code64-mtp-p1-sw0      knob=off  dispatches=0 (absent)
+chat64-mtp-sw0         knob=off  dispatches=0 (absent)
+chat64-mtp-sw1         knob=on   dispatches=2134
+code64-mtp-sw1         knob=on   dispatches=1713
+code64-mtp-sw0         knob=off  dispatches=0 (absent)
+chat64-seq-sw0         knob=off  dispatches=0 (absent)
+chat64-seq-sw1         knob=on   dispatches=3696
+code64-seq-sw1         knob=on   dispatches=3920
+code64-seq-sw0         knob=off  dispatches=0 (absent)
+
+=== exploratory parity/timing (rev153 grid; gate validity pending rev154 lineage+trace) ===
+chat64-mtp: OFF [23.47, 24.21] ON [25.02, 25.16] delta=+5.24%
+code64-mtp: OFF [33.76, 33.79] ON [35.34, 35.23] delta=+4.47%
+chat64-seq: OFF [24.54, 24.53] ON [25.6, 25.7] delta=+4.54%
+code64-seq: OFF [23.85, 23.82] ON [25.05, 25.34] delta=+5.71%

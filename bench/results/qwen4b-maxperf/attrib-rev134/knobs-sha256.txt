@@ -1,0 +1,9 @@
+c17dcc9646fecd38d9ba95d17252095ec91ad342c76c3e34c0925b7684c8d9e6  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/bench_host_tag.txt
+d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/cpurepackforcegemv.txt
+6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/d3d12gdn.txt
+5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/d3d12q6tile.txt
+6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/d3d12q8.txt
+929260ad9b9ea9fe0f3553dd964f4ff3deb5792efd031a2b90f573fe91f012bb  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/d3d12twocol.txt
+d4735e3a265e16eee03f59718b9b5d03019c07d8b6c51f90da3a666eec13ab35  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/flashattn.txt
+5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/mtp_catchup_logits.txt
+6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b  /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/attrib-rev134/knobs/mtp_threads.txt

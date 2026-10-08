@@ -1,0 +1,7 @@
+package_pfn=GianlucaMazza.xllama_1.6.0.154_x64__pj67f1fcj4n14
+model=qwen35-4b-mtp
+msix_sha256=unknown
+requested_mtp_n=2 requested_mtp_pmin=50 requested_gpu_layers=34 requested_threads=2 requested_ctx=2048 requested_twocol=auto
+session_npredict=12 session_nbatch=16 run_id=1
+recorded_utc=2026-10-08T01:57:43Z
+device_log=unavailable

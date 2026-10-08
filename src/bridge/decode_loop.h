@@ -239,8 +239,36 @@ struct DecodeLoopResult {
     std::vector<double> vr_d3w;
     std::vector<double> vr_d3g;
     std::vector<int> vr_acc0;
+    // Same-boundary D3D12 dispatch counts (plan 006 scheduler-split
+    // attribution): graph_compute calls and matmul dispatches inside the same
+    // verify bracket as vr_d3w. Profile-only; counts, never timing claims.
+    std::vector<std::uint64_t> vr_calls;
+    std::vector<std::uint64_t> vr_mm;
+    // Per-round proposal IDs (the verify feed: anchor + drafts) so OFF/ON arms
+    // can be compared by proposal identity, not just accepted counts.
+    // Profile-only.
+    std::vector<std::vector<llama_token>> vr_feed;
     double corrective_ms = 0.0; // immediate corrective decode time (reject path)
     double t_lookup_ms = 0.0;   // n-gram lookup drafting (only when enabled)
+    // Plan 005: same-boundary whole-decode split. Deltas of the D3D12 backend
+    // wall/GPU counters and of process CPU over THIS loop's interval, so the
+    // sequential and MTP paths are ranked on identical boundaries (prefill and
+    // model load are outside the loop by construction). Nesting: d3g <= d3w <=
+    // t_decode_ms; cpu is process-wide and may exceed the wall. Profile-only,
+    // zero reads when OFF.
+    double win_d3w_ms = 0.0;
+    double win_d3g_ms = 0.0;
+    double win_cpu_ms = 0.0;
+    // Whole-decode D3D12 dispatch counts over the same window (profile-only).
+    std::uint64_t win_calls = 0;
+    std::uint64_t win_mm = 0;
+    // Classic single-token step sub-split on the same clocks; the sequential
+    // path has no verify bracket, so this is its per-token d3w/d3g/cpu view.
+    // Profile-only.
+    double classic_d3w_ms = 0.0;
+    double classic_d3g_ms = 0.0;
+    double classic_cpu_ms = 0.0;
+    int classic_steps = 0;
     // Per-token costs that live OUTSIDE any llama_decode: sampling from the target,
     // token emission/detokenisation, and the maintenance around an accepted token
     // (KV bookkeeping, stop-sequence scan). They are the bulk of what was previously
@@ -358,6 +386,47 @@ struct ScopeTag {
     ScopeTag& operator=(const ScopeTag&) = delete;
 };
 
+// Plan 005: same-boundary per-step split for decode calls that have no VROUND
+// bracket (classic is CSTEP, verify is VROUND, this covers the draft context's
+// draft/catch-up). One DSTEP line per call, profile only; zero clock reads when
+// OFF. Nesting: d3g <= d3w <= wall; cpu is process-wide and may exceed wall.
+struct StepSplit {
+    const char* kind;
+    int width;
+    bool on;
+    std::chrono::steady_clock::time_point t0{};
+    double d3w0 = 0.0, d3g0 = 0.0, cpu0 = 0.0;
+    std::uint64_t calls0 = 0, mm0 = 0;
+    StepSplit(bool profile, const char* k, int w) : kind(k), width(w), on(profile) {
+        if (!on)
+            return;
+        t0 = std::chrono::steady_clock::now();
+        d3w0 = d3d12_wall_ms();
+        d3g0 = d3d12_gpu_ms();
+        cpu0 = process_cpu_ms();
+        calls0 = d3d12_graph_calls();
+        mm0 = d3d12_matmul_count();
+    }
+    ~StepSplit() {
+        if (!on)
+            return;
+        const double wall =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
+                .count();
+        char b[224];
+        snprintf(b, sizeof(b),
+                 "[xllama] DSTEP kind=%s width=%d wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f "
+                 "calls=%llu mm=%llu\n",
+                 kind, width, wall, d3d12_wall_ms() - d3w0, d3d12_gpu_ms() - d3g0,
+                 process_cpu_ms() - cpu0,
+                 static_cast<unsigned long long>(d3d12_graph_calls() - calls0),
+                 static_cast<unsigned long long>(d3d12_matmul_count() - mm0));
+        log_output(b);
+    }
+    StepSplit(const StepSplit&) = delete;
+    StepSplit& operator=(const StepSplit&) = delete;
+};
+
 // Per-token maintenance around an accepted token: history bookkeeping only.
 //
 // The stop-sequence scan is NOT repeated here: emit_token already calls
@@ -468,10 +537,14 @@ inline std::vector<int32_t> history_for_draft(const DecodeLoopParams& p, llama_t
 // pending state) into the private draft context. Called from the prefill
 // after_chunk hook and after every target verify batch, exactly when the
 // target's nextn buffer still describes the batch that just decoded.
+// |profile| is deliberately mandatory: a defaulted value silently enabled the
+// profile-only DSTEP clocks on the prefill path while profile was OFF (rev129
+// measurement-integrity defect), so every caller must pass its own flag.
 inline bool mtp_catchup_batch(class MtpDrafter* mtp, llama_context* ctx, const llama_token* tokens,
-                              int n_rows, llama_pos pos0, int n_embd, bool profile = true) {
+                              int n_rows, llama_pos pos0, int n_embd, bool profile) {
     if (!mtp || !mtp->ready() || n_rows <= 0 || !tokens)
         return true;
+    detail::StepSplit step(profile, "catchup", n_rows);
     // The target's buffer describes the LAST decode — this batch. Copy the rows
     // out before anything else can overwrite them.
     std::vector<float> h_rows(static_cast<size_t>(n_rows) * static_cast<size_t>(n_embd));
@@ -502,12 +575,29 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
     }
     const auto t_cls0 = p.profile_phases ? std::chrono::steady_clock::now()
                                          : std::chrono::steady_clock::time_point{};
+    const double cls_d3w0 = p.profile_phases ? d3d12_wall_ms() : 0.0;
+    const double cls_d3g0 = p.profile_phases ? d3d12_gpu_ms() : 0.0;
+    const double cls_cpu0 = p.profile_phases ? process_cpu_ms() : 0.0;
     ScopeTag scope("target", "classic");
     const bool dec_ok = decode_one(p.ctx, token);
-    if (p.profile_phases)
-        out.t_classic_ms +=
+    if (p.profile_phases) {
+        const double cls_wall =
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_cls0)
                 .count();
+        const double d3w = d3d12_wall_ms() - cls_d3w0;
+        const double d3g = d3d12_gpu_ms() - cls_d3g0;
+        const double cpu = process_cpu_ms() - cls_cpu0;
+        out.t_classic_ms += cls_wall;
+        out.classic_d3w_ms += d3w;
+        out.classic_d3g_ms += d3g;
+        out.classic_cpu_ms += cpu;
+        ++out.classic_steps;
+        char clb[192];
+        snprintf(clb, sizeof(clb),
+                 "[xllama] CSTEP kind=classic width=1 wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f\n",
+                 cls_wall, d3w, d3g, cpu);
+        log_output(clb);
+    }
     if (!dec_ok) {
         log_output("[xllama] decode failed at token, stopping generation\n");
         decode_ok = false;
@@ -581,6 +671,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     // OFF arm removes the per-phase snapshots only, which is what the perturbation
     // measurement is about.
     const auto t_loop0 = std::chrono::steady_clock::now();
+    const double win_d3w0 = p.profile_phases ? d3d12_wall_ms() : 0.0;
+    const double win_d3g0 = p.profile_phases ? d3d12_gpu_ms() : 0.0;
+    const double win_cpu0 = p.profile_phases ? process_cpu_ms() : 0.0;
+    const std::uint64_t win_calls0 = p.profile_phases ? d3d12_graph_calls() : 0;
+    const std::uint64_t win_mm0 = p.profile_phases ? d3d12_matmul_count() : 0;
     const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
     // Mutable: a catch-up or seq_rm failure leaves the private draft context in
     // an unknown state, and drafting on top of it is worse than not drafting
@@ -724,6 +819,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 // decodes and then reset_stats() erased the catch-up's contribution
                 // before anything read it.
                 p.mtp->reset_stats();
+                detail::StepSplit draft_step(p.profile_phases, "draft", n_max_eff);
                 detail::ScopeTag scope("draft", "draft");
                 const std::vector<llama_token> md =
                     p.mtp->draft(token, P, h, p.mtp_n_embd, n_max_eff, p.profile_phases);
@@ -892,11 +988,14 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             // backend work interleaves inside the synchronous llama_decode.
             double d3w0 = 0.0, d3g0 = 0.0, cpu0 = 0.0;
             int32_t reuse0 = 0;
+            std::uint64_t calls0 = 0, mm0 = 0;
             if (p.profile_phases) {
                 d3w0 = d3d12_wall_ms();
                 d3g0 = d3d12_gpu_ms();
                 cpu0 = process_cpu_ms();
                 reuse0 = llama_perf_context(p.ctx).n_reused; // rebuild vs reuse
+                calls0 = d3d12_graph_calls();
+                mm0 = d3d12_matmul_count();
             }
             detail::ScopeTag scope("target", "verify");
             const bool vok = detail::decode_verify_batch(p.ctx, feed);
@@ -911,6 +1010,9 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 out.vr_d3g.push_back(d3d12_gpu_ms() - d3g0);
                 out.vr_cpu.push_back(process_cpu_ms() - cpu0);
                 out.vr_reuse.push_back(llama_perf_context(p.ctx).n_reused - reuse0);
+                out.vr_calls.push_back(d3d12_graph_calls() - calls0);
+                out.vr_mm.push_back(d3d12_matmul_count() - mm0);
+                out.vr_feed.push_back(feed);
                 out.vr_acc0.push_back(out.n_accepted);
             }
             if (!vok) {
@@ -1242,6 +1344,21 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     out.t_decode_ms =
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_loop0)
             .count();
+    if (p.profile_phases) {
+        out.win_d3w_ms = d3d12_wall_ms() - win_d3w0;
+        out.win_d3g_ms = d3d12_gpu_ms() - win_d3g0;
+        out.win_cpu_ms = process_cpu_ms() - win_cpu0;
+        out.win_calls = d3d12_graph_calls() - win_calls0;
+        out.win_mm = d3d12_matmul_count() - win_mm0;
+        char wlb[224];
+        snprintf(wlb, sizeof(wlb),
+                 "[xllama] DSPLIT wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f calls=%llu mm=%llu "
+                 "classic_steps=%d\n",
+                 out.t_decode_ms, out.win_d3w_ms, out.win_d3g_ms, out.win_cpu_ms,
+                 static_cast<unsigned long long>(out.win_calls),
+                 static_cast<unsigned long long>(out.win_mm), out.classic_steps);
+        log_output(wlb);
+    }
     // draft + sampling + top_prob + catch-up (verify AND classic) + verify +
     // corrective + lookup + classic decode are disjoint by construction: each
     // timer wraps exactly one call. t_classic_catchup_ms is a BREAKDOWN of the
@@ -1263,11 +1380,20 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             const int acc_after =
                 (i + 1 < out.vr_acc0.size()) ? out.vr_acc0[i + 1] : out.n_accepted;
             char vlb[320];
+            char feed_buf[96] = {};
+            if (i < out.vr_feed.size()) {
+                size_t off = 0;
+                for (size_t k = 0; k < out.vr_feed[i].size() && off + 12 < sizeof(feed_buf); ++k)
+                    off += static_cast<size_t>(snprintf(feed_buf + off, sizeof(feed_buf) - off,
+                                                        "%s%d", k ? "," : "", out.vr_feed[i][k]));
+            }
             snprintf(vlb, sizeof(vlb),
                      "[xllama] VROUND width=%d wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f "
-                     "reuse=%d accepted=%d gen=%d\n",
+                     "reuse=%d accepted=%d calls=%llu mm=%llu feed=%s gen=%d\n",
                      out.vr_width[i], out.vr_wall[i], out.vr_d3w[i], out.vr_d3g[i], out.vr_cpu[i],
-                     out.vr_reuse[i], acc_after - acc_before, out.n_generated);
+                     out.vr_reuse[i], acc_after - acc_before,
+                     static_cast<unsigned long long>(out.vr_calls[i]),
+                     static_cast<unsigned long long>(out.vr_mm[i]), feed_buf, out.n_generated);
             log_output(vlb);
         }
     }

@@ -1,0 +1,21 @@
+sha256=8e14aa6f99434d5da954c6cfb5f461c9b8ce65ff77ebe742b5110b70d0d59112
+pfn=GianlucaMazza.xllama_1.6.0.130_x64__pj67f1fcj4n14
+start_utc=2026-10-07T18:57:44Z
+cell=chat64-seq-off mtp=0 prof=0 utc=2026-10-07T18:57:44Z
+done=chat64-seq-off utc=2026-10-07T18:59:07Z
+cell=chat64-mtp-off mtp=2 prof=0 utc=2026-10-07T18:59:07Z
+done=chat64-mtp-off utc=2026-10-07T19:00:28Z
+cell=chat64-seq-on mtp=0 prof=1 utc=2026-10-07T19:00:28Z
+done=chat64-seq-on utc=2026-10-07T19:01:49Z
+cell=chat64-mtp-on mtp=2 prof=1 utc=2026-10-07T19:01:49Z
+done=chat64-mtp-on utc=2026-10-07T19:03:08Z
+cell=chat64-mtp-on-b2 mtp=2 prof=1 utc=2026-10-07T19:03:08Z
+done=chat64-mtp-on-b2 utc=2026-10-07T19:04:27Z
+cell=chat64-seq-on-b2 mtp=0 prof=1 utc=2026-10-07T19:04:27Z
+done=chat64-seq-on-b2 utc=2026-10-07T19:05:47Z
+cell=chat64-mtp-off-b2 mtp=2 prof=0 utc=2026-10-07T19:05:47Z
+done=chat64-mtp-off-b2 utc=2026-10-07T19:07:07Z
+cell=chat64-seq-off-b2 mtp=0 prof=0 utc=2026-10-07T19:07:07Z
+done=chat64-seq-off-b2 utc=2026-10-07T19:08:27Z
+parity=OK
+end_utc=2026-10-07T19:08:27Z

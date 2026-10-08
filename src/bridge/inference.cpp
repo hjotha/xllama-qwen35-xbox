@@ -469,13 +469,19 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         params.on_status("decoding");
 
     const int n_threads = params.n_threads > 0 ? params.n_threads : detect_threads_llama();
+    // Plan 006 C1: batch-graph threads are separately selectable; the fork uses
+    // n_threads_batch for any graph with more than one token and n_threads for
+    // single-token decode (llama-context.cpp graph_compute). 0 keeps the
+    // historical behavior (same as n_threads); negative/zero never reach here as
+    // a value because the adapter passes >0 or 0.
+    const int n_threads_batch = params.n_threads_batch > 0 ? params.n_threads_batch : n_threads;
 
     llama_context_params cparams = llama_context_default_params();
     cparams.n_ctx = static_cast<uint32_t>(params.n_ctx);
     cparams.n_threads = n_threads;
     // Prefill runs on n_threads_batch (default 4, independent of n_threads) —
     // see LlamaSession::generate and #168.
-    cparams.n_threads_batch = n_threads;
+    cparams.n_threads_batch = n_threads_batch;
     if (params.n_batch > 0)
         cparams.n_batch = static_cast<uint32_t>(params.n_batch);
     if (params.n_ubatch > 0)
@@ -501,6 +507,15 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         log_output("[xllama] KV cache: q8_0 + flash attention (#171)\n");
     }
 
+    // Plan 006 C4: setup-time target layer count for the target-only SWIGLU
+    // whitelist (never a mid-graph toggle).
+    d3d12_set_swiglu_target_layers(llama_model_n_layer(model.get()));
+    if (!d3d12_swiglu_profile_accepts(params.mtp)) {
+        res.error_msg = "FFN SWIGLU profile is bound to the other MTP mode; restart required";
+        log_output("[xllama] " + res.error_msg + "\n");
+        return res;
+    }
+    d3d12_finalize_swiglu_mode(params.mtp);
     GgufCpuThreadpools cpu_pools; // outlives ctx below (llama_gpu.h)
     llama_context* raw_ctx = llama_init_from_model(model.get(), cparams);
     if (!raw_ctx && params.kv_q8) {
@@ -510,6 +525,13 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_AUTO;
         raw_ctx = llama_init_from_model(model.get(), cparams);
     }
+    // Effective thread counts from the context itself (plan 006 C1): the knobs
+    // and CSV tags say what was requested; this line says what the engine
+    // selected, including the 0 = same-as-decode default.
+    if (raw_ctx)
+        log_output(
+            "[xllama] effective threads: decode=" + std::to_string(llama_n_threads(raw_ctx)) +
+            " batch=" + std::to_string(llama_n_threads_batch(raw_ctx)) + "\n");
     if (!raw_ctx) {
         res.error_msg = "failed to create context";
         log_output("[xllama] failed to create context\n");
@@ -600,11 +622,18 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     // draft context with the target's hidden rows, chunk by chunk — the target's
     // nextn buffer describes only the last decode, so the replay must happen
     // right after each chunk, like the reference's process() does.
+    //
+    // Profiling policy belongs to the WHOLE run, and prefill runs before the
+    // decode-loop setup below: applying the shape-log switch here keeps a prior
+    // run's ON state from leaking into an OFF run (and labels the phase).
+    d3d12_set_shape_log(!params.profile_phases);
+    d3d12_set_scope("target", "prefill");
     const int prefill_rows = prefill_chunked(
         ctx.get(), tokens.data(), n_prompt_tokens, [&](int off, int n_rows, llama_pos pos0) {
             if (mtp_drafter && mtp_drafter->ready()) {
                 if (!detail::mtp_catchup_batch(mtp_drafter.get(), ctx.get(), tokens.data() + off,
-                                               n_rows, pos0, llama_model_n_embd_out(model.get()))) {
+                                               n_rows, pos0, llama_model_n_embd_out(model.get()),
+                                               params.profile_phases)) {
                     log_output("[xllama] mtp: prefill catch-up failed; drafting disabled\n");
                     mtp_drafter.reset();
                 }
@@ -670,10 +699,11 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     dlp.prompt_lookup = params.prompt_lookup;
     dlp.ignore_eog = params.ignore_eog;
     dlp.profile_phases = params.profile_phases;
-    // Same OFF semantic as the Session path: the shape histogram has its own switch
-    // and must be off whenever the phase instrumentation is off, in BOTH decode
-    // paths. One is not allowed to be on while the other is off.
-    d3d12_set_shape_log(!params.profile_phases);
+    // Same OFF semantic as the Session path: the shape histogram has its own
+    // switch and must be off whenever the phase instrumentation is off, in BOTH
+    // decode paths. One is not allowed to be on while the other is off. The
+    // switch was already applied before prefill; this line only labels the
+    // decode phase so a prefill scope cannot leak into decode.
     d3d12_set_scope("target", "decode");
     dlp.token_history = params.prompt_lookup ? &gen_history : nullptr;
     // Per-run token sidecar (plan 003, stage 1): collect every accepted token so

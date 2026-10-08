@@ -24,6 +24,13 @@
     #include "ggml-backend.h"
     #include "ggml-cpu.h"
 
+// Exact CPU reference kernel: ggml-cpu/vec.h declares it inside extern "C".
+// Declared at global scope so the call links to the C symbol (a declaration
+// inside namespace xllama would look for xllama::ggml_vec_silu_f32).
+// Do NOT substitute libm exp.
+extern "C" void ggml_vec_silu_f32(const int n, float* y, const float* x);
+extern "C" void ggml_vec_swiglu_f32(const int n, float* y, const float* x, const float* g);
+
 namespace xllama {
 
 // --- Pure rules (host-tested) ---
@@ -775,6 +782,8 @@ bool ggml_d3d12_register() {
     return false;
 }
 
+void run_d3d12_silu_selftest(std::vector<D3d12SelftestRow>* out);
+
 void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     if (!out)
         return;
@@ -842,6 +851,28 @@ double d3d12_gpu_ms() {
 double d3d12_wall_ms() {
     return 0.0;
 }
+// No D3D12 backend on this host: timestamps are "enabled" by contract but no
+// query ever runs, so the product default is preserved without state.
+void d3d12_set_gpu_timestamps(bool) {}
+bool d3d12_gpu_timestamps_enabled() {
+    return true;
+}
+void d3d12_set_silu_test_enabled(bool) {}
+bool d3d12_silu_test_enabled() {
+    return false;
+}
+void d3d12_set_swiglu_product_mode(int) {}
+int d3d12_swiglu_product_mode() {
+    return 0;
+}
+void d3d12_finalize_swiglu_mode(bool) {}
+bool d3d12_swiglu_profile_accepts(bool) {
+    return true;
+}
+void d3d12_set_swiglu_target_layers(int) {}
+int d3d12_swiglu_target_layers() {
+    return 0;
+}
 void d3d12_set_shape_log(bool) {}
 void d3d12_set_scope(const char*, const char*) {}
 void d3d12_get_scope(const char**, const char**) {}
@@ -853,10 +884,13 @@ bool d3d12_shape_drain(const char*) {
 
     #else // _WIN32 — the backend itself
 
+        #include <atomic>
         #include <chrono>
         #include <cstdint>
+        #include <limits>
         #include <mutex>
         #include <random>
+        #include <xmmintrin.h>
 
         #include <dxgi1_4.h>
 
@@ -881,6 +915,8 @@ bool d3d12_shape_drain(const char*) {
         #include "ggml_d3d12_mmv_q6_k_t64_dxil.h"
         #include "ggml_d3d12_mmv_q8_0_t128_dxil.h"
         #include "ggml_d3d12_mmv_q8_0_t64_dxil.h"
+        #include "ggml_d3d12_silu_dxil.h"
+        #include "ggml_d3d12_swiglu_probe_dxil.h"
         #include "xllama/d3d12_dyn.h"
         #include "xllama/platform.h"
 
@@ -918,6 +954,10 @@ struct Gpu {
     ComPtr<ID3D12RootSignature> gdn_root;
     ComPtr<ID3D12PipelineState> gdn_pso;
     std::string gdn_error;
+    // Selftest-only SILU kernel (plan 006 C4), reusing the matmul root layout.
+    ComPtr<ID3D12PipelineState> silu_pso;
+    // Selftest-only SWIGLU probe, reusing the GDN root (three UAVs: out/gate/up).
+    ComPtr<ID3D12PipelineState> swiglu_probe_pso;
     ComPtr<ID3D12PipelineState> pso[kPsoCount][2]; // [type][0 = 64 threads, 1 = 128]
     // Plan 004 two-column tile experiment: q4_k only, same two widths. Kept
     // beside pso (not inside it) so the gate blobs and their indices never
@@ -935,7 +975,10 @@ struct Gpu {
     d3d12c::QueueFence fence;
     UINT64 ts_freq = 0;
     LUID luid = {};
-    double last_gpu_ms = 0.0;
+    // Valid-sample GPU timing state (plan 006 C8): one exactly-one-path update
+    // per graph_compute, so a disabled/failed sample can never re-add the
+    // previous call's timing.
+    GpuTimingState timing;
     // Per-backend-lifetime counters, logged when the backend is freed.
     std::uint64_t n_calls = 0;
     std::uint64_t n_matmuls = 0;
@@ -945,8 +988,10 @@ struct Gpu {
     // stays OLD even under request 1, and non-Q4 never dispatches NEW.
     std::uint64_t n_matmuls_2col = 0;
     std::uint64_t n_q6_tiled[2] = {}; // actual 2/4-column Q6 dispatches
+    // Product-trial FFN SWIGLU dispatches (plan 006 C4): nonzero is placement
+    // evidence that the knob engaged; zero proves the OFF arm stayed on CPU.
+    std::uint64_t n_swiglu = 0;
     double wall_ms = 0.0;
-    double gpu_ms = 0.0;
     std::mutex mu;
     bool ok = false;
     // Per-shape histogram switch (plan 003 stage 2). Defaults ON; the bench knob
@@ -973,6 +1018,22 @@ struct ShapeAggKey {
 std::mutex g_shape_mu;
 std::vector<std::pair<ShapeAggKey, long long>> g_shape_agg;
 bool g_shape_off = false;
+// GPU timestamp queries (plan 006 C8). Default true = historical behavior;
+// the knob disables query/resolve/readback entirely for the cost arm. Atomic:
+// the setter runs at startup/knob time while decode threads read it inside
+// graph_compute under g.mu.
+std::atomic<bool> g_ts_enabled{true};
+// Selftest-only SILU gate (plan 006 C4). False in every product path.
+bool g_silu_test = false;
+// Product trial gate (plan 006 C4): FFN split-SWIGLU on D3D12, default OFF.
+// Mode 0 off, 1 all FFN, 2 target-context FFN only. Target layer count is
+// setup-time (model load) and never changes while graphs run. The mode is
+// governed by a process-profile latch: once any MTP-capable context is
+// created, FFN stays OFF for the process (fail-closed on conflicting context
+// profiles; no multi-context concurrency guarantee is claimed).
+int g_swiglu_requested_mode = 0;
+int g_swiglu_target_layers = 0;
+SwigluModePolicy g_swiglu_policy;
 // Context/phase tags. Thread-local because decode and prefill run on the calling
 // thread, and a tag set around a target call must not leak into the drafter call
 // that follows it. Restored by the RAII guard at each call site.
@@ -1101,6 +1162,25 @@ bool init_gpu(Gpu& g) {
     }
     if (!g.gdn_pso)
         log_output("[xllama] d3d12: GDN unavailable: " + g.gdn_error + "\n");
+    // Selftest-only SILU PSO (plan 006 C4): reuses the matmul root layout
+    // (b0 constants, t0 SRV, u0 UAV). Never dispatched unless the selftest
+    // gate is on; no product graph can reach it.
+    if (g.root) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+        pd.pRootSignature = g.root.Get();
+        pd.CS = {kGgmlD3d12SiluDxil, kGgmlD3d12SiluDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.silu_pso));
+        if (FAILED(hr))
+            log_output("[xllama] d3d12: SILU selftest PSO unavailable\n");
+    }
+    if (g.gdn_root) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+        pd.pRootSignature = g.gdn_root.Get();
+        pd.CS = {kGgmlD3d12SwigluProbeDxil, kGgmlD3d12SwigluProbeDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.swiglu_probe_pso));
+        if (FAILED(hr))
+            log_output("[xllama] d3d12: SWIGLU probe PSO unavailable\n");
+    }
 
     // Two-column experiment PSOs (plan 004). A failure here must NOT fail the
     // backend: the gate and production path are OLD-only. Record it; dispatch
@@ -1396,6 +1476,90 @@ bool is_ours(ggml_backend_buffer_type_t buft) {
     return buft == &kHostBuft || buft == &kWeightsBuft;
 }
 
+// One shared predicate for every SILU entry point (plan 006 C4): the selftest
+// gate + PSO, GGML_OP_UNARY/GGML_UNARY_OP_SILU, f32 src/dst, contiguity, an
+// 8-divisible row, a bounded element count, and (when buffers are already
+// assigned) this backend's own buffers. dev_supports_op, the op collector and
+// the dispatch all use exactly this, so a shape the dispatch would refuse can
+// never be claimed by supports_op.
+bool d3d12_swiglu_supported(const ggml_tensor* op) {
+    if ((!g_silu_test && g_swiglu_policy.mode == 0) || !gpu().swiglu_probe_pso)
+        return false;
+    if (!op || op->op != GGML_OP_GLU || ggml_get_glu_op(op) != GGML_GLU_OP_SWIGLU)
+        return false;
+    const ggml_tensor* a = op->src[0];
+    const ggml_tensor* b = op->src[1];
+    if (!a || !b || op->type != GGML_TYPE_F32 || a->type != GGML_TYPE_F32 ||
+        b->type != GGML_TYPE_F32)
+        return false;
+    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(a) || !ggml_is_contiguous(b))
+        return false;
+    if (op->ne[0] <= 0 || op->ne[0] % 8 != 0 || a->ne[0] != b->ne[0] || a->ne[1] != b->ne[1])
+        return false;
+    // Every operand dimension must match the output.
+    if (a->ne[0] != op->ne[0] || b->ne[0] != op->ne[0] || a->ne[1] != op->ne[1] ||
+        b->ne[1] != op->ne[1] || op->ne[2] != 1 || op->ne[3] != 1)
+        return false;
+    // Product trial: FFN name/shape lineage only, so non-FFN GLU (attention or
+    // draft blocks with different lineage) is never claimed. The selftest path
+    // skips this whitelist (it builds its own corpus tensors).
+    if (!g_silu_test) {
+        const bool lineage = op->name[0] && std::strstr(op->name, "ffn_swiglu") == op->name &&
+                             a->name[0] && std::strstr(a->name, "ffn_gate") == a->name &&
+                             b->name[0] && std::strstr(b->name, "ffn_up") == b->name &&
+                             op->ne[0] == 9216;
+        if (!lineage)
+            return false;
+        if (g_swiglu_policy.mode == 2) {
+            // Target-context only: the observed name suffix is the layer index;
+            // target layers are 0..n_layer-1, the nextn/draft layer is 32.
+            const char* dash = std::strrchr(op->name, '-');
+            if (!dash || g_swiglu_target_layers <= 0)
+                return false;
+            const int layer = std::atoi(dash + 1);
+            if (layer < 0 || layer >= g_swiglu_target_layers)
+                return false;
+        }
+    }
+    const int64_t n = ggml_nelements(op);
+    if (n <= 0 || n > (int64_t{1} << 26) || n % 256 != 0)
+        return false;
+    if (a->buffer && !is_ours(a->buffer->buft))
+        return false;
+    if (b->buffer && !is_ours(b->buffer->buft))
+        return false;
+    if (op->buffer && !is_ours(op->buffer->buft))
+        return false;
+    return true;
+}
+
+bool d3d12_silu_supported(const ggml_tensor* op) {
+    if (!g_silu_test || !gpu().silu_pso)
+        return false;
+    if (!op || op->op != GGML_OP_UNARY || ggml_get_unary_op(op) != GGML_UNARY_OP_SILU)
+        return false;
+    if (op->type != GGML_TYPE_F32)
+        return false;
+    const ggml_tensor* src = op->src[0];
+    if (!src || src->type != GGML_TYPE_F32)
+        return false;
+    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(src))
+        return false;
+    if (op->ne[0] <= 0 || op->ne[0] % 8 != 0)
+        return false;
+    const int64_t n = ggml_nelements(op);
+    if (n <= 0 || n > (int64_t{1} << 26))
+        return false;
+    // The kernel has no bounds guard: one thread per element, whole groups.
+    if (n % 256 != 0)
+        return false;
+    if (src->buffer && !is_ours(src->buffer->buft))
+        return false;
+    if (op->buffer && !is_ours(op->buffer->buft))
+        return false;
+    return true;
+}
+
 // Narrow z-0 dispatch record (see header): log-only, default off. The flag
 // lives here (ahead of the matmul record path); the setter sits beside the
 // other switches further down, in xllama namespace for linkage.
@@ -1414,12 +1578,25 @@ void backend_free(ggml_backend_t b) {
     {
         std::lock_guard<std::mutex> lock(g.mu);
         char msg[256];
+        char gpu_part[128];
+        if (g.timing.valid == 0) {
+            std::snprintf(gpu_part, sizeof(gpu_part), "timing unavailable: %llu calls",
+                          static_cast<unsigned long long>(g.timing.unavailable));
+        } else if (g.timing.unavailable > 0) {
+            std::snprintf(gpu_part, sizeof(gpu_part),
+                          "%.1f ms GPU partial: ts_valid=%llu ts_unavailable=%llu",
+                          g.timing.total_ms, static_cast<unsigned long long>(g.timing.valid),
+                          static_cast<unsigned long long>(g.timing.unavailable));
+        } else {
+            std::snprintf(gpu_part, sizeof(gpu_part), "%.1f ms GPU: ts_valid=%llu",
+                          g.timing.total_ms, static_cast<unsigned long long>(g.timing.valid));
+        }
         std::snprintf(msg, sizeof(msg),
                       "[xllama] d3d12: %llu graph_compute calls, %llu matmuls (%llu 2col), "
-                      "%.1f ms wall (%.1f ms GPU)\n",
+                      "%.1f ms wall (%s)\n",
                       static_cast<unsigned long long>(g.n_calls),
                       static_cast<unsigned long long>(g.n_matmuls),
-                      static_cast<unsigned long long>(g.n_matmuls_2col), g.wall_ms, g.gpu_ms);
+                      static_cast<unsigned long long>(g.n_matmuls_2col), g.wall_ms, gpu_part);
         log_output(msg);
         if (g.n_gdn > 0) {
             std::snprintf(msg, sizeof(msg), "[xllama] d3d12: %llu GATED_DELTA_NET dispatches\n",
@@ -1433,9 +1610,16 @@ void backend_free(ggml_backend_t b) {
                           static_cast<unsigned long long>(g.n_q6_tiled[1]));
             log_output(msg);
         }
+        if (g.n_swiglu) {
+            std::snprintf(msg, sizeof(msg), "[xllama] d3d12: %llu FFN SWIGLU dispatches\n",
+                          static_cast<unsigned long long>(g.n_swiglu));
+            log_output(msg);
+        }
+        g.n_swiglu = 0;
         g.n_q6_tiled[0] = g.n_q6_tiled[1] = 0;
         g.n_calls = g.n_matmuls = g.n_matmuls_2col = 0;
-        g.wall_ms = g.gpu_ms = 0.0;
+        g.wall_ms = 0.0;
+        g.timing.reset();
     }
     delete b;
 }
@@ -1458,6 +1642,20 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
             ops.push_back(node);
             ++n_gdn;
             break;
+        case GGML_OP_UNARY:
+            // Selftest-only SILU (plan 006 C4): the op collector must accept it
+            // here too, or the switch aborts before the dispatch branch runs.
+            if (d3d12_silu_supported(node))
+                ops.push_back(node);
+            else
+                GGML_ABORT("d3d12: unsupported unary op %s", ggml_op_desc(node));
+            break;
+        case GGML_OP_GLU:
+            if (d3d12_swiglu_supported(node))
+                ops.push_back(node);
+            else
+                GGML_ABORT("d3d12: unsupported glu op %s", ggml_op_desc(node));
+            break;
         case GGML_OP_NONE:
         case GGML_OP_RESHAPE:
         case GGML_OP_VIEW:
@@ -1473,7 +1671,8 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
 
     std::lock_guard<std::mutex> lock(g.mu);
     const auto t0 = std::chrono::steady_clock::now();
-    const bool ts = g.ts && g.ts_rb;
+    const bool ts = g.ts && g.ts_rb && g_ts_enabled;
+    g.timing.begin_call();
     const bool ran = run_now(g, [&](ID3D12GraphicsCommandList* cl) {
         cl->SetComputeRootSignature(g.root.Get());
         bool gdn_root_active = false;
@@ -1513,6 +1712,49 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
                 GGML_ASSERT(node->buffer && node->buffer->buft == &kHostBuft);
                 cl->SetComputeRootUnorderedAccessView(7, tensor_va(node));
                 cl->Dispatch(32, 1, 16);
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
+            if (node->op == GGML_OP_GLU && d3d12_swiglu_supported(node)) {
+                // Selftest-only split-SWIGLU probe: gdn_root (u0..u6).
+                cl->SetComputeRootSignature(g.gdn_root.Get());
+                gdn_root_active = true;
+                const ggml_tensor* gate = node->src[0];
+                const ggml_tensor* up = node->src[1];
+                const std::uint32_t count = static_cast<std::uint32_t>(ggml_nelements(node));
+                cl->SetPipelineState(g.swiglu_probe_pso.Get());
+                cl->SetComputeRootUnorderedAccessView(1, tensor_va(node)); // u0 output
+                cl->SetComputeRootUnorderedAccessView(2, tensor_va(gate)); // u1 gate
+                cl->SetComputeRootUnorderedAccessView(3, tensor_va(up));   // u2 up
+                cl->Dispatch(count / 256u, 1, 1); // predicate: count % 256 == 0
+                ++g.n_swiglu;
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
+            if (node->op == GGML_OP_UNARY && ggml_get_unary_op(node) == GGML_UNARY_OP_SILU) {
+                if (gdn_root_active) {
+                    cl->SetComputeRootSignature(g.root.Get());
+                    gdn_root_active = false;
+                }
+                const ggml_tensor* sx = node->src[0];
+                if (!sx || !sx->buffer || !is_ours(sx->buffer->buft) || !node->buffer ||
+                    !is_ours(node->buffer->buft)) {
+                    log_output("[xllama] d3d12: SILU selftest node buffers not ours; skipped\n");
+                    continue;
+                }
+                const std::uint32_t count = static_cast<std::uint32_t>(ggml_nelements(node));
+                cl->SetPipelineState(g.silu_pso.Get());
+                // Input and output are UAVs: D3D12_Host tensors live in UAV
+                // state, and the matmul path never binds an SRV to activations.
+                // Output = u0 (param 2), input = u1 (param 3): the same slots
+                // matmul uses for dst and activations.
+                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node));
+                cl->SetComputeRootUnorderedAccessView(3, tensor_va(sx));
+                cl->Dispatch(count / 256u, 1, 1); // predicate: count % 256 == 0
                 D3D12_RESOURCE_BARRIER b = {};
                 b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 cl->ResourceBarrier(1, &b);
@@ -1620,16 +1862,25 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
         void* p = nullptr;
         if (SUCCEEDED(g.ts_rb->Map(0, nullptr, &p))) {
             const auto* t = static_cast<const std::uint64_t*>(p);
-            g.last_gpu_ms = t[1] > t[0] ? 1000.0 * static_cast<double>(t[1] - t[0]) /
-                                              static_cast<double>(g.ts_freq)
-                                        : 0.0;
+            if (g.ts_freq > 0 && t[1] > t[0]) {
+                g.timing.add_sample(1000.0 * static_cast<double>(t[1] - t[0]) /
+                                    static_cast<double>(g.ts_freq));
+            } else {
+                // end<=start or zero frequency is not a measurement: report it
+                // as unavailable instead of a valid zero.
+                g.timing.add_unavailable();
+            }
             g.ts_rb->Unmap(0, nullptr);
+        } else {
+            // A failed readback is "unavailable", never the previous sample.
+            g.timing.add_unavailable();
         }
+    } else {
+        g.timing.add_unavailable();
     }
     ++g.n_calls;
     g.n_matmuls += n_mm;
     g.n_gdn += n_gdn;
-    g.gpu_ms += g.last_gpu_ms;
     g.wall_ms +=
         std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
 
@@ -1738,6 +1989,13 @@ ggml_backend_buffer_type_t dev_buffer_type(ggml_backend_dev_t) {
 
 bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
     switch (op->op) {
+    case GGML_OP_UNARY:
+        // Selftest-only SILU (plan 006 C4): one shared predicate with the
+        // collector and the dispatch.
+        return d3d12_silu_supported(op);
+    case GGML_OP_GLU:
+        // Selftest-only split SWIGLU probe (plan 006 C4).
+        return d3d12_swiglu_supported(op);
     case GGML_OP_GATED_DELTA_NET:
         return gpu().gdn_pso && d3d12_gdn_supported(op);
     case GGML_OP_NONE:
@@ -2072,6 +2330,11 @@ D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc, int re
     // repeats=1 keeps the gate rows on their exact single-sample methodology.
     if (repeats < 1)
         repeats = 1;
+    // GPU-time self-test: force real samples (diagnostic path, never product
+    // decode) and fail the row if any timed call reports unavailable timing,
+    // instead of silently treating it as a measured zero.
+    d3d12_set_gpu_timestamps(true);
+    const std::uint64_t ts_un0 = gpu().timing.unavailable;
     const std::uint64_t tc0 = d3d12_2col_matmuls();
     ggml_status st = ggml_backend_graph_compute(backend, gf);
     std::vector<double> gpu_t, wall_t;
@@ -2080,14 +2343,15 @@ D3d12SelftestRow run_case(ggml_backend_t backend, const SelftestCase& sc, int re
         st = ggml_backend_graph_compute(backend, gf);
         if (st != GGML_STATUS_SUCCESS)
             break;
-        gpu_t.push_back(gpu().last_gpu_ms);
+        gpu_t.push_back(gpu().timing.last_ms);
         wall_t.push_back(
             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
                 .count());
     }
-    row.d3d12_ran = st == GGML_STATUS_SUCCESS && !gpu_t.empty();
+    const bool ts_complete = gpu().timing.unavailable == ts_un0;
+    row.d3d12_ran = ts_complete && st == GGML_STATUS_SUCCESS && !gpu_t.empty();
     if (!row.d3d12_ran) {
-        row.error = "graph_compute failed";
+        row.error = ts_complete ? "graph_compute failed" : "gpu timing unavailable";
         cleanup();
         return row;
     }
@@ -2254,16 +2518,20 @@ void run_paired_case(ggml_backend_t backend, ggml_type type, const char* name, i
             d3d12_set_kernel_variant(variant);
     };
     auto tiled_count = [&] { return q6 ? d3d12_q6_tiled_matmuls() : d3d12_2col_matmuls(); };
+    // Paired variant timing is a GPU-time self-test: force real samples and
+    // reject any call whose timing is unavailable, never a silent zero.
+    d3d12_set_gpu_timestamps(true);
     auto run_once = [&](int variant, double* gpu_ms, double* wall_ms) {
         select_variant(variant);
+        const std::uint64_t un0 = gpu().timing.unavailable;
         const auto t0 = std::chrono::steady_clock::now();
         const ggml_status st = ggml_backend_graph_compute(backend, gf);
         if (st != GGML_STATUS_SUCCESS)
             return false;
-        *gpu_ms = gpu().last_gpu_ms;
+        *gpu_ms = gpu().timing.last_ms;
         *wall_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0)
                        .count();
-        return true;
+        return gpu().timing.unavailable == un0;
     };
     double g0 = 0.0, w0 = 0.0;
     if (!run_once(0, &g0, &w0) || !run_once(1, &g0, &w0)) {
@@ -2486,7 +2754,64 @@ std::uint64_t d3d12_matmul_count() {
 double d3d12_gpu_ms() {
     Gpu& g = gpu();
     std::lock_guard<std::mutex> lock(g.mu);
-    return g.gpu_ms;
+    return g.timing.total_ms;
+}
+
+void d3d12_set_gpu_timestamps(bool enabled) {
+    g_ts_enabled = enabled;
+}
+
+bool d3d12_gpu_timestamps_enabled() {
+    return g_ts_enabled;
+}
+
+void d3d12_set_silu_test_enabled(bool enabled) {
+    g_silu_test = enabled;
+}
+
+bool d3d12_silu_test_enabled() {
+    return g_silu_test;
+}
+
+void d3d12_set_swiglu_product_mode(int mode) {
+    g_swiglu_requested_mode = mode;
+    if (!g_swiglu_policy.bound)
+        g_swiglu_policy.mode = mode; // pre-bind display; finalize binds later
+}
+
+// Binds the profile at the first context; bound calls are no-ops. Conflicting
+// contexts are rejected by d3d12_swiglu_profile_accepts BEFORE creation, so
+// the capability never changes under a live context.
+void d3d12_finalize_swiglu_mode(bool mtp_active) {
+    const bool was_bound = g_swiglu_policy.bound;
+    const bool mtp_before = g_swiglu_policy.mtp_capable;
+    g_swiglu_policy.finalize(g_swiglu_requested_mode, mtp_active);
+    if (!was_bound)
+        log_output("[xllama] d3d12: FFN SWIGLU profile bound: " +
+                   std::string(g_swiglu_policy.mode == 0 ? "off" : "on") +
+                   " (mtp_capable=" + (mtp_active ? "1" : "0") + ")\n");
+    else if (g_swiglu_policy.mtp_capable != mtp_before)
+        log_output("[xllama] d3d12: WARNING: MTP profile flag changed after binding\n");
+}
+
+// True when a context with |mtp_active| may be created under the current
+// knob. Called before context creation; a false result means the caller must
+// fail the request and ask for a process restart instead of changing the
+// capability under an existing context.
+bool d3d12_swiglu_profile_accepts(bool mtp_active) {
+    return g_swiglu_policy.accepts(g_swiglu_requested_mode, mtp_active);
+}
+
+int d3d12_swiglu_product_mode() {
+    return g_swiglu_policy.mode;
+}
+
+void d3d12_set_swiglu_target_layers(int n) {
+    g_swiglu_target_layers = n;
+}
+
+int d3d12_swiglu_target_layers() {
+    return g_swiglu_target_layers;
 }
 
 double d3d12_wall_ms() {
@@ -2560,6 +2885,8 @@ std::string d3d12_2col_info() {
     return buf;
 }
 
+void run_d3d12_silu_selftest(std::vector<D3d12SelftestRow>* out);
+
 void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     if (!out)
         return;
@@ -2613,6 +2940,7 @@ void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
     for (const auto& sc : batch_cases)
         out->push_back(run_case(backend, sc, 1));
     ggml_backend_free(backend);
+    run_d3d12_silu_selftest(out);
 }
 
 void run_d3d12_shape_cost(std::vector<D3d12SelftestRow>* out) {
@@ -2725,6 +3053,356 @@ void run_d3d12_gdn_selftest(std::vector<D3d12SelftestRow>* out) {
     ggml_backend_t backend = dev_init_backend(&kDevice, nullptr);
     run_gdn_cases(backend, &kHostBuft, out);
     ggml_backend_free(backend);
+}
+
+// Probe metrics (plan 006 C4): ordinary finite-domain and extreme/subnormal
+// classes are reported separately, with max ULP / max abs / max relative and
+// an ULP histogram, so an edge-dominated max ULP cannot hide the ordinary
+// behavior. Non-finite mismatches (NaN-ness, inf-ness, inf sign) are counted
+// separately. Pure function over three vectors (in1 null for unary ops).
+struct ProbeMetrics {
+    bool ok = false;
+    std::string report;
+};
+ProbeMetrics probe_metrics(const std::vector<float>& got, const std::vector<float>& want,
+                           const std::vector<float>& in0, const std::vector<float>* in1) {
+    auto key = [](float v) {
+        std::uint32_t u = 0;
+        std::memcpy(&u, &v, sizeof(u));
+        return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
+    };
+    const float sub_min = std::numeric_limits<float>::min();
+    size_t fin = 0, edge = 0, nf = 0, ulp_max = 0;
+    size_t ulp_max_ord = 0;
+    size_t hist[6] = {0, 0, 0, 0, 0, 0}; // 0,1,2,3,4-7,8+
+    double maxabs = 0.0, maxrel = 0.0;
+    double maxabs_ord = 0.0, maxrel_ord = 0.0;
+    std::string first;
+    for (size_t i = 0; i < got.size(); ++i) {
+        const float a = got[i], b = want[i];
+        const float in = in0[i];
+        const bool fa = std::isfinite(a), fb = std::isfinite(b);
+        if (!fa || !fb) {
+            const bool pair_ok = (std::isnan(a) == std::isnan(b)) &&
+                                 (std::isinf(a) == std::isinf(b)) &&
+                                 (!std::isinf(a) || (std::signbit(a) == std::signbit(b)));
+            if (!pair_ok)
+                ++nf;
+            continue;
+        }
+        const std::uint32_t ka = key(a), kb = key(b);
+        if (ka == kb)
+            continue;
+        const std::uint32_t d = ka > kb ? ka - kb : kb - ka;
+        if (d > ulp_max)
+            ulp_max = d;
+        const int bucket =
+            d == 0 ? 0 : (d == 1 ? 1 : (d == 2 ? 2 : (d == 3 ? 3 : (d < 8 ? 4 : 5))));
+        const double ad = std::fabs(static_cast<double>(a) - static_cast<double>(b));
+        if (ad > maxabs)
+            maxabs = ad;
+        if (std::fabs(static_cast<double>(b)) > 0.0) {
+            const double rel = ad / std::fabs(static_cast<double>(b));
+            if (rel > maxrel)
+                maxrel = rel;
+        }
+        const bool is_edge = (std::fabs(in) > 30.0f) || (std::fabs(a) < sub_min && a != 0.0f) ||
+                             (std::fabs(b) < sub_min && b != 0.0f) || std::fabs(a) > 1e30f ||
+                             std::fabs(b) > 1e30f || (in1 && std::fabs((*in1)[i]) > 30.0f);
+        if (is_edge)
+            ++edge;
+        else {
+            ++fin;
+            ++hist[bucket];
+        }
+        if (first.size() < 160) {
+            std::uint32_t ia = 0, ib = 0, ii = 0;
+            std::memcpy(&ia, &a, 4);
+            std::memcpy(&ib, &b, 4);
+            std::memcpy(&ii, &in, 4);
+            char t[96];
+            std::snprintf(t, sizeof(t), " [i=%llu in=0x%08x got=0x%08x ref=0x%08x]",
+                          static_cast<unsigned long long>(i), ii, ia, ib);
+            first += t;
+        }
+    }
+    char buf[448];
+    std::snprintf(
+        buf, sizeof(buf),
+        "ord=%llu ord_ulp_max=%llu ord_abs=%.3g ord_rel=%.3g "
+        "hist0/1/2/3/4-7/8+=%llu/%llu/%llu/%llu/%llu/%llu edge=%llu nf=%llu "
+        "all_ulp_max=%llu all_abs=%.3g all_rel=%.3g",
+        static_cast<unsigned long long>(fin), static_cast<unsigned long long>(ulp_max_ord),
+        maxabs_ord, maxrel_ord, static_cast<unsigned long long>(hist[0]),
+        static_cast<unsigned long long>(hist[1]), static_cast<unsigned long long>(hist[2]),
+        static_cast<unsigned long long>(hist[3]), static_cast<unsigned long long>(hist[4]),
+        static_cast<unsigned long long>(hist[5]), static_cast<unsigned long long>(edge),
+        static_cast<unsigned long long>(nf), static_cast<unsigned long long>(ulp_max), maxabs,
+        maxrel);
+    ProbeMetrics m;
+    // ok = no ordinary mismatch (hist 1..5 all zero), no edge mismatch, no
+    // non-finite mismatch. fin counts ALL ordinary elements now.
+    m.ok = (hist[1] == 0 && hist[2] == 0 && hist[3] == 0 && hist[4] == 0 && hist[5] == 0) &&
+           (edge == 0) && (nf == 0);
+    m.report = std::string(buf) + first;
+    return m;
+}
+
+// Plan 006 C4 selftest: exact SWIGLU/SILU kernel feasibility. CPU reference is
+// the same ggml_silu op on the CPU backend (AVX2/FMA path); GPU runs through
+// the selftest-gated D3D12 SILU dispatch. Compares per element: bit equality,
+// max ULP (finite pairs) and non-finite classification. The row's error string
+// carries the counts and the actual MXCSR value, so the reference's FTZ/DAZ
+// state is evidence, not an assumption.
+D3d12SelftestRow run_silu_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
+                               ggml_backend_t cpu, int n_embd, int rows,
+                               std::vector<float>* result) {
+    (void)cpu; // direct kernel reference; kept in the signature for callers
+    D3d12SelftestRow row;
+    row.type = "silu_avx2";
+    row.n = n_embd;
+    row.k = rows;
+    row.ncols = rows;
+    ggml_init_params ip = {};
+    ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx = ggml_init(ip);
+    if (!ctx) {
+        row.error = "SILU metadata allocation failed";
+        return row;
+    }
+    log_output("[xllama] silu selftest: ctx ready\n");
+    ggml_tensor* x = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* test = ggml_silu(ctx, x);
+    ggml_cgraph* gt = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gt, test);
+    ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
+    auto cleanup = [&] {
+        if (buf)
+            ggml_backend_buffer_free(buf);
+        ggml_free(ctx);
+    };
+    if (!buf) {
+        row.error = "SILU allocation failed";
+        cleanup();
+        return row;
+    }
+    // Corpus: deterministic real-range values plus adversarial boundaries
+    // (signed zero, subnormals, the polynomial's |n| ~ 126/192 branches,
+    // large magnitudes, non-finite).
+    std::vector<float> xs(static_cast<size_t>(n_embd) * rows);
+    std::mt19937 rng(2026u);
+    std::uniform_real_distribution<float> uni(-20.0f, 20.0f);
+    const float specials[] = {0.0f,
+                              -0.0f,
+                              1e-45f,
+                              -1e-45f,
+                              1e-40f,
+                              -1e-40f,
+                              87.3f,
+                              -87.3f,
+                              88.0f,
+                              -88.0f,
+                              133.0f,
+                              -133.0f,
+                              134.0f,
+                              -134.0f,
+                              3.4e38f,
+                              -3.4e38f,
+                              std::numeric_limits<float>::infinity(),
+                              -std::numeric_limits<float>::infinity(),
+                              std::numeric_limits<float>::quiet_NaN()};
+    const size_t n_special = sizeof(specials) / sizeof(specials[0]);
+    for (size_t i = 0; i < xs.size(); ++i)
+        xs[i] = (i % 97 == 0) ? specials[(i / 97) % n_special] : uni(rng);
+    log_output("[xllama] silu selftest: buffers allocated, setting inputs\n");
+    ggml_backend_tensor_set(x, xs.data(), 0, xs.size() * sizeof(float));
+    log_output("[xllama] silu selftest: GPU compute\n");
+    const ggml_status st_t = ggml_backend_graph_compute(backend, gt);
+    log_output("[xllama] silu selftest: GPU compute rc=" + std::to_string(st_t) + "\n");
+    log_output("[xllama] silu selftest: post-GPU reached\n");
+    // CPU reference: the exact compiled AVX2/FMA kernel, called directly on
+    // this thread. MXCSR is sampled around the call, so the FTZ/DAZ state that
+    // produced the reference is evidence, not an assumption.
+    std::vector<float> want(xs.size());
+    const unsigned csr_before = static_cast<unsigned>(_mm_getcsr());
+    log_output("[xllama] silu selftest: CPU direct kernel\n");
+    ::ggml_vec_silu_f32(static_cast<int>(xs.size()), want.data(), xs.data());
+    const unsigned csr_after = static_cast<unsigned>(_mm_getcsr());
+    log_output(
+        "[xllama] silu selftest: CPU direct done mxcsr_before=0x" +
+        [&] {
+            char b[8];
+            std::snprintf(b, sizeof(b), "%04x", csr_before);
+            return std::string(b);
+        }() +
+        " after=0x" +
+        [&] {
+            char b[8];
+            std::snprintf(b, sizeof(b), "%04x", csr_after);
+            return std::string(b);
+        }() +
+        "\n");
+    if (st_t != GGML_STATUS_SUCCESS) {
+        row.error = "SILU GPU graph_compute failed";
+        cleanup();
+        return row;
+    }
+    std::vector<float> got(xs.size());
+    ggml_backend_tensor_get(test, got.data(), 0, got.size() * sizeof(float));
+    auto key = [](float v) {
+        std::uint32_t u = 0;
+        std::memcpy(&u, &v, sizeof(u));
+        return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
+    };
+    const ProbeMetrics m = probe_metrics(got, want, xs, nullptr);
+    row.rel_err = 0.0;
+    row.ok = m.ok;
+    row.d3d12_ran = true;
+    char note[512];
+    std::snprintf(note, sizeof(note), "mxcsr=0x%04x %s", static_cast<unsigned>(_mm_getcsr()),
+                  m.report.c_str());
+    row.error = note;
+    if (result)
+        *result = got;
+    cleanup();
+    return row;
+}
+
+// Split-SWIGLU probe: out = silu(gate) * up, gate/up independent corpora.
+D3d12SelftestRow run_swiglu_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
+                                 int n_embd, int rows) {
+    D3d12SelftestRow row;
+    row.type = "swiglu_avx2";
+    row.n = n_embd;
+    row.k = rows;
+    row.ncols = rows;
+    ggml_init_params ip = {};
+    ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx = ggml_init(ip);
+    if (!ctx) {
+        row.error = "SWIGLU metadata allocation failed";
+        return row;
+    }
+    ggml_tensor* gate = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* up = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* test = ggml_swiglu_split(ctx, gate, up);
+    ggml_cgraph* gt = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gt, test);
+    ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
+    auto cleanup = [&] {
+        if (buf)
+            ggml_backend_buffer_free(buf);
+        ggml_free(ctx);
+    };
+    if (!buf) {
+        row.error = "SWIGLU allocation failed";
+        cleanup();
+        return row;
+    }
+    const size_t n = static_cast<size_t>(n_embd) * rows;
+    std::vector<float> g(n), u(n);
+    std::mt19937 rng(2027u);
+    std::uniform_real_distribution<float> uni(-20.0f, 20.0f);
+    std::uniform_real_distribution<float> upu(-2.0f, 2.0f);
+    const float specials[] = {0.0f,
+                              -0.0f,
+                              1e-45f,
+                              -1e-45f,
+                              1e-40f,
+                              -1e-40f,
+                              87.3f,
+                              -87.3f,
+                              88.0f,
+                              -88.0f,
+                              133.0f,
+                              -133.0f,
+                              134.0f,
+                              -134.0f,
+                              3.4e38f,
+                              -3.4e38f,
+                              std::numeric_limits<float>::infinity(),
+                              -std::numeric_limits<float>::infinity(),
+                              std::numeric_limits<float>::quiet_NaN()};
+    const size_t ns = sizeof(specials) / sizeof(specials[0]);
+    for (size_t i = 0; i < n; ++i) {
+        g[i] = (i % 97 == 0) ? specials[(i / 97) % ns] : uni(rng);
+        u[i] = (i % 89 == 0) ? specials[(i / 89) % ns] : upu(rng);
+    }
+    ggml_backend_tensor_set(gate, g.data(), 0, n * sizeof(float));
+    ggml_backend_tensor_set(up, u.data(), 0, n * sizeof(float));
+    log_output("[xllama] swiglu selftest: GPU compute\n");
+    const ggml_status st = ggml_backend_graph_compute(backend, gt);
+    log_output("[xllama] swiglu selftest: GPU compute rc=" + std::to_string(st) + "\n");
+    if (st != GGML_STATUS_SUCCESS) {
+        row.error = "SWIGLU GPU graph_compute failed";
+        cleanup();
+        return row;
+    }
+    std::vector<float> got(n), want(n);
+    ggml_backend_tensor_get(test, got.data(), 0, n * sizeof(float));
+    const unsigned csr = static_cast<unsigned>(_mm_getcsr());
+    log_output("[xllama] swiglu selftest: CPU direct kernel\n");
+    ::ggml_vec_swiglu_f32(static_cast<int>(n), want.data(), g.data(), u.data());
+    const ProbeMetrics m = probe_metrics(got, want, g, &u);
+    row.ok = m.ok;
+    row.d3d12_ran = true;
+    char note[512];
+    std::snprintf(note, sizeof(note), "mxcsr=0x%04x %s", csr, m.report.c_str());
+    row.error = note;
+    cleanup();
+    return row;
+}
+
+void run_d3d12_silu_selftest(std::vector<D3d12SelftestRow>* out) {
+    if (!out)
+        return;
+    if (!ggml_d3d12_register() || !gpu().silu_pso) {
+        D3d12SelftestRow row;
+        row.type = "silu_avx2";
+        row.error = "D3D12 SILU selftest PSO unavailable";
+        out->push_back(std::move(row));
+        return;
+    }
+    ggml_backend_t backend = dev_init_backend(&kDevice, nullptr);
+    ggml_backend_t cpu = ggml_backend_cpu_init();
+    if (!backend || !cpu) {
+        D3d12SelftestRow row;
+        row.type = "silu_avx2";
+        row.error = "SILU backend/CPU init failed";
+        out->push_back(std::move(row));
+        if (backend)
+            ggml_backend_free(backend);
+        if (cpu)
+            ggml_backend_free(cpu);
+        return;
+    }
+    // Single-threaded reference with an explicit pool, mirroring the GDN
+    // selftest: the CPU graph then executes on one worker, and the caller's
+    // MXCSR sample is recorded as a separate observation.
+    ggml_threadpool_params tp = ggml_threadpool_params_default(1);
+    ggml_threadpool_t pool = ggml_threadpool_new(&tp);
+    if (!pool) {
+        D3d12SelftestRow row;
+        row.type = "silu_avx2";
+        row.error = "SILU CPU threadpool unavailable";
+        out->push_back(std::move(row));
+        ggml_backend_free(backend);
+        ggml_backend_free(cpu);
+        return;
+    }
+    ggml_backend_cpu_set_n_threads(cpu, 1);
+    ggml_backend_cpu_set_threadpool(cpu, pool);
+    log_output("[xllama] silu selftest: backends ready, flag on\n");
+    d3d12_set_silu_test_enabled(true);
+    out->push_back(run_silu_case(backend, &kHostBuft, cpu, 9216, 4, nullptr));
+    out->push_back(run_swiglu_case(backend, &kHostBuft, 9216, 4));
+    d3d12_set_silu_test_enabled(false);
+    log_output("[xllama] silu selftest: case done\n");
+    ggml_backend_free(backend);
+    ggml_backend_free(cpu);
+    ggml_threadpool_free(pool);
 }
 
 } // namespace xllama

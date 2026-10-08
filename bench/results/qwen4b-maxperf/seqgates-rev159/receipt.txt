@@ -1,0 +1,19 @@
+start_utc=2026-10-08T02:49:09Z
+cell=chat256-seq-sw0 mtp=0 sw=0 predict=256 utc=2026-10-08T02:49:09Z
+cell=chat256-seq-sw1 mtp=0 sw=1 predict=256 utc=2026-10-08T02:50:02Z
+cell=code256-seq-sw1 mtp=0 sw=1 predict=256 utc=2026-10-08T02:50:53Z
+cell=code256-seq-sw0 mtp=0 sw=0 predict=256 utc=2026-10-08T02:52:05Z
+cell=std512-seq-sw0 mtp=0 sw=0 predict=64 utc=2026-10-08T02:53:18Z
+cell=std512-seq-sw1 mtp=0 sw=1 predict=64 utc=2026-10-08T02:54:10Z
+cell=chat64-mtp-sw0 mtp=2 sw=0 predict=64 utc=2026-10-08T02:55:03Z
+cell=chat64-mtp-sw1 mtp=2 sw=1 predict=64 utc=2026-10-08T02:55:55Z
+parity=OK
+api_gate_start=2026-10-08T02:56:48Z
+api=FAIL
+end_utc=2026-10-08T02:56:52Z
+arm=sw0-seq mtp=0 done_utc=2026-10-08T03:00:31Z
+arm=sw0-ref mtp=4 done_utc=2026-10-08T03:01:28Z
+arm=sw0-cand mtp=4 done_utc=2026-10-08T03:02:26Z
+arm=sw1-seq mtp=0 done_utc=2026-10-08T03:03:23Z
+arm=sw1-ref mtp=4 done_utc=2026-10-08T03:04:21Z
+arm=sw1-cand mtp=4 done_utc=2026-10-08T03:05:19Z

@@ -59,6 +59,10 @@ struct SessionHub {
     int n_batch = 0;
     int n_ubatch = 0;
     int n_threads = 0;
+    // Effective batch-graph thread count (plan 006 C1): 0/absent in a request
+    // means "same as n_threads", so the hub stores and compares the resolved
+    // value; a request that changes only this field is a different load.
+    int n_threads_batch = 0;
     bool kv_q8 = false;
     uint64_t generation = 0; // bumps on every resident-session change; guarded by mtx
 
@@ -68,6 +72,13 @@ struct SessionHub {
     // right after app-Ready bounced with a 503 while the preload held the
     // lock (observed on-console during Phase C validation).
     std::atomic<bool> preloading{false};
+
+    // Effective batch thread count for an identity request: a non-positive
+    // n_threads_batch means "same as n_threads" exactly as the loaders resolve
+    // it, so 0 and an explicit equal value are the same session identity.
+    static int effective_threads_batch(int n_threads, int n_threads_batch) {
+        return n_threads_batch > 0 ? n_threads_batch : n_threads;
+    }
 
     // Under mtx: return the resident session for |model_id|, creating it (and
     // destroying any other model's session FIRST — never 2x model in RAM) if
@@ -79,6 +90,7 @@ struct SessionHub {
         if (session && model == model_id && gpu_layers == sp.n_gpu_layers && mtp == sp.mtp &&
             mtp_depth == sp.mtp_n_max && mtp_pmin == sp.mtp_p_min && n_ctx == sp.n_ctx &&
             n_batch == sp.n_batch && n_ubatch == sp.n_ubatch && n_threads == sp.n_threads &&
+            n_threads_batch == effective_threads_batch(sp.n_threads, sp.n_threads_batch) &&
             kv_q8 == sp.kv_q8)
             return session.get();
         session.reset(); // release the old model before loading the new one
@@ -97,6 +109,7 @@ struct SessionHub {
         n_batch = sp.n_batch;
         n_ubatch = sp.n_ubatch;
         n_threads = sp.n_threads;
+        n_threads_batch = effective_threads_batch(sp.n_threads, sp.n_threads_batch);
         kv_q8 = sp.kv_q8;
         ++generation;
         return session.get();

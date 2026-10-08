@@ -1,0 +1,59 @@
+sha256=47b274695a1882eec2d02d1829af8d2e4117748ce70dd471914d1ad55d561b41
+pfn=GianlucaMazza.xllama_1.6.0.133_x64__pj67f1fcj4n14
+start_utc=2026-10-07T20:43:47Z
+cell=code64-seq-def mtp=0 ts=default predict=64 prof=0 utc=2026-10-07T20:43:47Z
+done=code64-seq-def utc=2026-10-07T20:44:41Z
+cell=code64-seq-on mtp=0 ts=1 predict=64 prof=0 utc=2026-10-07T20:44:41Z
+done=code64-seq-on utc=2026-10-07T20:45:34Z
+cell=code64-mtp-def mtp=2 ts=default predict=64 prof=0 utc=2026-10-07T20:45:34Z
+done=code64-mtp-def utc=2026-10-07T20:46:27Z
+cell=code64-mtp-on mtp=2 ts=1 predict=64 prof=0 utc=2026-10-07T20:46:27Z
+done=code64-mtp-on utc=2026-10-07T20:47:20Z
+cell=chat256-seq-def mtp=0 ts=default predict=256 prof=0 utc=2026-10-07T20:47:20Z
+done=chat256-seq-def utc=2026-10-07T20:48:13Z
+cell=chat256-seq-on mtp=0 ts=1 predict=256 prof=0 utc=2026-10-07T20:48:13Z
+done=chat256-seq-on utc=2026-10-07T20:49:05Z
+cell=chat256-mtp-def mtp=2 ts=default predict=256 prof=0 utc=2026-10-07T20:49:05Z
+done=chat256-mtp-def utc=2026-10-07T20:49:58Z
+cell=chat256-mtp-on mtp=2 ts=1 predict=256 prof=0 utc=2026-10-07T20:49:58Z
+done=chat256-mtp-on utc=2026-10-07T20:50:50Z
+cell=chat256-mtp-on-b2 mtp=2 ts=1 predict=256 prof=0 utc=2026-10-07T20:50:50Z
+done=chat256-mtp-on-b2 utc=2026-10-07T20:51:43Z
+cell=chat256-mtp-def-b2 mtp=2 ts=default predict=256 prof=0 utc=2026-10-07T20:51:43Z
+done=chat256-mtp-def-b2 utc=2026-10-07T20:52:35Z
+cell=chat256-seq-on-b2 mtp=0 ts=1 predict=256 prof=0 utc=2026-10-07T20:52:35Z
+done=chat256-seq-on-b2 utc=2026-10-07T20:53:28Z
+cell=chat256-seq-def-b2 mtp=0 ts=default predict=256 prof=0 utc=2026-10-07T20:53:28Z
+done=chat256-seq-def-b2 utc=2026-10-07T20:54:20Z
+cell=code64-mtp-on-b2 mtp=2 ts=1 predict=64 prof=0 utc=2026-10-07T20:54:21Z
+done=code64-mtp-on-b2 utc=2026-10-07T20:55:13Z
+cell=code64-mtp-def-b2 mtp=2 ts=default predict=64 prof=0 utc=2026-10-07T20:55:13Z
+done=code64-mtp-def-b2 utc=2026-10-07T20:56:07Z
+cell=code64-seq-on-b2 mtp=0 ts=1 predict=64 prof=0 utc=2026-10-07T20:56:07Z
+done=code64-seq-on-b2 utc=2026-10-07T20:57:00Z
+cell=code64-seq-def-b2 mtp=0 ts=default predict=64 prof=0 utc=2026-10-07T20:57:00Z
+done=code64-seq-def-b2 utc=2026-10-07T20:57:52Z
+cell=code64-mtp-prof1 mtp=2 ts=default predict=64 prof=1 utc=2026-10-07T20:57:52Z
+done=code64-mtp-prof1 utc=2026-10-07T20:58:45Z
+cell=chat256-mtp-prof1 mtp=2 ts=default predict=256 prof=1 utc=2026-10-07T20:58:45Z
+done=chat256-mtp-prof1 utc=2026-10-07T20:59:38Z
+parity=OK
+engage=code64-seq-def knob='gpu timestamps=off (profile-bound default)'
+engage=code64-mtp-def knob='gpu timestamps=off (profile-bound default)'
+engage=chat256-seq-def knob='gpu timestamps=off (profile-bound default)'
+engage=chat256-mtp-def knob='gpu timestamps=off (profile-bound default)'
+engage=chat256-mtp-def-b2 knob='gpu timestamps=off (profile-bound default)'
+engage=chat256-seq-def-b2 knob='gpu timestamps=off (profile-bound default)'
+engage=code64-mtp-def-b2 knob='gpu timestamps=off (profile-bound default)'
+engage=code64-seq-def-b2 knob='gpu timestamps=off (profile-bound default)'
+engage=code64-mtp-prof1 knob='gpu timestamps=on (profile-bound default)'
+engage=chat256-mtp-prof1 knob='gpu timestamps=on (profile-bound default)'
+engage=code64-seq-on knob='gpu timestamps=on (explicit knob)'
+engage=code64-mtp-on knob='gpu timestamps=on (explicit knob)'
+engage=chat256-seq-on knob='gpu timestamps=on (explicit knob)'
+engage=chat256-mtp-on knob='gpu timestamps=on (explicit knob)'
+engage=chat256-mtp-on-b2 knob='gpu timestamps=on (explicit knob)'
+engage=chat256-seq-on-b2 knob='gpu timestamps=on (explicit knob)'
+engage=code64-mtp-on-b2 knob='gpu timestamps=on (explicit knob)'
+engage=code64-seq-on-b2 knob='gpu timestamps=on (explicit knob)'
+end_utc=2026-10-07T20:59:39Z

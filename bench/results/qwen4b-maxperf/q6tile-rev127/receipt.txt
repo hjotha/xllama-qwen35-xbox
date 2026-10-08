@@ -1,0 +1,21 @@
+sha256=801f50eb5f4cf6a43fef4039563acc41a2e7b0f2096d4d39f0b8b706dc86a99e
+pfn=GianlucaMazza.xllama_1.6.0.127_x64__pj67f1fcj4n14
+start_utc=2026-10-07T17:05:00Z
+cell=chat64-q6c0 q6=0 utc=2026-10-07T17:05:00Z
+done=chat64-q6c0 utc=2026-10-07T17:06:20Z
+cell=chat64-q6c2 q6=2 utc=2026-10-07T17:06:20Z
+done=chat64-q6c2 utc=2026-10-07T17:07:39Z
+cell=code64-q6c0 q6=0 utc=2026-10-07T17:07:39Z
+done=code64-q6c0 utc=2026-10-07T17:08:58Z
+cell=code64-q6c2 q6=2 utc=2026-10-07T17:08:58Z
+done=code64-q6c2 utc=2026-10-07T17:10:16Z
+cell=code64-q6c2-b2 q6=2 utc=2026-10-07T17:10:16Z
+done=code64-q6c2-b2 utc=2026-10-07T17:11:34Z
+cell=code64-q6c0-b2 q6=0 utc=2026-10-07T17:11:34Z
+done=code64-q6c0-b2 utc=2026-10-07T17:12:52Z
+cell=chat64-q6c2-b2 q6=2 utc=2026-10-07T17:12:52Z
+done=chat64-q6c2-b2 utc=2026-10-07T17:14:10Z
+cell=chat64-q6c0-b2 q6=0 utc=2026-10-07T17:14:11Z
+done=chat64-q6c0-b2 utc=2026-10-07T17:15:30Z
+parity=OK
+end_utc=2026-10-07T17:15:30Z

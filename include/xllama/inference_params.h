@@ -51,6 +51,11 @@ struct InferenceParams {
     /// Thread count (0 = auto-detect).
     int n_threads = 0;
 
+    /// Batch thread count for graphs with more than one token (prefill chunks,
+    /// verify batches, catch-up). 0 = same as n_threads (unchanged default);
+    /// single-token decode always uses n_threads (plan 006 C1).
+    int n_threads_batch = 0;
+
     /// Which repetition of a repeated bench this run is (0 = not a bench).
     /// Written verbatim into the bench CSV's run_index column.
     int run_index = 0;

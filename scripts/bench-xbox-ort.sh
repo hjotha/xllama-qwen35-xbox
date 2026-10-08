@@ -401,22 +401,42 @@ restart_app() {
 
 # Wait for a done-marker in LocalState (polling). Parameterised because the
 # Session parity gate waits on its own marker, not bench-result.csv.done.
+# Bounded on every axis: deadline checked before each request, curl max-time
+# capped to the remaining budget, sleep capped to the remaining budget, and
+# success requires HTTP 200 plus the exact marker body ("done"). A nonempty
+# partial body or an HTTP error is a failed poll, never a marker; the last
+# partial body is kept for diagnostics.
 wait_for_marker() {
-	local name="$1" timeout_s="${2:-300}" elapsed=0
+	local name="$1" timeout_s="${2:-300}"
+	local start now deadline remaining mt code body_file
+	start=$(date +%s)
+	deadline=$((start + timeout_s))
+	body_file="${TMPDIR_LOCAL}/wait-marker-body"
+	code=none
 	echo "  Waiting for ${name} (timeout ${timeout_s}s)..."
-	while ((elapsed < timeout_s)); do
-		local resp
-		resp=$(curl "${CURL_AUTH[@]}" \
+	while :; do
+		now=$(date +%s)
+		if ((now >= deadline)); then
+			break
+		fi
+		remaining=$((deadline - now))
+		mt=$((remaining < 20 ? remaining : 20))
+		code=$(curl "${CURL_AUTH[@]}" --connect-timeout 5 --max-time "$mt" \
+			-o "$body_file" -w '%{http_code}' \
 			"${BASE_URL}/api/filesystem/apps/file?knownfolderid=LocalAppData&packagefullname=${PFN}&path=%5CLocalState&filename=${name}" \
-			2>/dev/null) || true
-		if [[ -n "$resp" && "$resp" != *"404"* && "$resp" != *"error"* ]]; then
-			echo "  Done after ${elapsed}s."
+			2>/dev/null) || code=000
+		if [[ "$code" == "200" && "$(tr -d '\r\n' <"$body_file" 2>/dev/null)" == "done" ]]; then
+			echo "  Done after $(( $(date +%s) - start ))s (http 200)."
 			return 0
 		fi
-		sleep 10
-		((elapsed += 10))
+		now=$(date +%s)
+		if ((now >= deadline)); then
+			break
+		fi
+		remaining=$((deadline - now))
+		sleep $((remaining < 10 ? remaining : 10))
 	done
-	echo "  Timeout waiting for ${name}" >&2
+	echo "  Timeout waiting for ${name} after $(( $(date +%s) - start ))s (last http ${code}; partial body kept at ${body_file})" >&2
 	return 1
 }
 

@@ -55,6 +55,72 @@ bool d3d12_q8_enabled();
 // gathered state, scalar activated gates, 1..17 rollback snapshots only.
 void d3d12_set_gdn_enabled(bool enabled, int min_tokens = 1);
 bool d3d12_gdn_enabled();
+
+// Plan 006 C4 selftest-only gate: lets the d3d12be selftest run GGML_OP_SILU
+// through the D3D12 backend for the CPU-vs-GPU corpus. Default OFF; no product
+// path ever enables it.
+void d3d12_set_silu_test_enabled(bool enabled);
+bool d3d12_silu_test_enabled();
+
+// Plan 006 C4 product trial (default OFF): FFN split-SWIGLU on D3D12, narrow
+// name/shape lineage whitelist. Mode 0 = off, 1 = all FFN, 2 = target-context
+// FFN only (layer index < target layer count, i.e. nextn/draft excluded).
+// d3d12_set_swiglu_target_layers is setup-time only (model load), never a
+// mid-graph toggle.
+void d3d12_set_swiglu_product_mode(int mode);
+int d3d12_swiglu_product_mode();
+// Applies the requested mode filtered by the process profile latch; called at
+// every context creation. The first MTP-capable context makes the process
+// MTP-profiled and FFN stays OFF from then on (fail-closed; no multi-context
+// concurrency guarantee is claimed).
+void d3d12_finalize_swiglu_mode(bool mtp_active);
+// Gate every context creation: false means this context's MTP mode conflicts
+// with the bound FFN profile; fail the request and require a restart instead
+// of changing capability under a live context.
+bool d3d12_swiglu_profile_accepts(bool mtp_active);
+void d3d12_set_swiglu_target_layers(int n);
+int d3d12_swiglu_target_layers();
+
+// Plan 006 C4: FFN SWIGLU is a sequential-only optimization. An active MTP
+// drafter always forces it off, so a seq-configured process cannot leak the
+// capability into an MTP session. Pure and host-testable.
+inline int effective_swiglu_mode(int requested_mode, bool mtp_active) {
+    return mtp_active ? 0 : requested_mode;
+}
+
+// Process profile latch: the capability is bound by the FIRST context that
+// uses it and never changes while the process lives. A later context with the
+// other MTP mode is rejected BEFORE creation (restart required) by accepts(),
+// so no already-scheduled graph ever loses its backend. Pure and
+// host-testable; the backend holds one instance.
+struct SwigluModePolicy {
+    int mode = 0;             // effective mode seen by the backend predicate
+    bool bound = false;       // first context fixed the profile
+    bool mtp_capable = false; // profile of that first context
+    // Bind once; already-bound calls leave the mode untouched (conflicting
+    // requests are refused earlier by accepts()).
+    void finalize(int requested_mode, bool mtp_active) {
+        if (bound)
+            return;
+        bound = true;
+        mtp_capable = mtp_active;
+        mode = effective_swiglu_mode(requested_mode, mtp_active);
+    }
+    // May a context with |mtp_active| be created at all? With the knob OFF
+    // capability is disabled and any context is fine; with it ON only contexts
+    // matching the bound profile are accepted, and only before binding.
+    // Once bound, the decision uses the BOUND effective mode/profile only; a
+    // later knob change (e.g. requested -> 0) cannot open the gate while the
+    // bound capability is still ON.
+    bool accepts(int requested_mode, bool mtp_active) const {
+        (void)requested_mode;
+        if (!bound)
+            return true; // the first context binds the profile
+        if (mode == 0)
+            return true; // bound OFF: nothing is enabled, any context is fine
+        return mtp_capable == mtp_active;
+    }
+};
 bool d3d12_gdn_supported(const ggml_tensor* op);
 void d3d12_gdn_emulate(const ggml_tensor* op, float* out);
 
@@ -171,6 +237,44 @@ std::uint64_t d3d12_graph_calls();
 double d3d12_wall_ms();
 std::uint64_t d3d12_matmul_count();
 double d3d12_gpu_ms();
+
+// Plan 006 C8: GPU timestamp queries are instrumentation and run on every
+// graph_compute when enabled. `enabled=false` skips query/resolve/readback
+// entirely; the backend then reports the timing as unavailable instead of a
+// measured zero. Default is enabled, which preserves the historical behavior
+// until an A/B proves the disable is worth changing.
+void d3d12_set_gpu_timestamps(bool enabled);
+bool d3d12_gpu_timestamps_enabled();
+
+// Valid-sample accumulation state for one backend timeline: exactly one
+// begin_call() per graph_compute, then exactly one add_sample(ms) when a
+// timestamp was captured for THAT call or add_unavailable() when queries are
+// disabled or the readback failed. Never accumulates a previous call's sample
+// (the rev130 stale-sample defect). Pure and host-testable.
+struct GpuTimingState {
+    double last_ms = 0.0;          // valid sample of the most recent call, else 0
+    double total_ms = 0.0;         // sum of valid samples only
+    std::uint64_t valid = 0;       // calls that produced a sample
+    std::uint64_t unavailable = 0; // calls with no sample (disabled or Map failed)
+    void begin_call() {
+        last_ms = 0.0;
+    }
+    void add_sample(double ms) {
+        last_ms = ms;
+        total_ms += ms;
+        ++valid;
+    }
+    void add_unavailable() {
+        last_ms = 0.0;
+        ++unavailable;
+    }
+    void reset() {
+        last_ms = 0.0;
+        total_ms = 0.0;
+        valid = 0;
+        unavailable = 0;
+    }
+};
 
 // Per-shape histogram (plan 003 stage 2). Aggregates inside graph_compute into a
 // buffer keyed by (context, phase, type, N, K, B, threads); d3d12_shape_drain()

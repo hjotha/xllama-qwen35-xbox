@@ -1,0 +1,35 @@
+sha256=f97e95e3fc777c240d547104cd6cd11933ffecc3c81e6268cd0952f1f3ecedb2
+pfn=GianlucaMazza.xllama_1.6.0.131_x64__pj67f1fcj4n14
+start_utc=2026-10-07T19:26:27Z
+cell=seq-tson mtp=0 ts=1 utc=2026-10-07T19:26:27Z
+done=seq-tson utc=2026-10-07T19:27:51Z
+cell=seq-tsoff mtp=0 ts=0 utc=2026-10-07T19:27:51Z
+done=seq-tsoff utc=2026-10-07T19:29:11Z
+cell=seq-tson-b2 mtp=0 ts=1 utc=2026-10-07T19:29:11Z
+done=seq-tson-b2 utc=2026-10-07T19:30:31Z
+cell=mtp-tson mtp=2 ts=1 utc=2026-10-07T19:30:31Z
+done=mtp-tson utc=2026-10-07T19:31:51Z
+cell=mtp-tsoff mtp=2 ts=0 utc=2026-10-07T19:31:51Z
+done=mtp-tsoff utc=2026-10-07T19:33:11Z
+cell=mtp-tson-b2 mtp=2 ts=1 utc=2026-10-07T19:33:11Z
+done=mtp-tson-b2 utc=2026-10-07T19:34:32Z
+cell=mtp-tsoff-b2 mtp=2 ts=0 utc=2026-10-07T19:34:32Z
+done=mtp-tsoff-b2 utc=2026-10-07T19:35:52Z
+cell=mtp-tson-b3 mtp=2 ts=1 utc=2026-10-07T19:35:52Z
+done=mtp-tson-b3 utc=2026-10-07T19:37:12Z
+cell=seq-tsoff-b2 mtp=0 ts=0 utc=2026-10-07T19:37:12Z
+done=seq-tsoff-b2 utc=2026-10-07T19:38:32Z
+cell=seq-tson-b3 mtp=0 ts=1 utc=2026-10-07T19:38:32Z
+done=seq-tson-b3 utc=2026-10-07T19:39:51Z
+parity=OK
+engage=seq-tson knob_on=3 summary_complete=3
+engage=seq-tson-b2 knob_on=6 summary_complete=6
+engage=mtp-tson knob_on=9 summary_complete=9
+engage=mtp-tson-b2 knob_on=12 summary_complete=12
+engage=mtp-tson-b3 knob_on=15 summary_complete=15
+engage=seq-tson-b3 knob_on=18 summary_complete=18
+engage=seq-tsoff knob_off=3 summary_unavailable=3
+engage=seq-tsoff-b2 knob_off=12 summary_unavailable=27
+engage=mtp-tsoff knob_off=6 summary_unavailable=12
+engage=mtp-tsoff-b2 knob_off=9 summary_unavailable=21
+end_utc=2026-10-07T19:39:52Z

@@ -1,0 +1,27 @@
+=== receipt ===
+parity line: ['parity=OK']
+PARITY_FAIL count: 0
+
+=== per-cell last-segment engagement ===
+chat64-mtp-p1-sw0      knob=off  dispatches=0
+chat64-mtp-p1-sw1      knob=on   dispatches=1270
+code64-mtp-p1-sw1      knob=on   dispatches=1041
+code64-mtp-p1-sw0      knob=off  dispatches=0
+chat64-mtp-sw0         knob=off  dispatches=0
+chat64-mtp-sw1         knob=on   dispatches=1270
+code64-mtp-sw1         knob=on   dispatches=1041
+code64-mtp-sw0         knob=off  dispatches=0
+chat64-seq-sw0         knob=off  dispatches=0
+chat64-seq-sw1         knob=on   dispatches=2112
+code64-seq-sw1         knob=on   dispatches=2240
+code64-seq-sw0         knob=off  dispatches=0
+
+=== per-round VROUND feed/accepted parity (profile-ON MTP pairs, last segment, run3) ===
+chat64-mtp-p1-sw0 n=23 vs chat64-mtp-p1-sw1 n=23 -> sequences_identical=True
+code64-mtp-p1-sw0 n=21 vs code64-mtp-p1-sw1 n=21 -> sequences_identical=True
+
+=== timing (profile OFF, 2 rows/arm) ===
+chat64-mtp: OFF [24.14, 24.03] ON [25.03, 25.27] delta=+4.42%
+code64-mtp: OFF [33.6, 33.72] ON [34.95, 34.8] delta=+3.61%
+chat64-seq: OFF [24.69, 24.48] ON [26.1, 26.28] delta=+6.53%
+code64-seq: OFF [23.79, 23.86] ON [25.35, 24.99] delta=+5.65%

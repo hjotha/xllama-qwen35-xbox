@@ -1,0 +1,7 @@
+graphs: 63
+big graphs: 12 small: 51
+all ops: [('MUL_MAT', 3447), ('RMS_NORM', 2193), ('MUL', 2052), ('GET_ROWS', 1278), ('ADD', 1158), ('SWIGLU', 723), ('SCALE', 576), ('SIGMOID', 435), ('CONCAT', 339), ('ROPE', 294), ('SSM_CONV', 288), ('SILU', 288), ('SOFTPLUS', 288), ('GATED_DELT', 288), ('FLASH_ATTN', 147)]
+big avg ops/graph: {'MUL_MAT': 249.0, 'RMS_NORM': 153.0, 'MUL': 137.0, 'GET_ROWS': 98.0, 'ADD': 88.0, 'SWIGLU': 56.0, 'SCALE': 48.0, 'SIGMOID': 32.0, 'CONCAT': 24.0, 'SSM_CONV': 24.0}
+CPU island size histogram (big graphs): {1: 384, 3: 864, 4: 12, 5: 288, 7: 96, 15: 288}
+SWIGLU window: ['MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL:CPU', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU']
+SWIGLU islands alone between D3D12 (big graphs total): 384

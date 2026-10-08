@@ -1,0 +1,9 @@
+== code64-mtp-prof1 (run2 segment) VROUND n=21
+  width=3 n=21 wall_med=70.7 d3w_med=36.9 d3g_med=25.9 cpu_med=140.6
+  sums: wall=1487 d3w=776 d3g=544 cpu=2984
+   [xllama] DSPLIT wall=1886.88 d3w=937.74 d3g=667.96 cpu=3562.50 classic_steps=1
+== chat256-mtp-prof1 (run2 segment) VROUND n=93
+  width=2 n=35 wall_med=52.8 d3w_med=27.2 d3g_med=17.3 cpu_med=93.8
+  width=3 n=58 wall_med=69.4 d3w_med=36.5 d3g_med=25.9 cpu_med=125.0
+  sums: wall=5906 d3w=3115 d3g=2105 cpu=11578
+   [xllama] DSPLIT wall=9370.58 d3w=4784.10 d3g=3202.39 cpu=17703.12 classic_steps=37

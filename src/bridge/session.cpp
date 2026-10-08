@@ -428,8 +428,9 @@ class LlamaSession final : public Session {
     float m_lora_scale = 1.0f;
     int m_n_ctx;
     int m_n_threads;
-    int m_n_batch;  // 0 = llama.cpp default
-    int m_n_ubatch; // 0 = llama.cpp default
+    int m_n_threads_batch; // graphs with >1 token (prefill/verify/catch-up)
+    int m_n_batch;         // 0 = llama.cpp default
+    int m_n_ubatch;        // 0 = llama.cpp default
     // Persistent context across turns: the KV cache lives here so a reuse turn
     // (reuse_kv && !reset_kv) can append only the delta instead of re-prefilling
     // the whole conversation. Created lazily on the first generate().
@@ -473,13 +474,13 @@ class LlamaSession final : public Session {
     bool m_can_shift = false;
 
     explicit LlamaSession(LlamaModelPtr model, LlamaAdapterLoraPtr adapter, float lora_scale,
-                          int n_ctx, int n_threads, int n_batch, int n_ubatch, bool kv_q8,
-                          bool prompt_lookup, int gpu_layers, bool mtp, int mtp_n_max,
+                          int n_ctx, int n_threads, int n_threads_batch, int n_batch, int n_ubatch,
+                          bool kv_q8, bool prompt_lookup, int gpu_layers, bool mtp, int mtp_n_max,
                           float mtp_p_min)
         : m_model(std::move(model)), m_adapter(std::move(adapter)), m_lora_scale(lora_scale),
-          m_n_ctx(n_ctx), m_n_threads(n_threads), m_n_batch(n_batch), m_n_ubatch(n_ubatch),
-          m_kv_q8(kv_q8), m_prompt_lookup(prompt_lookup), m_gpu_layers(gpu_layers), m_mtp(mtp),
-          m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min) {}
+          m_n_ctx(n_ctx), m_n_threads(n_threads), m_n_threads_batch(n_threads_batch),
+          m_n_batch(n_batch), m_n_ubatch(n_ubatch), m_kv_q8(kv_q8), m_prompt_lookup(prompt_lookup),
+          m_gpu_layers(gpu_layers), m_mtp(mtp), m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min) {}
 
     // Lazy context creation, shared by generate() and the state-file entry
     // points (#170b needs a context before the first turn). Returns false and
@@ -488,6 +489,17 @@ class LlamaSession final : public Session {
         if (m_ctx)
             return true;
         {
+            // Plan 006 C4: setup-time target layer count for the target-only
+            // SWIGLU whitelist (never a mid-graph toggle).
+            // Conflict check FIRST: a rejected creation must not mutate any
+            // backend state an existing context depends on.
+            if (!d3d12_swiglu_profile_accepts(m_mtp)) {
+                if (err)
+                    *err = "FFN SWIGLU profile is bound to the other MTP mode; restart required";
+                return false;
+            }
+            d3d12_set_swiglu_target_layers(llama_model_n_layer(m_model.get()));
+            d3d12_finalize_swiglu_mode(m_mtp);
             llama_context_params cparams = llama_context_default_params();
             cparams.n_ctx = m_n_ctx;
             cparams.n_threads = m_n_threads;
@@ -499,7 +511,9 @@ class LlamaSession final : public Session {
             // Prefill (any ubatch > 1 token) runs on n_threads_batch, whose
             // default is GGML_DEFAULT_N_THREADS (4) regardless of n_threads —
             // left unset it caps prefill at 4 threads while decode gets 6 (#168).
-            cparams.n_threads_batch = m_n_threads;
+            // Plan 006 C1: the batch count is separately selectable; it equals
+            // n_threads unless the caller resolved a different value.
+            cparams.n_threads_batch = m_n_threads_batch;
             if (m_n_batch > 0)
                 cparams.n_batch = static_cast<uint32_t>(m_n_batch);
             if (m_n_ubatch > 0)
@@ -535,6 +549,10 @@ class LlamaSession final : public Session {
                 m_kv_q8 = false;
                 m_ctx.reset(llama_init_from_model(m_model.get(), cparams));
             }
+            if (m_ctx)
+                log_output("[xllama] session effective threads: decode=" +
+                           std::to_string(llama_n_threads(m_ctx.get())) +
+                           " batch=" + std::to_string(llama_n_threads_batch(m_ctx.get())) + "\n");
             if (m_ctx && m_mtp) {
                 // The target has to expose nextn hidden rows; that is what the
                 // drafter reads to seed each step. Enabled only here so a
@@ -557,7 +575,7 @@ class LlamaSession final : public Session {
                     m_mtp_active = true;
                 }
             }
-            m_cpu_pools.attach(m_gpu_layers, m_ctx.get(), m_n_threads, m_n_threads);
+            m_cpu_pools.attach(m_gpu_layers, m_ctx.get(), m_n_threads, m_n_threads_batch);
             if (!m_ctx) {
                 if (err)
                     *err = "failed to create context";
@@ -1507,11 +1525,16 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
     }
 
     int n_threads = sp.n_threads > 0 ? sp.n_threads : detect_threads_llama();
+    // Plan 006 C1: batch-graph thread count; 0/invalid keeps parity with the
+    // decode count (historical behavior). The persistent pool wrapper creates a
+    // second pool when the two differ.
+    int n_threads_batch = sp.n_threads_batch > 0 ? sp.n_threads_batch : n_threads;
     int n_ctx = sp.n_ctx > 0 ? sp.n_ctx : kDefaultNCtx;
     log_output("[xllama] Session: GGUF model loaded via llama.cpp (persistent)\n");
-    return std::make_unique<LlamaSession>(
-        LlamaModelPtr(raw_model), std::move(adapter), sp.lora_scale, n_ctx, n_threads, sp.n_batch,
-        sp.n_ubatch, sp.kv_q8, sp.prompt_lookup, gpu_layers, sp.mtp, sp.mtp_n_max, sp.mtp_p_min);
+    return std::make_unique<LlamaSession>(LlamaModelPtr(raw_model), std::move(adapter),
+                                          sp.lora_scale, n_ctx, n_threads, n_threads_batch,
+                                          sp.n_batch, sp.n_ubatch, sp.kv_q8, sp.prompt_lookup,
+                                          gpu_layers, sp.mtp, sp.mtp_n_max, sp.mtp_p_min);
 }
 } // namespace detail
 

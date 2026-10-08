@@ -1,0 +1,172 @@
+;
+; Input signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+;
+; Output signature:
+;
+; Name                 Index   Mask Register SysValue  Format   Used
+; -------------------- ----- ------ -------- -------- ------- ------
+; no parameters
+; shader hash: 3787d7f24351def1a5ed3d95fb8ea6d3
+;
+; Pipeline Runtime Information: 
+;
+;PSVRuntimeInfo:
+; Compute Shader
+; NumThreads=(64,1,1)
+; MinimumExpectedWaveLaneCount: 0
+; MaximumExpectedWaveLaneCount: 4294967295
+; UsesViewID: false
+; SigInputElements: 0
+; SigOutputElements: 0
+; SigPatchConstOrPrimElements: 0
+; SigInputVectors: 0
+; SigOutputVectors[0]: 0
+; SigOutputVectors[1]: 0
+; SigOutputVectors[2]: 0
+; SigOutputVectors[3]: 0
+; EntryFunctionName: main
+;
+;
+; Buffer Definitions:
+;
+; Resource bind info for xs
+; {
+;
+;   float $Element;                                   ; Offset:    0 Size:     4
+;
+; }
+;
+; Resource bind info for gs
+; {
+;
+;   float $Element;                                   ; Offset:    0 Size:     4
+;
+; }
+;
+; Resource bind info for dst
+; {
+;
+;   float $Element;                                   ; Offset:    0 Size:     4
+;
+; }
+;
+;
+; Resource Bindings:
+;
+; Name                                 Type  Format         Dim      ID      HLSL Bind  Count
+; ------------------------------ ---------- ------- ----------- ------- -------------- ------
+; xs                                texture  struct         r/o      T0             t0     1
+; gs                                texture  struct         r/o      T1             t1     1
+; dst                                   UAV  struct         r/w      U0             u0     1
+;
+target datalayout = "e-m:e-p:32:32-i1:32-i8:32-i16:32-i32:32-i64:64-f16:32-f32:32-f64:64-n8:16:32:64"
+target triple = "dxil-ms-dx"
+
+%dx.types.Handle = type { i8* }
+%dx.types.ResRet.f32 = type { float, float, float, float, i32 }
+%"class.StructuredBuffer<float>" = type { float }
+%"class.RWStructuredBuffer<float>" = type { float }
+
+define void @main() {
+  %1 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 1, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %2 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 1, i32 1, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %3 = call %dx.types.Handle @dx.op.createHandle(i32 57, i8 0, i32 0, i32 0, i1 false)  ; CreateHandle(resourceClass,rangeId,index,nonUniformIndex)
+  %4 = call i32 @dx.op.threadId.i32(i32 93, i32 0)  ; ThreadId(component)
+  %5 = call %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(i32 68, %dx.types.Handle %3, i32 %4, i32 0)  ; BufferLoad(srv,index,wot)
+  %6 = extractvalue %dx.types.ResRet.f32 %5, 0
+  %7 = fmul fast float %6, 0xBFF7154760000000
+  %8 = fadd fast float %7, 0x4168000000000000
+  %9 = fmul fast float %6, 0xBE5AF89000000000
+  %10 = bitcast float %8 to i32
+  %11 = shl i32 %10, 23
+  %12 = add i32 %11, 1065353216
+  %13 = bitcast i32 %12 to float
+  %14 = call float @dx.op.unary.f32(i32 6, float %7)  ; FAbs(value)
+  %15 = bitcast float %14 to i32
+  %16 = icmp ugt i32 %15, 1123811328
+  %17 = fmul fast float %9, %9
+  %18 = fmul fast float %6, 0x3DEC78E960000000
+  %19 = fsub fast float 0x3FA573E2E0000000, %18
+  %20 = fmul fast float %19, %17
+  %21 = fmul fast float %6, 0x3E31FB84E0000000
+  %22 = fsub fast float 0x3FDFFFDB60000000, %21
+  %23 = fadd fast float %22, %20
+  %24 = fmul fast float %23, %17
+  %25 = fmul fast float %6, 0x3E5AF88F00000000
+  %26 = fsub fast float %24, %25
+  br i1 %16, label %30, label %27
+
+; <label>:27                                      ; preds = %0
+  %28 = fmul fast float %26, %13
+  %29 = fadd fast float %28, %13
+  br label %42
+
+; <label>:30                                      ; preds = %0
+  %31 = fcmp fast ole float %7, 0.000000e+00
+  %32 = select i1 %31, i32 -2113929216, i32 0
+  %33 = add i32 %32, 2130706432
+  %34 = bitcast i32 %33 to float
+  %35 = sub i32 %11, %32
+  %36 = bitcast i32 %35 to float
+  %37 = icmp ugt i32 %15, 1128267776
+  %38 = fmul fast float %36, %26
+  %39 = fadd fast float %38, %36
+  %40 = select i1 %37, float %34, float %39
+  %41 = fmul fast float %40, %34
+  br label %42
+
+; <label>:42                                      ; preds = %30, %27
+  %43 = phi float [ %29, %27 ], [ %41, %30 ]
+  %44 = fadd fast float %43, 1.000000e+00
+  %45 = fdiv fast float %6, %44
+  %46 = call %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(i32 68, %dx.types.Handle %2, i32 %4, i32 0)  ; BufferLoad(srv,index,wot)
+  %47 = extractvalue %dx.types.ResRet.f32 %46, 0
+  %48 = fmul fast float %47, %45
+  call void @dx.op.bufferStore.f32(i32 69, %dx.types.Handle %1, i32 %4, i32 0, float %48, float undef, float undef, float undef, i8 1)  ; BufferStore(uav,coord0,coord1,value0,value1,value2,value3,mask)
+  ret void
+}
+
+; Function Attrs: nounwind readnone
+declare i32 @dx.op.threadId.i32(i32, i32) #0
+
+; Function Attrs: nounwind readnone
+declare float @dx.op.unary.f32(i32, float) #0
+
+; Function Attrs: nounwind readonly
+declare %dx.types.Handle @dx.op.createHandle(i32, i8, i32, i32, i1) #1
+
+; Function Attrs: nounwind
+declare void @dx.op.bufferStore.f32(i32, %dx.types.Handle, i32, i32, float, float, float, float, i8) #2
+
+; Function Attrs: nounwind readonly
+declare %dx.types.ResRet.f32 @dx.op.bufferLoad.f32(i32, %dx.types.Handle, i32, i32) #1
+
+attributes #0 = { nounwind readnone }
+attributes #1 = { nounwind readonly }
+attributes #2 = { nounwind }
+
+!llvm.ident = !{!0}
+!dx.version = !{!1}
+!dx.valver = !{!2}
+!dx.shaderModel = !{!3}
+!dx.resources = !{!4}
+!dx.entryPoints = !{!11}
+
+!0 = !{!"dxcoob 1.8.2502.11 (239921522)"}
+!1 = !{i32 1, i32 0}
+!2 = !{i32 1, i32 8}
+!3 = !{!"cs", i32 6, i32 0}
+!4 = !{!5, !9, null, null}
+!5 = !{!6, !8}
+!6 = !{i32 0, %"class.StructuredBuffer<float>"* undef, !"", i32 0, i32 0, i32 1, i32 12, i32 0, !7}
+!7 = !{i32 1, i32 4}
+!8 = !{i32 1, %"class.StructuredBuffer<float>"* undef, !"", i32 0, i32 1, i32 1, i32 12, i32 0, !7}
+!9 = !{!10}
+!10 = !{i32 0, %"class.RWStructuredBuffer<float>"* undef, !"", i32 0, i32 0, i32 1, i32 12, i1 false, i1 false, i1 false, !7}
+!11 = !{void ()* @main, !"main", null, !4, !12}
+!12 = !{i32 0, i64 16, i32 4, !13}
+!13 = !{i32 64, i32 1, i32 1}

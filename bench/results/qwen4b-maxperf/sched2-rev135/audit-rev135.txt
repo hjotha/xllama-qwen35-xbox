@@ -1,0 +1,19 @@
+graphs (split sequences): 63
+splits per graph histogram: {14: 51, 370: 12}
+split backend totals: {'CPU': 2577, 'D3D12': 2577}
+adjacent split-backend pairs: {('CPU', 'D3D12'): 2577, ('D3D12', 'CPU'): 2514}
+top ops: [('MUL_MAT', 2289), ('GATED_DELT', 288)]
+MUL backends: {}
+MUL src backends: {}
+MUL_MAT: {'D3D12': 2289}
+sample graph splits: ['CPU', 'D3D12', 'CPU', 'D3D12', 'CPU', 'D3D12', 'CPU', 'D3D12', 'CPU', 'D3D12', 'CPU', 'D3D12', 'CPU', 'D3D12'] ... total 14
+
+=== fixed-regex op census ===
+total nodes captured: 4866
+top ops: [('MUL_MAT', 2289), ('ADD', 870), ('RMS_NORM', 633), ('SWIGLU', 435), ('CONCAT', 288), ('GATED_DELT', 288), ('GET_ROWS', 63)]
+MUL backends: {}
+ADD backends: {'CPU': 870}
+RMS_NORM backends: {'CPU': 633}
+MUL src backends: {}
+ADD src backends: {'llama]': 4698, 'D3D12': 921, 'CPU': 2907}
+node sequence sample (first 60 non-view): ['GET_ROWS:CPU', 'MUL_MAT:D3D12', 'CONCAT:CPU', 'GATED_DELT:D3D12', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'CONCAT:CPU', 'GATED_DELT:D3D12', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'CONCAT:CPU', 'GATED_DELT:D3D12', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'CONCAT:CPU', 'GATED_DELT:D3D12', 'MUL_MAT:D3D12', 'RMS_NORM:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'SWIGLU:CPU', 'MUL_MAT:D3D12', 'ADD:CPU', 'MUL_MAT:D3D12', 'CONCAT:CPU', 'GATED_DELT:D3D12', 'MUL_MAT:D3D12', 'RMS_NORM:CPU']

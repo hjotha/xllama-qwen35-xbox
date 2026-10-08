@@ -1,0 +1,19 @@
+PASS cell=verify-mtp-b0 run=2 effective=True summary=True parity=True line=[xllama] effective threads: decode=2 batch=2
+PASS cell=verify-mtp-b4 run=2 effective=True summary=True parity=True line=[xllama] effective threads: decode=2 batch=4
+PASS cell=c2-mtp-t1 run=2 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t1 run=3 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t2 run=2 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=2 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t2 run=3 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=2 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t2-b2 run=2 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=2 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t2-b2 run=3 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=2 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t1-b2 run=2 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+PASS cell=c2-mtp-t1-b2 run=3 effective=True summary=True parity=True line=[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+PASS cell=c7-std-u32 run=2 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=32 n_ubatch=32
+PASS cell=c7-std-u32 run=3 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=32 n_ubatch=32
+PASS cell=c7-std-u64 run=2 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=64 n_ubatch=64
+PASS cell=c7-std-u64 run=3 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=64 n_ubatch=64
+PASS cell=c7-std-u64-b2 run=2 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=64 n_ubatch=64
+PASS cell=c7-std-u64-b2 run=3 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=64 n_ubatch=64
+PASS cell=c7-std-u32-b2 run=2 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=32 n_ubatch=32
+PASS cell=c7-std-u32-b2 run=3 effective=True summary=True parity=True line=[xllama] prefill batch override: n_batch=32 n_ubatch=32
+total=18 failures=0

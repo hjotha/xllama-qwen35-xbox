@@ -1,0 +1,35 @@
+sha256=47b274695a1882eec2d02d1829af8d2e4117748ce70dd471914d1ad55d561b41
+pfn=GianlucaMazza.xllama_1.6.0.133_x64__pj67f1fcj4n14
+start_utc=2026-10-07T20:27:29Z
+cell=verify-mtp-b0 mtp=2 mtp_threads=1 batch=absent ubatch=64 predict=64 runs=2 utc=2026-10-07T20:27:29Z
+done=verify-mtp-b0 utc=2026-10-07T20:28:26Z
+cell=verify-mtp-b4 mtp=2 mtp_threads=1 batch=4 ubatch=64 predict=64 runs=2 utc=2026-10-07T20:28:26Z
+done=verify-mtp-b4 utc=2026-10-07T20:29:20Z
+cell=c2-mtp-t1 mtp=2 mtp_threads=1 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:29:21Z
+done=c2-mtp-t1 utc=2026-10-07T20:30:41Z
+cell=c2-mtp-t2 mtp=2 mtp_threads=2 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:30:41Z
+done=c2-mtp-t2 utc=2026-10-07T20:32:01Z
+cell=c2-mtp-t2-b2 mtp=2 mtp_threads=2 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:32:01Z
+done=c2-mtp-t2-b2 utc=2026-10-07T20:33:20Z
+cell=c2-mtp-t1-b2 mtp=2 mtp_threads=1 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:33:21Z
+done=c2-mtp-t1-b2 utc=2026-10-07T20:34:41Z
+cell=c7-std-u32 mtp=0 mtp_threads=1 batch=absent ubatch=32 predict=64 runs=3 utc=2026-10-07T20:34:41Z
+done=c7-std-u32 utc=2026-10-07T20:36:01Z
+cell=c7-std-u64 mtp=0 mtp_threads=1 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:36:01Z
+done=c7-std-u64 utc=2026-10-07T20:37:20Z
+cell=c7-std-u64-b2 mtp=0 mtp_threads=1 batch=absent ubatch=64 predict=64 runs=3 utc=2026-10-07T20:37:20Z
+done=c7-std-u64-b2 utc=2026-10-07T20:38:38Z
+cell=c7-std-u32-b2 mtp=0 mtp_threads=1 batch=absent ubatch=32 predict=64 runs=3 utc=2026-10-07T20:38:38Z
+done=c7-std-u32-b2 utc=2026-10-07T20:39:57Z
+parity=OK
+engage=verify-mtp-b0 eff=''
+engage=verify-mtp-b4 eff=''
+engage=c2-mtp-t1 draft='draft CPU threads=1'
+engage=c2-mtp-t2 draft='draft CPU threads=2'
+engage=c2-mtp-t2-b2 draft='draft CPU threads=2'
+engage=c2-mtp-t1-b2 draft='draft CPU threads=1'
+engage=c7-std-u32 pref='n_batch=32 n_ubatch=32'
+engage=c7-std-u64 pref='n_batch=64 n_ubatch=64'
+engage=c7-std-u64-b2 pref='n_batch=64 n_ubatch=64'
+engage=c7-std-u32-b2 pref='n_batch=32 n_ubatch=32'
+end_utc=2026-10-07T20:39:57Z

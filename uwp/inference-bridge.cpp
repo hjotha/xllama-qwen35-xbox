@@ -85,6 +85,20 @@ int read_local_int(const char* name, int fallback) {
     return s.empty() ? fallback : std::atoi(s.c_str());
 }
 
+// Bench/session host tag (plan 005). The exact console model is not detectable
+// from an AppContainer, and the hardcoded family label was already wrong once
+// (Series X hardware labeled xbox-series-s). The runner may provide the
+// verified label in LocalState bench_host_tag.txt (lowercase [a-z0-9-], max 24
+// chars); absent or invalid stays family-only "xbox-series".
+std::string host_tag_prefix() {
+    const std::string tag = read_local_file("bench_host_tag.txt");
+    const bool valid = !tag.empty() && tag.size() <= 24 &&
+                       std::all_of(tag.begin(), tag.end(), [](unsigned char c) {
+                           return (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
+                       });
+    return valid ? tag : std::string("xbox-series");
+}
+
 // Real-decode two-column knob (plan 004): LocalState d3d12twocol.txt with
 // content "auto" engages variant 2 (allowlisted NEW) for the enclosing bench;
 // anything else or absent stays OLD (0). Force (1) is bench internals only
@@ -169,6 +183,8 @@ void apply_ggmlprof_knob(const char* who) {
         var = "GGML_BACKEND_COPY_PROFILE=1";
     else if (raw == "sched")
         var = "GGML_SCHED_DEBUG=1";
+    else if (raw == "sched2")
+        var = "GGML_SCHED_DEBUG=2"; // headers + per-node backend assignment
     else if (raw == "realloc")
         var = "GGML_SCHED_DEBUG_REALLOC=1";
     else if (raw == "noreuse")
@@ -844,6 +860,33 @@ static void apply_q8_knob(const char* who) {
                 : gdn           ? "D3D12"
                                 : "CPU control") +
                "\n");
+    // Plan 006 C4 product trial: FFN split-SWIGLU on D3D12 (default OFF;
+    // d3d12swiglu.txt "1" = all FFN, "2" = target-context FFN only).
+    const std::string swiglu_mode = read_local_file("d3d12swiglu.txt");
+    const int sw_mode = swiglu_mode == "1" ? 1 : (swiglu_mode == "2" ? 2 : 0);
+    d3d12_set_swiglu_product_mode(sw_mode);
+    log_output(std::string("[xllama] ") + who + ": FFN SWIGLU D3D12=" +
+               (sw_mode == 2 ? "target-only" : (sw_mode == 1 ? "all" : "off")) + "\n");
+}
+
+// Plan 006 C8: GPU timestamp queries are instrumentation. Explicit
+// d3d12timestamps.txt "0"/"1" wins; when the file is absent the process default
+// is bound to the run's profile switch (enabled iff profiling), so the product
+// path pays no query/readback cost while attribution keeps d3g. Called once per
+// run BEFORE decode work; the session/API path never re-applies it after
+// startup, so concurrent requests cannot flip the policy mid-run.
+static void apply_gpu_timestamps(bool profile_phases, const char* who) {
+    const std::string mode = read_local_file("d3d12timestamps.txt");
+    bool enabled;
+    if (mode == "0")
+        enabled = false;
+    else if (mode == "1")
+        enabled = true;
+    else
+        enabled = profile_phases;
+    d3d12_set_gpu_timestamps(enabled);
+    log_output(std::string("[xllama] ") + who + ": gpu timestamps=" + (enabled ? "on" : "off") +
+               (mode.empty() ? " (profile-bound default)" : " (explicit knob)") + "\n");
 }
 
 void apply_startup_profile() {
@@ -851,6 +894,10 @@ void apply_startup_profile() {
         return;
     s_prof_applied = true;
     apply_q8_knob("startup");
+    // Startup default for the session/API path: timestamps OFF unless the
+    // explicit knob says otherwise (profile runs apply their own policy before
+    // decode). Deterministic for every request; never flipped per request.
+    apply_gpu_timestamps(false, "startup");
     s_prof_twocol = read_local_file("d3d12twocol.txt");
     s_prof_repack = read_local_file("cpurepackforcegemv.txt");
     apply_twocol_knob("startup");      // no-op when file absent
@@ -893,6 +940,8 @@ void apply_llama_ini_session(SessionParams& sp) {
         sp.n_ctx = v;
     if (llama_ini_int(ini, "n_threads", v) && v > 0)
         sp.n_threads = v;
+    if (llama_ini_int(ini, "n_threads_batch", v) && v > 0)
+        sp.n_threads_batch = v;
     if (llama_ini_int(ini, "n_batch", v) && v > 0)
         sp.n_batch = v;
     if (llama_ini_int(ini, "n_ubatch", v) && v > 0)
@@ -1035,6 +1084,8 @@ void main_loop() {
     // the DirectML prefill band's edges sit near n_ctx/2 and n_ctx - n_predict,
     // and that hypothesis is only falsifiable if both are controllable here.
     const int bench_threads = read_local_int("bench_threads.txt", 0);
+    // Plan 006 C1: batch/prefill/verify thread count; 0 = same as bench_threads.
+    const int bench_batch_threads = read_local_int("bench_batch_threads.txt", 0);
     const int bench_ctx = read_local_int("bench_ctx.txt", 0);
     const int bench_npredict = read_local_int("bench_npredict.txt", 0);
     // #130: max_length is the variable that governs DirectML prefill, and it is
@@ -1093,6 +1144,10 @@ void main_loop() {
     // package/GGUF measures the instrumentation's own cost instead of inferring it
     // from the residual. Host tag -prof0/-prof1 so the CSV says which ran.
     const int bench_profile = read_local_int("bench_profile.txt", 1);
+    // Bind the process-global timestamp policy to THIS bench's profile switch
+    // (explicit d3d12timestamps.txt still wins). Set before any bench sub-mode
+    // (session parity included) starts decoding, so it cannot flip mid-run.
+    apply_gpu_timestamps(bench_profile != 0, "bench");
 
     // Plan 003 F3.5: Session reset / edited-prefix / delta / multi-chunk parity.
     // bench_mtp_session.txt selects it and skips the single-turn bench, the same
@@ -1101,7 +1156,7 @@ void main_loop() {
     // of silently benching the single-turn path.
     if (read_local_int("bench_mtp_session.txt", 0) != 0) {
         char host_buf3[96];
-        int l3 = snprintf(host_buf3, sizeof(host_buf3), "xbox-series-s");
+        int l3 = snprintf(host_buf3, sizeof(host_buf3), "%s", host_tag_prefix().c_str());
         if (bench_threads > 0)
             l3 += snprintf(host_buf3 + l3, sizeof(host_buf3) - l3, "-t%d", bench_threads);
         if (bench_gpu_layers > 0)
@@ -1126,9 +1181,10 @@ void main_loop() {
         if (!turn2.empty()) {
             char host_buf2[64];
             if (bench_threads > 0)
-                snprintf(host_buf2, sizeof(host_buf2), "xbox-series-s-t%d", bench_threads);
+                snprintf(host_buf2, sizeof(host_buf2), "%s-t%d", host_tag_prefix().c_str(),
+                         bench_threads);
             else
-                snprintf(host_buf2, sizeof(host_buf2), "xbox-series-s");
+                snprintf(host_buf2, sizeof(host_buf2), "%s", host_tag_prefix().c_str());
             log_output("[xllama] kv-bench model: " + model_name + "\n");
             run_kv_bench(model_name, "You are a helpful AI assistant.", user_prompt, turn2,
                          bench_threads, bench_ctx, host_buf2, bench_run_index);
@@ -1179,7 +1235,11 @@ void main_loop() {
              "[xllama] bench sampling: greedy=%d seed=%u temp=%.2f top_p=%.2f top_k=%d\n",
              params.greedy ? 1 : 0, params.seed, params.temperature, params.top_p, params.top_k);
     log_output(samp_buf);
-    params.n_gpu_layers = bench_gpu_layers;     // D2b: 0 = CPU
+    params.n_gpu_layers = bench_gpu_layers;                                     // D2b: 0 = CPU
+    params.n_threads_batch = bench_batch_threads > 0 ? bench_batch_threads : 0; // plan 006 C1
+    if (bench_batch_threads > 0)
+        log_output("[xllama] bench: batch threads=" + std::to_string(bench_batch_threads) +
+                   " (decode threads=" + std::to_string(bench_threads) + ")\n");
     params.stop_sequences = fmt.stop_sequences; // clean stop for Gemma's <end_of_turn>
     params.run_index = bench_run_index;         // W1.1: echo into CSV (0 = single-run)
     params.profile_phases = bench_profile != 0;
@@ -1189,10 +1249,13 @@ void main_loop() {
     }
 
     char host_buf[80];
-    int host_len = snprintf(host_buf, sizeof(host_buf), "xbox-series-s");
+    int host_len = snprintf(host_buf, sizeof(host_buf), "%s", host_tag_prefix().c_str());
     if (bench_threads > 0)
         host_len +=
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-t%d", bench_threads);
+    if (bench_batch_threads > 0)
+        host_len += snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-tb%d",
+                             bench_batch_threads);
     if (bench_ubatch > 0)
         host_len +=
             snprintf(host_buf + host_len, sizeof(host_buf) - host_len, "-u%d", bench_ubatch);
@@ -1835,6 +1898,9 @@ void run_znarrow() {
 void run_termgate() {
 #if defined(XLLAMA_UWP) && defined(XLLAMA_USE_LLAMA)
     apply_q8_knob("termgate");
+    // Termgate is a phase-attribution diagnostic (gp.profile_phases=true), so
+    // its default is timestamps ON unless the explicit knob overrides.
+    apply_gpu_timestamps(true, "termgate");
     log_output("[xllama] termgate: termination-state gate (diagnostic)\n");
     apply_twocol_knob("termgate");
     apply_repack_ctrl_knob("termgate");

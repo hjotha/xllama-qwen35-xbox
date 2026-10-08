@@ -1,0 +1,1066 @@
+{
+  "chat64-seq": {
+    "prompt": "spec-chat-open",
+    "mtp_on": false,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "5852",
+          "96.3",
+          "23.5",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2279.7",
+          "1538.5"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "5524",
+          "93.9",
+          "23.5",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2309.6",
+          "1551.1"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "5541",
+          "95.1",
+          "23.9",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2280.5",
+          "1541.1"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "chat64-mtp": {
+    "prompt": "spec-chat-open",
+    "mtp_on": true,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "4373",
+          "87.1",
+          "28.5",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2094.7",
+          "1581.5"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "4400",
+          "87.5",
+          "28.5",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2086.4",
+          "1571.5"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "4379",
+          "86.5",
+          "28.6",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2093.7",
+          "1581.7"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "code64-seq": {
+    "prompt": "spec-code-edit",
+    "mtp_on": false,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "7866",
+          "95.3",
+          "23.0",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3660.5",
+          "2861.7"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "7699",
+          "94.6",
+          "22.9",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3683.5",
+          "2878.0"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "7674",
+          "95.4",
+          "23.0",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3633.4",
+          "2853.6"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "code64-mtp": {
+    "prompt": "spec-code-edit",
+    "mtp_on": true,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "4402",
+          "87.4",
+          "33.5",
+          "3666",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3351.6",
+          "2865.8"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "4472",
+          "88.0",
+          "34.2",
+          "3666",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3292.3",
+          "2838.1"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "4378",
+          "88.1",
+          "33.7",
+          "3666",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3310.8",
+          "2864.1"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "code64-mtp-b2": {
+    "prompt": "spec-code-edit",
+    "mtp_on": true,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "4405",
+          "87.9",
+          "33.7",
+          "3666",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3315.4",
+          "2834.4"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "4359",
+          "87.9",
+          "33.8",
+          "3666",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3317.5",
+          "2870.3"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "4741",
+          "88.8",
+          "33.9",
+          "3660",
+          "42",
+          "42"
+        ],
+        "mtp_stats": [
+          21,
+          64,
+          0,
+          64,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "6092",
+          "6830",
+          "2856",
+          "3275.8",
+          "2830.6"
+        ],
+        "gdn": 672,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "code64-seq-b2": {
+    "prompt": "spec-code-edit",
+    "mtp_on": false,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "7638",
+          "94.5",
+          "23.0",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3672.1",
+          "2877.7"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "7626",
+          "95.7",
+          "23.2",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3632.5",
+          "2847.3"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "7722",
+          "94.6",
+          "23.2",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12950",
+          "14070",
+          "0",
+          "3673.7",
+          "2886.3"
+        ],
+        "gdn": 1680,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "chat64-mtp-b2": {
+    "prompt": "spec-chat-open",
+    "mtp_on": true,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "4385",
+          "89.6",
+          "28.1",
+          "3667",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2089.1",
+          "1569.2"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "4440",
+          "87.9",
+          "27.7",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2140.6",
+          "1579.6"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "4378",
+          "89.2",
+          "28.1",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2083.4",
+          "1572.6"
+        ],
+        "gdn": 864,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "chat64-seq-b2": {
+    "prompt": "spec-chat-open",
+    "mtp_on": false,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "5655",
+          "94.0",
+          "23.5",
+          "3460",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2306.3",
+          "1550.5"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "5537",
+          "95.5",
+          "23.8",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2273.7",
+          "1536.8"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "5499",
+          "94.8",
+          "24.0",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2272.7",
+          "1552.3"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "chat64-mtp-on": {
+    "prompt": "spec-chat-open",
+    "mtp_on": true,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "4407",
+          "87.4",
+          "28.0",
+          "3667",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          200.9,
+          26.4,
+          55.6,
+          59.8,
+          1428.3,
+          131.0
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2111.3",
+          "1576.0"
+        ],
+        "gdn": 864,
+        "vround_n": 23,
+        "vround_widths": [
+          2,
+          3
+        ],
+        "vround_sums": {
+          "wall": 1428.4,
+          "d3w": 785.0,
+          "d3g": 498.5,
+          "cpu": 2859.4
+        },
+        "vround_med": {
+          "wall": 65.69,
+          "d3w": 36.28,
+          "d3g": 25.69,
+          "cpu": 125.0
+        },
+        "vround_reuse": 7
+      },
+      {
+        "run": 2,
+        "done": [
+          "4377",
+          "88.6",
+          "27.4",
+          "3667",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          195.0,
+          26.6,
+          55.6,
+          70.7,
+          1476.8,
+          129.7
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2151.2",
+          "1577.8"
+        ],
+        "gdn": 864,
+        "vround_n": 23,
+        "vround_widths": [
+          2,
+          3
+        ],
+        "vround_sums": {
+          "wall": 1476.8,
+          "d3w": 835.0,
+          "d3g": 493.1,
+          "cpu": 2984.4
+        },
+        "vround_med": {
+          "wall": 65.23,
+          "d3w": 36.04,
+          "d3g": 25.43,
+          "cpu": 125.0
+        },
+        "vround_reuse": 7
+      },
+      {
+        "run": 3,
+        "done": [
+          "4427",
+          "88.9",
+          "28.0",
+          "3666",
+          "35",
+          "30"
+        ],
+        "mtp_stats": [
+          23,
+          86,
+          20,
+          61,
+          190.8,
+          26.5,
+          55.6,
+          63.0,
+          1450.0,
+          130.2
+        ],
+        "d3d12": [
+          "7423",
+          "8235",
+          "3120",
+          "2104.2",
+          "1576.2"
+        ],
+        "gdn": 864,
+        "vround_n": 23,
+        "vround_widths": [
+          2,
+          3
+        ],
+        "vround_sums": {
+          "wall": 1450.0,
+          "d3w": 812.1,
+          "d3g": 499.3,
+          "cpu": 2843.8
+        },
+        "vround_med": {
+          "wall": 65.47,
+          "d3w": 36.32,
+          "d3g": 25.69,
+          "cpu": 125.0
+        },
+        "vround_reuse": 7
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  },
+  "chat64-seq-on": {
+    "prompt": "spec-chat-open",
+    "mtp_on": false,
+    "runs": [
+      {
+        "run": 1,
+        "done": [
+          "5525",
+          "91.9",
+          "23.7",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2329.8",
+          "1545.7"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 2,
+        "done": [
+          "5492",
+          "92.5",
+          "23.8",
+          "3461",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2303.4",
+          "1539.6"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      },
+      {
+        "run": 3,
+        "done": [
+          "5581",
+          "94.6",
+          "23.7",
+          "3458",
+          "0",
+          "0"
+        ],
+        "mtp_stats": null,
+        "d3d12": [
+          "12210",
+          "13266",
+          "0",
+          "2296.0",
+          "1557.7"
+        ],
+        "gdn": 1584,
+        "vround_n": 0,
+        "vround_widths": [],
+        "vround_sums": null,
+        "vround_med": null,
+        "vround_reuse": null
+      }
+    ],
+    "blocks": [
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode",
+      "[xllama] bench.flag detected -> headless bench mode"
+    ]
+  }
+}
