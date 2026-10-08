@@ -421,9 +421,10 @@ g.last_gpu_ms` (`ggml_d3d12.cpp:1632`) accumulates unconditionally while
   paired deltas (chat64 +0.43% mean, overlapping ranges; code64 +1.24%, ranges
   touch) are not causal. Candidate reverted (patch preserved in
   `bench/results/qwen4b-maxperf/c5-rev161/`); no LTCG spent. Device runs the
-  verified source as 1.6.0.162 (fast iteration; 1.6.0.160 downgrade blocked
-  and uninstall forbidden) with the production profile verified
-  (`c5-rev161/restore-receipt.txt`).
+  verified source as the final accepted-source LTCG package 1.6.0.163
+  (1.6.0.160 downgrade blocked and uninstall forbidden; 1.6.0.162 interim)
+  with the production profile, API, key token parity and termination gates
+  verified (`restore-rev163/receipt.txt`).
 - **Residual bottlenecks (unchanged):** MTP decode ≈ verify 64.5%, classic
   20.3%, draft 8.5%, catchup 3.1%; verify split d3w ≈50% with ≈50% CPU-side
   vs submission/fence; `top_prob` is exp/sum-bound (order-preserving

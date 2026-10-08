@@ -1,0 +1,11 @@
+restore receipt (final) 2026-10-08T05:25:05Z
+pfn=GianlucaMazza.xllama_1.6.0.163_x64__pj67f1fcj4n14
+msix_sha256=4DC2A081E1B4AF454AA38892142A40253AB5A576AA3A69A4BD82F7A05BC33B22 (builder log sha == fetched local)
+build=full Release LTCG (run-xbox-build.ps1 -BuildRevision 163 -Final), 672.93 s
+source=verified rev160 state (commit d960126/7f20477; worktree HEAD 5add5ee docs-only), C5 excluded (mirror c5_symbol=0, file absent); mirror llama.cpp HEAD 982eaadaa9dbe761f00205bc20b6c04b7329b58d with the known UWP patch set (9 modified files incl. llama-mmap.cpp)
+revision 163 chosen because UWP blocks downgrade below installed 1.6.0.161/1.6.0.162 and uninstall is forbidden (LocalState preserved throughout)
+knobs: d3d12swiglu.txt=0, d3d12twocol.txt=auto, cpurepackforcegemv.txt=2, no bench/profiling/termgate files
+llama.ini: n_gpu_layers=34 n_ctx=2048 n_threads=2 n_batch=64 n_ubatch=64 kv_q8=0 mtp=2 mtp_pmin=50
+api: validate-api.sh chat MODEL=qwen35-4b-mtp PASS (200/200 concurrent)
+parity: chat64-mtp 84e081965076a0c947bb..., chat64-seq 84e081965076a0c947bb..., code64-mtp ff42c5beec71ff491b45... (baseline digests)
+termgate: 6 arms ok=1; seq/ref/cand sw0 CSVs byte-identical to rev160

@@ -8,3 +8,16 @@ llama.ini: n_gpu_layers=34 n_ctx=2048 n_threads=2 n_batch=64 n_ubatch=64 kv_q8=0
 [xllama] startup profile: twocol='auto' repack='2' (immutable for this process lifetime; restart the app to change)
 [xllama] api: listening on 0.0.0.0:11434 (OpenAI-compat /v1/chat/completions)
 [xllama] d3d12: FFN SWIGLU profile bound: off (mtp_capable=1)
+
+## FINAL (supersedes the interim 1.6.0.162)
+
+The 1.6.0.162 package was an interim stop-gap (fast iteration). The final
+accepted-source restoration is **1.6.0.163**, full Release **LTCG**
+(`-BuildRevision 163 -Final`), sha256
+`4DC2A081E1B4AF454AA38892142A40253AB5A576AA3A69A4BD82F7A05BC33B22`
+(builder log == fetched), from the unchanged verified rev160 source with C5
+excluded. Installed PFN `GianlucaMazza.xllama_1.6.0.163_x64__pj67f1fcj4n14`;
+production profile, API PASS, key token parity (chat64 seq/MTP, code64 MTP)
+and the termination gate (6/6 arms, seq/ref/cand byte-identical to rev160)
+verified — full receipt and per-gate evidence in
+`bench/results/qwen4b-maxperf/restore-rev163/`.

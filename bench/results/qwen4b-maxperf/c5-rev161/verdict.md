@@ -66,14 +66,17 @@ history unchanged). Default stays OFF and no LTCG was spent.
 
 **Restore (see `restore-receipt.txt`):** UWP refuses the 1.6.0.160 downgrade
 against the installed 1.6.0.161 and uninstalling is forbidden (model data
-lives in LocalState), so the verified rev160 source was rebuilt as
-**1.6.0.162** (fast iteration, sha256
-`249E4C3DBA078E00F3AAD90F666418647650D482C6AE4E33FFF17B46A5E3104C`, builder
-sha == fetched). Production profile restored and verified: `llama.ini` mtp=2,
-`d3d12swiglu.txt=0`, bench/termgate/profiling knobs absent, startup profile
-twocol=auto repack=2; `validate-api.sh chat` with `MODEL=qwen35-4b-mtp`
-returned PASS (`FFN SWIGLU profile bound: off (mtp_capable=1)`, no C5 knob
-lines). Residual bottleneck: `top_prob` is dominated by the
+lives in LocalState), so the verified rev160 source was rebuilt first as 1.6.0.162 (fast
+iteration, interim) and then as the final accepted-source package
+**1.6.0.163**, full Release LTCG, sha256
+`4DC2A081E1B4AF454AA38892142A40253AB5A576AA3A69A4BD82F7A05BC33B22` (builder
+sha == fetched). Production profile restored and verified on 1.6.0.163:
+`llama.ini` mtp=2, `d3d12swiglu.txt=0`, bench/termgate/profiling knobs absent,
+startup profile twocol=auto repack=2; `validate-api.sh chat` with
+`MODEL=qwen35-4b-mtp` returned PASS (`FFN SWIGLU profile bound: off
+(mtp_capable=1)`); key token parity and the 6-arm termination gate passed
+(seq/ref/cand byte-identical to rev160) — see
+`bench/results/qwen4b-maxperf/restore-rev163/receipt.txt`. Residual bottleneck: `top_prob` is dominated by the
 scalar double `exp` accumulation with the order-preservation constraint, plus
 the known verify-side ceilings (verify ≈64.5% of decode, classic ≈20.3%,
 draft ≈8.5%, catchup ≈3.1%; d3w ≈50% with a ~50% CPU-side/submission split).

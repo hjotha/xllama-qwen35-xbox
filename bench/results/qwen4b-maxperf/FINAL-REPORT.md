@@ -93,10 +93,12 @@ knobs absent, startup scope2 profile (`d3d12twocol.txt=auto`,
 Optional seq preset preserved: `presets/llama-ini-mtp0-seq.txt` (see
 `presets/README.md`).
 
-After the C5 trial the device runs the same verified rev160 source as
-**1.6.0.162** (fast-iteration rebuild; the 1.6.0.160 downgrade is blocked by
-UWP and uninstalling is forbidden — model data lives in LocalState). Receipt
-and verification: `c5-rev161/restore-receipt.txt`.
+After the C5 trial the device runs the same verified rev160 source as the
+final accepted-source package **1.6.0.163** (full Release LTCG; the 1.6.0.160
+downgrade is blocked by UWP and uninstalling is forbidden — model data lives
+in LocalState; 1.6.0.162 was an interim fast-iteration rebuild). API, key
+token parity and the termination gate passed on 1.6.0.163: receipts in
+`restore-rev163/` and `c5-rev161/restore-receipt.txt`.
 
 Evidence: `bench/results/qwen4b-maxperf/` (`acceptance-rev160/verdict.md`,
 `seqgates-rev159/`, `swiglu-*/`, README). No publish or merge.
