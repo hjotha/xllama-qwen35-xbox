@@ -1,0 +1,3 @@
+install_utc=2026-10-09T16:56:39Z
+PFN=GianlucaMazza.xllama_1.6.0.209_x64__pj67f1fcj4n14
+smoke_get={"status":"ok","service":"xllama"}

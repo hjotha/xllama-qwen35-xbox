@@ -68,14 +68,43 @@ namespace xllama {
 // to happen chunk by chunk, exactly like the reference's process() does.
 inline int
 prefill_chunked(llama_context* ctx, const llama_token* tokens, int n_tokens,
-                const std::function<void(int off, int n_rows, llama_pos pos0)>& after_chunk = {}) {
+                const std::function<void(int off, int n_rows, llama_pos pos0)>& after_chunk = {},
+                bool profile = false) {
     const int n_batch = std::max(1, static_cast<int>(llama_n_batch(ctx)));
     int last_rows = -1;
     llama_pos pos0 = llama_memory_seq_pos_max(llama_get_memory(ctx), 0) + 1;
     for (int off = 0; off < n_tokens; off += n_batch) {
         const int chunk = std::min(n_batch, n_tokens - off);
         llama_batch batch = llama_batch_get_one(const_cast<llama_token*>(tokens) + off, chunk);
-        if (llama_decode(ctx, batch) != 0)
+        // Same-boundary prefill bracket (owner 599): DSTEP kind=prefill per
+        // chunk with the same wall/d3w/d3g/cpu/calls/mm accounting as the
+        // decode steps, so the ubatch effect is attributable at stage level.
+        // Self-contained (the detail::StepSplit definition lives further down
+        // in this header, after this function).
+        const bool prof = profile;
+        const auto t0 = prof ? std::chrono::steady_clock::now()
+                             : std::chrono::steady_clock::time_point{};
+        const double w0 = prof ? d3d12_wall_ms() : 0.0;
+        const double g0 = prof ? d3d12_gpu_ms() : 0.0;
+        const double c0 = prof ? process_cpu_ms() : 0.0;
+        const std::uint64_t k0 = prof ? d3d12_graph_calls() : 0;
+        const std::uint64_t m0 = prof ? d3d12_matmul_count() : 0;
+        const int rc = llama_decode(ctx, batch);
+        if (prof) {
+            const double wall = std::chrono::duration<double, std::milli>(
+                                    std::chrono::steady_clock::now() - t0)
+                                    .count();
+            char b[224];
+            snprintf(b, sizeof(b),
+                     "[xllama] DSTEP kind=prefill width=%d wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f "
+                     "calls=%llu mm=%llu\n",
+                     chunk, wall, d3d12_wall_ms() - w0, d3d12_gpu_ms() - g0,
+                     process_cpu_ms() - c0,
+                     static_cast<unsigned long long>(d3d12_graph_calls() - k0),
+                     static_cast<unsigned long long>(d3d12_matmul_count() - m0));
+            log_output(b);
+        }
+        if (rc != 0)
             return -1;
         last_rows = chunk;
         if (after_chunk)
@@ -1175,6 +1204,20 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             }();
             const llama_token drafted = feed[i];
             const bool accepted = (cand == drafted);
+            // Diagnostic-only (bench_swiglu_mtp_diag.txt): target row vs draft
+            // at every verify step, with the committed-history accounting.
+            if (xllama::d3d12_swiglu_mtp_diag_enabled()) {
+                char vb[512];
+                snprintf(vb, sizeof(vb),
+                         "[xllama] MTPDIAG verify row=%d drafted=%d cand=%d accepted=%d "
+                         "top5=%s n_feed=%d n_keep=%d kv_end=%d rollback=%d rng=greedy\n",
+                         static_cast<int>(i) - 1, drafted, cand, accepted ? 1 : 0,
+                         detail::trace_topk(p.ctx, p.vocab, static_cast<int32_t>(i) - 1).c_str(),
+                         n_feed, n_keep,
+                         static_cast<int>(llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0)),
+                         accepted ? 0 : (n_feed - n_keep));
+                log_output(vb);
+            }
             // Boundary trace (plan 004): the verify decision behind the output
             // token about to be emitted (out.n_generated is exactly its index:
             // every earlier feed slot was already emitted or counted). Carries

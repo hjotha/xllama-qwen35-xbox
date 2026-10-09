@@ -1,0 +1,138 @@
+Uploading d3d12be.flag → LocalState\\d3d12be.flag ...
+Done.
+Stopped GianlucaMazza.xllama_1.6.0.209_x64__pj67f1fcj4n14.
+Started GianlucaMazza.xllama_1.6.0.209_x64__pj67f1fcj4n14.
+Waiting for d3d12be-result.csv.done (timeout 600s) ...
+Terminated
+block=b1 start_utc=2026-10-09T17:00:14Z
+cell=chat64 sw=0 rows=2 utc=2026-10-09T17:01:31Z
+cell=chat64 sw=1 rows=2 utc=2026-10-09T17:02:49Z
+cell=code64 sw=0 rows=2 utc=2026-10-09T17:04:10Z
+cell=code64 sw=1 rows=2 utc=2026-10-09T17:05:29Z
+cell=std64 sw=0 rows=2 utc=2026-10-09T17:06:49Z
+cell=std64 sw=1 rows=2 utc=2026-10-09T17:08:11Z
+cell=chat256 sw=0 rows=2 utc=2026-10-09T17:09:32Z
+cell=chat256 sw=1 rows=2 utc=2026-10-09T17:10:50Z
+cell=code256 sw=0 rows=2 utc=2026-10-09T17:12:40Z
+cell=code256 sw=1 rows=2 utc=2026-10-09T17:14:30Z
+cell=std256 sw=0 rows=2 utc=2026-10-09T17:16:26Z
+cell=std256 sw=1 rows=2 utc=2026-10-09T17:18:25Z
+cell=chat64-mtp sw=0 rows=2 utc=2026-10-09T17:19:50Z
+cell=chat64-mtp sw=1 rows=2 utc=2026-10-09T17:21:15Z
+cell=code64-mtp sw=0 rows=2 utc=2026-10-09T17:22:37Z
+cell=code64-mtp sw=1 rows=2 utc=2026-10-09T17:23:56Z
+cell=std64-mtp sw=0 rows=2 utc=2026-10-09T17:25:12Z
+cell=std64-mtp sw=1 rows=2 utc=2026-10-09T17:26:28Z
+cell=chat256-mtp sw=0 rows=2 utc=2026-10-09T17:27:44Z
+cell=chat256-mtp sw=1 rows=2 utc=2026-10-09T17:29:00Z
+cell=code256-mtp sw=0 rows=2 utc=2026-10-09T17:30:16Z
+cell=code256-mtp sw=1 rows=2 utc=2026-10-09T17:31:33Z
+cell=std256-mtp sw=0 rows=2 utc=2026-10-09T17:32:59Z
+cell=std256-mtp sw=1 rows=2 utc=2026-10-09T17:34:16Z
+block=b1 end_utc=2026-10-09T17:34:16Z
+== /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/enabled-rev209/blocks/b1: failures=0 (cells=12, csvs required=24)
+-- baseline classification (explicit):
+  chat64                BASELINE=84e081965076a0c9
+  code64                BASELINE=ff42c5beec71ff49
+  std64                 BASELINE=44546453971b25da
+  chat256               BASELINE=f78ce8372ccc7281
+  code256               BASELINE=c7d84255e08e2077
+  std256                BASELINE=none (no historical run; arm-parity gate only)
+  chat64-mtp     [MTP]  BASELINE=84e081965076a0c9
+  code64-mtp     [MTP]  BASELINE=ff42c5beec71ff49
+  std64-mtp      [MTP]  BASELINE=44546453971b25da
+  chat256-mtp    [MTP]  BASELINE=f78ce8372ccc7281
+  code256-mtp    [MTP]  BASELINE=c7d84255e08e2077
+  std256-mtp     [MTP]  BASELINE=none (no historical run; arm-parity gate only)
+-- decode means (measured run_index 2,3 only):
+cell           sw0_mean sw1_mean  delta%
+chat64            24.35    25.67  +5.44%
+code64            23.62    24.86  +5.21%
+std64             23.86    24.80  +3.94%
+chat256           24.37    25.67  +5.35%
+code256           23.43    24.44  +4.33%
+std256            23.49    24.70  +5.17%
+chat64-mtp        29.04    29.83  +2.74%
+code64-mtp        34.65    36.11  +4.21%
+std64-mtp         28.00    29.20  +4.30%
+chat256-mtp       28.12    29.12  +3.54%
+code256-mtp       33.31    34.68  +4.10%
+std256-mtp        27.83    28.92  +3.92%
+block=b2 start_utc=2026-10-09T17:34:17Z
+cell=chat64 sw=0 rows=2 utc=2026-10-09T17:35:33Z
+cell=chat64 sw=1 rows=2 utc=2026-10-09T17:36:51Z
+cell=code64 sw=0 rows=2 utc=2026-10-09T17:38:07Z
+cell=code64 sw=1 rows=2 utc=2026-10-09T17:39:24Z
+cell=std64 sw=0 rows=2 utc=2026-10-09T17:40:41Z
+cell=std64 sw=1 rows=2 utc=2026-10-09T17:41:57Z
+cell=chat256 sw=0 rows=2 utc=2026-10-09T17:43:14Z
+cell=chat256 sw=1 rows=2 utc=2026-10-09T17:44:31Z
+cell=code256 sw=0 rows=2 utc=2026-10-09T17:46:18Z
+cell=code256 sw=1 rows=2 utc=2026-10-09T17:48:07Z
+cell=std256 sw=0 rows=2 utc=2026-10-09T17:49:57Z
+cell=std256 sw=1 rows=2 utc=2026-10-09T17:51:44Z
+cell=chat64-mtp sw=0 rows=2 utc=2026-10-09T17:53:02Z
+cell=chat64-mtp sw=1 rows=2 utc=2026-10-09T17:54:20Z
+cell=code64-mtp sw=0 rows=2 utc=2026-10-09T17:55:36Z
+cell=code64-mtp sw=1 rows=2 utc=2026-10-09T17:56:53Z
+cell=std64-mtp sw=0 rows=2 utc=2026-10-09T17:58:11Z
+cell=std64-mtp sw=1 rows=2 utc=2026-10-09T17:59:28Z
+cell=chat256-mtp sw=0 rows=2 utc=2026-10-09T18:00:44Z
+cell=chat256-mtp sw=1 rows=2 utc=2026-10-09T18:02:00Z
+cell=code256-mtp sw=0 rows=2 utc=2026-10-09T18:03:17Z
+cell=code256-mtp sw=1 rows=2 utc=2026-10-09T18:04:33Z
+cell=std256-mtp sw=0 rows=2 utc=2026-10-09T18:06:10Z
+cell=std256-mtp sw=1 rows=2 utc=2026-10-09T18:07:27Z
+block=b2 end_utc=2026-10-09T18:07:27Z
+== /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/enabled-rev209/blocks/b2: failures=0 (cells=12, csvs required=24)
+-- baseline classification (explicit):
+  chat64                BASELINE=84e081965076a0c9
+  code64                BASELINE=ff42c5beec71ff49
+  std64                 BASELINE=44546453971b25da
+  chat256               BASELINE=f78ce8372ccc7281
+  code256               BASELINE=c7d84255e08e2077
+  std256                BASELINE=none (no historical run; arm-parity gate only)
+  chat64-mtp     [MTP]  BASELINE=84e081965076a0c9
+  code64-mtp     [MTP]  BASELINE=ff42c5beec71ff49
+  std64-mtp      [MTP]  BASELINE=44546453971b25da
+  chat256-mtp    [MTP]  BASELINE=f78ce8372ccc7281
+  code256-mtp    [MTP]  BASELINE=c7d84255e08e2077
+  std256-mtp     [MTP]  BASELINE=none (no historical run; arm-parity gate only)
+-- decode means (measured run_index 2,3 only):
+cell           sw0_mean sw1_mean  delta%
+chat64            24.42    25.78  +5.57%
+code64            23.84    24.91  +4.49%
+std64             23.84    24.79  +3.99%
+chat256           24.52    25.77  +5.10%
+code256           23.36    24.52  +4.97%
+std256            23.43    24.73  +5.57%
+chat64-mtp        28.70    30.07  +4.79%
+code64-mtp        34.48    35.83  +3.92%
+std64-mtp         28.14    28.94  +2.84%
+chat256-mtp       28.04    29.27  +4.42%
+code256-mtp       33.25    34.37  +3.38%
+std256-mtp        27.82    28.87  +3.77%
+done chat256-mtp-sw0 utc=2026-10-09T18:08:21Z
+done chat256-mtp-sw1 utc=2026-10-09T18:09:14Z
+done code256-mtp-sw0 utc=2026-10-09T18:10:07Z
+done code256-mtp-sw1 utc=2026-10-09T18:10:59Z
+VROUND_RUN_REV209_DONE
+== termgate rev209 corrected labels: failures=0
+   note: legacy ref/cand were one identical bench_mtp=4 invocation;
+   corrected matrix = {seq: mtp0, cand: mtp4} x {sw0, sw1}.
+TERMGATE_REV209_DONE
+fallback_knob0 start=2026-10-09T18:15:02Z
+knob=d3d12swiglu.txt=0 restart=controlled api=PASS chat=PASS
+bind_off_count=1
+end=2026-10-09T18:15:02Z
+FALLBACK_KNOB0_DONE
+turn2_reply=QUARTZ-LUMEN-4821
+api_multiturn_rev209 start_utc=2026-10-09T18:15:25Z
+PFN=GianlucaMazza.xllama_1.6.0.209_x64__pj67f1fcj4n14 knob=d3d12swiglu.txt:DELETED(default ON) llama.ini: mtp=2 n_gpu_layers=34
+log_lines_before=424225 segment_lines=538
+bind_on_mtp_capable1_count=1
+ffn_swiglu_dispatches=79
+model_load_lines_in_segment=6 (0 => no reload across the 3 turns)
+turn2_recall=PASS (QUARTZ-LUMEN-4821)
+end_utc=2026-10-09T18:15:25Z
+API_MULTITURN_REV209_DONE

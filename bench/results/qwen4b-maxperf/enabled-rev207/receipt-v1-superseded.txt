@@ -1,0 +1,48 @@
+DELIVERY: FFN SWIGLU (GPU) + MTP enabled together — rev207 LTCG (FINAL, gates closed)
+utc 2026-10-09
+
+Package: GianlucaMazza.xllama_1.6.0.207_x64__pj67f1fcj4n14
+MSIX sha256 56F91BAB29615D3B84AE929806CE8981935DF78D453DEFA186AB907C1EEE43BD
+Config: n_batch=256 n_ubatch=64 n_threads=2 mtp=2 mtp_pmin=50 n_predict=48 n_seq_max=2
+All experiment knobs absent at delivery; FFN default ON with d3d12swiglu.txt="0" forcing OFF.
+
+Correctness (enabled combination, final package):
+- d3d12be selftest on rev207: ALL 50 rows ok=1. silu_avx2 and swiglu_avx2
+  [fused] ok=1: ord=0 edge=0 nf=0 ord_ulp_max=0 all_ulp_max=0 all_abs=0
+  (bit-exact vs the CPU IEEE reference including subnormals and signed zero).
+  The subnormal flush (max_abs 5e-41/1.91e-39 at rev199) is FIXED: exact
+  f32<->f64 conversions implemented with integer/bit construction
+  (to_f64_cr/to_f32_cr) plus branchless zero-sign preservation, no epsilon,
+  no threshold, no exclusion, no reference swap.
+- Strict per-round VROUND gate (default-path build): chat256 MTP 8449/8449 and
+  code256 MTP 8449/8449 trace lines IDENTICAL between enabled and knob=0.
+- Plan005 acceptance grade: 2 blocks x 2 rows/arm x 9 cells x 2 arms = 72
+  runs, ALL final-ID digests equal to baseline (parity=OK both blocks; chat64
+  84e08196, code64 ff42c5be, chat256 f78ce837, code256 c7d84255, std512
+  44546453, all MTP cells same digests as their seq stems).
+- Real execution counters, DEFAULT path (no diag override), chat256 MTP:
+  "FFN SWIGLU profile bound: on (mtp_capable=1)" + 4776 dispatches. This proves
+  the FFN SWIGLU GPU kernel runs under MTP in the measured chat256-MTP case
+  (code64 MTP 3385 dispatches at rev199); it does NOT claim "everything on
+  GPU" nor a global ceiling.
+- Termgate cancel/stop/EOS: seq/ref/cand CSVs byte-IDENTICAL to baseline for
+  both knob arms (6/6). API runs all PASS. Peak memory 3662 MB MTP (vs 3672
+  baseline), gpu 2692 MB — unchanged.
+
+Performance (72 graded runs, 2 blocks x 2 rows/arm, knob toggled on the same
+package, mean decode tok/s off -> on): chat64 24.34->25.43 (+4.46%), code64
+23.77->24.80 (+4.35%), chat256 24.21->25.65 (+5.95%), code256 23.27->24.53
+(+5.39%), std512 23.87->25.19 (+5.53%), chat64-MTP 28.52->29.88 (+4.75%),
+code64-MTP 34.50->36.11 (+4.65%), chat256-MTP 28.05->29.22 (+4.17%),
+code256-MTP 33.27->34.65 (+4.13%). All cells positive; gains provisional to
+the graded prompt set (greedy, seed 1, 256/64 batch config).
+
+Source changes (this delivery): shaders/ggml_d3d12_silu.hlsl and
+shaders/ggml_d3d12_swiglu_probe.hlsl (exact f32<->f64 subnormal conversions,
+branchless sign-of-zero), regenerated shaders/generated/*_dxil.h. No policy
+change in this delivery (policy enablement was earlier: include/xllama/
+ggml_d3d12.h, uwp/inference-bridge.cpp, tests).
+
+Preserved: rev192 accepted package and receipts; rollback 1.6.0.175 LTCG +
+llama.ini.backup. Evidence dirs: crdiv-rev193/d3d12be-rev20{1..7}.csv,
+csv-block1/ + csv/ (blocks 1/2), vround-*.feed.txt, termgate/. No push/merge.

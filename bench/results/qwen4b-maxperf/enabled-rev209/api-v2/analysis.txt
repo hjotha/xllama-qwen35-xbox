@@ -1,0 +1,37 @@
+[ON] t1='stored' t2='QUARTZ-LUMEN-4821' t3='QUARTZ/LUMEN'
+[ON] RECALL=PASS (API-level continuity via request history)
+[ON] bind_lines_on=1 bind_lines_off=0
+[ON] FFN_SWI dispatches=0 GDN=0
+[ON] --- temporal map (segment line refs) ---
+[ON] L30: [xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[ON] L60: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[ON] L107: [xllama] d3d12: FFN SWIGLU profile bound: on (mtp_capable=1)
+[ON] L275: [xllama] session: turn full=1 kv_before=0 pf=50 prompt=50
+[ON] L290: [xllama] session generate: n=1 prefill=552.2ms (50 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=1 (mtp=1 lookup=0)
+[ON] L295: [xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=46 resident=51 prompt=77
+[ON] L296: [xllama] session: turn full=1 kv_before=0 pf=77 prompt=77
+[ON] L316: [xllama] session generate: n=11 prefill=835.4ms (77 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=8 (mtp=8 lookup=0)
+[ON] L322: [xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=73 resident=88 prompt=120
+[ON] L323: [xllama] session: turn full=1 kv_before=0 pf=120 prompt=120
+[ON] L338: [xllama] session generate: n=6 prefill=1238.1ms (120 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=4 (mtp=4 lookup=0)
+[OFF] t1='stored' t2='QUARTZ-LUMEN-4821' t3='QUARTZ/LUMEN'
+[OFF] RECALL=PASS (API-level continuity via request history)
+[OFF] bind_lines_on=0 bind_lines_off=1
+[OFF] FFN_SWI dispatches=0 GDN=48
+[OFF] --- temporal map (segment line refs) ---
+[OFF] L29: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[OFF] L76: [xllama] d3d12: FFN SWIGLU profile bound: off (mtp_capable=1)
+[OFF] L244: [xllama] session: turn full=1 kv_before=0 pf=50 prompt=50
+[OFF] L259: [xllama] session generate: n=1 prefill=590.3ms (50 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=1 (mtp=1 lookup=0)
+[OFF] L268: [xllama] d3d12: 462 graph_compute calls, 524 matmuls (0 2col), 435.7 ms wall (timing unavailable: 462 calls)
+[OFF] L273: [xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (timing unavailable: 0 calls)
+[OFF] L274: [xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[OFF] L303: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[OFF] L514: [xllama] session: turn full=1 kv_before=0 pf=77 prompt=77
+[OFF] L537: [xllama] session generate: n=11 prefill=881.3ms (77 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=8 (mtp=8 lookup=0)
+[OFF] L543: [xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=73 resident=88 prompt=120
+[OFF] L544: [xllama] session: turn full=1 kv_before=0 pf=120 prompt=120
+[OFF] L559: [xllama] session generate: n=6 prefill=1315.4ms (120 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=4 (mtp=4 lookup=0)
+ON_vs_OFF_replies_identical=True
+FINAL re-enable chat='serving-enabled'
+FINAL bind_on_count=1

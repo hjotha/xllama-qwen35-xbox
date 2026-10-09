@@ -1,0 +1,34 @@
+API multi-turn gate on installed rev209 — addendum (accurate log reading)
+- Log segment (session-segment.log, 538 lines from L0=424225): "model_load"
+  greps = initial startup load of qwen35-4b-mtp (lines 72-73) plus the
+  post-stop re-preload (lines 318-320). CORRECTION: the earlier "NO
+  load/reload between the 3 turns" sentence below is FALSE — a session
+  teardown + re-creation occurred between T1 and T2 (backend_free L268-274,
+  session config L277, load_tensors L281+; T2 full prefill L488 with
+  kv_before=0). See CORRECTION-multiturn-v1.md for the exact temporal map.
+  The reload was background default-model (lfm25-350m) preload interference
+  under leftover bench scope2 knobs; the clean-state redo (api-v2/) shows
+  the true per-turn behavior (rewind attempted, refused by hybrid cache,
+  full prefill) with no mid-gate reload in the ON run.
+- Turns: t1 'stored', t2 exact recall 'QUARTZ-LUMEN-4821' (RECALL PASS),
+  t3 continued context manipulation ('QUARTZ/LUMEN') but omitted the letter
+  counts — model behavior, not a session failure; recall itself is proven.
+- Bind: single 'FFN SWIGLU profile bound: on (mtp_capable=1)' at first
+  context; no conflicting-context rejections on the API path.
+- Counters at backend_free (this session, default path, MTP active):
+  383 graph_compute calls, 524 matmuls (136 2col), 48 GATED_DELTA_NET
+  dispatches (MTP drafting), 79 FFN SWIGLU dispatches (>0 = real GPU FFN).
+- Two non-fatal lines AFTER the stop (not gate criteria, documented):
+  (a) 'ini mtp REJECTED: model lfm25-350m...' = per-model MTP admission for
+  the non-loaded catalogue default — qwen35-4b-mtp itself is mtp_capable=1;
+  (b) 'session config REJECTED ... scope2 profile ... remove
+  d3d12twocol.txt/cpurepackforcegemv.txt' = GUI default-model preload hitting
+  leftover BENCH profile knobs (term gate/vround ran bench_mtp/twocol); the
+  qwen35-4b-mtp session itself loaded fine right after
+  ('session config: model=qwen35-4b-mtp mtp=1 depth=2 ...').
+- Follow-up (final-state cleanup): all transient bench_*.txt /
+  d3d12twocol.txt / cpurepackforcegemv.txt / termgate */flags removed from the
+  device (repo evidence untouched); knob d3d12swiglu.txt ABSENT (verified 404
+  fetch => compiled default ON). Clean restart: GET ok, chat
+  'serving-enabled', fresh bind 'on (mtp_capable=1)', single remaining
+  REJECTED line = the benign per-model lfm25-350m admission only.

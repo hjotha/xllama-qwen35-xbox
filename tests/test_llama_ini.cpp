@@ -70,3 +70,31 @@ TEST_CASE("llama_ini_bool: 1/0 and words") {
     CHECK_FALSE(llama_ini_bool(m, "e", v));
     CHECK_FALSE(llama_ini_bool(m, "missing", v));
 }
+
+TEST_CASE("llama_ini: session output budget and sequence capacity keys") {
+    const LlamaIni m = parse_llama_ini("n_predict=48\nn_seq_max=2\nn_parallel=3\nn_threads=2\n");
+    int v = 0;
+    CHECK(llama_ini_int(m, "n_predict", v));
+    CHECK(v == 48);
+    // Both spellings are read by the bridge (n_seq_max wins when present);
+    // the parser itself is key-agnostic, which is what this pins.
+    CHECK(llama_ini_int(m, "n_seq_max", v));
+    CHECK(v == 2);
+    CHECK(llama_ini_int(m, "n_parallel", v));
+    CHECK(v == 3);
+
+    // Process default stays unset (every surface keeps its own fallback) until
+    // the bridge publishes a valid key.
+    CHECK(llama_ini_n_predict == -1);
+    llama_ini_n_predict = 48;
+    CHECK(llama_ini_n_predict == 48);
+    llama_ini_n_predict = -1;
+
+    // Non-positive / unparsable budgets are ignored by the bridge's guard; the
+    // parser reports them so the guard is the only place that decides.
+    const LlamaIni bad = parse_llama_ini("n_predict=0\nn_seq_max=-1\n");
+    CHECK(llama_ini_int(bad, "n_predict", v));
+    CHECK(v == 0);
+    CHECK(llama_ini_int(bad, "n_seq_max", v));
+    CHECK(v == -1);
+}

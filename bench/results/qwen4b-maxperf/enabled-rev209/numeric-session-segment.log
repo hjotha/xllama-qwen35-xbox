@@ -1,0 +1,187 @@
+[xllama] d3d12be.flag detected -> headless d3d12 backend selftest
+[xllama] headless d3d12be: starting
+[xllama] d3d12be: backend selftest (Q4_0/Q4_K/Q6_K vs ggml dequant)
+[xllama] d3d12: D3D12_Weights buffer 9.0 MiB
+[xllama] d3d12: D3D12_Weights buffer 9.0 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 17.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 52.5 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Host buffer 2.0 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 17.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 17.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 17.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 17.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 14.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 52.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 52.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 52.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 52.5 MiB
+[xllama] d3d12: D3D12_Host buffer 1.2 MiB
+[xllama] d3d12: 92 graph_compute calls, 92 matmuls (0 2col), 28.2 ms wall (22.1 ms GPU: ts_valid=92)
+[xllama] silu selftest: backends ready, flag on
+[xllama] silu selftest: ctx ready
+[xllama] silu selftest: buffers allocated, setting inputs
+[xllama] silu selftest: GPU compute
+[xllama] silu selftest: GPU compute rc=0
+[xllama] silu selftest: post-GPU reached
+[xllama] silu selftest: CPU direct kernel
+[xllama] silu selftest: CPU direct done mxcsr_before=0x1fbb after=0x1fbb
+[xllama] swiglu selftest: GPU compute
+[xllama] swiglu selftest: GPU compute rc=0
+[xllama] swiglu selftest: CPU direct kernel
+[xllama] silu selftest: case done
+[xllama] d3d12: 4 graph_compute calls, 0 matmuls (0 2col), 0.5 ms wall (0.1 ms GPU: ts_valid=4)
+[xllama] d3d12: 1 FFN SWIGLU dispatches
+[xllama] d3d12: 1 RMS_NORM dispatches, 0 MUL dispatches, 1 ADD dispatches
+[xllama] d3d12be: q4_0 n=8192 k=2048 ncols=1 rel_err=1.51e-07 gpu_ms=0.0553 gbs=170.54 ok=1 err=-
+[xllama] d3d12be: q4_0 n=2048 k=8192 ncols=1 rel_err=1.63e-07 gpu_ms=0.0557 gbs=169.55 ok=1 err=-
+[xllama] d3d12be: q4_k n=11008 k=2048 ncols=1 rel_err=2.38e-07 gpu_ms=0.0575 gbs=220.53 ok=1 err=-
+[xllama] d3d12be: q4_k n=2048 k=11008 ncols=1 rel_err=1.79e-07 gpu_ms=0.0626 gbs=202.59 ok=1 err=-
+[xllama] d3d12be: q5_k n=11008 k=2048 ncols=1 rel_err=1.92e-07 gpu_ms=0.0704 gbs=220.24 ok=1 err=-
+[xllama] d3d12be: q5_k n=2048 k=11008 ncols=1 rel_err=1.85e-07 gpu_ms=0.0843 gbs=183.79 ok=1 err=-
+[xllama] d3d12be: q6_k n=2048 k=11008 ncols=1 rel_err=1.01e-07 gpu_ms=0.0950 gbs=194.76 ok=1 err=-
+[xllama] d3d12be: q6_k n=65536 k=1024 ncols=1 rel_err=1.05e-07 gpu_ms=0.2404 gbs=228.99 ok=1 err=-
+[xllama] d3d12be: q4_0 n=1024 k=1024 ncols=7 rel_err=1.71e-07 gpu_ms=0.0163 gbs=36.23 ok=1 err=-
+[xllama] d3d12be: q4_k n=1024 k=1024 ncols=7 rel_err=1.52e-07 gpu_ms=0.0148 gbs=39.97 ok=1 err=-
+[xllama] d3d12be: q5_k n=1024 k=1024 ncols=7 rel_err=1.86e-07 gpu_ms=0.0189 gbs=38.09 ok=1 err=-
+[xllama] d3d12be: q6_k n=1024 k=1024 ncols=7 rel_err=1.13e-07 gpu_ms=0.0213 gbs=40.47 ok=1 err=-
+[xllama] d3d12be: q4_0 n=1024 k=1024 ncols=512 rel_err=1.78e-07 gpu_ms=0.5495 gbs=1.07 ok=1 err=-
+[xllama] d3d12be: q4_k n=1024 k=1024 ncols=512 rel_err=1.7e-07 gpu_ms=0.6643 gbs=0.89 ok=1 err=-
+[xllama] d3d12be: q5_k n=1024 k=1024 ncols=512 rel_err=1.73e-07 gpu_ms=0.9653 gbs=0.75 ok=1 err=-
+[xllama] d3d12be: q6_k n=1024 k=1024 ncols=512 rel_err=1.17e-07 gpu_ms=0.9588 gbs=0.90 ok=1 err=-
+[xllama] d3d12be: q8_0 n=2560 k=5120 ncols=1 rel_err=9.97e-08 gpu_ms=0.0715 gbs=194.89 ok=1 err=-
+[xllama] d3d12be: q8_0 n=2560 k=5120 ncols=2 rel_err=9.97e-08 gpu_ms=0.1260 gbs=110.53 ok=1 err=-
+[xllama] d3d12be: q8_0 n=2560 k=5120 ncols=3 rel_err=9.91e-08 gpu_ms=0.1895 gbs=73.48 ok=1 err=-
+[xllama] d3d12be: q8_0 n=2560 k=5120 ncols=4 rel_err=9.91e-08 gpu_ms=0.2471 gbs=56.37 ok=1 err=-
+[xllama] d3d12be: q8_0 n=2560 k=5120 ncols=5 rel_err=9.73e-08 gpu_ms=0.3078 gbs=45.24 ok=1 err=-
+[xllama] d3d12be: q8_0 n=13 k=256 ncols=512 rel_err=1.09e-07 gpu_ms=0.0366 gbs=0.10 ok=1 err=-
+[xllama] d3d12be: q4_k n=11008 k=2048 ncols=1 rel_err=2.38e-07 gpu_ms=0.0585 gbs=216.60 ok=1 err=-
+[xllama] d3d12be: q4_k n=11008 k=2048 ncols=2 rel_err=2.07e-07 gpu_ms=0.1075 gbs=117.91 ok=1 err=-
+[xllama] d3d12be: q4_k n=11008 k=2048 ncols=3 rel_err=2.07e-07 gpu_ms=0.1497 gbs=84.74 ok=1 err=-
+[xllama] d3d12be: q4_k n=11008 k=2048 ncols=5 rel_err=2.07e-07 gpu_ms=0.2434 gbs=52.09 ok=1 err=-
+[xllama] d3d12be: q6_k n=2048 k=11008 ncols=1 rel_err=1.01e-07 gpu_ms=0.0948 gbs=195.08 ok=1 err=-
+[xllama] d3d12be: q6_k n=2048 k=11008 ncols=2 rel_err=1.37e-07 gpu_ms=0.1781 gbs=103.85 ok=1 err=-
+[xllama] d3d12be: q6_k n=2048 k=11008 ncols=3 rel_err=1.37e-07 gpu_ms=0.2566 gbs=72.07 ok=1 err=-
+[xllama] d3d12be: q6_k n=2048 k=11008 ncols=5 rel_err=1.07e-07 gpu_ms=0.4031 gbs=45.88 ok=1 err=-
+[xllama] d3d12be: q5_k n=11008 k=2048 ncols=1 rel_err=1.92e-07 gpu_ms=0.0726 gbs=213.43 ok=1 err=-
+[xllama] d3d12be: q5_k n=11008 k=2048 ncols=2 rel_err=1.66e-07 gpu_ms=0.1271 gbs=121.97 ok=1 err=-
+[xllama] d3d12be: q5_k n=11008 k=2048 ncols=3 rel_err=1.66e-07 gpu_ms=0.1832 gbs=84.61 ok=1 err=-
+[xllama] d3d12be: q5_k n=11008 k=2048 ncols=5 rel_err=1.66e-07 gpu_ms=0.3067 gbs=50.53 ok=1 err=-
+[xllama] d3d12be: q5_k n=2048 k=11008 ncols=1 rel_err=1.85e-07 gpu_ms=0.0846 gbs=183.27 ok=1 err=-
+[xllama] d3d12be: q5_k n=2048 k=11008 ncols=2 rel_err=1.85e-07 gpu_ms=0.1432 gbs=108.21 ok=1 err=-
+[xllama] d3d12be: q5_k n=2048 k=11008 ncols=3 rel_err=1.97e-07 gpu_ms=0.1956 gbs=79.22 ok=1 err=-
+[xllama] d3d12be: q5_k n=2048 k=11008 ncols=5 rel_err=1.56e-07 gpu_ms=0.3067 gbs=50.53 ok=1 err=-
+[xllama] d3d12be: q4_k n=2048 k=11008 ncols=1 rel_err=1.79e-07 gpu_ms=0.0616 gbs=205.75 ok=1 err=-
+[xllama] d3d12be: q4_k n=2048 k=11008 ncols=2 rel_err=1.77e-07 gpu_ms=0.1118 gbs=113.39 ok=1 err=-
+[xllama] d3d12be: q4_k n=2048 k=11008 ncols=3 rel_err=1.77e-07 gpu_ms=0.1564 gbs=81.07 ok=1 err=-
+[xllama] d3d12be: q4_k n=2048 k=11008 ncols=5 rel_err=1.42e-07 gpu_ms=0.2578 gbs=49.20 ok=1 err=-
+[xllama] d3d12be: q6_k n=65536 k=1024 ncols=1 rel_err=1.05e-07 gpu_ms=0.2415 gbs=227.93 ok=1 err=-
+[xllama] d3d12be: q6_k n=65536 k=1024 ncols=2 rel_err=1.09e-07 gpu_ms=0.4849 gbs=113.53 ok=1 err=-
+[xllama] d3d12be: q6_k n=65536 k=1024 ncols=3 rel_err=1.09e-07 gpu_ms=0.7091 gbs=77.64 ok=1 err=-
+[xllama] d3d12be: q6_k n=65536 k=1024 ncols=5 rel_err=1.23e-07 gpu_ms=1.1741 gbs=46.89 ok=1 err=-
+[xllama] d3d12be: silu_avx2 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36483 ord_ulp_max=2199553741 ord_abs=1.12e+03 ord_rel=1.04e+06 his[xllama] d3d12be: swiglu_avx2 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36115 ord_ulp_max=2201345552 ord_abs=3.62e+03 ord_rel=1.04e+06 h[xllama] d3d12be: add_f32 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=bit_mismatch=0 max_ulp=0 nonfinite_mismatch=0 n=36864
+[xllama] d3d12be: rms_norm_f32 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=exact=36864/36864 mismatch=0 max_rel=0 max_ulp=0 nonfinite_mismatch=0
+[xllama] d3d12be: 50/50 cases ok
+[xllama] d3d12be: shape-cost bench (real tttarget triples, B=1/2/3/5)
+[xllama] d3d12sc: q4k-2col blobs t64=11440B t128=11876B | root 8dw (ncols in dword 6) | groupshared t64=1024B t128=2048B (same red array as OLD) | acc 8 f32/thread (OLD 4) | PSOs ready
+[xllama] d3d12: D3D12_Host buffer 22.3 MiB
+[xllama] GDN_SELFTEST T=5 K=5 pads=0/0/0 gpu=1 cpu6_ms=0.5855 wall_ms=0.2792 gpu_ms=0.1553 rel_err=1.9559849e-07 snapshots=5 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.1 MiB
+[xllama] GDN_SELFTEST T=1 K=5 pads=0/0/0 gpu=1 cpu6_ms=0.1139 wall_ms=0.1352 gpu_ms=0.0431 rel_err=1.9559849e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.1 MiB
+[xllama] GDN_SELFTEST T=2 K=5 pads=0/0/0 gpu=1 cpu6_ms=0.2655 wall_ms=0.1834 gpu_ms=0.0692 rel_err=1.9559849e-07 snapshots=2 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.2 MiB
+[xllama] GDN_SELFTEST T=3 K=5 pads=0/0/0 gpu=1 cpu6_ms=0.3817 wall_ms=0.2207 gpu_ms=0.0979 rel_err=1.9559849e-07 snapshots=3 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.3 MiB
+[xllama] GDN_SELFTEST T=4 K=5 pads=0/0/0 gpu=1 cpu6_ms=0.4893 wall_ms=0.2740 gpu_ms=0.1266 rel_err=1.9559849e-07 snapshots=4 ok=1
+[xllama] d3d12: D3D12_Host buffer 26.0 MiB
+[xllama] GDN_SELFTEST T=64 K=5 pads=0/0/0 gpu=1 cpu6_ms=3.3834 wall_ms=0.4428 gpu_ms=0.2363 rel_err=1.9397849e-07 snapshots=5 ok=1
+[xllama] d3d12: D3D12_Host buffer 6.3 MiB
+[xllama] GDN_SELFTEST T=5 K=1 pads=0/0/0 gpu=1 cpu6_ms=0.2779 wall_ms=0.1379 gpu_ms=0.0495 rel_err=3.8387745e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 6.1 MiB
+[xllama] GDN_SELFTEST T=1 K=1 pads=0/0/0 gpu=1 cpu6_ms=0.0803 wall_ms=0.1320 gpu_ms=0.0441 rel_err=1.9559849e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 6.1 MiB
+[xllama] GDN_SELFTEST T=2 K=1 pads=0/0/0 gpu=1 cpu6_ms=0.1330 wall_ms=0.1461 gpu_ms=0.0453 rel_err=2.6129112e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 6.2 MiB
+[xllama] GDN_SELFTEST T=3 K=1 pads=0/0/0 gpu=1 cpu6_ms=0.1725 wall_ms=0.1310 gpu_ms=0.0473 rel_err=3.5110594e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 6.3 MiB
+[xllama] GDN_SELFTEST T=4 K=1 pads=0/0/0 gpu=1 cpu6_ms=0.2396 wall_ms=0.1547 gpu_ms=0.0489 rel_err=3.5190777e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 10.0 MiB
+[xllama] GDN_SELFTEST T=64 K=1 pads=0/0/0 gpu=1 cpu6_ms=3.1692 wall_ms=0.3242 gpu_ms=0.1289 rel_err=1.6751492e-07 snapshots=1 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.2 MiB
+[xllama] GDN_SELFTEST T=3 K=5 pads=3/5/7 gpu=1 cpu6_ms=0.4077 wall_ms=0.2213 gpu_ms=0.0978 rel_err=1.9559849e-07 snapshots=3 ok=1
+[xllama] d3d12: D3D12_Host buffer 22.3 MiB
+[xllama] GDN_SELFTEST T=4 K=5 pads=3/5/7 gpu=1 cpu6_ms=0.5186 wall_ms=0.2551 gpu_ms=0.1249 rel_err=1.9559849e-07 snapshots=4 ok=1
+[xllama] d3d12: 56 graph_compute calls, 0 matmuls (0 2col), 13.9 ms wall (5.3 ms GPU: ts_valid=56)
+[xllama] d3d12: 56 GATED_DELTA_NET dispatches
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 1.4 MiB
+[xllama] d3d12: D3D12_Weights buffer 2.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 2.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 2.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 2.1 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 5.6 MiB
+[xllama] d3d12: D3D12_Weights buffer 6.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 6.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 6.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 6.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 18.5 MiB

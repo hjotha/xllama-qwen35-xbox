@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791570467-2","object":"chat.completion","created":1791570467,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"QUARTZ-LUMEN-4821"},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":77,"completion_tokens":11,"total_tokens":88}}

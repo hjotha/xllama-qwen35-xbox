@@ -1,0 +1,6 @@
+termgate_rev209 start_utc=2026-10-09T18:10:59Z
+arm=sw0-seq invocation=bench_mtp=0 knob=0 device_arm=seq done_utc=2026-10-09T18:11:57Z
+arm=sw0-cand invocation=bench_mtp=4 knob=0 device_arm=cand done_utc=2026-10-09T18:12:54Z
+arm=sw1-seq invocation=bench_mtp=0 knob=1 device_arm=seq done_utc=2026-10-09T18:13:52Z
+arm=sw1-cand invocation=bench_mtp=4 knob=1 device_arm=cand done_utc=2026-10-09T18:14:49Z
+termgate_rev209 end_utc=2026-10-09T18:14:49Z

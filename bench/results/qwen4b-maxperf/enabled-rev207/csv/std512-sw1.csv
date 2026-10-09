@@ -1,0 +1,2 @@
+model,quant,backend,n_ctx,n_threads,prompt_tok_s,decode_tok_s,peak_ws_mb,load_ms,gpu_mem_mb,gpu_budget_mb,n_prompt_tok,n_gen_tok,max_length,host,date,run_index,prefill_ms,ttft_ms
+qwen35-4b-mtp,Q4_K_M,d3d12,2048,2,101.45,25.07,3461,7183,2614,4147,298,64,0,xbox-series-t2-u64-b256-greedy-s1-g34-noeog-prof0,2026-10-09T14:21:22Z,2,2937.3,2938.6

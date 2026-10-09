@@ -28,6 +28,11 @@ void main_loop();
 // ceiling behind the bandwidth-bound decode number (see docs/benchmarks.md).
 void run_membw();
 
+// Elementwise CPU kernel microbenchmark (owner 599): single-op ggml graphs
+// vs pure reference loops at the workload widths, on the console CPU.
+// Triggered by LocalFolder\elembench.flag; writes elembench-result.csv.
+void run_elembench();
+
 // Disk (NVMe) read-bandwidth micro-bench (SSD-inference assessment). Triggered
 // by LocalFolder\diskbw.flag; writes diskbw-result.csv (+ .done) to LocalState.
 // Pins the sandboxed file-read rate any weight-streaming scheme would divide by.

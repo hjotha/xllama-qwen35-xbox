@@ -1,0 +1,30 @@
+start_utc=2026-10-08T12:24:01Z
+ok t-std512-mtp-k0-r1
+ok t-chat64-mtp-k0-r1
+ok t-std512-mtp-k1-r1
+ok t-chat64-mtp-k1-r1
+ok t-std512-mtp-k0-r2
+ok t-chat64-mtp-k0-r2
+ok t-std512-mtp-k1-r2
+ok t-chat64-mtp-k1-r2
+ok t-std512-mtp-k0-r3
+ok t-chat64-mtp-k0-r3
+ok t-std512-mtp-k1-r3
+ok t-chat64-mtp-k1-r3
+ok t-std512-seq-k0-r1
+ok t-chat64-seq-k0-r1
+ok t-std512-seq-k1-r1
+ok t-chat64-seq-k1-r1
+ok t-std512-seq-k0-r2
+ok t-chat64-seq-k0-r2
+ok t-std512-seq-k1-r2
+ok t-chat64-seq-k1-r2
+ok trace-chat64-mtp-k0
+ok trace-chat64-mtp-k1
+end_utc=2026-10-08T12:34:05Z
+arm=sw0-seq mtp=0 done_utc=2026-10-08T12:36:56Z
+arm=sw0-ref mtp=4 done_utc=2026-10-08T12:37:54Z
+arm=sw0-cand mtp=4 done_utc=2026-10-08T12:38:51Z
+arm=sw1-seq mtp=0 done_utc=2026-10-08T12:39:49Z
+arm=sw1-ref mtp=4 done_utc=2026-10-08T12:40:46Z
+arm=sw1-cand mtp=4 done_utc=2026-10-08T12:41:43Z

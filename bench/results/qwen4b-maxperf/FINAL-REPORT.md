@@ -93,12 +93,16 @@ knobs absent, startup scope2 profile (`d3d12twocol.txt=auto`,
 Optional seq preset preserved: `presets/llama-ini-mtp0-seq.txt` (see
 `presets/README.md`).
 
-After the C5 trial the device runs the same verified rev160 source as the
-final accepted-source package **1.6.0.163** (full Release LTCG; the 1.6.0.160
-downgrade is blocked by UWP and uninstalling is forbidden — model data lives
-in LocalState; 1.6.0.162 was an interim fast-iteration rebuild). API, key
-token parity and the termination gate passed on 1.6.0.163: receipts in
-`restore-rev163/` and `c5-rev161/restore-receipt.txt`.
+After the C5 trial the device ran the same verified source as the final
+accepted-source package 1.6.0.163 (full Release LTCG), then 1.6.0.169 after
+the plan-007 RMS_NORM+MUL chain was measured and rejected, and is now
+**1.6.0.175** (full Release LTCG) carrying the plan-008 island code with
+`d3d12island` default OFF (measured structural win, timing not reproduced).
+UWP blocks downgrades and uninstalling is forbidden — model data lives in
+LocalState; interim fast-iteration rebuilds were 1.6.0.162, 1.6.0.164..168 and
+1.6.0.170..174. API, key token parity and the termination gate passed on
+1.6.0.163, 1.6.0.169 and 1.6.0.175: receipts in `restore-rev163/`,
+`release-rev169/`, `release-rev175/` and `c5-rev161/restore-receipt.txt`.
 
 Evidence: `bench/results/qwen4b-maxperf/` (`acceptance-rev160/verdict.md`,
 `seqgates-rev159/`, `swiglu-*/`, README). No publish or merge.

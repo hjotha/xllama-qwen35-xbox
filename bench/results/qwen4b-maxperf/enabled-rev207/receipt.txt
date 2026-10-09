@@ -1,0 +1,94 @@
+RECEIPT: FFN SWIGLU (GPU) + MTP acceptance completion — rev207 LTCG candidate
+utc 2026-10-09 (post independent review; elapsed acceptance protocol corrected)
+STATUS: acceptance completion executed; candidate NOT declared delivered; no
+global-maximum claim. Device final state: monotonic rollback rev208 installed
+(candidate disabled by source); knob0 documented below.
+
+Packages
+- Candidate rev207: GianlucaMazza.xllama_1.6.0.207_x64__pj67f1fcj4n14
+  MSIX sha256 56F91BAB29615D3B84AE929806CE8981935DF78D453DEFA186AB907C1EEE43BD
+  Config: n_batch=256 n_ubatch=64 n_threads=2 mtp=2 mtp_pmin=50 n_predict=48 n_seq_max=2
+- Monotonic rollback rev208 (SAME accepted source 3d39a99, rebuilt at a higher
+  revision because UWP blocks version downgrades):
+  GianlucaMazza.xllama_1.6.0.208_x64__pj67f1fcj4n14
+  MSIX sha256 E1AC033FE3BE86872FFFAB89FD7BD22529D1806C17ECA5C7E60026E51E5361B4
+  Installed over rev207 (succeeded), restart controlled, API validated (below).
+- Superseded wording: "rev192/rev175 preserved" alone does NOT prove an
+  installable downgrade; the valid rollback is the rev208 rebuild above (or
+  knob0 on candidate builds).
+
+1) FFN equivalence (numerical correction)
+- d3d12be selftest on the rev207 LTCG package: ALL 50 rows ok=1;
+  silu_avx2/swiglu_avx2 [fused] ord=0 edge=0 nf=0 ord_ulp_max=0 all_ulp_max=0
+  all_abs=0 — bit-exact vs the CPU IEEE reference including subnormals and
+  signed zero (crdiv-rev193/d3d12be-rev207.csv). No epsilon/threshold/
+  exclusion/reference swap. The [unfused] sections are the intentional
+  non-exact reference variant and are not part of this claim.
+- Fix under test: exact f32<->f64 conversions via integer/bit construction for
+  the subnormal range + branchless signed-zero preservation (f314ecb). No
+  further source change in this acceptance round.
+
+2) MTP correction (token parity)
+- Corrected protocol (this round): 2 interleaved blocks (blocks/b1, blocks/b2);
+  12 cells (chat/code/standard-512 x 64/256 x seq/MTP); both knob arms;
+  --runs 3 => run1 warmup EXCLUDED, run2+run3 = 2 real measured lines per arm
+  per cell per block (run_index in {2,3}); token sidecars verified for run2 and
+  run3 ONLY (warmup tokens never used).
+- Measured lines: 12 cells x 2 arms x 2 rows x 2 blocks = 96 (48 warmups not
+  counted). Verification result: 0 failures in both blocks (verify-blocks-v2.py):
+  rows/indices exact, all existing-baseline digests exact (chat64 84e08196,
+  code64 ff42c5be, chat256 f78ce837, code256 c7d84255, std64=std512 44546453),
+  arm parity (sw0==sw1) exact for the new cells without historical baselines
+  (std64-mtp, std256, std256-mtp).
+- Supersession: the earlier "72 runs parity" figure counted 36 warmup token
+  files as measurements; it is corrected by the 96 measured lines above.
+
+3) Schedule (VROUND, new delimited traces, profile-ENABLED runs)
+- Protocol: --profile-phases 1; per-run trace = the segment from the LAST
+  "main_loop:" start marker to the LAST "[xllama] done:" end marker of the
+  freshly downloaded accumulated log (vround2/<cell>-sw<k>/run2.log); run
+  identity = segment boundaries + measured run2 (run1 warmup excluded). The
+  previous extraction (grep over accumulated history) is superseded.
+- Counts of each new run: chat256-MTP 93 lines/arm, code256-MTP 87 lines/arm
+  (matches the historical 93/87).
+- Comparison (pertinent schedule/state fields only: width, reuse, accepted,
+  mm, feed, gen): IDENTICAL between sw0 and sw1 —
+  chat256-mtp schedule canon sha256 cf2b67ccb0bae8add4cb88e2f7554c37 (93 lines);
+  code256-mtp schedule canon sha256 b11d233f6062742126003832732b0a47 (87 lines).
+- Execution-binding counter `calls` (not a schedule invariant): 185 (sw0) vs
+  153 (sw1), CONSTANT across all rounds in both cells — consistent with the
+  FFN dispatch accounting moving to the GPU binding; timing fields
+  (wall/d3w/d3g/cpu) are profile-enabled diagnostics and are NOT compared.
+- Performance timings remain profile-OFF (sections 5).
+
+4) Termgate / API / memory
+- Termgate cancel/stop/EOS on rev207: seq/ref/cand CSVs byte-IDENTICAL to
+  baseline for both knob arms (6/6, termgate/, 2026-10-09 14:3x UTC).
+- API PASS on rev207 with knob0 after controlled restart (GET status ok; chat
+  endpoint replied) and on the installed rev208 (GET ok; chat replied "ready").
+- Memory: peak_ws_mb over the 96 measured lines: b1 means 3564 (sw0)/3565
+  (sw1), b2 3562/3565; overall max 3674 vs baseline 3672 — unchanged.
+
+5) Performance (profile OFF; means of measured lines)
+- b1 deltas (sw0->sw1 decode tok/s): chat64 +4.14%, code64 +4.76%,
+  std64 +5.65%, chat256 +5.48%, code256 +5.43%, std256 +4.33%,
+  chat64-mtp +1.33%, code64-mtp +4.28%, std64-mtp +3.58%,
+  chat256-mtp +3.23%, code256-mtp +4.20%, std256-mtp +3.94%.
+- b2 deltas: chat64 +6.52%, code64 +4.86%, std64 +4.59%, chat256 +5.20%,
+  code256 +3.44%, std256 +5.67%, chat64-mtp +3.40%, code64-mtp +5.45%,
+  std64-mtp +3.84%, chat256-mtp +4.68%, code256-mtp +3.65%, std256-mtp +3.57%.
+- All 48 cell-arm-block means positive; provisional to the graded prompt set
+  (greedy, seed 1, ignore-eog, 256/64). Not a global-maximum claim.
+
+6) Engagement (default path, no diag override)
+- "FFN SWIGLU profile bound: on (mtp_capable=1)" + 4776 dispatches (chat256
+  MTP) at rev199/rev207 configuration; proves the FFN SWIGLU GPU kernel runs
+  under MTP in the measured chat256-MTP case only.
+
+7) State / constraints
+- No push/merge/reboot/GPU-reset; no destructive cleanup; no provider or gate
+  changes; GOKAYA (.57) untouched. Host ctest 1/1 from f314ecb (not re-run).
+- Evidence: blocks/b1+`b2 (csvs with run_index 2/3, measured token sidecars,
+  driver.log), vround2/ (delimited logs, canon + schedule-canon), verify-blocks-v2.py,
+  acceptance-rev207-v2.sh, termgate/ (14:3x), crdiv-rev193/d3d12be-rev20{1..7}.csv,
+  receipt-v1-superseded.txt (superseded claims preserved).

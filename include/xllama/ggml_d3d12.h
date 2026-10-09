@@ -85,7 +85,12 @@ int d3d12_swiglu_target_layers();
 // drafter always forces it off, so a seq-configured process cannot leak the
 // capability into an MTP session. Pure and host-testable.
 inline int effective_swiglu_mode(int requested_mode, bool mtp_active) {
-    return mtp_active ? 0 : requested_mode;
+    // Owner decision 2026-10-09: FFN SWIGLU + MTP enabled together. The exact
+    // kernel (bit-exact vs the CPU on the real activation range, strict
+    // per-round trace gate passing on chat256/code256 MTP) removed the reason
+    // the MTP profile used to force FFN OFF; MTP no longer constrains the mode.
+    (void)mtp_active;
+    return requested_mode;
 }
 
 // Process profile latch: the capability is bound by the FIRST context that
@@ -114,11 +119,11 @@ struct SwigluModePolicy {
     // bound capability is still ON.
     bool accepts(int requested_mode, bool mtp_active) const {
         (void)requested_mode;
-        if (!bound)
-            return true; // the first context binds the profile
-        if (mode == 0)
-            return true; // bound OFF: nothing is enabled, any context is fine
-        return mtp_capable == mtp_active;
+        (void)mtp_active;
+        // The effective mode is the same for every context profile now, so no
+        // context can conflict with a bound capability; the mode itself is
+        // still bound once by the first finalize().
+        return true;
     }
 };
 bool d3d12_gdn_supported(const ggml_tensor* op);
@@ -198,6 +203,13 @@ void d3d12_set_z0_dispatch_log(bool on);
 // follows placement (split D3D12/CPU execution) or persists on one backend.
 // Log-only sibling above tells which backend ran it. Default off.
 void d3d12_set_z0_pin_cpu(bool on);
+// Plan 008 complete island: SWIGLU + ADD + RMS_NORM + MUL on D3D12. Default off.
+void d3d12_set_island_enabled(bool on);
+// Diagnostic-only (bench): allow FFN SWIGLU in MTP for the fixed-history repro.
+void d3d12_set_swiglu_mtp_diag(bool on);
+// Owner audit: sample the product SWIGLU inputs' real range (diagnostic-only).
+void d3d12_set_swiglu_range_diag(bool on);
+bool d3d12_swiglu_mtp_diag_enabled();
 
 // Queue-fence wait-policy knob (plan004 rev101 experiment): -1 (default,
 // knob file absent) keeps today's unbounded spin exactly as-is. A value >= 0

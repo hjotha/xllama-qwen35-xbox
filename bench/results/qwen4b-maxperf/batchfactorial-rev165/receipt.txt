@@ -1,0 +1,46 @@
+start_utc=2026-10-08T10:19:30Z
+ok standard-512.txt b=64 u=64 prof=0
+ok standard-512.txt b=128 u=64 prof=0
+ok standard-512.txt b=128 u=128 prof=0
+ok standard-512.txt b=256 u=64 prof=0
+ok standard-512.txt b=256 u=128 prof=0
+ok standard-512.txt b=256 u=256 prof=0
+ok standard-512.txt b=64 u=64 prof=0
+ok standard-512.txt b=128 u=64 prof=0
+ok standard-512.txt b=128 u=128 prof=0
+ok standard-512.txt b=256 u=64 prof=0
+ok standard-512.txt b=256 u=128 prof=0
+ok standard-512.txt b=256 u=256 prof=0
+ok spec-chat-open.txt b=64 u=64 prof=0
+ok spec-chat-open.txt b=128 u=64 prof=0
+ok spec-chat-open.txt b=128 u=128 prof=0
+ok spec-chat-open.txt b=256 u=64 prof=0
+ok spec-chat-open.txt b=256 u=128 prof=0
+ok spec-chat-open.txt b=256 u=256 prof=0
+ok spec-chat-open.txt b=64 u=64 prof=0
+ok spec-chat-open.txt b=128 u=64 prof=0
+ok spec-chat-open.txt b=128 u=128 prof=0
+ok spec-chat-open.txt b=256 u=64 prof=0
+ok spec-chat-open.txt b=256 u=128 prof=0
+ok spec-chat-open.txt b=256 u=256 prof=0
+ok standard-512.txt b=64 u=64 prof=1
+ok standard-512.txt b=256 u=64 prof=1
+ok standard-512.txt b=256 u=256 prof=1
+end_utc=2026-10-08T10:31:30Z
+census std512 b=64 u=64 r=1 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/std512-b64-u64-r1
+ok census b=64 u=64 r=1
+census std512 b=128 u=128 r=1 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/std512-b128-u128-r1
+ok census b=128 u=128 r=1
+census std512 b=256 u=256 r=1 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/std512-b256-u256-r1
+ok census b=256 u=256 r=1
+census std512 b=256 u=64 r=1 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/std512-b256-u64-r1
+ok census b=256 u=64 r=1
+attr std512 b=64 u=64 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/attr-std512-b64-u64
+ok attr b=64 u=64
+attr std512 b=128 u=128 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/attr-std512-b128-u128
+ok attr b=128 u=128
+attr std512 b=256 u=256 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/attr-std512-b256-u256
+ok attr b=256 u=256
+attr std512 b=256 u=64 -> /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/batchfactorial-rev165/logs/attr-std512-b256-u64
+ok attr b=256 u=64
+end_utc=2026-10-08T10:39:52Z

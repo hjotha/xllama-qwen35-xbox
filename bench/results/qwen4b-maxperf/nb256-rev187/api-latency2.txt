@@ -1,0 +1,12 @@
+nb=64 pt=long rep=1 wall=11.393s prompt_tokens=275 completion=32
+nb=64 pt=short rep=1 wall=2.325s prompt_tokens=96 completion=32
+nb=64 pt=long rep=2 wall=4.240s prompt_tokens=275 completion=32
+nb=64 pt=short rep=2 wall=2.309s prompt_tokens=96 completion=32
+nb=64 pt=long rep=3 wall=4.235s prompt_tokens=275 completion=32
+nb=64 pt=short rep=3 wall=2.309s prompt_tokens=96 completion=32
+nb=256 pt=long rep=1 wall=11.309s prompt_tokens=275 completion=32
+nb=256 pt=short rep=1 wall=2.259s prompt_tokens=96 completion=32
+nb=256 pt=long rep=2 wall=4.034s prompt_tokens=275 completion=32
+nb=256 pt=short rep=2 wall=2.231s prompt_tokens=96 completion=32
+nb=256 pt=long rep=3 wall=4.032s prompt_tokens=275 completion=32
+nb=256 pt=short rep=3 wall=2.236s prompt_tokens=96 completion=32

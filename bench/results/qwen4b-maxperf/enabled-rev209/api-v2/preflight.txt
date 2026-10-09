@@ -1,0 +1,24 @@
+--- preflight clean state (knob + transient bench knobs must be ABSENT):
+ABSENT d3d12swiglu.txt
+ABSENT bench_mtp.txt
+ABSENT bench_profile.txt
+ABSENT bench_run_index.txt
+ABSENT bench_tokens.txt
+ABSENT bench_npredict.txt
+ABSENT bench_maxlen.txt
+ABSENT bench_ctx.txt
+ABSENT bench_threads.txt
+ABSENT bench_n_batch.txt
+ABSENT bench_ubatch.txt
+ABSENT bench_kvq8.txt
+ABSENT bench_gpu_layers.txt
+ABSENT bench_ignore_eog.txt
+ABSENT bench_greedy.txt
+ABSENT bench_seed.txt
+ABSENT bench_twocol.txt
+ABSENT d3d12twocol.txt
+ABSENT cpurepackforcegemv.txt
+ABSENT termgate.txt
+ABSENT termgate.flag
+ABSENT bench.flag
+llama.ini: n_gpu_layers=34 n_threads=2 n_batch=256 n_ubatch=64 mtp=2 

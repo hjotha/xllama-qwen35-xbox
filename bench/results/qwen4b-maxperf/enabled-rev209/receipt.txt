@@ -1,0 +1,144 @@
+RECEIPT: FFN SWIGLU (GPU) + MTP DELIVERY — rev209 (candidate = validated
+rev207 source, monotonically rebuilt above rev208)
+utc 2026-10-09 (continuation of the authorized conclusion step: deliver
+enabled once gates pass; no new optimization, no gate relaxation)
+
+Packages and identity
+- rev209 MSIX sha256 A0ED4E24AC6A6C14C07E94C681009AC5396A91020228B3495EDC362A8028497C
+  (remote sha256-fixed matches local fetch). Installed over rev208 (UWP
+  monotonic: 208 cannot downgrade over 209 — rollback route is rev210 below).
+- rev207 MSIX sha256 56F91BAB29615D3B84AE929806CE8981935DF78D453DEFA186AB907C1EEE43BD.
+- IDENTITY vs validated rev207 (build-identity-receipt.txt): source diff
+  f314ecb..HEAD over src/shaders/include/uwp/tests = 0 lines; xllama.exe
+  7,706,624 bytes with exactly 13 differing bytes, ALL build bookkeeping
+  (PE/Debug TimeDateStamp = 0x6ac8f120 -> 0x6ac91b5d; PDB age 12 -> 14,
+  same GUID); .text/.rdata/.data/.reloc code bytes identical. Other package
+  files differ only via AppxManifest version, its blockmap and re-signature.
+  No kernel/shader/bridge change between rev207 and rev209.
+- Config unchanged (llama.ini preflight saved): n_gpu_layers=34 n_ctx=2048
+  n_batch=256 n_ubatch=64 n_threads=2 kv_q8=0 mtp=2 mtp_pmin=50 n_predict=48
+  n_seq_max=2. Model qwen35-4b-mtp.
+
+1) Numeric gate on the INSTALLED rev209 (numeric-receipt.txt)
+- d3d12be selftest: 50/50 rows ok (D2a gate PASS, 0 slow decode cases);
+  device log "[xllama] d3d12be: 50/50 cases ok".
+- silu_avx2 + swiglu_avx2 [fused]: ok=1 ord=0 ord_ulp_max=0 ord_abs=0
+  edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 — bit-exact vs the CPU
+  IEEE reference incl. subnormals and signed zero. [unfused] sections are
+  the intentional non-exact reference variant (divergent by design).
+- add_f32 bit_mismatch=0; rms_norm exact=36864/36864; d3d12sc 282 rows
+  reported, not gated. Evidence: d3d12be-rev209.csv,
+  numeric-session-segment.log (delimited from full log at L0=400353).
+
+2) Acceptance blocks on rev209 (fresh runs, never relabeled from rev207)
+- acceptance-rev209-v2.sh: 2 blocks x 12 cells x 2 arms, --runs 3 =>
+  96 measured lines (run_index 2/3 only; warmups excluded). b1 17:00-17:34,
+  b2 17:34-18:07 UTC. verify-blocks-v3: b1 failures=0, b2 failures=0 (all 24
+  CSVs present per block, baselines exact, arm parity exact incl. MTP cells).
+- 24 OFF/ON comparisons: 24/24 positive; median +4.32%, mean +4.38%,
+  sd 0.80, q1 +3.92, q3 +5.14, min +2.74% (b1 chat64-mtp), max +5.57%;
+  0/24 overlapping individual measured lines. Full table:
+  report-24comparisons-rev209.txt (vs rev207: 24/24 positive, median +4.30%,
+  1 overlap at b1 chat64-mtp — report-24comparisons-v3.txt; NOT claimed
+  above noise: that cell is +2.74%/+4.79% on rev209 without overlap).
+- Memory: 96 measured lines peak_ws_mb means 3562/3562 (b1) and 3564/3564
+  (b2), max 3674 — profile unchanged vs rev207 (memory-summary.txt).
+- Stability: full battery (~67 min) + all 7 stages with no app crash and no
+  device-side error; the only interruption was a host tool-timeout killing
+  the local watchers (device-side runs completed and were fetched).
+- Validator verify-blocks-v3.py (reproducibility fix): REQUIRES all 24 CSVs
+  per block (demonstrated: deleting one CSV -> CSV_MISSING, rc=1), rows
+  exactly {2,3}, token sidecars run2+run3, EXPLICIT baseline per cell
+  (MTP cells checked against their prompt-group baseline; std256/std256-mtp
+  = BASELINE=none stated, arm-parity only), explicit sw0==sw1 parity for
+  every cell incl. MTP. The v3 validator passes both complete rev207 blocks
+  (verify-v3-rerun.txt) — same inputs, same result.
+
+3) Schedule (VROUND, profile-ENABLED, delimited traces)
+- Fresh rev209 traces (vround/): chat256-mtp 93 lines/arm, code256-mtp
+  87 lines/arm; schedule/state canon IDENTICAL between arms AND identical to
+  the rev207 canons (chat cf2b67ccb0bae8ad..., code b11d233f60627421...):
+  cross-package schedule reproducibility. calls 185/153 (binding
+  accounting, not a schedule invariant). Segment files + schedule-canon
+  committed (raw accumulated logs untracked on disk). Performance timings
+  stayed profile OFF (blocks).
+
+4) Termgate with CORRECTED labels (real invocations)
+- Legacy bug FIXED and proven: legacy "ref" and "cand" were one identical
+  bench_mtp=4 invocation — the device itself labels both outputs arm=cand
+  (rev207 ref file rows arm=cand; byte-identical sha 12c2fc8ff84cc9dd...)
+  and legacy rev192 ref == legacy cand. Corrected matrix = {seq: mtp0} x
+  {cand: mtp4} x {knob0, knob1} = 4 CSVs (termgate/, receipt lists the real
+  bench_mtp + knob + device arm per run).
+- Gate (exit 0): device arm column matches every label; sw0==sw1
+  byte-identical within arm; each vs the legacy baseline of the same real
+  arm: seq (sw0/sw1) == legacy seq 12de1bea...; cand (sw0/sw1) == legacy
+  cand == legacy ref 12c2fc8ff... No ref/cand invention.
+
+5) API multi-turn gate with FFN GPU + MTP really ON (final state)
+- CORRECTION (audit): the first gate script's "NO reload / session reuse"
+  wording was FALSE — see api/CORRECTION-multiturn-v1.md with the exact
+  temporal map (T1 L244/259; session torn down L268-274 and re-created L277;
+  T2 full prefill L488/511 with kv_before=0; T3 rewind attempted L517
+  common=73/resident=88 and REFUSED by the hybrid cache per
+  src/bridge/session.cpp:699-700, full re-prefill L518/533). Recall JSONs
+  prove API-level continuity (history in requests), never KV reuse. Full
+  prefill is never reclassified as reuse.
+- Redo api-multiturn-v2.sh in the CLEAN state (knob + all transient bench
+  knobs verified ABSENT by 404 preflight; llama.ini mtp=2 n_gpu_layers=34),
+  with per-turn log slices and an OFF equivalent (knob=0), then re-enabled:
+  ON t1='stored' t2='QUARTZ-LUMEN-4821' (RECALL PASS) t3='QUARTZ/LUMEN';
+  OFF replies BYTE-IDENTICAL (exact kernel on the API path); single bind
+  per session ('on (mtp_capable=1)' for ON, 'off' for OFF); MTP drafting
+  active on every turn of both arms (drafted=2/8/4, spec_accept>0).
+- Reuse as observed (clean state): T2 rewind attempted (common=46,
+  resident=51 = T1's KV intact) but refused -> full prefill; T3 same
+  (common=73/resident=88) -> full re-prefill. Conclusion: on this
+  hybrid-cache model the supported mechanism (common-prefix rewind,
+  session.cpp #170a) degrades to FULL PREFILL every API turn; continuity
+  comes from request history. No reload in the clean ON run (single bind,
+  no config/reject lines between turns); the v1 mid-gate recreation was
+  background default-model (lfm25-350m) preload interference under leftover
+  bench scope2 knobs. OFF arm showed the same interference intermittently
+  (session recreated between T1/T2, kv_before=0, no rewind attempt) — the
+  interference is a genuine intermittent app behavior, recorded, and does
+  not change any gate verdict (recall/bind/counters/reply-equality hold).
+- Counters: v1 session 383 calls / 524 matmuls / 48 GDN / 79 FFN SWIGLU;
+  v2 ON flush missed by a get-log race (script verdict inconclusive, NOT a
+  device failure) and was re-captured with a longer settle: clean-state ON
+  session 368 calls / 500 matmuls / 48 GDN / 76 FFN SWIGLU (>0, real GPU
+  FFN with MTP drafting); OFF session 462 calls / 524 matmuls / 48 GDN /
+  FFN=0. Device log ROTATES: line-offset slicing is unreliable across a
+  stop — grep fetched logs by content (documented in FLUSH-counters.txt).
+- Final clean state (knob deleted=absent/404, transient knobs deleted,
+  controlled restart): GET ok, chat 'serving-enabled' then 'serving', fresh
+  bind 'on (mtp_capable=1)'. All responses + per-turn slices + segments +
+  analysis committed (api/, api-v2/).
+
+6) Immediate fallback + code rollback route
+- fallback-knob0.sh TESTED on rev209: knob0=0 + controlled restart + API
+  PASS + chat PASS + fresh bind 'off' (fallback/receipt.txt). Re-enable =
+  delete d3d12swiglu.txt + restart (api-multiturn does exactly this).
+- Code rollback route with number above 209: rev210 LTCG built from the
+  accepted source 3d39a99 (sha256
+  7570FAB28143ED4A2726FFF5D1A5EB671B93FA718E13DBA4B98B39FD00C61783),
+  stored, NOT installed — installable because 210 > 209 (208 cannot
+  downgrade over 209). Proven accepted-source: rev210 exe vs rev208 exe =
+  9 differing bytes, all build bookkeeping (same PDB GUID). First rev210
+  attempt (A40AE2BD..., ~200s) silently reused rev209 objects via stale tar
+  mtimes (exe byte-identical to rev209) — superseded, overwritten, documented
+  in rollback-receipt.txt; rebuilt with forced recompile (966s). Mirror
+  restored to validated candidate HEAD and verified (MIRROR_RESTORE_OK).
+
+7) Performance report framing (corrected, applied to both rev207 and rev209)
+- 24 OFF/ON COMPARISONS (12 cells x 2 blocks; each = mean of 2 measured
+  lines), NOT 48 gains. rev207 (audit-confirmed, report-24comparisons-v3.txt):
+  24/24 positive; median +4.30%, mean +4.38%, sd 1.07, q1 +3.61, q3 +5.31,
+  min +1.33%, max +6.52%. ONE comparison has overlapping individual measured
+  lines: b1 chat64-mtp OFF 29.02/29.02 vs ON 28.94/29.87 (+1.33% at the
+  means) — NOT claimed above noise; 23/24 do not overlap.
+- rev209 numbers: see report-24comparisons-rev209.txt (filled below).
+
+Constraints honored: no push/merge, no reboot, no resetGPU, no
+provider/model change, no destructive cleanup, .57 (GOKAYA) untouched;
+no epsilon/threshold/exclusion/reference swap anywhere in this delivery.

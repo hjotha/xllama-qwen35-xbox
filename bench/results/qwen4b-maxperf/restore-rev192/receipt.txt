@@ -1,0 +1,23 @@
+restore receipt rev192 (accepted rev188 source, LTCG)
+utc 2026-10-09T08:0x
+- why: the accepted package rev188 (1.6.0.188 LTCG) cannot be installed over
+  the diagnostic rev191/190 (UWP forbids downgrades; uninstall preserves
+  nothing here and is disallowed). The accepted rev188 SOURCE (commit 3d39a99,
+  the exact source of the rev188 build) was rebuilt as a monotonic revision.
+- build: sources checked out from 3d39a99 for src/bridge/ggml_d3d12.cpp,
+  include/xllama/ggml_d3d12.h, uwp/inference-bridge.cpp; worktree restored to
+  HEAD afterwards (diagnostic instruments preserved in git/HEAD);
+  run-xbox-build.ps1 -BuildRevision 192 -Final (LTCG, 631.1 s).
+- MSIX sha256 E0412C1FF367EA88E4A05B95A12338103CD67F66F3E86BDF9A62820179EFCA50
+  (builder log == fetched). PFN GianlucaMazza.xllama_1.6.0.192_x64__pj67f1fcj4n14
+- config verified on device: n_gpu_layers=34 n_ctx=2048 n_threads=2
+  n_batch=256 n_ubatch=64 kv_q8=0 mtp=2 mtp_pmin=50 n_predict=48 n_seq_max=2
+- knobs verified absent (island, swiglu, swiglurange, mtp diag, ggmlprof,
+  normmul, batch threads, termgate, bench_mtp, host tag)
+- validations ON THIS PACKAGE: validate-api.sh chat PASS; real inference long
+  prompt (275 tok, max_tokens 32): 4.208 (cold) / 4.116 / 4.106 s; termgate
+  cancel/stop/EOS 6/6 ok with seq/ref/cand CSVs byte-identical to the baseline
+  (this build's own run); device log: island CPU, FFN SWIGLU bound off.
+- preserved: rev191 diagnostic package (/tmp/opencode/qwen4b-builds/rev191),
+  rev188 package and all evidence; rollback remains 1.6.0.175 LTCG +
+  llama.ini.backup (n_batch=64).

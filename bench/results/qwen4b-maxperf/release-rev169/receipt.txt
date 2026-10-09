@@ -1,0 +1,9 @@
+release receipt rev169 2026-10-08T12:03:42Z
+pfn=GianlucaMazza.xllama_1.6.0.169_x64__pj67f1fcj4n14
+msix_sha256=A1EC2974A1CF6CCFF71C2D8E55F6135F6795B2C7AA3A1CFEE5530BA31ED61CCD (full Release LTCG, 737.82 s; builder sha == fetched)
+source=verified rev165 source restored (plan 007 RMS_NORM+MUL chain reverted; patch preserved in normmul-rev168/)
+llama.ini: n_predict=48 n_seq_max=2 + production keys (mtp=2 etc.)
+knobs: d3d12swiglu=0, no bench/profiling/termgate files
+api: validate-api.sh chat PASS
+parity: chat64-mtp 84e081965076a0c9... baseline
+termgate: 6/6 ok, seq/ref/cand sw0 byte-identical to rev163

@@ -1,0 +1,3 @@
+rev192 long rep1: wall=4.208s prompt_tokens=275
+rev192 long rep2: wall=4.116s prompt_tokens=275
+rev192 long rep3: wall=4.106s prompt_tokens=275

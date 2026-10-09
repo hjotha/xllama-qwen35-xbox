@@ -1,0 +1,496 @@
+# run-scoped segment of enabled-rev209/vround/chat256-mtp-sw1/run2.log (last main_loop: start .. last done: end)
+# whole-log lines: 418110; segment lines: 494; segment: [xllama] main_loop: d3d12swiglurange.txt=(absent)
+[xllama] main_loop: d3d12swiglurange.txt=(absent)
+[xllama] bench: d3d12twocol.txt='auto' -> kernel variant 2 (prev 0)
+[xllama] bench: prompt.txt 374 bytes
+[xllama] bench: gpu timestamps=on (profile-bound default)
+[xllama] bench model: qwen35-4b-mtp
+[xllama] bench prompt: <|im_start|>system
+You are a helpful AI assistant.<|im_end|>
+<|im_start|>user
+Me...
+[xllama] bench tokens sidecar: bench-tokens-2.txt
+[xllama] bench sampling: greedy=1 seed=1 temp=0.80 top_p=0.90 top_k=40
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4129 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] model loaded
+[xllama] gpu-mem post-load: current=2692MB budget=4147MB
+[xllama] speculative: target n_rs_seq=2 n_ubatch=64
+[xllama] prefill batch override: n_batch=256 n_ubatch=64
+[xllama] d3d12: FFN SWIGLU profile bound: on (mtp_capable=1)
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   150.75 MiB
+[xllama] d3d12: D3D12_Host buffer 62.8 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.75 MiB
+[llama] sched_reserve: graph splits = 306
+[xllama] effective threads: decode=2 batch=2
+[llama] llama_context: D3D12_Host  output buffer size =     0.95 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] prompt tokens: 119
+[xllama] d3d12: D3D12_Host buffer 3.4 MiB
+[xllama] DSTEP kind=prefill width=119 wall=1217.03 d3w=846.89 d3g=767.52 cpu=2437.50 calls=305 mm=401
+[xllama] DSTEP kind=catchup width=119 wall=61.98 d3w=40.25 d3g=32.96 cpu=62.50 calls=150 mm=240
+[xllama] mtp: first draft pos=119 n_embd=2560 n_max=2 row[min,max]=[-25.525377,21.928339] dft_n_batch=4 dft_pos_max=118
+[xllama] DSTEP kind=draft width=2 wall=11.56 d3w=5.54 d3g=4.68 cpu=0.00 calls=12 mm=18
+[xllama] d3d12: D3D12_Host buffer 5.3 MiB
+[xllama] DSTEP kind=catchup width=3 wall=2.26 d3w=1.15 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.23 d3w=2.77 d3g=2.37 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.43 d3w=21.05 d3g=12.57 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.26 d3w=0.66 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.52 d3w=5.54 d3g=4.75 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.76 d3w=0.89 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.08 d3w=2.75 d3g=2.37 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.42 d3w=21.16 d3g=12.57 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.28 d3w=0.66 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.08 d3w=2.71 d3g=2.34 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.95 d3w=21.04 d3g=12.52 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.28 d3w=0.66 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.02 d3w=2.70 d3g=2.36 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.95 d3w=20.94 d3g=12.57 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.28 d3w=0.67 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.44 d3w=5.51 d3g=4.76 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.78 d3w=0.91 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.75 d3w=5.42 d3g=4.72 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.82 d3w=0.90 d3g=0.54 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.59 d3w=5.40 d3g=4.71 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.34 d3w=1.17 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.76 d3w=5.37 d3g=4.65 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.43 d3w=1.20 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.83 d3w=5.51 d3g=4.76 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.86 d3w=0.91 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.84 d3w=5.42 d3g=4.66 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.36 d3w=1.14 d3g=0.80 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.43 d3w=5.42 d3g=4.68 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.90 d3w=0.92 d3g=0.57 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.83 d3w=5.43 d3g=4.67 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.45 d3w=1.18 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.05 d3w=5.40 d3g=4.66 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.41 d3w=1.15 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.91 d3w=5.42 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.37 d3w=1.15 d3g=0.80 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.90 d3w=5.44 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.39 d3w=1.15 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.89 d3w=5.44 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.46 d3w=1.19 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.62 d3w=5.55 d3g=4.73 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.41 d3w=0.71 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.01 d3w=2.69 d3g=2.34 cpu=0.00 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=1 wall=1.34 d3w=0.66 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.60 d3w=5.46 d3g=4.75 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.90 d3w=0.90 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.92 d3w=5.44 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.46 d3w=1.15 d3g=0.83 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.15 d3w=2.74 d3g=2.35 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.65 d3w=20.98 d3g=12.52 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.38 d3w=0.69 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.15 d3w=2.76 d3g=2.39 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.37 d3w=20.97 d3g=12.57 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.43 d3w=0.67 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.06 d3w=2.68 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.50 d3w=21.01 d3g=12.59 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.35 d3w=0.65 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.70 d3w=5.51 d3g=4.65 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.01 d3w=0.94 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.50 d3w=5.84 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.00 d3w=0.89 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.43 d3w=5.41 d3g=4.74 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.97 d3w=0.90 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.27 d3w=2.77 d3g=2.35 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.30 d3w=21.12 d3g=12.58 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.36 d3w=0.67 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.74 d3w=5.51 d3g=4.74 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.97 d3w=0.89 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.58 d3w=5.43 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.45 d3w=0.72 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.08 d3w=2.72 d3g=2.38 cpu=31.25 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=1 wall=1.40 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.99 d3w=5.44 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.55 d3w=0.76 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.91 d3w=5.47 d3g=4.72 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.97 d3w=0.90 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.40 d3w=5.37 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.93 d3w=0.88 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.81 d3w=5.53 d3g=4.77 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.97 d3w=0.89 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.65 d3w=5.46 d3g=4.73 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.00 d3w=0.92 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.07 d3w=5.45 d3g=4.68 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.60 d3w=1.15 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.15 d3w=5.55 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.49 d3w=0.72 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.47 d3w=5.43 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.08 d3w=0.92 d3g=0.57 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.14 d3w=5.39 d3g=4.68 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.09 d3w=0.99 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.16 d3w=2.69 d3g=2.33 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.06 d3w=21.06 d3g=12.49 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.44 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.24 d3w=5.55 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.62 d3w=0.78 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.22 d3w=5.63 d3g=4.68 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.03 d3w=0.88 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.11 d3w=5.44 d3g=4.66 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.49 d3w=0.71 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.90 d3w=5.42 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.08 d3w=0.90 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.45 d3w=5.39 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.02 d3w=0.88 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.72 d3w=5.50 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.07 d3w=0.92 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.14 d3w=5.47 d3g=4.73 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.74 d3w=1.18 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.13 d3w=5.46 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.66 d3w=1.13 d3g=0.80 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.17 d3w=5.49 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.76 d3w=1.22 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.77 d3w=5.48 d3g=4.75 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.07 d3w=0.88 d3g=0.56 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.30 d3w=2.75 d3g=2.37 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.09 d3w=20.91 d3g=12.60 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.50 d3w=0.70 d3g=0.39 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.35 d3w=2.66 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.81 d3w=20.99 d3g=12.54 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.47 d3w=0.67 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.66 d3w=2.76 d3g=2.39 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.92 d3w=21.00 d3g=12.53 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.53 d3w=0.69 d3g=0.38 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.35 d3w=5.52 d3g=4.71 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.80 d3w=1.17 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.21 d3w=5.47 d3g=4.68 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.68 d3w=1.12 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.14 d3w=5.40 d3g=4.66 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.13 d3w=0.93 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.03 d3w=2.67 d3g=2.36 cpu=0.00 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=1 wall=1.53 d3w=0.70 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.27 d3w=2.69 d3g=2.33 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.82 d3w=20.86 d3g=12.55 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.51 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.28 d3w=5.50 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.58 d3w=0.74 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.02 d3w=5.40 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.78 d3w=1.19 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.34 d3w=5.53 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.83 d3w=1.22 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.40 d3w=2.76 d3g=2.37 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.66 d3w=21.01 d3g=12.60 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.57 d3w=0.68 d3g=0.39 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.26 d3w=2.69 d3g=2.32 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.83 d3w=20.75 d3g=12.52 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.50 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.28 d3w=2.75 d3g=2.38 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.39 d3w=21.21 d3g=12.54 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.51 d3w=0.67 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.35 d3w=2.79 d3g=2.39 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.14 d3w=21.03 d3g=12.52 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.56 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.21 d3w=5.42 d3g=4.71 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.87 d3w=1.24 d3g=0.82 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.92 d3w=5.53 d3g=4.74 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.13 d3w=0.87 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=5.28 d3w=2.76 d3g=2.35 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.59 d3w=21.11 d3g=12.61 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.55 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.37 d3w=2.72 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.10 d3w=20.87 d3g=12.54 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.58 d3w=0.66 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.36 d3w=5.49 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.95 d3w=1.21 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.88 d3w=5.48 d3g=4.76 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.15 d3w=0.88 d3g=0.54 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.41 d3w=5.59 d3g=4.77 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.83 d3w=1.14 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.43 d3w=5.50 d3g=4.75 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.89 d3w=1.18 d3g=0.80 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.40 d3w=5.54 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.67 d3w=0.73 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.76 d3w=5.40 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.24 d3w=0.92 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.40 d3w=5.49 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.94 d3w=1.18 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.39 d3w=2.71 d3g=2.34 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.81 d3w=21.12 d3g=12.55 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.62 d3w=0.68 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.49 d3w=2.76 d3g=2.38 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.53 d3w=21.14 d3g=12.52 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.60 d3w=0.71 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.36 d3w=5.47 d3g=4.73 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.94 d3w=1.17 d3g=0.80 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.36 d3w=2.75 d3g=2.38 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.81 d3w=21.09 d3g=12.53 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.60 d3w=0.69 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.00 d3w=5.47 d3g=4.73 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.62 d3w=0.71 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.24 d3w=5.50 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.26 d3w=0.91 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.14 d3w=5.40 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.04 d3w=1.17 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.00 d3w=5.43 d3g=4.68 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.31 d3w=0.91 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.49 d3w=5.49 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.01 d3w=1.21 d3g=0.81 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.34 d3w=2.71 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=43.72 d3w=22.87 d3g=12.57 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.63 d3w=0.71 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.07 d3w=5.52 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.31 d3w=0.89 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.53 d3w=5.54 d3g=4.66 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.05 d3w=1.18 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.05 d3w=5.52 d3g=4.73 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.74 d3w=0.75 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.24 d3w=5.45 d3g=4.77 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.02 d3w=1.12 d3g=0.81 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.04 d3w=5.48 d3g=4.74 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.75 d3w=0.79 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=9.98 d3w=5.45 d3g=4.72 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.29 d3w=0.87 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.41 d3w=2.73 d3g=2.32 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.05 d3w=20.99 d3g=12.59 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.62 d3w=0.66 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.35 d3w=2.71 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=40.73 d3w=21.11 d3g=12.60 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.71 d3w=0.72 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.50 d3w=5.48 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.70 d3w=0.73 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.26 d3w=5.44 d3g=4.68 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.36 d3w=0.89 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.37 d3w=5.54 d3g=4.78 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.35 d3w=0.91 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.30 d3w=5.34 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.18 d3w=1.19 d3g=0.81 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.55 d3w=5.48 d3g=4.71 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.10 d3w=1.18 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.41 d3w=2.73 d3g=2.34 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.03 d3w=20.94 d3g=12.51 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.69 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.66 d3w=5.57 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.42 d3w=0.96 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.69 d3w=2.65 d3g=2.33 cpu=15.62 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=1 wall=1.64 d3w=0.66 d3g=0.39 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.07 d3w=5.44 d3g=4.68 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.43 d3w=0.91 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.39 d3w=2.71 d3g=2.36 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.25 d3w=21.10 d3g=12.60 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.66 d3w=0.68 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.55 d3w=5.44 d3g=4.68 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.17 d3w=1.20 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.57 d3w=5.49 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.17 d3w=1.18 d3g=0.83 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.23 d3w=5.42 d3g=4.66 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.43 d3w=0.93 d3g=0.56 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.57 d3w=5.47 d3g=4.66 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.24 d3w=1.19 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.64 d3w=5.45 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.23 d3w=1.21 d3g=0.84 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.43 d3w=2.71 d3g=2.33 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.26 d3w=20.94 d3g=12.49 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.74 d3w=0.73 d3g=0.39 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.48 d3w=2.75 d3g=2.39 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.81 d3w=21.71 d3g=12.51 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.68 d3w=0.66 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.14 d3w=5.42 d3g=4.69 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.50 d3w=0.92 d3g=0.56 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.60 d3w=2.79 d3g=2.40 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.44 d3w=21.14 d3g=12.53 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.69 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.65 d3w=2.80 d3g=2.38 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.34 d3w=21.31 d3g=12.53 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.70 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.79 d3w=2.80 d3g=2.41 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.02 d3w=21.04 d3g=12.54 cpu=78.12
+[xllama] DSTEP kind=catchup width=1 wall=1.74 d3w=0.71 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.33 d3w=5.46 d3g=4.72 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.46 d3w=0.92 d3g=0.55 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.63 d3w=5.44 d3g=4.69 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.28 d3w=1.17 d3g=0.80 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.46 d3w=2.73 d3g=2.35 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.59 d3w=21.10 d3g=12.55 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.75 d3w=0.67 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.33 d3w=5.50 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.46 d3w=0.87 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.61 d3w=5.42 d3g=4.69 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.30 d3w=1.16 d3g=0.80 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.76 d3w=5.52 d3g=4.75 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.33 d3w=1.20 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.48 d3w=5.49 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.52 d3w=0.89 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.75 d3w=5.52 d3g=4.70 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.35 d3w=1.22 d3g=0.80 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.76 d3w=5.53 d3g=4.77 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.31 d3w=1.17 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.55 d3w=2.77 d3g=2.40 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=42.61 d3w=21.03 d3g=12.52 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.75 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.58 d3w=2.78 d3g=2.37 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.34 d3w=21.15 d3g=12.57 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.73 d3w=0.67 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.26 d3w=5.46 d3g=4.71 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=1 wall=1.80 d3w=0.72 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.14 d3w=2.62 d3g=2.32 cpu=31.25 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=1 wall=1.81 d3w=0.68 d3g=0.38 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.50 d3w=2.74 d3g=2.33 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.22 d3w=20.99 d3g=12.57 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.81 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.84 d3w=5.53 d3g=4.74 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.38 d3w=1.16 d3g=0.81 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.75 d3w=5.50 d3g=4.73 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=2.57 d3w=0.92 d3g=0.55 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.54 d3w=5.44 d3g=4.71 cpu=15.62 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=3.41 d3w=1.23 d3g=0.82 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=0 wall=0.01 d3w=0.00 d3g=0.00 cpu=0.00 calls=0 mm=0
+[xllama] CSTEP kind=classic width=1 wall=42.86 d3w=21.10 d3g=12.60 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.77 d3w=0.69 d3g=0.39 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=9001.29 d3w=4698.32 d3g=3270.89 cpu=17765.62 calls=22692 mm=30258 classic_steps=37
+[xllama] VROUND width=3 wall=70.11 d3w=36.05 d3g=26.16 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=1919,369,264 gen=256
+[xllama] VROUND width=2 wall=48.62 d3w=26.13 d3g=17.64 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=7059,303 gen=256
+[xllama] VROUND width=2 wall=48.89 d3w=26.31 d3g=17.62 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=17120,13 gen=256
+[xllama] VROUND width=3 wall=63.24 d3w=35.38 d3g=26.14 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=561,28241,14995 gen=256
+[xllama] VROUND width=3 wall=61.80 d3w=35.28 d3g=26.12 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=1881,2972,26808 gen=256
+[xllama] VROUND width=3 wall=61.84 d3w=35.21 d3g=26.14 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=48184,332,318 gen=256
+[xllama] VROUND width=2 wall=49.35 d3w=26.43 d3g=17.62 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=17693,539 gen=256
+[xllama] VROUND width=3 wall=63.27 d3w=35.18 d3g=26.07 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=1204,4778,279 gen=256
+[xllama] VROUND width=2 wall=49.07 d3w=26.20 d3g=17.65 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=17128,628 gen=256
+[xllama] VROUND width=3 wall=122.06 d3w=90.58 d3g=26.19 cpu=250.00 reuse=0 accepted=2 calls=153 mm=201 feed=10724,8,321 gen=256
+[xllama] VROUND width=3 wall=64.78 d3w=35.47 d3g=26.11 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=2972,16759,48184 gen=256
+[xllama] VROUND width=3 wall=62.77 d3w=35.70 d3g=26.15 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=332,318,17693 gen=256
+[xllama] VROUND width=3 wall=62.45 d3w=35.44 d3g=26.13 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=539,1204,4778 gen=256
+[xllama] VROUND width=3 wall=62.72 d3w=35.48 d3g=26.10 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=795,628,381 gen=256
+[xllama] VROUND width=2 wall=49.81 d3w=26.51 d3g=17.64 cpu=93.75 reuse=0 accepted=0 calls=153 mm=201 feed=7481,310 gen=256
+[xllama] VROUND width=2 wall=49.51 d3w=26.25 d3g=17.64 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=21360,310 gen=256
+[xllama] VROUND width=3 wall=63.93 d3w=35.33 d3g=26.08 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=279,17128,8 gen=256
+[xllama] VROUND width=2 wall=49.61 d3w=26.26 d3g=17.59 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=494,264 gen=256
+[xllama] VROUND width=3 wall=64.29 d3w=35.44 d3g=26.16 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=10281,13540,310 gen=256
+[xllama] VROUND width=2 wall=69.26 d3w=45.42 d3g=17.65 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=15328,6126 gen=256
+[xllama] VROUND width=2 wall=49.61 d3w=26.21 d3g=17.65 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=3070,914 gen=256
+[xllama] VROUND width=2 wall=48.27 d3w=26.15 d3g=17.62 cpu=93.75 reuse=1 accepted=0 calls=153 mm=201 feed=2590,1438 gen=256
+[xllama] VROUND width=3 wall=64.39 d3w=35.41 d3g=26.16 cpu=125.00 reuse=0 accepted=0 calls=153 mm=201 feed=449,42903,10281 gen=256
+[xllama] VROUND width=3 wall=62.92 d3w=35.32 d3g=26.08 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=14791,1558,10281 gen=256
+[xllama] VROUND width=2 wall=49.83 d3w=26.38 d3g=17.62 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=1542,10281 gen=256
+[xllama] VROUND width=2 wall=48.83 d3w=26.58 d3g=17.67 cpu=93.75 reuse=1 accepted=1 calls=153 mm=201 feed=13,271 gen=256
+[xllama] VROUND width=2 wall=48.69 d3w=26.42 d3g=17.69 cpu=93.75 reuse=1 accepted=1 calls=153 mm=201 feed=8160,369 gen=256
+[xllama] VROUND width=3 wall=64.64 d3w=35.51 d3g=26.09 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=279,29006,314 gen=256
+[xllama] VROUND width=3 wall=63.10 d3w=35.36 d3g=26.14 cpu=125.00 reuse=1 accepted=0 calls=153 mm=201 feed=3069,411,8311 gen=256
+[xllama] VROUND width=2 wall=49.91 d3w=26.15 d3g=17.63 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=4779,32288 gen=256
+[xllama] VROUND width=2 wall=48.59 d3w=26.17 d3g=17.61 cpu=93.75 reuse=1 accepted=1 calls=153 mm=201 feed=8772,279 gen=256
+[xllama] VROUND width=3 wall=73.67 d3w=44.23 d3g=26.16 cpu=156.25 reuse=0 accepted=0 calls=153 mm=201 feed=2261,3817,9191 gen=256
+[xllama] VROUND width=2 wall=54.94 d3w=26.61 d3g=17.70 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=9191,11 gen=256
+[xllama] VROUND width=3 wall=64.91 d3w=35.31 d3g=26.07 cpu=125.00 reuse=0 accepted=0 calls=153 mm=201 feed=3069,279,1558 gen=256
+[xllama] VROUND width=3 wall=63.44 d3w=35.39 d3g=26.15 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=49219,513,12204 gen=256
+[xllama] VROUND width=2 wall=50.25 d3w=26.17 d3g=17.66 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=2086,11 gen=256
+[xllama] VROUND width=2 wall=48.81 d3w=26.15 d3g=17.63 cpu=93.75 reuse=1 accepted=1 calls=153 mm=201 feed=321,1092 gen=256
+[xllama] VROUND width=3 wall=64.87 d3w=35.43 d3g=26.14 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=411,3254,364 gen=256
+[xllama] VROUND width=3 wall=63.88 d3w=35.68 d3g=26.16 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=11436,11125,13 gen=256
+[xllama] VROUND width=3 wall=63.46 d3w=35.32 d3g=26.10 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=271,13962,220 gen=256
+[xllama] VROUND width=2 wall=50.21 d3w=26.20 d3g=17.62 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=16,13 gen=256
+[xllama] VROUND width=3 wall=65.22 d3w=35.48 d3g=26.16 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=2998,69413,22738 gen=256
+[xllama] VROUND width=3 wall=63.71 d3w=35.30 d3g=26.04 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=318,3214,13909 gen=256
+[xllama] VROUND width=3 wall=67.98 d3w=39.16 d3g=26.12 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=85958,8,198 gen=256
+[xllama] VROUND width=3 wall=65.41 d3w=35.55 d3g=26.15 cpu=125.00 reuse=0 accepted=0 calls=153 mm=201 feed=264,3992,1558 gen=256
+[xllama] VROUND width=3 wall=63.73 d3w=35.22 d3g=26.11 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=19670,11106,4744 gen=256
+[xllama] VROUND width=3 wall=64.17 d3w=35.48 d3g=26.07 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=318,3950,44 gen=256
+[xllama] VROUND width=3 wall=65.59 d3w=35.46 d3g=26.14 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=3817,13909,33686 gen=256
+[xllama] VROUND width=2 wall=50.64 d3w=26.21 d3g=17.65 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=11,279 gen=256
+[xllama] VROUND width=3 wall=65.72 d3w=35.43 d3g=26.18 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=16421,2972,16759 gen=256
+[xllama] VROUND width=2 wall=50.96 d3w=26.41 d3g=17.59 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=48184,159034 gen=256
+[xllama] VROUND width=3 wall=69.27 d3w=38.84 d3g=26.16 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=5514,369,279 gen=256
+[xllama] VROUND width=3 wall=64.52 d3w=35.40 d3g=26.13 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=2923,13909,28253 gen=256
+[xllama] VROUND width=3 wall=64.79 d3w=35.52 d3g=26.13 cpu=125.00 reuse=1 accepted=0 calls=153 mm=201 feed=6195,314,279 gen=256
+[xllama] VROUND width=2 wall=50.96 d3w=26.17 d3g=17.63 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=25,271 gen=256
+[xllama] VROUND width=3 wall=66.08 d3w=35.55 d3g=26.07 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=16,13,220 gen=256
+[xllama] VROUND width=3 wall=66.14 d3w=35.43 d3g=26.14 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=9321,13249,92217 gen=256
+[xllama] VROUND width=2 wall=51.08 d3w=26.19 d3g=17.66 cpu=109.38 reuse=0 accepted=0 calls=153 mm=201 feed=6707,264 gen=256
+[xllama] VROUND width=3 wall=66.39 d3w=35.61 d3g=26.11 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=279,1727,3817 gen=256
+[xllama] VROUND width=3 wall=64.94 d3w=35.51 d3g=26.08 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=3299,11,279 gen=256
+[xllama] VROUND width=2 wall=51.27 d3w=26.29 d3g=17.62 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=1558,1902 gen=256
+[xllama] VROUND width=3 wall=66.58 d3w=35.62 d3g=26.07 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=1353,506,279 gen=256
+[xllama] VROUND width=2 wall=51.48 d3w=26.51 d3g=17.67 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=3712,314 gen=256
+[xllama] VROUND width=3 wall=66.49 d3w=35.47 d3g=26.13 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=279,10125,318 gen=256
+[xllama] VROUND width=2 wall=51.16 d3w=26.13 d3g=17.63 cpu=93.75 reuse=0 accepted=0 calls=153 mm=201 feed=1719,9640 gen=256
+[xllama] VROUND width=3 wall=66.44 d3w=35.35 d3g=26.19 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=2193,3136,553 gen=256
+[xllama] VROUND width=2 wall=51.40 d3w=26.26 d3g=17.65 cpu=125.00 reuse=0 accepted=0 calls=153 mm=201 feed=1368,279 gen=256
+[xllama] VROUND width=2 wall=50.01 d3w=26.25 d3g=17.66 cpu=109.38 reuse=1 accepted=1 calls=153 mm=201 feed=488,599 gen=256
+[xllama] VROUND width=3 wall=66.75 d3w=35.53 d3g=26.09 cpu=125.00 reuse=0 accepted=0 calls=153 mm=201 feed=19,42,2193 gen=256
+[xllama] VROUND width=3 wall=65.52 d3w=35.53 d3g=26.13 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=11,15,15 gen=256
+[xllama] VROUND width=3 wall=65.52 d3w=35.62 d3g=26.13 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=24,21,2193 gen=256
+[xllama] VROUND width=3 wall=65.51 d3w=35.54 d3g=26.13 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=3817,2193,11 gen=256
+[xllama] VROUND width=3 wall=65.70 d3w=35.54 d3g=26.08 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=279,1558,1902 gen=256
+[xllama] VROUND width=3 wall=67.02 d3w=35.53 d3g=26.11 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=279,13914,314 gen=256
+[xllama] VROUND width=2 wall=51.65 d3w=26.19 d3g=17.64 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=89303,364 gen=256
+[xllama] VROUND width=3 wall=66.90 d3w=35.29 d3g=26.08 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=220,19,11 gen=256
+[xllama] VROUND width=3 wall=66.07 d3w=35.71 d3g=26.11 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=15,24,21 gen=256
+[xllama] VROUND width=2 wall=52.10 d3w=26.49 d3g=17.65 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=3555,10885 gen=256
+[xllama] VROUND width=3 wall=67.64 d3w=35.86 d3g=26.11 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=13,198,17 gen=256
+[xllama] VROUND width=3 wall=66.06 d3w=35.62 d3g=26.14 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=13,220,2972 gen=256
+[xllama] VROUND width=2 wall=52.02 d3w=26.27 d3g=17.66 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=39928,92217 gen=256
+[xllama] VROUND width=2 wall=52.09 d3w=26.41 d3g=17.58 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=48213,466 gen=256
+[xllama] VROUND width=3 wall=67.73 d3w=35.60 d3g=26.15 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=443,6126,8 gen=256
+[xllama] VROUND width=2 wall=52.09 d3w=26.26 d3g=17.66 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=4777,328 gen=256
+[xllama] VROUND width=3 wall=67.79 d3w=35.60 d3g=26.13 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=26003,1,279 gen=256
+[xllama] VROUND width=3 wall=66.43 d3w=35.61 d3g=26.13 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=1727,3299,13 gen=256
+[xllama] VROUND width=2 wall=52.34 d3w=26.33 d3g=17.66 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=1049,1902 gen=256
+[xllama] VROUND width=3 wall=67.75 d3w=35.42 d3g=26.15 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=25,198,262 gen=256
+[xllama] VROUND width=3 wall=66.47 d3w=35.49 d3g=26.15 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=348,256,4310 gen=256
+[xllama] VROUND width=2 wall=52.52 d3w=26.46 d3g=17.67 cpu=93.75 reuse=0 accepted=0 calls=153 mm=201 feed=7920,1528 gen=256
+[xllama] VROUND width=3 wall=68.02 d3w=35.46 d3g=26.11 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=8592,778,8 gen=256
+[xllama] VROUND width=3 wall=66.62 d3w=35.49 d3g=26.07 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=364,660,3555 gen=256
+[xllama] VROUND width=3 wall=66.67 d3w=35.39 d3g=26.13 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=10885,303,279 gen=256
+[xllama] d3d12_shape label=run_inference_decode part=1/9 keys_total=108 | ctx=target phase=prefill t=14 N=8192 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=64 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=64 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=64 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=64 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=64 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=64 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=14 N=8192 K=2560 B=55 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=55 thr=64 mm=24
+[xllama] d3d12_shape label=run_inference_decode part=2/9 keys_total=108 | ctx=target phase=prefill t=13 N=2560 K=4096 B=55 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=55 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=55 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=55 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=55 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=55 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=55 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=55 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=29 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=29 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=29
+[xllama] d3d12_shape label=run_inference_decode part=3/9 keys_total=108 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=29 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=29 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=58 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=29 | ctx=target phase=prefill t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=227
+[xllama] d3d12_shape label=run_inference_decode part=4/9 keys_total=108 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=227 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=227 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=227 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=227 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=454 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=227 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=227 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=696 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=1392 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=1392 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=3712 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=928
+[xllama] d3d12_shape label=run_inference_decode part=5/9 keys_total=108 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=1160 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=232 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=696 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=464 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=928 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=58 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=41 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=41 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=41 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=41 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=41 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=82
+[xllama] d3d12_shape label=run_inference_decode part=6/9 keys_total=108 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=41 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=444 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=888 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=888 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=2368 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=592 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=740 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=148 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=444 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=296 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=592 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=37
+[xllama] d3d12_shape label=run_inference_decode part=7/9 keys_total=108 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=55 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=55 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=55 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=55 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=55 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=110 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=55 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=420 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=840 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=840 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=2240 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=560
+[xllama] d3d12_shape label=run_inference_decode part=8/9 keys_total=108 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=700 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=140 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=420 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=280 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=560 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=35 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=39 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=39 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=39 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=39 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=39 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=78
+[xllama] d3d12_shape label=run_inference_decode part=9/9 keys_total=108 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=39 | ctx=target phase=decode t=14 N=8192 K=2560 B=1 thr=64 mm=60 | ctx=target phase=decode t=12 N=4096 K=2560 B=1 thr=64 mm=120 | ctx=target phase=decode t=13 N=2560 K=4096 B=1 thr=128 mm=120 | ctx=target phase=decode t=12 N=9216 K=2560 B=1 thr=64 mm=320 | ctx=target phase=decode t=14 N=2560 K=9216 B=1 thr=128 mm=80 | ctx=target phase=decode t=12 N=8192 K=2560 B=1 thr=64 mm=100 | ctx=target phase=decode t=14 N=1024 K=2560 B=1 thr=64 mm=20 | ctx=target phase=decode t=12 N=1024 K=2560 B=1 thr=64 mm=60 | ctx=target phase=decode t=12 N=2560 K=4096 B=1 thr=128 mm=40 | ctx=target phase=decode t=12 N=2560 K=9216 B=1 thr=128 mm=80 | ctx=target phase=decode t=14 N=248320 K=2560 B=1 thr=64 mm=5
+[xllama] done: load=4307ms prompt=93.0 tok/s decode=28.4 tok/s peak=3672MB drafted=151 spec_accept=121

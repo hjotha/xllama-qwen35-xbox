@@ -1,0 +1,12 @@
+nb=64 pt=long rep=1 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=64 pt=short rep=1 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=64 pt=long rep=2 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=64 pt=short rep=2 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=64 pt=long rep=3 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=64 pt=short rep=3 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=long rep=1 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=short rep=1 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=long rep=2 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=short rep=2 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=long rep=3 ERROR <urlopen error [Errno 110] Connection timed out>
+nb=256 pt=short rep=3 ERROR <urlopen error [Errno 110] Connection timed out>

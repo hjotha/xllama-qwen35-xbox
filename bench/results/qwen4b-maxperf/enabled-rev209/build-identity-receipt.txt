@@ -1,0 +1,30 @@
+build_identity_utc=2026-10-09T16:56:11Z
+msix207=/tmp/opencode/qwen4b-builds/rev207/xllama-rev207.msix sha256=56f91bab29615d3b84ae929806ce8981935df78d453defa186ab907c1eee43bd
+msix209=/tmp/opencode/qwen4b-builds/rev209/xllama-rev209.msix sha256=a0ed4e24ac6a6c14c07e94c681009ac5396a91020228b3495edc362a8028497c
+source_diff_lines_f314ecb_to_HEAD=0 (0 => same build inputs as rev207)
+--- package file diff (expected: manifest/blockmap/signature only):
+Files 207/AppxBlockMap.xml and 209/AppxBlockMap.xml differ
+Files 207/AppxManifest.xml and 209/AppxManifest.xml differ
+Files 207/AppxMetadata/CodeIntegrity.cat and 209/AppxMetadata/CodeIntegrity.cat differ
+Files 207/AppxSignature.p7x and 209/AppxSignature.p7x differ
+Files 207/xllama.exe and 209/xllama.exe differ
+unexpected_differing_package_files=1 (expect 1: xllama.exe, analyzed below)
+exe_size_207=7706624 exe_size_209=7706624
+PE_TimeDateStamp_207=0x6ac8f120 PE_TimeDateStamp_209=0x6ac91b5d
+pdb_guid_identical=YES pdb_age_207=12 pdb_age_209=14
+differing_bytes=13 of 7706624
+  offset=264 class=timestamp a=20 b=5d
+  offset=265 class=timestamp a=f1 b=1b
+  offset=266 class=timestamp a=c8 b=c9
+  offset=6759780 class=timestamp a=20 b=5d
+  offset=6759781 class=timestamp a=f1 b=1b
+  offset=6759782 class=timestamp a=c8 b=c9
+  offset=6759808 class=timestamp a=20 b=5d
+  offset=6759809 class=timestamp a=f1 b=1b
+  offset=6759810 class=timestamp a=c8 b=c9
+  offset=6759836 class=timestamp a=20 b=5d
+  offset=6759837 class=timestamp a=f1 b=1b
+  offset=6759838 class=timestamp a=c8 b=c9
+  offset=6893648 class=pdb_age a=0c b=0e
+all_differing_bytes_are_build_timestamps_or_pdb_age=YES
+identity_check_done_utc=2026-10-09T16:56:13Z

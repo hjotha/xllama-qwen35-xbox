@@ -721,12 +721,13 @@ TEST_CASE("ggml_d3d12: GPU timing state never reuses a stale sample") {
     CHECK(st.unavailable == 0);
 }
 
-TEST_CASE("ggml_d3d12: sequential-only SWIGLU mode is forced off under MTP") {
+TEST_CASE("ggml_d3d12: SWIGLU mode applies to every context profile (MTP included)") {
     CHECK(effective_swiglu_mode(0, false) == 0);
     CHECK(effective_swiglu_mode(1, false) == 1);
     CHECK(effective_swiglu_mode(2, false) == 2);
-    CHECK(effective_swiglu_mode(1, true) == 0);
-    CHECK(effective_swiglu_mode(2, true) == 0);
+    CHECK(effective_swiglu_mode(0, true) == 0);
+    CHECK(effective_swiglu_mode(1, true) == 1);
+    CHECK(effective_swiglu_mode(2, true) == 2);
 }
 
 TEST_CASE("ggml_d3d12: SWIGLU profile binds once and rejects conflicting contexts") {
@@ -737,8 +738,8 @@ TEST_CASE("ggml_d3d12: SWIGLU profile binds once and rejects conflicting context
     off.finalize(0, false);
     CHECK(off.mode == 0);
 
-    // Seq first with the knob ON: bound seq/on; same-profile contexts are
-    // accepted, the MTP profile is refused BEFORE creation, and finalize on an
+    // Seq first with the knob ON: bound seq/on; the mode is the same for
+    // every profile, so MTP contexts are accepted too, and finalize on an
     // already-bound policy never changes the mode.
     SwigluModePolicy seq;
     CHECK(seq.accepts(1, false));
@@ -747,17 +748,17 @@ TEST_CASE("ggml_d3d12: SWIGLU profile binds once and rejects conflicting context
     CHECK(seq.mode == 1);
     CHECK(seq.bound);
     CHECK(seq.accepts(1, false));
-    CHECK_FALSE(seq.accepts(1, true)); // conflicting MTP context: restart
-    CHECK_FALSE(seq.accepts(0, true)); // bound ON: later knob=0 must not open it
-    seq.finalize(1, true);             // must be unreachable; must not flip the mode
+    CHECK(seq.accepts(1, true)); // same effective mode: no conflict
+    CHECK(seq.accepts(0, true)); // accepts() never mutates the bound mode
+    seq.finalize(1, true);       // bound: no-op, must not flip the mode
     CHECK(seq.mode == 1);
     CHECK(seq.mtp_capable == false);
 
-    // MTP first: profile OFF, later seq contexts are accepted only because the
-    // capability was never enabled (mode 0 has nothing to protect).
+    // MTP first with the knob ON: bound MTP/on, mode now applies to MTP too.
     SwigluModePolicy mtp;
+    CHECK(mtp.accepts(2, true));
     mtp.finalize(2, true);
-    CHECK(mtp.mode == 0);
+    CHECK(mtp.mode == 2);
     CHECK(mtp.mtp_capable);
     CHECK(mtp.accepts(2, false));
     CHECK(mtp.accepts(2, true));

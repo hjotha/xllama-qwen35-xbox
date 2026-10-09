@@ -1,0 +1,8 @@
+api_multiturn_rev209 start_utc=2026-10-09T18:15:25Z
+PFN=GianlucaMazza.xllama_1.6.0.209_x64__pj67f1fcj4n14 knob=d3d12swiglu.txt:DELETED(default ON) llama.ini: mtp=2 n_gpu_layers=34
+log_lines_before=424225 segment_lines=538
+bind_on_mtp_capable1_count=1
+ffn_swiglu_dispatches=79
+model_load_lines_in_segment=6 (0 => no reload across the 3 turns)
+turn2_recall=PASS (QUARTZ-LUMEN-4821)
+end_utc=2026-10-09T18:15:25Z

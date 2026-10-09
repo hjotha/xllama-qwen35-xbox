@@ -24,6 +24,14 @@ namespace xllama {
 // sampling stay per-request on the LAN API).
 inline constexpr const char* kLlamaIniFile = "llama.ini";
 
+// Output budget default from llama.ini [n_predict]. -1 = key absent or not a
+// positive integer, so every surface keeps its own historical default. Written
+// once per process by the bridge's apply_llama_ini_session (populate-only, like
+// the rest of the parser) and read where a surface needs a fallback: the API
+// server (no max_tokens in the request) and the chat UI (catalogue has no
+// n_predict). Explicit per-request/per-turn values still win.
+inline int llama_ini_n_predict = -1;
+
 using LlamaIni = std::map<std::string, std::string>;
 
 inline std::string llama_ini_trim(const std::string& s) {

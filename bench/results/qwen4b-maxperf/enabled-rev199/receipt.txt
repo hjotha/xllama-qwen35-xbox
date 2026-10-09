@@ -1,0 +1,40 @@
+DELIVERY: FFN SWIGLU (GPU) + MTP enabled together — rev199 LTCG
+utc 2026-10-09
+
+Package: GianlucaMazza.xllama_1.6.0.199_x64__pj67f1fcj4n14
+MSIX sha256 43284BE67BA00ABBD109738BD44C3B53A5079596BEDA504DC852056B4AD61730
+Config: n_batch=256 n_ubatch=64 n_threads=2 mtp=2 mtp_pmin=50 (unchanged)
+All experiment knobs absent; FFN default ON with d3d12swiglu.txt="0" forcing OFF.
+
+Correctness (enabled combination):
+- Exact kernel: div via double + FMA emulated in double => ordinary-range
+  bit-exact vs CPU (silu/swiglu ord=0, hist all zero; remaining edge diffs are
+  subnormal-scale, outside the measured real range |x|<=24.7 with 894M samples,
+  zero adversarial buckets, zero subnormals).
+- Strict per-round VROUND gate: chat256 93/93 and code256 87/87 IDENTICAL
+  between enabled and knob=0 (same build); the former round-49 p_min flip is
+  gone. Final-ID digests identical to baseline in every cell (chat64 84e08196,
+  chat256 f78ce837, std512 44546453).
+- Real execution counters on the DEFAULT path (no diag override):
+  "FFN SWIGLU profile bound: on (mtp_capable=1)" + 4776 dispatches (chat256
+  MTP), 3385 (code64 MTP); seq also on.
+- Termgate cancel/stop/EOS 6/6 ok, seq/ref/cand CSVs byte-identical to
+  baseline. API chat PASS. Memory unchanged (peak 3672 MB MTP / 2692 MB gpu).
+- Host: ctest 1/1 green after the policy/test update (MTP no longer forces
+  FFN off; accepts() profile-independent; bind-once kept).
+
+Performance (same build, 3 interleaved reps, profile OFF, only the knob
+toggled; off -> on / delta):
+- chat64 MTP decode 28.93 -> 29.84 (+3.15%); prefill 89.4 -> 94.6 (+5.76%)
+- chat256 MTP decode 28.23 -> 29.17 (+3.33%); prefill 88.8 -> 95.0 (+7.00%)
+- chat64 seq decode 24.44 -> 25.95 (+6.18%); prefill 94.9 -> 100.9 (+6.27%)
+- std512 seq decode 23.99 -> 25.12 (+4.71%); prefill 95.7 -> 101.7 (+6.28%)
+All ranges separated (no overlap).
+
+Source changes (this delivery): include/xllama/ggml_d3d12.h (effective mode
+no longer forced off under MTP; accepts() profile-independent, bind-once
+kept), uwp/inference-bridge.cpp (d3d12swiglu default ON, "0" forces off),
+tests updated, shaders (exact silu/swiglu: double div + exact FMA emulation).
+
+Preserved: rev192 accepted package and receipts; rev188/191 packages; rollback
+1.6.0.175 LTCG + llama.ini.backup. No push/merge.

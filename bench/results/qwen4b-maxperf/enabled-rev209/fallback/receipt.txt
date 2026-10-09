@@ -1,0 +1,4 @@
+fallback_knob0 start=2026-10-09T18:15:02Z
+knob=d3d12swiglu.txt=0 restart=controlled api=PASS chat=PASS
+bind_off_count=1
+end=2026-10-09T18:15:02Z

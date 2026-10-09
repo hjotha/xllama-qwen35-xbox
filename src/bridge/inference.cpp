@@ -638,7 +638,7 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
                     mtp_drafter.reset();
                 }
             }
-        });
+        }, params.profile_phases);
     if (prefill_rows < 0) {
         res.error_msg = "prompt decode failed";
         log_output("[xllama] prompt decode failed\n");

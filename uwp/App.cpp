@@ -428,6 +428,14 @@ int __stdcall wWinMain(HINSTANCE, HINSTANCE, PWSTR, int) {
                 winrt::make<HeadlessView>(&::xllama::bridge::run_membw, "membw"));
             return 0; // not reached: CoreApplication::Exit terminates the process
         }
+        std::wstring elembench_flag = flag_path_if_present(L"elembench.flag");
+        if (!elembench_flag.empty()) {
+            _wremove(elembench_flag.c_str());
+            ::xllama::log_output("[xllama] elembench.flag detected -> headless elembench mode\n");
+            winrt::Windows::ApplicationModel::Core::CoreApplication::Run(
+                winrt::make<HeadlessView>(&::xllama::bridge::run_elembench, "elembench"));
+            return 0; // not reached: CoreApplication::Exit terminates the process
+        }
         std::wstring diskbw_flag = flag_path_if_present(L"diskbw.flag");
         if (!diskbw_flag.empty()) {
             _wremove(diskbw_flag.c_str());

@@ -479,7 +479,9 @@ std::string handle_chat_locked(const std::string& body, const char*& status) {
     // max_tokens is deprecated in favour of max_completion_tokens; accept both.
     // Parsed BEFORE the prompt is built: the budget below needs to know how much
     // room the reply asks for.
-    gp.n_predict = 512;
+    // Default from llama.ini [n_predict] (one home for the output budget);
+    // 512 is the historical fallback when the key is absent.
+    gp.n_predict = ::xllama::llama_ini_n_predict > 0 ? ::xllama::llama_ini_n_predict : 512;
     if (root.HasKey(L"max_completion_tokens"))
         gp.n_predict = static_cast<int>(root.GetNamedNumber(L"max_completion_tokens"));
     else if (root.HasKey(L"max_tokens"))

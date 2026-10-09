@@ -1,0 +1,6 @@
+arm=sw0-seq mtp=0 done_utc=2026-10-09T02:19:08Z
+arm=sw0-ref mtp=4 done_utc=2026-10-09T02:20:05Z
+arm=sw0-cand mtp=4 done_utc=2026-10-09T02:21:03Z
+arm=sw1-seq mtp=0 done_utc=2026-10-09T02:22:01Z
+arm=sw1-ref mtp=4 done_utc=2026-10-09T02:22:58Z
+arm=sw1-cand mtp=4 done_utc=2026-10-09T02:23:56Z

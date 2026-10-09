@@ -30,6 +30,13 @@ struct SessionParams {
     int n_threads_batch = 0;  // llama.cpp only; 0 = same as n_threads (plan 006 C1)
     int n_batch = 0;          // llama.cpp only; 0 = default (2048). Logical prefill batch.
     int n_ubatch = 0;         // llama.cpp only; 0 = default (512). Physical prefill chunk.
+    // llama.cpp only: how many sequences one context may hold at once
+    // (llama_context_params::n_seq_max). From llama.ini [n_seq_max], with
+    // [n_parallel] accepted as the historical llama.cpp/llama-server spelling.
+    // 1 = the single-sequence context to date; the sequences share the same
+    // n_ctx cell pool. This is context capacity, not a request queue: the
+    // session hub still serves one request at a time.
+    int n_seq_max = 1;
     Backend backend = Backend::Auto;
     int n_gpu_layers = 0; // llama.cpp only; 0 = CPU; > 0 = d3d12 backend (docs/gguf-gpu-decode.md)
 

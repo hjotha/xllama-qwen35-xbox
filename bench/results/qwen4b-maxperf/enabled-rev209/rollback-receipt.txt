@@ -1,0 +1,16 @@
+ROLLBACK ROUTE (above rev209): rev210 LTCG from the ACCEPTED source 3d39a99
+utc=2026-10-09
+- rev210 MSIX sha256 7570FAB28143ED4A2726FFF5D1A5EB671B93FA718E13DBA4B98B39FD00C61783
+  stored at /tmp/opencode/qwen4b-builds/rev210/xllama-rev210.msix — NOT installed.
+- Identity: rev210 xllama.exe vs rev208 xllama.exe (both accepted source):
+  7,688,704 bytes each, 9 differing bytes, ALL build bookkeeping
+  (PE/Debug TimeDateStamp 0x6ac9128c->0x6ac921d0; PDB age 13->15; same GUID).
+  vs rev209 exe (candidate): different size/code (7,706,624) — as expected.
+- Superseded false build: first rev210 attempt (sha256
+  A40AE2BD6A7C94F489ACC86EACBD0A7128FEEB0BCAEEB42D1D920A24EF20B995, ~200s)
+  reused rev209 objects via stale tar mtimes (exe byte-identical to rev209)
+  and is NOT a rollback — overwritten on disk by the real rev210 above.
+  Rebuilt with forced recompile (tar -xf -m, 966s LTCG).
+- Installable because 210 > 209 (UWP blocks downgrades; rev208 cannot be
+  installed over rev209). Procedure: deploy.sh <msix> + start-app + GET.
+- Mirror restored to validated candidate HEAD after the build (restore_done=0).

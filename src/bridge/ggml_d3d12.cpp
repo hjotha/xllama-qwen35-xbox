@@ -742,7 +742,7 @@ std::string format_d3d12_selftest_row(const D3d12SelftestRow& r, const char* hos
     for (char& ch : err)
         if (ch == ',' || ch == '\n' || ch == '\r')
             ch = ' ';
-    char buf[512];
+    char buf[4096];
     std::snprintf(buf, sizeof(buf), "%s,%d,%d,%d,%.3g,%.4f,%.2f,%d,%d,%s,%s,%s\n", r.type.c_str(),
                   r.n, r.k, r.ncols, r.rel_err, r.gpu_ms, r.packed_gbs, r.ok ? 1 : 0,
                   r.d3d12_ran ? 1 : 0, host_label ? host_label : "unknown", date_buf, err.c_str());
@@ -813,6 +813,12 @@ int d3d12_kernel_variant() {
 }
 void d3d12_set_z0_dispatch_log(bool) {}
 void d3d12_set_z0_pin_cpu(bool) {}
+void d3d12_set_swiglu_mtp_diag(bool) {}
+bool d3d12_swiglu_mtp_diag_enabled() {
+    return false;
+}
+void d3d12_set_swiglu_range_diag(bool) {}
+void d3d12_set_island_enabled(bool) {}
 static int s_spin_wait_us = -1;
 void d3d12_set_spin_wait_us(int spin_us) {
     s_spin_wait_us = spin_us;
@@ -915,6 +921,9 @@ bool d3d12_shape_drain(const char*) {
         #include "ggml_d3d12_mmv_q6_k_t64_dxil.h"
         #include "ggml_d3d12_mmv_q8_0_t128_dxil.h"
         #include "ggml_d3d12_mmv_q8_0_t64_dxil.h"
+        #include "ggml_d3d12_add_dxil.h"
+        #include "ggml_d3d12_mul_dxil.h"
+        #include "ggml_d3d12_rms_norm_dxil.h"
         #include "ggml_d3d12_silu_dxil.h"
         #include "ggml_d3d12_swiglu_probe_dxil.h"
         #include "xllama/d3d12_dyn.h"
@@ -958,6 +967,11 @@ struct Gpu {
     ComPtr<ID3D12PipelineState> silu_pso;
     // Selftest-only SWIGLU probe, reusing the GDN root (three UAVs: out/gate/up).
     ComPtr<ID3D12PipelineState> swiglu_probe_pso;
+    // Plan 007 bounded chain: RMS_NORM and MUL on the GDN root (16 root
+    // constants + seven UAVs). Product graph ops, unlike the probes above.
+    ComPtr<ID3D12PipelineState> rms_norm_pso;
+    ComPtr<ID3D12PipelineState> mul_pso;
+    ComPtr<ID3D12PipelineState> add_pso;
     ComPtr<ID3D12PipelineState> pso[kPsoCount][2]; // [type][0 = 64 threads, 1 = 128]
     // Plan 004 two-column tile experiment: q4_k only, same two widths. Kept
     // beside pso (not inside it) so the gate blobs and their indices never
@@ -991,6 +1005,9 @@ struct Gpu {
     // Product-trial FFN SWIGLU dispatches (plan 006 C4): nonzero is placement
     // evidence that the knob engaged; zero proves the OFF arm stayed on CPU.
     std::uint64_t n_swiglu = 0;
+    std::uint64_t n_rms_norm = 0;   // plan 007 bounded chain
+    std::uint64_t n_mul = 0;        // plan 007 bounded chain
+    std::uint64_t n_add = 0;        // plan 008 island
     double wall_ms = 0.0;
     std::mutex mu;
     bool ok = false;
@@ -1025,6 +1042,9 @@ bool g_shape_off = false;
 std::atomic<bool> g_ts_enabled{true};
 // Selftest-only SILU gate (plan 006 C4). False in every product path.
 bool g_silu_test = false;
+// Plan 007: the bounded RMS_NORM + MUL chain, off by default until the paired
+// same-build A/B (bench_normmul.txt="1" enables) accepts it.
+bool g_island_enabled = false;
 // Product trial gate (plan 006 C4): FFN split-SWIGLU on D3D12, default OFF.
 // Mode 0 off, 1 all FFN, 2 target-context FFN only. Target layer count is
 // setup-time (model load) and never changes while graphs run. The mode is
@@ -1034,6 +1054,22 @@ bool g_silu_test = false;
 int g_swiglu_requested_mode = 0;
 int g_swiglu_target_layers = 0;
 SwigluModePolicy g_swiglu_policy;
+// Diagnostic-only (bench): allow FFN SWIGLU in an MTP context to reproduce the
+// C4 divergence with fixed-history dumps. Never on in production.
+bool g_swiglu_mtp_diag = false;
+// Owner audit: real-range sampling of the product SWIGLU inputs (gate/up).
+// Buckets by |x|; sampled after the graph fence so the host-visible values are
+// the real kernel inputs, not stale.
+bool g_swiglu_range_diag = false;
+struct SwigluRangeStats {
+    std::uint64_t n = 0, subn = 0, nf = 0, zero = 0;
+    std::uint64_t b1 = 0, b10 = 0, b30 = 0, b87 = 0, b126 = 0, b192 = 0, binf = 0;
+    double minv = 1e30, maxv = 0.0;
+};
+SwigluRangeStats g_swiglu_range_gate; // src[0]
+SwigluRangeStats g_swiglu_range_up;   // src[1]
+std::uint64_t g_swiglu_range_sampled_pairs = 0;  // pairs actually sampled
+std::uint64_t g_swiglu_range_skipped_pairs = 0;  // dispatched but not sampled (cap)
 // Context/phase tags. Thread-local because decode and prefill run on the calling
 // thread, and a tag set around a target call must not leak into the drafter call
 // that follows it. Restored by the RAII guard at each call site.
@@ -1180,6 +1216,24 @@ bool init_gpu(Gpu& g) {
         hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.swiglu_probe_pso));
         if (FAILED(hr))
             log_output("[xllama] d3d12: SWIGLU probe PSO unavailable\n");
+            pd.CS = {kGgmlD3d12AddDxil, kGgmlD3d12AddDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.add_pso));
+        if (FAILED(hr))
+            log_output("[xllama] d3d12: add PSO unavailable\n");
+    }
+    // Plan 007: the bounded RMS_NORM + MUL chain. Matmul root layout: b0
+    // constants + t0 SRV (MUL weight, like the matmul path) + u0/u1 UAVs.
+    if (g.root) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
+        pd.pRootSignature = g.root.Get();
+        pd.CS = {kGgmlD3d12RmsNormDxil, kGgmlD3d12RmsNormDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.rms_norm_pso));
+        if (FAILED(hr))
+            log_output("[xllama] d3d12: rms_norm PSO unavailable\n");
+        pd.CS = {kGgmlD3d12MulDxil, kGgmlD3d12MulDxilSize};
+        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.mul_pso));
+        if (FAILED(hr))
+            log_output("[xllama] d3d12: mul PSO unavailable\n");
     }
 
     // Two-column experiment PSOs (plan 004). A failure here must NOT fail the
@@ -1533,6 +1587,125 @@ bool d3d12_swiglu_supported(const ggml_tensor* op) {
     return true;
 }
 
+// Plan 007 bounded chain predicates. Strict on purpose: anything not provably
+// handled stays with the CPU kernel (bit-exactness first, placement second).
+// RMS_NORM: f32 contiguous in/out, ne[0] % 256 == 0 so every lane has work in
+// the fixed-stride loop shape the kernel assumes for its double tree, rows
+// (ne[1]*ne[2]*ne[3]) in [1, 65535], and both tensors in our buffers.
+bool d3d12_rms_norm_supported(const ggml_tensor* op) {
+    if (!g_island_enabled || !gpu().rms_norm_pso)
+        return false;
+    if (!op || op->op != GGML_OP_RMS_NORM)
+        return false;
+    if (op->type != GGML_TYPE_F32)
+        return false;
+    const ggml_tensor* src = op->src[0];
+    if (!src || src->type != GGML_TYPE_F32)
+        return false;
+    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(src))
+        return false;
+    if (op->ne[0] <= 0 || op->ne[0] % 256 != 0)
+        return false;
+    const int64_t rows = op->ne[1] * op->ne[2] * op->ne[3];
+    if (rows <= 0 || rows > 65535)
+        return false;
+    if (src->buffer && !is_ours(src->buffer->buft))
+        return false;
+    if (op->buffer && !is_ours(op->buffer->buft))
+        return false;
+    return true;
+}
+
+// MUL: broadcast-only 1-D weight form (the norm-weight shape). The scalar
+// form is deliberately unsupported: a scalar would have to be read through the
+// host on a possibly GPU-produced tensor with no dependency tracking, and the
+// weight here is bound as an SRV like the matmul path (weights buffers are not
+// UAV-bindable). Everything not proven stays on the CPU kernel.
+bool d3d12_mul_supported(const ggml_tensor* op, bool* scalar_form) {
+    if (scalar_form)
+        *scalar_form = false;
+    if (!g_island_enabled || !gpu().mul_pso)
+        return false;
+    if (!op || op->op != GGML_OP_MUL || op->type != GGML_TYPE_F32)
+        return false;
+    const ggml_tensor* a = op->src[0];
+    const ggml_tensor* b = op->src[1];
+    if (!a || !b || a->type != GGML_TYPE_F32 || b->type != GGML_TYPE_F32)
+        return false;
+    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(a) || !ggml_is_contiguous(b))
+        return false;
+    if (b->ne[0] != op->ne[0] || b->ne[1] != 1 || b->ne[2] != 1 || b->ne[3] != 1)
+        return false;
+    const int64_t n = ggml_nelements(op);
+    // One group per 256 elements, one dispatch dimension: D3D12 caps a
+    // dimension at 65535 groups.
+    if (n <= 0 || n % 256 != 0 || n / 256 > 65535)
+        return false;
+    if (a->buffer && !is_ours(a->buffer->buft))
+        return false;
+    if (b->buffer && !is_ours(b->buffer->buft))
+        return false;
+    if (op->buffer && !is_ours(op->buffer->buft))
+        return false;
+    return true;
+}
+
+// ADD (plan 008 island): same-shape f32 elementwise add, contiguous, both
+// sources and dst in our buffers, whole groups only. Bit-exact per element.
+bool d3d12_add_supported(const ggml_tensor* op) {
+    static int s_add_rej = 0;
+    auto rej = [&](const char* why) {
+        if (g_island_enabled && s_add_rej < 4) {
+            ++s_add_rej;
+            char lb[320];
+            const ggml_tensor* a = op && op->op == GGML_OP_ADD ? op->src[0] : nullptr;
+            const ggml_tensor* b = op && op->op == GGML_OP_ADD ? op->src[1] : nullptr;
+            std::snprintf(lb, sizeof(lb),
+                          "[xllama] d3d12: ADD rejected (%s) dst[%s %lldx%lldx%lldx%lld ov=%d] "
+                          "a[%s %lldx%lld ov=%d] b[%s %lldx%lld ov=%d] n=%lld\n",
+                          why, op ? ggml_type_name(op->type) : "?",
+                          op ? (long long)op->ne[0] : -1, op ? (long long)op->ne[1] : -1,
+                          op ? (long long)op->ne[2] : -1, op ? (long long)op->ne[3] : -1,
+                          op ? (op->buffer && !is_ours(op->buffer->buft)) : 1,
+                          a ? ggml_type_name(a->type) : "?",
+                          a ? (long long)a->ne[0] : -1, a ? (long long)a->ne[1] : -1,
+                          a ? (a->buffer && !is_ours(a->buffer->buft)) : 1,
+                          b ? ggml_type_name(b->type) : "?",
+                          b ? (long long)b->ne[0] : -1, b ? (long long)b->ne[1] : -1,
+                          b ? (b->buffer && !is_ours(b->buffer->buft)) : 1,
+                          op ? (long long)ggml_nelements(op) : -1);
+            log_output(lb);
+        }
+        return false;
+    };
+    if (!gpu().add_pso)
+        return false;
+    if (!op || op->op != GGML_OP_ADD || op->type != GGML_TYPE_F32)
+        return false;
+    const ggml_tensor* a = op->src[0];
+    const ggml_tensor* b = op->src[1];
+    if (!a || !b || a->type != GGML_TYPE_F32 || b->type != GGML_TYPE_F32)
+        return rej("type");
+    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(a) || !ggml_is_contiguous(b))
+        return rej("contig");
+    if (a->ne[0] != op->ne[0] || a->ne[1] != op->ne[1] || a->ne[2] != op->ne[2] ||
+        a->ne[3] != op->ne[3])
+        return rej("shape_a");
+    if (b->ne[0] != op->ne[0] || b->ne[1] != op->ne[1] || b->ne[2] != op->ne[2] ||
+        b->ne[3] != op->ne[3])
+        return rej("shape_b");
+    const int64_t n = ggml_nelements(op);
+    if (n <= 0 || n % 256 != 0 || n / 256 > 65535)
+        return rej("size");
+    if (a->buffer && !is_ours(a->buffer->buft))
+        return false;
+    if (b->buffer && !is_ours(b->buffer->buft))
+        return false;
+    if (op->buffer && !is_ours(op->buffer->buft))
+        return false;
+    return true;
+}
+
 bool d3d12_silu_supported(const ggml_tensor* op) {
     if (!g_silu_test || !gpu().silu_pso)
         return false;
@@ -1615,7 +1788,43 @@ void backend_free(ggml_backend_t b) {
                           static_cast<unsigned long long>(g.n_swiglu));
             log_output(msg);
         }
+        if (g.n_swiglu && (g_swiglu_range_gate.n || g_swiglu_range_up.n)) {
+            auto log_range = [&](const char* op, const SwigluRangeStats& r) {
+                std::snprintf(msg, sizeof(msg),
+                              "[xllama] d3d12: SWIGLU %s range n=%llu min=%.3g max=%.3g "
+                              "zero=%llu subn=%llu nf=%llu |x| buckets <1:%llu 1-10:%llu "
+                              "10-30:%llu 30-87:%llu 87-126:%llu 126-192:%llu >192:%llu "
+                              "pairs_sampled=%llu pairs_skipped=%llu\n",
+                              op, (unsigned long long)r.n, r.minv, r.maxv,
+                              (unsigned long long)r.zero, (unsigned long long)r.subn,
+                              (unsigned long long)r.nf, (unsigned long long)r.b1,
+                              (unsigned long long)r.b10, (unsigned long long)r.b30,
+                              (unsigned long long)r.b87, (unsigned long long)r.b126,
+                              (unsigned long long)r.b192, (unsigned long long)r.binf,
+                              (unsigned long long)g_swiglu_range_sampled_pairs,
+                              (unsigned long long)g_swiglu_range_skipped_pairs);
+                log_output(msg);
+            };
+            log_range("gate", g_swiglu_range_gate);
+            log_range("up", g_swiglu_range_up);
+            g_swiglu_range_gate = SwigluRangeStats{};
+            g_swiglu_range_up = SwigluRangeStats{};
+            g_swiglu_range_sampled_pairs = 0;
+            g_swiglu_range_skipped_pairs = 0;
+        }
+        if (g.n_rms_norm || g.n_mul || g.n_add) {
+            std::snprintf(msg, sizeof(msg),
+                          "[xllama] d3d12: %llu RMS_NORM dispatches, %llu MUL dispatches, "
+                          "%llu ADD dispatches\n",
+                          static_cast<unsigned long long>(g.n_rms_norm),
+                          static_cast<unsigned long long>(g.n_mul),
+                          static_cast<unsigned long long>(g.n_add));
+            log_output(msg);
+        }
         g.n_swiglu = 0;
+        g.n_rms_norm = 0;
+        g.n_mul = 0;
+        g.n_add = 0;
         g.n_q6_tiled[0] = g.n_q6_tiled[1] = 0;
         g.n_calls = g.n_matmuls = g.n_matmuls_2col = 0;
         g.wall_ms = 0.0;
@@ -1633,6 +1842,19 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
         if (ggml_is_empty(node) || (node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0)
             continue;
         switch (node->op) {
+        case GGML_OP_ADD:
+            GGML_ASSERT(g_island_enabled && d3d12_add_supported(node));
+            ops.push_back(node);
+            break;
+        case GGML_OP_RMS_NORM:
+        case GGML_OP_MUL:
+            // Plan 007 bounded chain: accepted only by the shared predicates
+            // (the scheduler can only assign them here when they pass), so the
+            // collector must take them too or the switch aborts.
+            GGML_ASSERT(node->op == GGML_OP_RMS_NORM ? d3d12_rms_norm_supported(node)
+                                                     : d3d12_mul_supported(node, nullptr));
+            ops.push_back(node);
+            break;
         case GGML_OP_MUL_MAT:
             ops.push_back(node);
             ++n_mm;
@@ -1670,6 +1892,7 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
         return GGML_STATUS_SUCCESS;
 
     std::lock_guard<std::mutex> lock(g.mu);
+    std::vector<std::pair<const ggml_tensor*, const ggml_tensor*>> swiglu_range_pairs;
     const auto t0 = std::chrono::steady_clock::now();
     const bool ts = g.ts && g.ts_rb && g_ts_enabled;
     g.timing.begin_call();
@@ -1717,6 +1940,71 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
                 cl->ResourceBarrier(1, &b);
                 continue;
             }
+            if (node->op == GGML_OP_ADD && g_island_enabled && d3d12_add_supported(node)) {
+                const std::uint32_t count = static_cast<std::uint32_t>(ggml_nelements(node));
+                std::uint32_t c32[16] = {};
+                c32[0] = count;
+                cl->SetComputeRootSignature(g.gdn_root.Get());
+                gdn_root_active = true;
+                cl->SetPipelineState(g.add_pso.Get());
+                cl->SetComputeRoot32BitConstants(0, 16, c32, 0);
+                cl->SetComputeRootUnorderedAccessView(1, tensor_va(node));        // u0 dst
+                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node->src[0])); // u1
+                cl->SetComputeRootUnorderedAccessView(3, tensor_va(node->src[1])); // u2
+                cl->Dispatch(count / 256u, 1, 1);
+                ++g.n_add;
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
+            if (node->op == GGML_OP_RMS_NORM && d3d12_rms_norm_supported(node)) {
+                const ggml_tensor* sx = node->src[0];
+                std::uint32_t c32[8] = {};
+                const std::uint32_t ne00 = static_cast<std::uint32_t>(node->ne[0]);
+                const std::uint32_t rows =
+                    static_cast<std::uint32_t>(node->ne[1] * node->ne[2] * node->ne[3]);
+                float eps = 0.0f;
+                std::memcpy(&eps, node->op_params, sizeof(float));
+                std::memcpy(&c32[2], &eps, sizeof(c32[2]));
+                c32[0] = ne00;
+                c32[1] = rows;
+                cl->SetComputeRootSignature(g.root.Get());
+                gdn_root_active = false;
+                cl->SetPipelineState(g.rms_norm_pso.Get());
+                cl->SetComputeRoot32BitConstants(0, 8, c32, 0);
+                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node)); // u0 dst
+                cl->SetComputeRootUnorderedAccessView(3, tensor_va(sx));   // u1 src
+                cl->Dispatch(rows, 1, 1); // one group per row; predicate caps 65535
+                ++g.n_rms_norm;
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
+            if (node->op == GGML_OP_MUL) {
+                // Predicate-gated; the scheduler only assigns it here when true.
+                GGML_ASSERT(d3d12_mul_supported(node, nullptr));
+                const ggml_tensor* a = node->src[0];
+                const ggml_tensor* wt = node->src[1];
+                const std::uint32_t count = static_cast<std::uint32_t>(ggml_nelements(node));
+                std::uint32_t c32[8] = {};
+                c32[0] = count;
+                c32[1] = static_cast<std::uint32_t>(node->ne[0]);
+                cl->SetComputeRootSignature(g.root.Get());
+                gdn_root_active = false;
+                cl->SetPipelineState(g.mul_pso.Get());
+                cl->SetComputeRoot32BitConstants(0, 8, c32, 0);
+                cl->SetComputeRootShaderResourceView(1, tensor_va(wt));   // t0 weight
+                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node)); // u0 dst
+                cl->SetComputeRootUnorderedAccessView(3, tensor_va(a));    // u1 src
+                cl->Dispatch(count / 256u, 1, 1); // predicate: <= 65535 groups
+                ++g.n_mul;
+                D3D12_RESOURCE_BARRIER b = {};
+                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+                cl->ResourceBarrier(1, &b);
+                continue;
+            }
             if (node->op == GGML_OP_GLU && d3d12_swiglu_supported(node)) {
                 // Selftest-only split-SWIGLU probe: gdn_root (u0..u6).
                 cl->SetComputeRootSignature(g.gdn_root.Get());
@@ -1730,6 +2018,12 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
                 cl->SetComputeRootUnorderedAccessView(3, tensor_va(up));   // u2 up
                 cl->Dispatch(count / 256u, 1, 1); // predicate: count % 256 == 0
                 ++g.n_swiglu;
+                if (g_swiglu_range_diag) {
+                    if (swiglu_range_pairs.size() < 32)
+                        swiglu_range_pairs.emplace_back(gate, up);
+                    else
+                        ++g_swiglu_range_skipped_pairs;
+                }
                 D3D12_RESOURCE_BARRIER b = {};
                 b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
                 cl->ResourceBarrier(1, &b);
@@ -1858,6 +2152,53 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
     });
     if (!ran)
         return GGML_STATUS_FAILED;
+    if (g_swiglu_range_diag && !swiglu_range_pairs.empty()) {
+        auto sample_into = [](SwigluRangeStats& r, const ggml_tensor* t) {
+            if (!t || !t->data || !t->buffer || !is_ours(t->buffer->buft))
+                return;
+            const float* p = static_cast<const float*>(t->data);
+            const std::size_t ne = ggml_nelements(t);
+            for (std::size_t i = 0; i < ne; ++i) {
+                const float v = p[i];
+                const float a = std::fabs(v);
+                r.n++;
+                if (std::isnan(v) || std::isinf(v)) {
+                    r.nf++;
+                    continue;
+                }
+                if (a == 0.0f) {
+                    r.zero++;
+                    continue;
+                }
+                if (a > r.maxv)
+                    r.maxv = a;
+                if (a < r.minv)
+                    r.minv = a;
+                if (a < std::numeric_limits<float>::min())
+                    r.subn++;
+                if (a < 1.0f)
+                    r.b1++;
+                else if (a < 10.0f)
+                    r.b10++;
+                else if (a < 30.0f)
+                    r.b30++;
+                else if (a < 87.0f)
+                    r.b87++;
+                else if (a < 126.0f)
+                    r.b126++;
+                else if (a < 192.0f)
+                    r.b192++;
+                else
+                    r.binf++;
+            }
+        };
+        for (const auto& gu : swiglu_range_pairs) {
+            sample_into(g_swiglu_range_gate, gu.first);
+            sample_into(g_swiglu_range_up, gu.second);
+            ++g_swiglu_range_sampled_pairs;
+        }
+        swiglu_range_pairs.clear();
+    }
     if (ts) {
         void* p = nullptr;
         if (SUCCEEDED(g.ts_rb->Map(0, nullptr, &p))) {
@@ -1989,6 +2330,12 @@ ggml_backend_buffer_type_t dev_buffer_type(ggml_backend_dev_t) {
 
 bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
     switch (op->op) {
+    case GGML_OP_ADD:
+        return g_island_enabled && d3d12_add_supported(op);
+    case GGML_OP_RMS_NORM:
+        return d3d12_rms_norm_supported(op);
+    case GGML_OP_MUL:
+        return d3d12_mul_supported(op, nullptr);
     case GGML_OP_UNARY:
         // Selftest-only SILU (plan 006 C4): one shared predicate with the
         // collector and the dispatch.
@@ -2783,6 +3130,20 @@ void d3d12_set_swiglu_product_mode(int mode) {
 // contexts are rejected by d3d12_swiglu_profile_accepts BEFORE creation, so
 // the capability never changes under a live context.
 void d3d12_finalize_swiglu_mode(bool mtp_active) {
+    if (g_swiglu_mtp_diag) {
+        // Diagnostic override: bind the raw requested mode even in MTP, so the
+        // C4 divergence can be reproduced with fixed-history dumps. Never on
+        // in production (bench_swiglu_mtp_diag.txt only).
+        if (!g_swiglu_policy.bound) {
+            g_swiglu_policy.bound = true;
+            g_swiglu_policy.mtp_capable = mtp_active;
+            g_swiglu_policy.mode = g_swiglu_requested_mode;
+            log_output("[xllama] d3d12: FFN SWIGLU profile bound: " +
+                       std::string(g_swiglu_policy.mode == 0 ? "off" : "on") +
+                       " (mtp_capable=" + (mtp_active ? "1" : "0") + ", DIAG override)\n");
+        }
+        return;
+    }
     const bool was_bound = g_swiglu_policy.bound;
     const bool mtp_before = g_swiglu_policy.mtp_capable;
     g_swiglu_policy.finalize(g_swiglu_requested_mode, mtp_active);
@@ -2799,7 +3160,21 @@ void d3d12_finalize_swiglu_mode(bool mtp_active) {
 // fail the request and ask for a process restart instead of changing the
 // capability under an existing context.
 bool d3d12_swiglu_profile_accepts(bool mtp_active) {
+    if (g_swiglu_mtp_diag)
+        return true; // diagnostic override: FFN allowed in MTP for the repro
     return g_swiglu_policy.accepts(g_swiglu_requested_mode, mtp_active);
+}
+
+void d3d12_set_swiglu_mtp_diag(bool on) {
+    g_swiglu_mtp_diag = on;
+}
+
+void d3d12_set_swiglu_range_diag(bool on) {
+    g_swiglu_range_diag = on;
+}
+
+bool d3d12_swiglu_mtp_diag_enabled() {
+    return g_swiglu_mtp_diag;
 }
 
 int d3d12_swiglu_product_mode() {
@@ -2854,6 +3229,10 @@ void d3d12_set_z0_dispatch_log(bool on) {
 
 void d3d12_set_z0_pin_cpu(bool on) {
     g_z0_pin_cpu = on;
+}
+
+void d3d12_set_island_enabled(bool on) {
+    g_island_enabled = on;
 }
 
 void d3d12_set_spin_wait_us(int spin_us) {
@@ -2936,6 +3315,16 @@ void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out) {
         {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 3}, {GGML_TYPE_Q4_K, "q4_k", 11008, 2048, 5},
         {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 1}, {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 2},
         {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 3}, {GGML_TYPE_Q6_K, "q6_k", 2048, 11008, 5},
+        // Owner audit: complete the missing real-format width rows (q5_k and
+        // the remaining shapes seen in the workload census).
+        {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 1}, {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 2},
+        {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 3}, {GGML_TYPE_Q5_K, "q5_k", 11008, 2048, 5},
+        {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 1}, {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 2},
+        {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 3}, {GGML_TYPE_Q5_K, "q5_k", 2048, 11008, 5},
+        {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 1}, {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 2},
+        {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 3}, {GGML_TYPE_Q4_K, "q4_k", 2048, 11008, 5},
+        {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 1}, {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 2},
+        {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 3}, {GGML_TYPE_Q6_K, "q6_k", 65536, 1024, 5},
     };
     for (const auto& sc : batch_cases)
         out->push_back(run_case(backend, sc, 1));
@@ -3101,11 +3490,12 @@ ProbeMetrics probe_metrics(const std::vector<float>& got, const std::vector<floa
         const double ad = std::fabs(static_cast<double>(a) - static_cast<double>(b));
         if (ad > maxabs)
             maxabs = ad;
-        if (std::fabs(static_cast<double>(b)) > 0.0) {
-            const double rel = ad / std::fabs(static_cast<double>(b));
-            if (rel > maxrel)
-                maxrel = rel;
-        }
+        const double rel =
+            std::fabs(static_cast<double>(b)) > 0.0
+                ? ad / std::fabs(static_cast<double>(b))
+                : 0.0;
+        if (rel > maxrel)
+            maxrel = rel;
         const bool is_edge = (std::fabs(in) > 30.0f) || (std::fabs(a) < sub_min && a != 0.0f) ||
                              (std::fabs(b) < sub_min && b != 0.0f) || std::fabs(a) > 1e30f ||
                              std::fabs(b) > 1e30f || (in1 && std::fabs((*in1)[i]) > 30.0f);
@@ -3114,6 +3504,15 @@ ProbeMetrics probe_metrics(const std::vector<float>& got, const std::vector<floa
         else {
             ++fin;
             ++hist[bucket];
+            // Metric fix: the ordered maxima were declared but never updated,
+            // so ord_ulp_max/ord_abs/ord_rel always read 0 and looked like a
+            // bit-exact ordered region.
+            if (d > ulp_max_ord)
+                ulp_max_ord = d;
+            if (ad > maxabs_ord)
+                maxabs_ord = ad;
+            if (rel > maxrel_ord)
+                maxrel_ord = rel;
         }
         if (first.size() < 160) {
             std::uint32_t ia = 0, ib = 0, ii = 0;
@@ -3154,6 +3553,71 @@ ProbeMetrics probe_metrics(const std::vector<float>& got, const std::vector<floa
 // max ULP (finite pairs) and non-finite classification. The row's error string
 // carries the counts and the actual MXCSR value, so the reference's FTZ/DAZ
 // state is evidence, not an assumption.
+// Unfused emulation of the SILU formula: identical coefficients/tree/branches
+// as the shader, but every FMA is split into a multiply and an add through
+// volatile intermediates. Comparing the GPU result against this reference and
+// the fused CPU kernel isolates the fusion semantics of dx.op.tertiary.
+float s_unfused_silu(float x) {
+    volatile float lo = 0x1.715476p+0f, rr = 0x1.8p23f;
+    volatile float c1 = 0x1.7f7d1cp-20f, c2 = 0x1.62e4p-1f;
+    volatile float p0 = 0x1.0e4020p-7f, p1 = 0x1.573e2ep-5f, p2 = 0x1.555e66p-3f;
+    volatile float p3 = 0x1.fffdb6p-2f, p4 = 0x1.ffffecp-1f;
+    const float neg_x = 0.0f - x;
+    volatile float z = neg_x * lo;
+    z = z + rr;
+    volatile float n = z - rr;
+    volatile float t = n * c2;
+    t = x - t;
+    volatile float b = n * c1;
+    b = t - b;
+    volatile float u = b * b;
+    uint32_t e = 0;
+    const float zf = z;
+    std::memcpy(&e, &zf, sizeof(e));
+    e <<= 23;
+    float k = 0.0f;
+    {
+        const uint32_t sm = e + 0x3f800000u;
+        std::memcpy(&k, &sm, sizeof(k));
+    }
+    volatile float t1 = p0 * b;
+    t1 = t1 + p1;
+    volatile float t2 = p2 * b;
+    t2 = t2 + p3;
+    volatile float j1 = t1 * u;
+    j1 = j1 + t2;
+    volatile float t3 = p4 * b;
+    volatile float j = j1 * u;
+    j = j + t3;
+    float ex = 0.0f;
+    const float an = std::fabs(n);
+    if (an > 126.0f) {
+        const uint32_t gg = (n <= 0.0f) ? 0x82000000u : 0u;
+        float s1 = 0.0f, s2 = 0.0f;
+        {
+            const uint32_t b1 = gg + 0x7f000000u;
+            std::memcpy(&s1, &b1, sizeof(s1));
+        }
+        {
+            const uint32_t b2 = e - gg;
+            std::memcpy(&s2, &b2, sizeof(s2));
+        }
+        if (an > 192.0f) {
+            ex = s1 * s1;
+        } else {
+            volatile float q = s2 * j;
+            q = q + s2;
+            ex = q * s1;
+        }
+    } else {
+        volatile float e2 = j * k;
+        e2 = e2 + k;
+        ex = e2;
+    }
+    const float e_plus = 1.0f + ex;
+    return x / e_plus;
+}
+
 D3d12SelftestRow run_silu_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
                                ggml_backend_t cpu, int n_embd, int rows,
                                std::vector<float>* result) {
@@ -3255,13 +3719,24 @@ D3d12SelftestRow run_silu_case(ggml_backend_t backend, ggml_backend_buffer_type_
         std::memcpy(&u, &v, sizeof(u));
         return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
     };
+    // Causal test for the edge mismatches: same formula, every FMA split into
+    // mul+add with volatile intermediates (no contraction), so the fused and
+    // unfused references differ only in the fusion semantics. Comparing the GPU
+    // result against both says whether the Xbox driver lowers dx.op.tertiary
+    // (mad()) fused or unfused. Normal path only (|n| <= 126); the edge
+    // branches are reported by the fused comparison already.
+    std::vector<float> want_unf(xs.size());
+    for (size_t i = 0; i < xs.size(); ++i)
+        want_unf[i] = s_unfused_silu(xs[i]);
+    const ProbeMetrics mu = probe_metrics(got, want_unf, xs, nullptr);
     const ProbeMetrics m = probe_metrics(got, want, xs, nullptr);
     row.rel_err = 0.0;
     row.ok = m.ok;
     row.d3d12_ran = true;
-    char note[512];
-    std::snprintf(note, sizeof(note), "mxcsr=0x%04x %s", static_cast<unsigned>(_mm_getcsr()),
-                  m.report.c_str());
+    char note[2048];
+    std::snprintf(note, sizeof(note), "mxcsr=0x%04x [fused] ok=%d %s | [unfused] ok=%d %s",
+                  static_cast<unsigned>(_mm_getcsr()), m.ok ? 1 : 0, m.report.c_str(),
+                  mu.ok ? 1 : 0, mu.report.c_str());
     row.error = note;
     if (result)
         *result = got;
@@ -3270,6 +3745,212 @@ D3d12SelftestRow run_silu_case(ggml_backend_t backend, ggml_backend_buffer_type_
 }
 
 // Split-SWIGLU probe: out = silu(gate) * up, gate/up independent corpora.
+namespace {
+inline uint32_t s_mono_key(float f) {
+    uint32_t u;
+    std::memcpy(&u, &f, sizeof(u));
+    return (u & 0x80000000u) ? ~u : (u | 0x80000000u);
+}
+} // namespace
+
+// Plan 008 selftests. ADD must be bit-exact (one rounded add per element);
+// RMS_NORM is tolerance-measured: the GPU uses double lanes + a double tree
+// and a precise 1/sqrt, the CPU reference is the exact scalar double ascending
+// loop from ggml-cpu, so the row reports the exact-match rate and the max
+// relative error/ULP instead of a bitwise promise.
+D3d12SelftestRow run_add_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft, int n_embd,
+                              int rows) {
+    D3d12SelftestRow row;
+    row.type = "add_f32";
+    row.n = n_embd;
+    row.k = rows;
+    row.ncols = rows;
+    const bool prev_island = g_island_enabled;
+    g_island_enabled = true; // exercise the kernel, not the product default
+    ggml_init_params ip = {};
+    ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx = ggml_init(ip);
+    auto cleanup = [&] {
+        g_island_enabled = prev_island;
+    };
+    if (!ctx) {
+        row.error = "add metadata allocation failed";
+        cleanup();
+        return row;
+    }
+    ggml_tensor* a = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* t = ggml_add(ctx, a, b);
+    ggml_cgraph* gt = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gt, t);
+    ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
+    if (!buf) {
+        row.error = "add allocation failed";
+        ggml_free(ctx);
+        cleanup();
+        return row;
+    }
+    const size_t n = static_cast<size_t>(n_embd) * static_cast<size_t>(rows);
+    std::vector<float> av(n), bv(n);
+    std::mt19937 rng(808u);
+    std::uniform_real_distribution<float> uni(-8.0f, 8.0f);
+    const float specials[] = {0.0f,
+                              -0.0f,
+                              1e-45f,
+                              -1e-45f,
+                              3.4e38f,
+                              -3.4e38f,
+                              std::numeric_limits<float>::infinity(),
+                              -std::numeric_limits<float>::infinity(),
+                              std::numeric_limits<float>::quiet_NaN()};
+    const size_t ns = sizeof(specials) / sizeof(specials[0]);
+    for (size_t i = 0; i < n; ++i) {
+        av[i] = (i % 89 == 0) ? specials[(i / 89) % ns] : uni(rng);
+        bv[i] = (i % 97 == 0) ? specials[(i / 97) % ns] : uni(rng);
+    }
+    ggml_backend_tensor_set(a, av.data(), 0, n * sizeof(float));
+    ggml_backend_tensor_set(b, bv.data(), 0, n * sizeof(float));
+    const ggml_status st = ggml_backend_graph_compute(backend, gt);
+    if (st != GGML_STATUS_SUCCESS) {
+        row.error = "add GPU graph_compute failed";
+        ggml_backend_buffer_free(buf);
+        ggml_free(ctx);
+        cleanup();
+        return row;
+    }
+    std::vector<float> got(n);
+    ggml_backend_tensor_get(t, got.data(), 0, n * sizeof(float));
+    size_t mismatch = 0, nonfinite_mismatch = 0;
+    uint32_t max_ulp = 0;
+    double max_rel = 0.0;
+    for (size_t i = 0; i < n; ++i) {
+        const float ref = av[i] + bv[i];
+        if (std::memcmp(&got[i], &ref, sizeof(float)) != 0) {
+            ++mismatch;
+            if (std::isnan(ref) != std::isnan(got[i]) || std::isinf(ref) != std::isinf(got[i]))
+                ++nonfinite_mismatch;
+            const uint32_t kg = s_mono_key(got[i]), kr = s_mono_key(ref);
+            const uint32_t d = kg > kr ? kg - kr : kr - kg;
+            if (d > max_ulp)
+                max_ulp = d;
+        }
+        const double denom = std::max(std::fabs(static_cast<double>(ref)), 1e-30);
+        max_rel = std::max(max_rel, std::fabs(static_cast<double>(got[i]) - ref) / denom);
+    }
+    row.ok = mismatch == 0;
+    row.d3d12_ran = true;
+    row.rel_err = max_rel;
+    char note[192];
+    std::snprintf(note, sizeof(note), "bit_mismatch=%zu max_ulp=%u nonfinite_mismatch=%zu n=%zu",
+                  mismatch, max_ulp, nonfinite_mismatch, n);
+    row.error = note;
+    ggml_backend_buffer_free(buf);
+    ggml_free(ctx);
+    cleanup();
+    return row;
+}
+
+D3d12SelftestRow run_rms_norm_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
+                                   int n_embd, int rows) {
+    D3d12SelftestRow row;
+    row.type = "rms_norm_f32";
+    row.n = n_embd;
+    row.k = rows;
+    row.ncols = rows;
+    const float eps = 1e-5f;
+    const bool prev_island = g_island_enabled;
+    g_island_enabled = true;
+    ggml_init_params ip = {};
+    ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+    ip.no_alloc = true;
+    ggml_context* ctx = ggml_init(ip);
+    auto cleanup = [&] {
+        g_island_enabled = prev_island;
+    };
+    if (!ctx) {
+        row.error = "rms metadata allocation failed";
+        cleanup();
+        return row;
+    }
+    ggml_tensor* x = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+    ggml_tensor* t = ggml_rms_norm(ctx, x, eps);
+    ggml_cgraph* gt = ggml_new_graph(ctx);
+    ggml_build_forward_expand(gt, t);
+    ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, buft);
+    if (!buf) {
+        row.error = "rms allocation failed";
+        ggml_free(ctx);
+        cleanup();
+        return row;
+    }
+    const size_t n = static_cast<size_t>(n_embd) * static_cast<size_t>(rows);
+    std::vector<float> xv(n);
+    std::mt19937 rng(909u);
+    std::uniform_real_distribution<float> uni(-4.0f, 4.0f);
+    for (size_t i = 0; i < n; ++i)
+        xv[i] = uni(rng);
+    // Row 0: all zeros (scale = 1/sqrt(eps)); row 1: all ones; last row: NaN.
+    for (int j = 0; j < n_embd; ++j)
+        xv[j] = 0.0f;
+    for (int j = 0; j < n_embd; ++j)
+        xv[n_embd + j] = 1.0f;
+    for (int j = 0; j < n_embd; ++j)
+        xv[n - n_embd + j] = (j % 7 == 0) ? std::numeric_limits<float>::quiet_NaN() : xv[n - n_embd + j];
+    ggml_backend_tensor_set(x, xv.data(), 0, n * sizeof(float));
+    const ggml_status st = ggml_backend_graph_compute(backend, gt);
+    if (st != GGML_STATUS_SUCCESS) {
+        row.error = "rms GPU graph_compute failed";
+        ggml_backend_buffer_free(buf);
+        ggml_free(ctx);
+        cleanup();
+        return row;
+    }
+    std::vector<float> got(n);
+    ggml_backend_tensor_get(t, got.data(), 0, n * sizeof(float));
+    size_t exact = 0, mismatch = 0, nonfinite_mismatch = 0;
+    uint32_t max_ulp = 0;
+    double max_rel = 0.0;
+    for (int r = 0; r < rows; ++r) {
+        const float* xr = xv.data() + static_cast<size_t>(r) * n_embd;
+        const float* gr = got.data() + static_cast<size_t>(r) * n_embd;
+        double sum = 0.0;
+        for (int j = 0; j < n_embd; ++j)
+            sum += static_cast<double>(xr[j]) * static_cast<double>(xr[j]);
+        const float mean = static_cast<float>(sum / static_cast<double>(n_embd));
+        const float scale = 1.0f / std::sqrt(mean + eps);
+        for (int j = 0; j < n_embd; ++j) {
+            const float ref = xr[j] * scale;
+            const size_t idx = static_cast<size_t>(r) * n_embd + j;
+            if (std::memcmp(&got[idx], &ref, sizeof(float)) == 0) {
+                ++exact;
+            } else {
+                ++mismatch;
+                if (std::isnan(ref) != std::isnan(got[idx]) || std::isinf(ref) != std::isinf(got[idx]))
+                    ++nonfinite_mismatch;
+                const uint32_t kg = s_mono_key(got[idx]), kr = s_mono_key(ref);
+                const uint32_t d = kg > kr ? kg - kr : kr - kg;
+                if (d > max_ulp)
+                    max_ulp = d;
+            }
+            const double denom = std::max(std::fabs(static_cast<double>(ref)), 1e-30);
+            max_rel = std::max(max_rel, std::fabs(static_cast<double>(got[idx]) - ref) / denom);
+        }
+    }
+    row.ok = max_rel <= 1e-6 && nonfinite_mismatch == 0;
+    row.d3d12_ran = true;
+    row.rel_err = max_rel;
+    char note[224];
+    std::snprintf(note, sizeof(note),
+                  "exact=%zu/%zu mismatch=%zu max_rel=%.3g max_ulp=%u nonfinite_mismatch=%zu",
+                  exact, n, mismatch, max_rel, max_ulp, nonfinite_mismatch);
+    row.error = note;
+    ggml_backend_buffer_free(buf);
+    ggml_free(ctx);
+    cleanup();
+    return row;
+}
+
 D3d12SelftestRow run_swiglu_case(ggml_backend_t backend, ggml_backend_buffer_type_t buft,
                                  int n_embd, int rows) {
     D3d12SelftestRow row;
@@ -3345,11 +4026,16 @@ D3d12SelftestRow run_swiglu_case(ggml_backend_t backend, ggml_backend_buffer_typ
     const unsigned csr = static_cast<unsigned>(_mm_getcsr());
     log_output("[xllama] swiglu selftest: CPU direct kernel\n");
     ::ggml_vec_swiglu_f32(static_cast<int>(n), want.data(), g.data(), u.data());
+    std::vector<float> want_unf(n);
+    for (size_t i = 0; i < n; ++i)
+        want_unf[i] = s_unfused_silu(g[i]) * u[i];
+    const ProbeMetrics mu = probe_metrics(got, want_unf, g, &u);
     const ProbeMetrics m = probe_metrics(got, want, g, &u);
     row.ok = m.ok;
     row.d3d12_ran = true;
-    char note[512];
-    std::snprintf(note, sizeof(note), "mxcsr=0x%04x %s", csr, m.report.c_str());
+    char note[2048];
+    std::snprintf(note, sizeof(note), "mxcsr=0x%04x [fused] ok=%d %s | [unfused] ok=%d %s", csr,
+                  m.ok ? 1 : 0, m.report.c_str(), mu.ok ? 1 : 0, mu.report.c_str());
     row.error = note;
     cleanup();
     return row;
@@ -3398,6 +4084,8 @@ void run_d3d12_silu_selftest(std::vector<D3d12SelftestRow>* out) {
     d3d12_set_silu_test_enabled(true);
     out->push_back(run_silu_case(backend, &kHostBuft, cpu, 9216, 4, nullptr));
     out->push_back(run_swiglu_case(backend, &kHostBuft, 9216, 4));
+    out->push_back(run_add_case(backend, &kHostBuft, 9216, 4));
+    out->push_back(run_rms_norm_case(backend, &kHostBuft, 9216, 4));
     d3d12_set_silu_test_enabled(false);
     log_output("[xllama] silu selftest: case done\n");
     ggml_backend_free(backend);

@@ -1,0 +1,538 @@
+18:15:06.164 [xllama] App::App()
+18:15:06.252 [xllama] App::App() complete
+18:15:06.314 [xllama] App::OnLaunched
+[xllama] startup: Q6_K LM-head columns=0
+[xllama] startup: Q8_0 matmul=D3D12
+[xllama] startup: fused attention=forced
+[xllama] startup: attention split-KV=disabled for consistent query reduction
+[xllama] startup: GATED_DELTA_NET=D3D12
+[xllama] startup: FFN SWIGLU D3D12=all
+[xllama] startup: gpu timestamps=off (profile-bound default)
+[xllama] startup: d3d12twocol.txt='auto' -> kernel variant 2 (prev 0)
+[xllama] startup: cpurepackforcegemv.txt='2' -> repack control scope 2 (all small)
+[xllama] startup: d3d12island.txt='(absent)' -> island CPU
+[xllama] startup profile: twocol='auto' repack='2' (immutable for this process lifetime; restart the app to change)
+18:15:06.318 [xllama] building MainPageController
+18:15:06.335 [xllama] MainPageController built
+[xllama] EnsureModel: begin 'lfm25-350m'
+18:15:06.338 [xllama] MainPageController init done
+18:15:06.338 [xllama] Window.Content set
+18:15:06.338 [xllama] Window activated
+18:15:06.342 [caprec] AppRecordingManager present=0 GraphicsCaptureSession present=1
+18:15:06.342 [mic] AudioGraph present=1 MediaCapture present=1 (presence is not permission — see uwp-constraints.md)
+[gcprobe] session_present=1 item_present=1 viable=0 encoder=0 presence_error=0 duration_us=60
+18:15:06.343 [xllama] api.flag detected -> starting LAN HTTP endpoint
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] EnsureModel: 'lfm25-350m' already provisioned
+[xllama] api: listening on 0.0.0.0:11434 (OpenAI-compat /v1/chat/completions)
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4121 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] d3d12: FFN SWIGLU profile bound: on (mtp_capable=1)
+[xllama] session: n_seq_max=2 (sequences share n_ctx=2048)
+[xllama] session: speculative n_rs_seq=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   301.50 MiB
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,1,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,32,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 62.6 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.63 MiB
+[llama] sched_reserve: graph splits = 210
+[xllama] session effective threads: decode=2 batch=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=50 prompt=50
+[xllama] d3d12: D3D12_Host buffer 4.4 MiB
+[xllama] DSTEP kind=prefill width=50 wall=537.00 d3w=374.19 d3g=0.00 cpu=1046.88 calls=153 mm=201
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] DSTEP kind=catchup width=50 wall=25.47 d3w=17.29 d3g=0.00 cpu=31.25 calls=65 mm=104
+[xllama] PHASE_PREFILL n_prompt=50 rows_kept=50 n_ubatch=64 calls=218 matmuls=305 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=50 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=50 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=50 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=50 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=50 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=50 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=50 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=50 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=50 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=50 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=12
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=12 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=12 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=12 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=24 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=12 | ctx=target phase=prefill t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=2 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] mtp: first draft pos=50 n_embd=2560 n_max=2 row[min,max]=[-22.190485,16.835697] dft_n_batch=4 dft_pos_max=49
+[xllama] DSTEP kind=draft width=2 wall=11.22 d3w=5.48 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] d3d12: D3D12_Host buffer 5.3 MiB
+[xllama] EOG after 1 tokens (spec) tok=248046 branch=spec
+[xllama] DSPLIT wall=80.38 d3w=40.46 d3g=0.00 cpu=156.25 calls=165 mm=219 classic_steps=0
+[xllama] VROUND width=3 wall=67.49 d3w=34.98 d3g=0.00 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=68831,248046,198 gen=1
+[xllama] session generate: n=1 prefill=563.1ms (50 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=1 (mtp=1 lookup=0)
+[xllama] PHASE total_ms=741.0 prefill_ms=563.1 decode_ms=80.4 accounted_ms=79.9 residual_decode_ms=0.5 load_plus_setup_ms=97.6 draft_ms=6.6 sample_ms=1.5 topprob_ms=3.0 catchup_ms=0.0 verify_ms=67.5 verify_d3w=35.0 verify_d3g=0.0 verify_cpu=125.0 rounds_split=1 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=1.3 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/2 keys_total=19 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=2 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/2 keys_total=19 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1
+[xllama] MTP_STATS rounds=1 decodes=2 discarded=0 catchup_tok=0 draft_ms=6.6 sample_ms=1.5 topprob_ms=3.0 catchup_ms=0.0 verify_ms=67.5 corrective_ms=0.0
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] ini mtp REJECTED: model 'lfm25-350m' is not the exact selected qwen35-4b-mtp -> MTP OFF
+[llama] ~llama_context: D3D12_Host compute buffer size is   3.8762 MiB, matches expectation of   3.8762 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 383 graph_compute calls, 524 matmuls (136 2col), 431.9 ms wall (timing unavailable: 383 calls)
+[xllama] d3d12: 48 GATED_DELTA_NET dispatches
+[xllama] d3d12: Q6_K tiles 2col=0 4col=1
+[xllama] d3d12: 79 FFN SWIGLU dispatches
+[llama] ~llama_context: D3D12_Host compute buffer size is  62.6277 MiB, matches expectation of  62.6277 MiB
+[llama] ~llama_context: D3D12_Host compute buffer size is   0.0000 MiB, matches expectation of   0.0000 MiB
+[xllama] d3d12: 0 graph_compute calls, 0 matmuls (0 2col), 0.0 ms wall (timing unavailable: 0 calls)
+[xllama] session config REJECTED: startup scope2 profile is active: only qwen35-4b-mtp may load; restart the app with the default profile (remove d3d12twocol.txt/cpurepackforcegemv.txt) to load other models
+[xllama] session preload failed (non-fatal): startup scope2 profile is active: only qwen35-4b-mtp may load; restart the app with the default profile (remove d3d12twocol.txt/cpurepackforcegemv.txt) to load other models
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4121 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] session: n_seq_max=2 (sequences share n_ctx=2048)
+[xllama] session: speculative n_rs_seq=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   301.50 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 62.6 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.63 MiB
+[llama] sched_reserve: graph splits = 210
+[xllama] session effective threads: decode=2 batch=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=77 prompt=77
+[xllama] d3d12: D3D12_Host buffer 4.4 MiB
+[xllama] DSTEP kind=prefill width=77 wall=783.77 d3w=540.84 d3g=0.00 cpu=1562.50 calls=305 mm=401
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] DSTEP kind=catchup width=77 wall=38.44 d3w=25.59 d3g=0.00 cpu=31.25 calls=100 mm=160
+[xllama] PHASE_PREFILL n_prompt=77 rows_kept=77 n_ubatch=64 calls=405 matmuls=561 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=35 | ctx=target phase=prefill t=14 N=8192 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=64 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=64 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=64 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=64 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=64 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=64 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=14 N=8192 K=2560 B=13 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=13 thr=64 mm=24
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=35 | ctx=target phase=prefill t=13 N=2560 K=4096 B=13 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=13 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=13 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=13 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=13 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=13 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=13 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=13 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=19 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=19 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=19
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=35 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=19 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=19 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=38 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=19 | ctx=target phase=prefill t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=10.99 d3w=5.34 d3g=0.00 cpu=15.62 calls=12 mm=18
+[xllama] d3d12: D3D12_Host buffer 5.3 MiB
+[xllama] DSTEP kind=catchup width=3 wall=2.11 d3w=1.13 d3g=0.00 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.93 d3w=5.67 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.02 d3w=1.09 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.47 d3w=5.30 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.02 d3w=1.08 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.74 d3w=5.48 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] EOG after 11 tokens (spec) tok=248046 branch=spec
+[xllama] DSPLIT wall=314.88 d3w=164.20 d3g=0.00 cpu=640.62 calls=675 mm=900 classic_steps=0
+[xllama] VROUND width=3 wall=66.83 d3w=34.88 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=5579,2897,57 gen=11
+[xllama] VROUND width=3 wall=63.81 d3w=34.68 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=7869,2705,923 gen=11
+[xllama] VROUND width=3 wall=63.88 d3w=34.82 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=12,19,23 gen=11
+[xllama] VROUND width=3 wall=63.85 d3w=34.72 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=17,16,248046 gen=11
+[xllama] session generate: n=11 prefill=822.4ms (77 tok) reuse=0 drafted=8 (mtp=8 lookup=0) spec_accept=8 (mtp=8 lookup=0)
+[xllama] PHASE total_ms=1223.1 prefill_ms=822.4 decode_ms=314.9 accounted_ms=313.8 residual_decode_ms=1.1 load_plus_setup_ms=85.7 draft_ms=26.4 sample_ms=4.5 topprob_ms=12.1 catchup_ms=6.0 verify_ms=258.4 verify_d3w=139.1 verify_d3g=0.0 verify_cpu=500.0 rounds_split=4 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=6.3 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=8 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=8 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=16 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=8 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=8 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=96 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=96 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=256
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=64 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=80 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=16 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=64 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=3 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=3 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=3
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=6 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=3
+[xllama] MTP_STATS rounds=4 decodes=11 discarded=0 catchup_tok=9 draft_ms=26.4 sample_ms=4.5 topprob_ms=12.1 catchup_ms=6.0 verify_ms=258.4 corrective_ms=0.0
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=73 resident=88 prompt=120
+[xllama] session: turn full=1 kv_before=0 pf=120 prompt=120
+[xllama] DSTEP kind=prefill width=120 wall=1194.27 d3w=818.84 d3g=0.00 cpu=2375.00 calls=305 mm=401
+[xllama] DSTEP kind=catchup width=120 wall=85.74 d3w=62.13 d3g=0.00 cpu=125.00 calls=150 mm=240
+[xllama] PHASE_PREFILL n_prompt=120 rows_kept=120 n_ubatch=64 calls=455 matmuls=641 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=28 | ctx=target phase=prefill t=14 N=8192 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=64 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=64 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=64 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=64 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=64 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=64 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=14 N=8192 K=2560 B=56 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=56 thr=64 mm=24
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=28 | ctx=target phase=prefill t=13 N=2560 K=4096 B=56 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=56 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=56 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=56 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=56 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=56 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=56 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=56 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=30 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=30
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=28 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=30 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=60 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=30
+[xllama] DSTEP kind=draft width=2 wall=11.52 d3w=5.82 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.30 d3w=1.16 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.77 d3w=5.44 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.18 d3w=1.09 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 6 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=169.07 d3w=83.55 d3g=0.00 cpu=328.12 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=73.47 d3w=35.22 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=5579,2897,57 gen=6
+[xllama] VROUND width=3 wall=64.58 d3w=34.82 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=7199,2705,923 gen=6
+[xllama] session generate: n=6 prefill=1280.3ms (120 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=4 (mtp=4 lookup=0)
+[xllama] PHASE total_ms=1469.4 prefill_ms=1280.3 decode_ms=169.1 accounted_ms=168.5 residual_decode_ms=0.6 load_plus_setup_ms=20.1 draft_ms=13.9 sample_ms=2.3 topprob_ms=6.0 catchup_ms=4.4 verify_ms=138.1 verify_d3w=70.0 verify_d3g=0.0 verify_cpu=250.0 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=3.8 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=2
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=6 draft_ms=13.9 sample_ms=2.3 topprob_ms=6.0 catchup_ms=4.4 verify_ms=138.1 corrective_ms=0.0

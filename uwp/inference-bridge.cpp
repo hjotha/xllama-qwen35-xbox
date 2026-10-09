@@ -30,6 +30,12 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <random>
+
+// Elementwise CPU microbench (run_elembench): needs the ggml backend API.
+#include "ggml-backend.h"
+#include "ggml-cpu.h"
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -168,6 +174,43 @@ void apply_spinwait_knob(const char* who) {
              raw.empty() ? "(absent)" : raw.c_str(), parsed ? us : -1,
              parsed ? " (bounded spin)" : " (default unbounded spin)");
     log_output(lb);
+}
+
+// Plan 008 complete island: SWIGLU + ADD + RMS_NORM + MUL on D3D12, one knob
+// (d3d12island.txt "1"). Partial moves were measured worthless (plan 007), so
+// the set is enabled together; SWIGLU keeps its own product-mode policy (the
+// MTP arm still binds FFN OFF unless the policy accepts). Process-wide, read
+// at each bench start so a paired A/B can flip it per run.
+void apply_island_knob(const char* who) {
+    const std::string raw = read_local_file("d3d12island.txt");
+    // Production-safe default OFF until the extended gates pass (owner
+    // review): d3d12island.txt "1" enables the island for the paired A/B.
+    const bool on = raw == "1";
+    ::xllama::d3d12_set_island_enabled(on);
+    if (on)
+        ::xllama::d3d12_set_swiglu_product_mode(1); // all FFN; policy still gates MTP
+    log_output(std::string("[xllama] ") + who + ": d3d12island.txt='" +
+               (raw.empty() ? "(absent)" : raw) + "' -> island " + (on ? "D3D12" : "CPU") +
+               (on ? " (SWIGLU+ADD+RMS_NORM+MUL)" : "") + "\n");
+}
+
+// Diagnostic-only: bench_swiglu_mtp_diag.txt "1" allows the FFN SWIGLU product
+// path in an MTP context (bypasses the seq-bound policy) and turns on the
+// per-round MTPDIAG draft/verify dumps for the equal-history diagnosis.
+void apply_swiglu_mtp_diag_knob(const char* who) {
+    const bool on = read_local_file("bench_swiglu_mtp_diag.txt") == "1";
+    ::xllama::d3d12_set_swiglu_mtp_diag(on);
+    log_output(std::string("[xllama] ") + who + ": bench_swiglu_mtp_diag.txt=" +
+               (on ? "1 (FFN allowed in MTP + MTPDIAG dumps)\n" : "(absent)\n"));
+}
+
+// Owner audit: d3d12swiglurange.txt "1" samples the product SWIGLU inputs
+// (gate/up) after the graph fence and logs the real |x| distribution.
+void apply_swiglu_range_knob(const char* who) {
+    const bool on = read_local_file("d3d12swiglurange.txt") == "1";
+    ::xllama::d3d12_set_swiglu_range_diag(on);
+    log_output(std::string("[xllama] ") + who + ": d3d12swiglurange.txt=" +
+               (on ? "1 (range sampling on)\n" : "(absent)\n"));
 }
 
 // Existing-instrumentation switch (plan004 rev102): ggmlprof.txt strict
@@ -862,8 +905,10 @@ static void apply_q8_knob(const char* who) {
                "\n");
     // Plan 006 C4 product trial: FFN split-SWIGLU on D3D12 (default OFF;
     // d3d12swiglu.txt "1" = all FFN, "2" = target-context FFN only).
+    // Default ON since 2026-10-09 (exact kernel + strict MTP gate pass);
+    // "0" forces OFF for A/B, "2" keeps the target-only trial.
     const std::string swiglu_mode = read_local_file("d3d12swiglu.txt");
-    const int sw_mode = swiglu_mode == "1" ? 1 : (swiglu_mode == "2" ? 2 : 0);
+    const int sw_mode = swiglu_mode == "0" ? 0 : (swiglu_mode == "2" ? 2 : 1);
     d3d12_set_swiglu_product_mode(sw_mode);
     log_output(std::string("[xllama] ") + who + ": FFN SWIGLU D3D12=" +
                (sw_mode == 2 ? "target-only" : (sw_mode == 1 ? "all" : "off")) + "\n");
@@ -902,6 +947,7 @@ void apply_startup_profile() {
     s_prof_repack = read_local_file("cpurepackforcegemv.txt");
     apply_twocol_knob("startup");      // no-op when file absent
     apply_repack_ctrl_knob("startup"); // _putenv only when file present
+    apply_island_knob("startup");
     char lb[256];
     snprintf(lb, sizeof(lb),
              "[xllama] startup profile: twocol='%s' repack='%s' (immutable for this "
@@ -946,6 +992,21 @@ void apply_llama_ini_session(SessionParams& sp) {
         sp.n_batch = v;
     if (llama_ini_int(ini, "n_ubatch", v) && v > 0)
         sp.n_ubatch = v;
+    // Output budget default: llama.ini [n_predict] is the one home for it, so
+    // the API (request without max_tokens) and the chat UI (catalogue without
+    // n_predict) stop carrying their own fallbacks. Absent/invalid keeps them.
+    int npredict = -1;
+    if (llama_ini_int(ini, "n_predict", npredict) && npredict > 0)
+        llama_ini_n_predict = npredict;
+    // Parallel capacity: the llama.cpp name is n_seq_max; n_parallel is the
+    // historical spelling and is accepted as an alias. Clamped to 1..8: nothing
+    // in this frontend drives more than a handful of sequences, and a larger
+    // value only slices the shared n_ctx pool thinner.
+    int seq_max = 0;
+    if (!llama_ini_int(ini, "n_seq_max", seq_max))
+        llama_ini_int(ini, "n_parallel", seq_max);
+    if (seq_max > 0)
+        sp.n_seq_max = std::min(seq_max, 8);
     // Functional-MVP keys (plan004): validated, populate-only — this parser
     // performs NO global mutation (twocol/repack are startup-immutable and
     // applied only by apply_startup_profile; see below).
@@ -1024,6 +1085,9 @@ void main_loop() {
     apply_repack_ctrl_knob("main_loop");
     apply_spinwait_knob("main_loop");
     apply_ggmlprof_knob("main_loop");
+    apply_island_knob("main_loop");
+    apply_swiglu_mtp_diag_knob("main_loop");
+    apply_swiglu_range_knob("main_loop");
 
     // Real-decode two-column knob (plan 004): d3d12twocol.txt="auto" engages
     // variant 2 (allowlisted NEW) for every decode in this bench process —
@@ -2501,6 +2565,171 @@ void run_membw() {
         }
         log_output("[xllama] membw-result.csv written\n");
     }
+#endif
+}
+
+// ---------------------------------------------------------------------------
+// run_elembench (called from UWP elembench.flag mode background thread)
+// ---------------------------------------------------------------------------
+
+void run_elembench() {
+#ifdef XLLAMA_UWP
+    log_output("[xllama] elembench: elementwise CPU kernels by width\n");
+    const int n_embd = 2560; // model embedding width
+    const int rows_list[] = {1, 5, 64, 128, 256};
+    const int reps = 40;
+
+    ggml_backend_t cpu = ggml_backend_cpu_init();
+    if (!cpu) {
+        log_output("[xllama] elembench: CPU backend unavailable\n");
+        return;
+    }
+    // Mirror the app's CPU-side wiring: 2 threads and a persistent threadpool,
+    // so the per-call number is not a standalone-backend threadpool artifact.
+    ggml_backend_cpu_set_n_threads(cpu, 2);
+    ggml_threadpool_params tp = ggml_threadpool_params_default(2);
+    ggml_threadpool_t pool = ggml_threadpool_new(&tp);
+    if (pool)
+        ggml_backend_cpu_set_threadpool(cpu, pool);
+    FILE* fp = _wfopen(utf8_to_wstring(resolve_local_path("elembench-result.csv")).c_str(), L"w");
+    if (fp)
+        fputs("op,rows,elems,graph_ns,manual_ns,ns_per_elem,overhead_ns,checksum\n", fp);
+
+    auto median = [](std::vector<double>& v) {
+        std::sort(v.begin(), v.end());
+        return v[v.size() / 2];
+    };
+
+    // Empty-graph floor: a single dup of a 4-byte tensor, same call path.
+    {
+        ggml_init_params ip = {};
+        ip.mem_size = 8 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+        ip.no_alloc = true;
+        ggml_context* ec = ggml_init(ip);
+        if (ec) {
+            ggml_tensor* e = ggml_new_tensor_1d(ec, GGML_TYPE_F32, 1);
+            ggml_tensor* eo = ggml_dup(ec, e);
+            ggml_cgraph* eg = ggml_new_graph(ec);
+            ggml_build_forward_expand(eg, eo);
+            ggml_backend_buffer_t eb = ggml_backend_alloc_ctx_tensors_from_buft(ec, ggml_backend_cpu_buffer_type());
+            if (eb) {
+                for (int i = 0; i < 3; ++i)
+                    (void)ggml_backend_graph_compute(cpu, eg);
+                std::vector<double> ts;
+                for (int i = 0; i < reps; ++i) {
+                    const auto t0 = std::chrono::steady_clock::now();
+                    (void)ggml_backend_graph_compute(cpu, eg);
+                    ts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+                }
+                const double floor_ns = median(ts);
+                if (fp)
+                    fprintf(fp, "empty,0,1,%.0f,0,0,0,0\n", floor_ns);
+                char lb[160];
+                snprintf(lb, sizeof(lb), "[xllama] elembench: empty-graph floor=%.0fns (n_threads=2, pool)\n", floor_ns);
+                log_output(lb);
+                ggml_backend_buffer_free(eb);
+            }
+            ggml_free(ec);
+        }
+    }
+    for (int rows : rows_list) {
+        const size_t n = static_cast<size_t>(n_embd) * static_cast<size_t>(rows);
+        for (const char* op_name : {"add", "mul", "rms_norm", "cpy"}) {
+            ggml_init_params ip = {};
+            ip.mem_size = 16 * ggml_tensor_overhead() + 2 * ggml_graph_overhead();
+            ip.no_alloc = true;
+            ggml_context* ctx = ggml_init(ip);
+            if (!ctx)
+                continue;
+            ggml_tensor* a = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+            ggml_tensor* b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, n_embd, rows);
+            ggml_tensor* w = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n_embd);
+            ggml_tensor* out = nullptr;
+            if (strcmp(op_name, "add") == 0)
+                out = ggml_add(ctx, a, b);
+            else if (strcmp(op_name, "mul") == 0)
+                out = ggml_mul(ctx, a, w);
+            else if (strcmp(op_name, "rms_norm") == 0)
+                out = ggml_rms_norm(ctx, a, 1e-5f);
+            else
+                out = ggml_dup(ctx, a);
+            ggml_cgraph* g = ggml_new_graph(ctx);
+            ggml_build_forward_expand(g, out);
+            ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, ggml_backend_cpu_buffer_type());
+            if (!buf) {
+                ggml_free(ctx);
+                continue;
+            }
+            std::vector<float> av(n), bv(n), wv(n_embd), ov(n);
+            std::mt19937 rng(42u);
+            std::uniform_real_distribution<float> uni(-1.0f, 1.0f);
+            for (auto& v : av) v = uni(rng);
+            for (auto& v : bv) v = uni(rng);
+            for (auto& v : wv) v = uni(rng) + 1.0f;
+            ggml_backend_tensor_set(a, av.data(), 0, n * sizeof(float));
+            ggml_backend_tensor_set(b, bv.data(), 0, n * sizeof(float));
+            ggml_backend_tensor_set(w, wv.data(), 0, n_embd * sizeof(float));
+            for (int i = 0; i < 3; ++i)
+                (void)ggml_backend_graph_compute(cpu, g);
+            std::vector<double> gts;
+            for (int i = 0; i < reps; ++i) {
+                const auto t0 = std::chrono::steady_clock::now();
+                (void)ggml_backend_graph_compute(cpu, g);
+                gts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+            }
+            const double gns = median(gts);
+            std::vector<double> mts;
+            double chk = 0.0;
+            for (int i = 0; i < reps; ++i) {
+                const auto t0 = std::chrono::steady_clock::now();
+                if (strcmp(op_name, "add") == 0) {
+                    for (size_t k = 0; k < n; ++k) ov[k] = av[k] + bv[k];
+                } else if (strcmp(op_name, "mul") == 0) {
+                    for (size_t k = 0; k < n; ++k) ov[k] = av[k] * wv[k % n_embd];
+                } else if (strcmp(op_name, "rms_norm") == 0) {
+                    for (int r = 0; r < rows; ++r) {
+                        double sum = 0.0;
+                        const float* xr = av.data() + static_cast<size_t>(r) * n_embd;
+                        for (int j = 0; j < n_embd; ++j) sum += static_cast<double>(xr[j]) * static_cast<double>(xr[j]);
+                        const float mean = static_cast<float>(sum / n_embd);
+                        const float sc = 1.0f / std::sqrt(mean + 1e-5f);
+                        float* yr = ov.data() + static_cast<size_t>(r) * n_embd;
+                        for (int j = 0; j < n_embd; ++j) yr[j] = xr[j] * sc;
+                    }
+                } else {
+                    memcpy(ov.data(), av.data(), n * sizeof(float));
+                }
+                chk += ov[i % n];
+                mts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+            }
+            const double mns = median(mts);
+            if (fp) {
+                fprintf(fp, "%s,%d,%zu,%.0f,%.0f,%.2f,%.0f,%.3f\n", op_name, rows, n, gns, mns,
+                        mns / static_cast<double>(n), gns - mns, chk);
+                fflush(fp);
+            }
+            char lb[200];
+            snprintf(lb, sizeof(lb),
+                     "[xllama] elembench: %-8s rows=%3d n=%7zu graph=%9.0fns manual=%9.0fns "
+                     "ns/elem=%.2f overhead=%.0fns\n",
+                     op_name, rows, n, gns, mns, mns / static_cast<double>(n), gns - mns);
+            log_output(lb);
+            ggml_backend_buffer_free(buf);
+            ggml_free(ctx);
+        }
+    }
+    if (fp) {
+        fclose(fp);
+        FILE* done = _wfopen(utf8_to_wstring(resolve_local_path("elembench-result.csv.done")).c_str(), L"w");
+        if (done) {
+            fputs("done\n", done);
+            fclose(done);
+        }
+        log_output("[xllama] elembench-result.csv written\n");
+    }
+    ggml_backend_free(cpu);
+    if (pool)
+        ggml_threadpool_free(pool);
 #endif
 }
 

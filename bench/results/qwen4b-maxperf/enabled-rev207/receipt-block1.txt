@@ -1,0 +1,14 @@
+start_utc=2026-10-09T13:53:43Z
+msix_sha256=56f91bab29615d3b84ae929806ce8981935df78d453defa186ab907c1eee43bd
+pfn=GianlucaMazza.xllama_1.6.0.207_x64__pj67f1fcj4n14
+cell=chat64 utc=2026-10-09T13:55:26Z
+cell=code64 utc=2026-10-09T13:57:09Z
+cell=chat256 utc=2026-10-09T13:58:51Z
+cell=code256 utc=2026-10-09T14:01:14Z
+cell=std512 utc=2026-10-09T14:02:57Z
+cell=chat64-mtp utc=2026-10-09T14:04:40Z
+cell=code64-mtp utc=2026-10-09T14:06:23Z
+cell=chat256-mtp utc=2026-10-09T14:08:05Z
+cell=code256-mtp utc=2026-10-09T14:09:48Z
+parity=OK
+end_utc=2026-10-09T14:09:49Z

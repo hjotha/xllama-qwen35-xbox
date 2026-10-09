@@ -1,0 +1,8 @@
+numeric_selftest_rev209 utc=2026-10-09T16:59:48Z
+csv=d3d12be-rev209.csv rows=50 result=50/50 ok (device log: [xllama] d3d12be: 50/50 cases ok)
+silu_avx2_fused=ok=1 ord=0 edge=0 nf=0 all_ulp_max=0 all_abs=0
+swiglu_avx2_fused=ok=1 ord=0 edge=0 nf=0 all_ulp_max=0 all_abs=0
+unfused_reference_sections=divergent_by_design (not part of the exact-kernel claim)
+add_f32=bit_mismatch=0 rms_norm=exact=36864/36864
+d3d12sc_revs209_rows=282 reported_not_gated
+note=local watcher was killed by tool timeout; the device selftest completed and results were fetched immediately after (see numeric-session-segment.log delimited by L0=400353)

@@ -1,0 +1,15 @@
+FLUSH supplementary counter receipt (clean state, knob absent, rev209 installed)
+- The v2 script's get-log raced the backend_free flush (ON segment ends at
+  T3 MTP_STATS; flush lines landed after the fetch), so its ON_COUNTER_FAIL
+  is a MEASUREMENT race. The flush was captured here with a longer settle
+  (device log ROTATES: L0 line-offset slicing is unreliable across a stop;
+  grep the fetched full log by content instead — FLUSH-full-log.txt).
+- Last serving session flush (bind on (mtp_capable=1), same session):
+  368 graph_compute calls, 500 matmuls, 48 GATED_DELTA_NET dispatches,
+  76 FFN SWIGLU dispatches (>0, real GPU FFN with MTP drafting active).
+  Prior OFF session flush in the same log: 462 calls / 524 matmuls /
+  48 GDN / FFN line ABSENT (=0, knob off) — the OFF contrast.
+  (Matches v1's 79 FFN + 48 GDN on the same build/config.)
+- flush-counters.sh itself has a pipefail bug (grep-no-match aborts before
+  start-app); it was NOT re-run — this receipt replaces it from the verified
+  commands above. Post-flush: app restarted, GET ok, chat serving confirmed.

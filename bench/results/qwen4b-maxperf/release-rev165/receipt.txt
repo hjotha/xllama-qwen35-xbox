@@ -1,0 +1,10 @@
+release receipt rev165 2026-10-08T10:17:39Z
+pfn=GianlucaMazza.xllama_1.6.0.165_x64__pj67f1fcj4n14
+msix_sha256=3A70CC96568F759B59C7F7466219198B006B9278F49A12CC774997BE5F5EC6F4 (full Release LTCG, 1217.02 s; builder sha == fetched)
+change=llama.ini keys n_predict (one home for the session output budget) and n_seq_max/n_parallel (context sequence capacity)
+llama.ini: n_gpu_layers=34 n_ctx=2048 n_threads=2 n_batch=64 n_ubatch=64 kv_q8=0 mtp=2 mtp_pmin=50 n_predict=48 n_seq_max=2
+knobs: d3d12swiglu.txt=0, d3d12twocol.txt=auto, cpurepackforcegemv.txt=2, no bench/profiling/termgate files
+api: validate-api.sh chat PASS (MODEL=qwen35-4b-mtp); no max_tokens -> 48-token cap (finish=length, usage 48); max_tokens=128 -> 128 (request wins)
+log: session: n_seq_max=2 (sequences share n_ctx=2048)
+parity: chat64-mtp and chat64-seq 84e081965076a0c947bb... (baseline digest)
+termgate: 6/6 arms ok, seq/ref/cand sw0 CSVs byte-identical to rev163

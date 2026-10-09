@@ -17,6 +17,7 @@
 
 #include "xllama/mtp_draft.h"
 
+#include "xllama/ggml_d3d12.h"
 #include "xllama/platform.h"
 
 #include <algorithm>
@@ -56,6 +57,30 @@ float top_prob(llama_context* ctx, int32_t idx, float p_min) {
             return 0.0f; // 1/sum < p_min is already decided
     }
     // exp of the largest logit is 1 by construction, so it contributes exactly 1.
+    return static_cast<float>(1.0 / sum);
+}
+
+// Diagnostic-only (bench_swiglu_mtp_diag): the same softmax sum WITHOUT the
+// early exit, plus the real probability, so the arm whose gate returned 0 (the
+// early-exit marker) can be compared by its actual value.
+float top_prob_full(llama_context* ctx, int32_t idx, float p_min, double* full_sum,
+                    double* limit_out) {
+    const int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(llama_get_model(ctx)));
+    const float* logits = llama_get_logits_ith(ctx, idx);
+    if (!logits || n_vocab <= 0)
+        return 0.0f;
+    float max_l = logits[0];
+    for (int i = 1; i < n_vocab; ++i)
+        if (logits[i] > max_l)
+            max_l = logits[i];
+    const double limit = 1.0 / static_cast<double>(p_min);
+    double sum = 0.0;
+    for (int i = 0; i < n_vocab; ++i)
+        sum += std::exp(static_cast<double>(logits[i] - max_l));
+    if (full_sum)
+        *full_sum = sum;
+    if (limit_out)
+        *limit_out = limit;
     return static_cast<float>(1.0 / sum);
 }
 
@@ -320,6 +345,52 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
             if (cand < 0 || cand == LLAMA_TOKEN_NULL)
                 break;
 
+            // Diagnostic-only (bench_swiglu_mtp_diag.txt): the draft proposal
+            // distribution at this step, with the top-5 margins, so the
+            // equal-history comparison can pair it with the target row.
+            if (d3d12_swiglu_mtp_diag_enabled()) {
+                const float* dl = llama_get_logits_ith(m_ctx, i_last);
+                if (dl) {
+                    const int nv = llama_vocab_n_tokens(
+                        llama_model_get_vocab(llama_get_model(m_ctx)));
+                    llama_token best[5] = {-1, -1, -1, -1, -1};
+                    float bestv[5] = {-INFINITY, -INFINITY, -INFINITY, -INFINITY, -INFINITY};
+                    for (int t = 0; t < nv; ++t) {
+                        const float v = dl[t];
+                        for (int k = 0; k < 5; ++k) {
+                            if (v > bestv[k]) {
+                                for (int j = 4; j > k; --j) {
+                                    bestv[j] = bestv[j - 1];
+                                    best[j] = best[j - 1];
+                                }
+                                bestv[k] = v;
+                                best[k] = t;
+                                break;
+                            }
+                        }
+                    }
+                    char db[640];
+                    // 17 significant digits: the full value a float32 carries,
+                    // so the two arms can be compared exactly. in_tok/pos are
+                    // the input row this proposal was conditioned on.
+                    const llama_token in_tok =
+                        (i_last >= 0 && i_last < m_batch.n_tokens) ? m_batch.token[i_last] : -1;
+                    const llama_pos in_pos =
+                        (i_last >= 0 && i_last < m_batch.n_tokens) ? m_batch.pos[i_last] : -1;
+                    snprintf(db, sizeof(db),
+                             "[xllama] MTPDIAG draft depth=%d row=%d in_tok=%d in_pos=%d "
+                             "drafted=%d top5=%d:%.17g,%d:%.17g,%d:%.17g,%d:%.17g,%d:%.17g "
+                             "m2=%.17g\n",
+                             depth, i_last, static_cast<int>(in_tok), static_cast<int>(in_pos), cand,
+                             best[0], static_cast<double>(bestv[0]), best[1],
+                             static_cast<double>(bestv[1]), best[2], static_cast<double>(bestv[2]),
+                             best[3], static_cast<double>(bestv[3]), best[4],
+                             static_cast<double>(bestv[4]),
+                             static_cast<double>(bestv[0] - bestv[1]));
+                    log_output(db);
+                }
+            }
+
             // Only draft while the candidate stays confident: a token the target
             // is unlikely to accept costs a target decode to reject, which is a
             // net loss. The MTP graph emits real logits (qwen35.cpp sets
@@ -338,6 +409,24 @@ std::vector<llama_token> MtpDrafter::draft(llama_token last_token, llama_pos pos
                     m_stats.top_prob_ms += std::chrono::duration<double, std::milli>(
                                                std::chrono::steady_clock::now() - t_p0)
                                                .count();
+                if (d3d12_swiglu_mtp_diag_enabled()) {
+                    double full_sum = 0.0, limit = 0.0;
+                    const float p_full = top_prob_full(m_ctx, i_last, m_params.p_min, &full_sum,
+                                                       &limit);
+                    const llama_pos pos_now = llama_memory_seq_pos_max(
+                        llama_get_memory(m_ctx), 0);
+                    char pb[320];
+                    snprintf(pb, sizeof(pb),
+                             "[xllama] MTPDIAG pmin depth=%d drafted=%d pos=%d p=%.17g "
+                             "p_full=%.17g sum=%.17g limit=%.17g pmin=%.17g pass=%d early=%d "
+                             "delta_full=%.17g\n",
+                             depth, cand, static_cast<int>(pos_now), static_cast<double>(p),
+                             static_cast<double>(p_full), full_sum, limit,
+                             static_cast<double>(m_params.p_min), p >= m_params.p_min ? 1 : 0,
+                             p == 0.0f ? 1 : 0,
+                             static_cast<double>(p_full) - static_cast<double>(m_params.p_min));
+                    log_output(pb);
+                }
                 if (p < m_params.p_min) {
                     ++m_stats.n_discarded;
                     break;

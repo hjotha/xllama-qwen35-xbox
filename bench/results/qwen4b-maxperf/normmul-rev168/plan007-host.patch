@@ -1,0 +1,302 @@
+diff --git a/include/xllama/ggml_d3d12.h b/include/xllama/ggml_d3d12.h
+index b35aec6..ebc74bf 100644
+--- a/include/xllama/ggml_d3d12.h
++++ b/include/xllama/ggml_d3d12.h
+@@ -198,6 +198,8 @@ void d3d12_set_z0_dispatch_log(bool on);
+ // follows placement (split D3D12/CPU execution) or persists on one backend.
+ // Log-only sibling above tells which backend ran it. Default off.
+ void d3d12_set_z0_pin_cpu(bool on);
++// Plan 007 bounded chain: RMS_NORM + MUL on D3D12. Default off.
++void d3d12_set_normmul_enabled(bool on);
+ 
+ // Queue-fence wait-policy knob (plan004 rev101 experiment): -1 (default,
+ // knob file absent) keeps today's unbounded spin exactly as-is. A value >= 0
+diff --git a/src/bridge/ggml_d3d12.cpp b/src/bridge/ggml_d3d12.cpp
+index 0e6b884..29aab42 100644
+--- a/src/bridge/ggml_d3d12.cpp
++++ b/src/bridge/ggml_d3d12.cpp
+@@ -813,6 +813,7 @@ int d3d12_kernel_variant() {
+ }
+ void d3d12_set_z0_dispatch_log(bool) {}
+ void d3d12_set_z0_pin_cpu(bool) {}
++void d3d12_set_normmul_enabled(bool) {}
+ static int s_spin_wait_us = -1;
+ void d3d12_set_spin_wait_us(int spin_us) {
+     s_spin_wait_us = spin_us;
+@@ -915,6 +916,8 @@ bool d3d12_shape_drain(const char*) {
+         #include "ggml_d3d12_mmv_q6_k_t64_dxil.h"
+         #include "ggml_d3d12_mmv_q8_0_t128_dxil.h"
+         #include "ggml_d3d12_mmv_q8_0_t64_dxil.h"
++        #include "ggml_d3d12_mul_dxil.h"
++        #include "ggml_d3d12_rms_norm_dxil.h"
+         #include "ggml_d3d12_silu_dxil.h"
+         #include "ggml_d3d12_swiglu_probe_dxil.h"
+         #include "xllama/d3d12_dyn.h"
+@@ -958,6 +961,10 @@ struct Gpu {
+     ComPtr<ID3D12PipelineState> silu_pso;
+     // Selftest-only SWIGLU probe, reusing the GDN root (three UAVs: out/gate/up).
+     ComPtr<ID3D12PipelineState> swiglu_probe_pso;
++    // Plan 007 bounded chain: RMS_NORM and MUL on the GDN root (16 root
++    // constants + seven UAVs). Product graph ops, unlike the probes above.
++    ComPtr<ID3D12PipelineState> rms_norm_pso;
++    ComPtr<ID3D12PipelineState> mul_pso;
+     ComPtr<ID3D12PipelineState> pso[kPsoCount][2]; // [type][0 = 64 threads, 1 = 128]
+     // Plan 004 two-column tile experiment: q4_k only, same two widths. Kept
+     // beside pso (not inside it) so the gate blobs and their indices never
+@@ -991,6 +998,8 @@ struct Gpu {
+     // Product-trial FFN SWIGLU dispatches (plan 006 C4): nonzero is placement
+     // evidence that the knob engaged; zero proves the OFF arm stayed on CPU.
+     std::uint64_t n_swiglu = 0;
++    std::uint64_t n_rms_norm = 0;   // plan 007 bounded chain
++    std::uint64_t n_mul = 0;        // plan 007 bounded chain
+     double wall_ms = 0.0;
+     std::mutex mu;
+     bool ok = false;
+@@ -1025,6 +1034,9 @@ bool g_shape_off = false;
+ std::atomic<bool> g_ts_enabled{true};
+ // Selftest-only SILU gate (plan 006 C4). False in every product path.
+ bool g_silu_test = false;
++// Plan 007: the bounded RMS_NORM + MUL chain, off by default until the paired
++// same-build A/B (bench_normmul.txt="1" enables) accepts it.
++bool g_normmul_enabled = false;
+ // Product trial gate (plan 006 C4): FFN split-SWIGLU on D3D12, default OFF.
+ // Mode 0 off, 1 all FFN, 2 target-context FFN only. Target layer count is
+ // setup-time (model load) and never changes while graphs run. The mode is
+@@ -1181,6 +1193,20 @@ bool init_gpu(Gpu& g) {
+         if (FAILED(hr))
+             log_output("[xllama] d3d12: SWIGLU probe PSO unavailable\n");
+     }
++    // Plan 007: the bounded RMS_NORM + MUL chain. Matmul root layout: b0
++    // constants + t0 SRV (MUL weight, like the matmul path) + u0/u1 UAVs.
++    if (g.root) {
++        D3D12_COMPUTE_PIPELINE_STATE_DESC pd = {};
++        pd.pRootSignature = g.root.Get();
++        pd.CS = {kGgmlD3d12RmsNormDxil, kGgmlD3d12RmsNormDxilSize};
++        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.rms_norm_pso));
++        if (FAILED(hr))
++            log_output("[xllama] d3d12: rms_norm PSO unavailable\n");
++        pd.CS = {kGgmlD3d12MulDxil, kGgmlD3d12MulDxilSize};
++        hr = g.device->CreateComputePipelineState(&pd, IID_PPV_ARGS(&g.mul_pso));
++        if (FAILED(hr))
++            log_output("[xllama] d3d12: mul PSO unavailable\n");
++    }
+ 
+     // Two-column experiment PSOs (plan 004). A failure here must NOT fail the
+     // backend: the gate and production path are OLD-only. Record it; dispatch
+@@ -1533,6 +1559,69 @@ bool d3d12_swiglu_supported(const ggml_tensor* op) {
+     return true;
+ }
+ 
++// Plan 007 bounded chain predicates. Strict on purpose: anything not provably
++// handled stays with the CPU kernel (bit-exactness first, placement second).
++// RMS_NORM: f32 contiguous in/out, ne[0] % 256 == 0 so every lane has work in
++// the fixed-stride loop shape the kernel assumes for its double tree, rows
++// (ne[1]*ne[2]*ne[3]) in [1, 65535], and both tensors in our buffers.
++bool d3d12_rms_norm_supported(const ggml_tensor* op) {
++    if (!g_normmul_enabled || !gpu().rms_norm_pso)
++        return false;
++    if (!op || op->op != GGML_OP_RMS_NORM)
++        return false;
++    if (op->type != GGML_TYPE_F32)
++        return false;
++    const ggml_tensor* src = op->src[0];
++    if (!src || src->type != GGML_TYPE_F32)
++        return false;
++    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(src))
++        return false;
++    if (op->ne[0] <= 0 || op->ne[0] % 256 != 0)
++        return false;
++    const int64_t rows = op->ne[1] * op->ne[2] * op->ne[3];
++    if (rows <= 0 || rows > 65535)
++        return false;
++    if (src->buffer && !is_ours(src->buffer->buft))
++        return false;
++    if (op->buffer && !is_ours(op->buffer->buft))
++        return false;
++    return true;
++}
++
++// MUL: broadcast-only 1-D weight form (the norm-weight shape). The scalar
++// form is deliberately unsupported: a scalar would have to be read through the
++// host on a possibly GPU-produced tensor with no dependency tracking, and the
++// weight here is bound as an SRV like the matmul path (weights buffers are not
++// UAV-bindable). Everything not proven stays on the CPU kernel.
++bool d3d12_mul_supported(const ggml_tensor* op, bool* scalar_form) {
++    if (scalar_form)
++        *scalar_form = false;
++    if (!g_normmul_enabled || !gpu().mul_pso)
++        return false;
++    if (!op || op->op != GGML_OP_MUL || op->type != GGML_TYPE_F32)
++        return false;
++    const ggml_tensor* a = op->src[0];
++    const ggml_tensor* b = op->src[1];
++    if (!a || !b || a->type != GGML_TYPE_F32 || b->type != GGML_TYPE_F32)
++        return false;
++    if (!ggml_is_contiguous(op) || !ggml_is_contiguous(a) || !ggml_is_contiguous(b))
++        return false;
++    if (b->ne[0] != op->ne[0] || b->ne[1] != 1 || b->ne[2] != 1 || b->ne[3] != 1)
++        return false;
++    const int64_t n = ggml_nelements(op);
++    // One group per 256 elements, one dispatch dimension: D3D12 caps a
++    // dimension at 65535 groups.
++    if (n <= 0 || n % 256 != 0 || n / 256 > 65535)
++        return false;
++    if (a->buffer && !is_ours(a->buffer->buft))
++        return false;
++    if (b->buffer && !is_ours(b->buffer->buft))
++        return false;
++    if (op->buffer && !is_ours(op->buffer->buft))
++        return false;
++    return true;
++}
++
+ bool d3d12_silu_supported(const ggml_tensor* op) {
+     if (!g_silu_test || !gpu().silu_pso)
+         return false;
+@@ -1615,7 +1704,16 @@ void backend_free(ggml_backend_t b) {
+                           static_cast<unsigned long long>(g.n_swiglu));
+             log_output(msg);
+         }
++        if (g.n_rms_norm || g.n_mul) {
++            std::snprintf(msg, sizeof(msg),
++                          "[xllama] d3d12: %llu RMS_NORM dispatches, %llu MUL dispatches\n",
++                          static_cast<unsigned long long>(g.n_rms_norm),
++                          static_cast<unsigned long long>(g.n_mul));
++            log_output(msg);
++        }
+         g.n_swiglu = 0;
++        g.n_rms_norm = 0;
++        g.n_mul = 0;
+         g.n_q6_tiled[0] = g.n_q6_tiled[1] = 0;
+         g.n_calls = g.n_matmuls = g.n_matmuls_2col = 0;
+         g.wall_ms = 0.0;
+@@ -1633,6 +1731,15 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
+         if (ggml_is_empty(node) || (node->flags & GGML_TENSOR_FLAG_COMPUTE) == 0)
+             continue;
+         switch (node->op) {
++        case GGML_OP_RMS_NORM:
++        case GGML_OP_MUL:
++            // Plan 007 bounded chain: accepted only by the shared predicates
++            // (the scheduler can only assign them here when they pass), so the
++            // collector must take them too or the switch aborts.
++            GGML_ASSERT(node->op == GGML_OP_RMS_NORM ? d3d12_rms_norm_supported(node)
++                                                     : d3d12_mul_supported(node, nullptr));
++            ops.push_back(node);
++            break;
+         case GGML_OP_MUL_MAT:
+             ops.push_back(node);
+             ++n_mm;
+@@ -1717,6 +1824,53 @@ ggml_status backend_graph_compute(ggml_backend_t, ggml_cgraph* cgraph) {
+                 cl->ResourceBarrier(1, &b);
+                 continue;
+             }
++            if (node->op == GGML_OP_RMS_NORM && d3d12_rms_norm_supported(node)) {
++                const ggml_tensor* sx = node->src[0];
++                std::uint32_t c32[8] = {};
++                const std::uint32_t ne00 = static_cast<std::uint32_t>(node->ne[0]);
++                const std::uint32_t rows =
++                    static_cast<std::uint32_t>(node->ne[1] * node->ne[2] * node->ne[3]);
++                float eps = 0.0f;
++                std::memcpy(&eps, node->op_params, sizeof(float));
++                std::memcpy(&c32[2], &eps, sizeof(c32[2]));
++                c32[0] = ne00;
++                c32[1] = rows;
++                cl->SetComputeRootSignature(g.root.Get());
++                gdn_root_active = false;
++                cl->SetPipelineState(g.rms_norm_pso.Get());
++                cl->SetComputeRoot32BitConstants(0, 8, c32, 0);
++                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node)); // u0 dst
++                cl->SetComputeRootUnorderedAccessView(3, tensor_va(sx));   // u1 src
++                cl->Dispatch(rows, 1, 1); // one group per row; predicate caps 65535
++                ++g.n_rms_norm;
++                D3D12_RESOURCE_BARRIER b = {};
++                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
++                cl->ResourceBarrier(1, &b);
++                continue;
++            }
++            if (node->op == GGML_OP_MUL) {
++                // Predicate-gated; the scheduler only assigns it here when true.
++                GGML_ASSERT(d3d12_mul_supported(node, nullptr));
++                const ggml_tensor* a = node->src[0];
++                const ggml_tensor* wt = node->src[1];
++                const std::uint32_t count = static_cast<std::uint32_t>(ggml_nelements(node));
++                std::uint32_t c32[8] = {};
++                c32[0] = count;
++                c32[1] = static_cast<std::uint32_t>(node->ne[0]);
++                cl->SetComputeRootSignature(g.root.Get());
++                gdn_root_active = false;
++                cl->SetPipelineState(g.mul_pso.Get());
++                cl->SetComputeRoot32BitConstants(0, 8, c32, 0);
++                cl->SetComputeRootShaderResourceView(1, tensor_va(wt));   // t0 weight
++                cl->SetComputeRootUnorderedAccessView(2, tensor_va(node)); // u0 dst
++                cl->SetComputeRootUnorderedAccessView(3, tensor_va(a));    // u1 src
++                cl->Dispatch(count / 256u, 1, 1); // predicate: <= 65535 groups
++                ++g.n_mul;
++                D3D12_RESOURCE_BARRIER b = {};
++                b.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
++                cl->ResourceBarrier(1, &b);
++                continue;
++            }
+             if (node->op == GGML_OP_GLU && d3d12_swiglu_supported(node)) {
+                 // Selftest-only split-SWIGLU probe: gdn_root (u0..u6).
+                 cl->SetComputeRootSignature(g.gdn_root.Get());
+@@ -1989,6 +2143,10 @@ ggml_backend_buffer_type_t dev_buffer_type(ggml_backend_dev_t) {
+ 
+ bool dev_supports_op(ggml_backend_dev_t, const ggml_tensor* op) {
+     switch (op->op) {
++    case GGML_OP_RMS_NORM:
++        return d3d12_rms_norm_supported(op);
++    case GGML_OP_MUL:
++        return d3d12_mul_supported(op, nullptr);
+     case GGML_OP_UNARY:
+         // Selftest-only SILU (plan 006 C4): one shared predicate with the
+         // collector and the dispatch.
+@@ -2856,6 +3014,10 @@ void d3d12_set_z0_pin_cpu(bool on) {
+     g_z0_pin_cpu = on;
+ }
+ 
++void d3d12_set_normmul_enabled(bool on) {
++    g_normmul_enabled = on;
++}
++
+ void d3d12_set_spin_wait_us(int spin_us) {
+     g_spin_wait_us = spin_us;
+ }
+diff --git a/uwp/inference-bridge.cpp b/uwp/inference-bridge.cpp
+index 8cc84b5..67c2572 100644
+--- a/uwp/inference-bridge.cpp
++++ b/uwp/inference-bridge.cpp
+@@ -170,6 +170,17 @@ void apply_spinwait_knob(const char* who) {
+     log_output(lb);
+ }
+ 
++// Plan 007: RMS_NORM + MUL bounded chain selector. bench_normmul.txt "1"
++// enables; absent/anything else keeps it off (default). Process-wide, read at
++// each bench start so a paired A/B can flip it per run.
++void apply_normmul_knob(const char* who) {
++    const std::string raw = read_local_file("bench_normmul.txt");
++    const bool on = raw == "1";
++    ::xllama::d3d12_set_normmul_enabled(on);
++    log_output(std::string("[xllama] ") + who + ": bench_normmul.txt='" +
++               (raw.empty() ? "(absent)" : raw) + "' -> RMS_NORM+MUL " + (on ? "D3D12" : "CPU") + "\n");
++}
++
+ // Existing-instrumentation switch (plan004 rev102): ggmlprof.txt strict
+ // single token -> _putenv of the matching env read by the PINNED ggml/llama
+ // (default-off facilities; no submodule change). Absent or anything else
+@@ -902,6 +913,7 @@ void apply_startup_profile() {
+     s_prof_repack = read_local_file("cpurepackforcegemv.txt");
+     apply_twocol_knob("startup");      // no-op when file absent
+     apply_repack_ctrl_knob("startup"); // _putenv only when file present
++    apply_normmul_knob("startup");
+     char lb[256];
+     snprintf(lb, sizeof(lb),
+              "[xllama] startup profile: twocol='%s' repack='%s' (immutable for this "
+@@ -1039,6 +1051,7 @@ void main_loop() {
+     apply_repack_ctrl_knob("main_loop");
+     apply_spinwait_knob("main_loop");
+     apply_ggmlprof_knob("main_loop");
++    apply_normmul_knob("main_loop");
+ 
+     // Real-decode two-column knob (plan 004): d3d12twocol.txt="auto" engages
+     // variant 2 (allowlisted NEW) for every decode in this bench process —

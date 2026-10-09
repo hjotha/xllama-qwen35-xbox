@@ -431,6 +431,7 @@ class LlamaSession final : public Session {
     int m_n_threads_batch; // graphs with >1 token (prefill/verify/catch-up)
     int m_n_batch;         // 0 = llama.cpp default
     int m_n_ubatch;        // 0 = llama.cpp default
+    int m_n_seq_max = 1;   // llama.cpp context sequence capacity (1 = single session)
     // Persistent context across turns: the KV cache lives here so a reuse turn
     // (reuse_kv && !reset_kv) can append only the delta instead of re-prefilling
     // the whole conversation. Created lazily on the first generate().
@@ -476,11 +477,12 @@ class LlamaSession final : public Session {
     explicit LlamaSession(LlamaModelPtr model, LlamaAdapterLoraPtr adapter, float lora_scale,
                           int n_ctx, int n_threads, int n_threads_batch, int n_batch, int n_ubatch,
                           bool kv_q8, bool prompt_lookup, int gpu_layers, bool mtp, int mtp_n_max,
-                          float mtp_p_min)
+                          float mtp_p_min, int n_seq_max)
         : m_model(std::move(model)), m_adapter(std::move(adapter)), m_lora_scale(lora_scale),
           m_n_ctx(n_ctx), m_n_threads(n_threads), m_n_threads_batch(n_threads_batch),
           m_n_batch(n_batch), m_n_ubatch(n_ubatch), m_kv_q8(kv_q8), m_prompt_lookup(prompt_lookup),
-          m_gpu_layers(gpu_layers), m_mtp(mtp), m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min) {}
+          m_gpu_layers(gpu_layers), m_mtp(mtp), m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min),
+          m_n_seq_max(n_seq_max > 0 ? n_seq_max : 1) {}
 
     // Lazy context creation, shared by generate() and the state-file entry
     // points (#170b needs a context before the first turn). Returns false and
@@ -518,6 +520,13 @@ class LlamaSession final : public Session {
                 cparams.n_batch = static_cast<uint32_t>(m_n_batch);
             if (m_n_ubatch > 0)
                 cparams.n_ubatch = static_cast<uint32_t>(m_n_ubatch);
+            // One context, up to n_seq_max sequences (llama.ini [n_seq_max] /
+            // [n_parallel]). The default 1 is exactly the pre-existing
+            // single-sequence context; sequences share the same n_ctx cells.
+            cparams.n_seq_max = static_cast<uint32_t>(m_n_seq_max);
+            if (m_n_seq_max != 1)
+                log_output("[xllama] session: n_seq_max=" + std::to_string(m_n_seq_max) +
+                           " (sequences share n_ctx=" + std::to_string(m_n_ctx) + ")\n");
             clamp_speculative_n_rs_seq(cparams, speculative_n_rs_seq(m_mtp, m_mtp_n_max));
             if (m_mtp && cparams.n_rs_seq > 0)
                 log_output("[xllama] session: speculative n_rs_seq=" +
@@ -876,7 +885,7 @@ class LlamaSession final : public Session {
                         m_mtp_drafter.reset();
                     }
                 }
-            });
+            }, gp.profile_phases);
         if (pf_rows < 0) {
             res.error_msg = "prompt decode failed";
             log_output("[xllama] session generate: prompt decode failed\n");
@@ -1531,10 +1540,10 @@ std::unique_ptr<Session> create_llama(const SessionParams& sp, std::string* err)
     int n_threads_batch = sp.n_threads_batch > 0 ? sp.n_threads_batch : n_threads;
     int n_ctx = sp.n_ctx > 0 ? sp.n_ctx : kDefaultNCtx;
     log_output("[xllama] Session: GGUF model loaded via llama.cpp (persistent)\n");
-    return std::make_unique<LlamaSession>(LlamaModelPtr(raw_model), std::move(adapter),
-                                          sp.lora_scale, n_ctx, n_threads, n_threads_batch,
-                                          sp.n_batch, sp.n_ubatch, sp.kv_q8, sp.prompt_lookup,
-                                          gpu_layers, sp.mtp, sp.mtp_n_max, sp.mtp_p_min);
+    return std::make_unique<LlamaSession>(
+        LlamaModelPtr(raw_model), std::move(adapter), sp.lora_scale, n_ctx, n_threads,
+        n_threads_batch, sp.n_batch, sp.n_ubatch, sp.kv_q8, sp.prompt_lookup, gpu_layers, sp.mtp,
+        sp.mtp_n_max, sp.mtp_p_min, sp.n_seq_max);
 }
 } // namespace detail
 

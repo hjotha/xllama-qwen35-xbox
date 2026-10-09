@@ -572,3 +572,12 @@ TEST_CASE("SessionHub: batch-thread identity reuses or recreates the session") {
     CHECK(hub.session == nullptr);
     CHECK(hub.model.empty());
 }
+
+TEST_CASE("session: sequence capacity defaults to the single-session context") {
+    // llama.ini [n_seq_max] / [n_parallel] raise it; nothing lowers the default
+    // below one sequence, and the hub still serves one request at a time.
+    xllama::SessionParams sp;
+    CHECK(sp.n_seq_max == 1);
+    sp.n_seq_max = 2;
+    CHECK(sp.n_seq_max == 2);
+}

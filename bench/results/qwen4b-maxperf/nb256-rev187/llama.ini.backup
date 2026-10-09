@@ -1,0 +1,36 @@
+# LocalState\llama.ini — llama.cpp session defaults (Xbox)
+# PROVEN MVP config 2026-10-07 (see bench/results/mvp-20261007-INSTRUCTIONS.md):
+#   n_gpu_layers=34 kv_q8=0 n_ctx=2048 n_batch=64 n_ubatch=64 (n_threads auto)
+# Flat key = value. "#" and ";" start comments; [llama] is optional.
+# Keys are case-insensitive; the last occurrence wins.
+# Precedence: gguf_gpu_layers.txt / kv_q8.txt (single-purpose files) > this
+# file > catalogue / compiled default.
+
+[llama]
+
+# Layers whose weight matmuls run on the d3d12 backend. 99 = all.
+# This is what put 33/33 qwen35-4b layers on the GPU (2595.90 MiB weights).
+
+# q8_0 KV cache instead of F16: halves the KV buffer (128.00 -> 68.00 MiB).
+# #171.
+
+# Context window in tokens.
+
+# CPU threads for the layers that stay off the GPU. 0 = auto (leave 0 to let
+# the console pick).
+
+# llama.cpp prefill batching. 0 = library default (n_batch 2048, n_ubatch 512).
+
+# MTP drafting for the selected model (plan004 MVP): depth + confidence floor.
+n_gpu_layers=34
+n_ctx=2048
+n_threads=2
+n_batch=64
+n_ubatch=64
+kv_q8=0
+mtp=2
+mtp_pmin=50
+
+# Plan 006 C5 follow-up: session budget + sequence capacity (one home)
+n_predict=48
+n_seq_max=2

@@ -1,0 +1,7 @@
+release receipt rev175 2026-10-08T13:34:35Z
+pfn=GianlucaMazza.xllama_1.6.0.175_x64__pj67f1fcj4n14
+msix_sha256=46E234DC43DC5B5481DC84483EB9ED548BC421B3C059F86F764F537855C43255 (full Release LTCG, 645.88 s; builder sha == fetched)
+source=verified source + plan-008 island code, d3d12island default OFF (production-safe); d3d12swiglu=0
+api: PASS; parity chat64-mtp 84e081965076a0c9 baseline
+termgate: 6/6 ok, seq/ref/cand byte-identical to rev163
+note: selftest rev175 not re-run (identical source to rev174 on the production path); C4 silu/swiglu edge failures scoped in island-rev174/verdict.md

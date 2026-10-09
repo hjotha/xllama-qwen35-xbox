@@ -847,8 +847,12 @@ void MainPageController::WaitKvSnapshotSave() {
 }
 
 void MainPageController::ApplyCatalogueModelKnobs(const std::wstring& model) {
-    // Catalogue optional n_predict (thinking tier uses 1024 — #223). 0 / absent
-    // leaves the Settings slider alone so chat/coding stay at the user's value.
+    // llama.ini [n_predict] seeds the slider when the catalogue has no opinion,
+    // so the UI and the LAN API share one default budget. A catalogue value
+    // still wins (thinking tier uses 1024 — #223); 0 / absent in the catalogue
+    // leaves the user's slider value alone.
+    if (::xllama::llama_ini_n_predict > 0)
+        m_n_predict = std::clamp(::xllama::llama_ini_n_predict, 16, 2048);
     const auto& manifest = CachedManifest();
     const auto* e = ::xllama::FindManifestEntry(manifest, model);
     if (!e || e->n_predict <= 0)
