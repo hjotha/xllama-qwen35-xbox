@@ -1,0 +1,133 @@
+#pragma once
+
+#include "llama-hparams.h"  // LLAMA_MAX_LAYERS
+#include "llama.h"
+
+#include <array>
+#include <cstdint>
+#include <vector>
+
+#define LLAMA_MAX_SEQ 256
+
+struct llama_cparams {
+    uint32_t n_ctx;           // context size used during inference
+    uint32_t n_ctx_seq;       // context for a single sequence
+    uint32_t n_batch;
+    uint32_t n_ubatch;
+    uint32_t n_seq_max;
+    uint32_t n_rs_seq;        // number of recurrent-state snapshots per seq for rollback
+    uint32_t n_outputs_max;   // max outputs supported by the context
+    uint32_t n_outputs_max_per_seq;
+    int32_t  n_threads;       // number of threads to use for generation
+    int32_t  n_threads_batch; // number of threads to use for batch processing
+
+    uint32_t block_size;
+    uint32_t n_gpu_blocks;
+    uint32_t n_gpu_blocks_initial;
+    uint32_t n_gpu_blocks_growth;
+    uint32_t n_cpu_blocks;
+    float    kv_paged_watermark;
+
+    bool     snapkv_enabled;
+    uint32_t snapkv_observation_window;
+    uint32_t snapkv_recent_tokens;
+    uint32_t snapkv_pinned_tokens;
+    float    snapkv_retention;
+    uint32_t snapkv_budget_blocks;
+
+    int32_t  nextn_layer_offset = 0;
+
+    float rope_freq_base;
+    float rope_freq_scale;
+
+    uint32_t n_ctx_orig_yarn;
+    // These hyperparameters are not exposed in GGUF, because all
+    // existing YaRN models use the same values for them.
+    float yarn_ext_factor;
+    float yarn_attn_factor;
+    float yarn_beta_fast;
+    float yarn_beta_slow;
+
+    bool embeddings;
+    bool embeddings_nextn;        // also extract the hidden state before the final output norm
+    bool embeddings_nextn_masked; // extract for only rows where batch.logits != 0
+
+    // multi-layer hidden-state tap (EAGLE3 / dspark target-feature reuse)
+    // when n_capture_layers > 0 the model graph concatenates the per-layer output
+    // of each layer in capture_layer_idx[0..n_capture_layers) along dim0 and the
+    // context exposes it per position as a row of width [n_capture_layers * n_embd].
+    // the order of capture_layer_idx defines the concatenation order.
+    bool                                  embeddings_capture = false;
+    uint32_t                              n_capture_layers   = 0;
+    std::array<int32_t, LLAMA_MAX_LAYERS> capture_layer_idx  = {};
+
+    bool causal_attn;
+    bool offload_kqv;
+    bool offload_rs;  // place recurrent state with the model backend, independently of attention KV
+    bool flash_attn;
+    bool auto_fa;
+    bool fused_gdn_ar;       // use fused gated delta net (autoregressive)
+    bool fused_gdn_ch;       // use fused gated delta net (chunked)
+    bool auto_fgdn;
+    bool fused_lid;          // use fused lightning indexer
+    bool auto_flid;
+    bool fused_dsv4_hc_pre;
+    bool fused_dsv4_hc_comb;
+    bool fused_dsv4_hc_post;
+    bool auto_fhc;
+    bool no_perf;
+    bool warmup;             // TODO: remove [TAG_LLAMA_GRAPH_NO_WARMUP]
+    bool op_offload;
+bool kv_unified;
+    bool kv_paged;
+    bool kv_paged_dynamic;
+    bool pipeline_parallel;
+
+    std::vector<bool> embeddings_layer_inp; // [n_layer()] extract input embeddings for layer
+
+    enum llama_context_type ctx_type;
+    enum llama_rope_scaling_type rope_scaling_type;
+    enum llama_pooling_type pooling_type;
+
+    // Structured KVarN cache settings.  Kept in the internal context params so
+    // memory creation does not need to depend on the public params object.
+    llama_kvarn_params kvarn;
+
+    // Remote KV+attention accelerator (Xbox RKVA). When enabled, the
+    // full-attention layers of the qwen35 arch offload their KV cache and
+    // attention core to a remote D3D12 server; the target weights, DeltaNet
+    // state, projections, RoPE, gate and FFN all stay local. The host sends
+    // post-RoPE Q/K/V + positions and receives only the attention output.
+    // Native in-process attention backend; nullptr for the TCP RKVA path.
+    ggml_backend_t local_attn_backend = nullptr;
+    // Optional remote mirror backend for the explicit prefill-migration mode.
+    ggml_backend_t local_attn_migration_backend = nullptr;
+    ggml_backend_t local_attn_prefill_backend = nullptr;
+    bool        local_attn_migration = false;
+    bool        local_attn_migration_fallback = false;
+    bool        remote_attn_enabled = false;
+    int         remote_attn_layers  = 0;   // count of full-attention layers offloaded (0 = none)
+    int         remote_attn_prefill = 0;   // 0 = static remote attention, 1 = prefill migration
+    bool        remote_attn_stats   = false;
+    ggml_type   remote_attn_cache_type_k = GGML_TYPE_COUNT;
+    ggml_type   remote_attn_cache_type_v = GGML_TYPE_COUNT;
+
+    // Prism: per-channel K-cache mean-centering bias file (requires type_k == Q4_0).
+    const char * path_kv_mean_center = nullptr;
+
+    uint32_t  kv_tail_tokens = 0;
+    uint32_t  kv_tail_tokens_swa = 0;
+    uint32_t  kv_tail_tokens_requested = 0;
+    uint32_t  kv_tail_tokens_swa_requested = 0;
+    bool      kv_tail_native_exact = false;
+    bool      kv_tail_native_exact_swa = false;
+    uint32_t  kv_tail_rollback_tokens = 0;
+    ggml_type kv_tail_type   = GGML_TYPE_COUNT;
+
+    ggml_backend_sched_eval_callback cb_eval;
+    void * cb_eval_user_data;
+
+    llama_context * ctx_other;
+    bool dflash_split = false;
+    bool dflash_selector_only = false;
+};

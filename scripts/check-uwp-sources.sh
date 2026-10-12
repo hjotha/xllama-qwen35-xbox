@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# check-uwp-sources.sh — guard uwp/ggml-uwp.vcxproj against llama.cpp submodule drift.
+#
+# The Linux build globs llama.cpp sources via CMake; the UWP build lists them by
+# hand in ggml-uwp.vcxproj. src/models/*.cpp is now a MSBuild wildcard (one file
+# per architecture — the volatile set), so it can't drift. The top-level
+# src/*.cpp may also be wildcarded; this check accepts that complete inventory
+# or verifies explicit entries (the 657e011 bump added previously missing
+# llama-kv-cache-dsa/dsv4.cpp → LNK2001).
+#
+# Run after `git submodule update` (both UWP workflows do this via
+# apply-uwp-patches.sh).
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VCX="$ROOT/uwp/ggml-uwp.vcxproj"
+SRC="$ROOT/llama.cpp/src"
+
+if [[ ! -f "$VCX" ]]; then
+	echo "check-uwp-sources: $VCX not found" >&2
+	exit 1
+fi
+if [[ ! -d "$SRC" ]]; then
+	echo "check-uwp-sources: $SRC not found — is the submodule checked out?" >&2
+	exit 1
+fi
+
+missing=0
+for f in "$SRC"/*.cpp; do
+	base="$(basename "$f")"
+	# vcxproj entries look like: Include="..\llama.cpp\src\<base>"
+	if ! grep -qF '..\llama.cpp\src\*.cpp"' "$VCX" && ! grep -qF "\\src\\$base\"" "$VCX"; then
+		echo "DRIFT: llama.cpp/src/$base is not referenced in ggml-uwp.vcxproj"
+		missing=1
+	fi
+done
+
+# The CPU backend has a separate explicit source inventory. Check its root and
+# x86 kernels too; optional AMX/other-architecture directories stay excluded.
+for dir in "$ROOT/llama.cpp/ggml/src/ggml-cpu" "$ROOT/llama.cpp/ggml/src/ggml-cpu/arch/x86"; do
+	for f in "$dir"/*.cpp "$dir"/*.c; do
+		[[ -f "$f" ]] || continue
+		rel="${f#"$ROOT/"}"
+		win_rel="${rel//\//\\}"
+		if ! grep -qF "$win_rel\"" "$VCX"; then
+			echo "DRIFT: $rel is not referenced in ggml-uwp.vcxproj"
+			missing=1
+		fi
+	done
+done
+
+if [[ "$missing" -ne 0 ]]; then
+	echo "" >&2
+	echo "ggml-uwp.vcxproj is out of sync with the llama.cpp/CPU source inventory." >&2
+	echo "Add the missing <ClCompile Include=\"..\\llama.cpp\\src\\<file>.cpp\" /> entries." >&2
+	exit 1
+fi
+
+count="$(find "$SRC" -maxdepth 1 -name '*.cpp' | wc -l)"
+echo "check-uwp-sources: top-level src in sync ($count files; models/*.cpp wildcarded)."

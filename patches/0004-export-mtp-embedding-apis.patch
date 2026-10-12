@@ -1,0 +1,88 @@
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+index 792b8a8d9..146933360 100644
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -6659,7 +6659,7 @@ float * llama_get_embeddings_seq(llama_context * ctx, llama_seq_id seq_id) {
+     return ctx->get_embeddings_seq(seq_id);
+ }
+ 
+-void llama_set_embeddings_nextn(llama_context * ctx, bool value, bool masked) {
++extern "C" LLAMA_API void llama_set_embeddings_nextn(llama_context * ctx, bool value, bool masked) {
+     ctx->set_embeddings_nextn(value, masked);
+ }
+ 
+@@ -6693,7 +6693,7 @@ float * llama_get_embeddings_nextn(llama_context * ctx) {
+     return ctx->get_embeddings_nextn();
+ }
+ 
+-float * llama_get_embeddings_nextn_ith(llama_context * ctx, int32_t i) {
++extern "C" LLAMA_API float * llama_get_embeddings_nextn_ith(llama_context * ctx, int32_t i) {
+     ctx->synchronize();
+ 
+     return ctx->get_embeddings_nextn_ith(i);
+@@ -7291,7 +7291,7 @@ llama_kv_memory_stats llama_get_kv_memory_stats(const struct llama_context * ctx
+     return memory ? memory->kv_memory_stats() : llama_kv_memory_stats{};
+ }
+ 
+-llama_context * llama_get_ctx_other(struct llama_context * ctx) {
++extern "C" LLAMA_API llama_context * llama_get_ctx_other(struct llama_context * ctx) {
+     return ctx->get_cparams().ctx_other;
+ }
+ 
+diff --git a/src/llama-ext.h b/src/llama-ext.h
+index e5f858c2d..e2cac1374 100644
+--- a/src/llama-ext.h
++++ b/src/llama-ext.h
+@@ -46,7 +46,7 @@ enum class llama_mtp_weights_fault : uint8_t { none, allocation, upload };
+ LLAMA_API bool llama_model_mtp_weights_set_resident(
+         llama_model * model, bool resident, llama_mtp_weights_fault fault = llama_mtp_weights_fault::none);
+ // Do not read concurrently with residency changes; publish a copy for HTTP status.
+-LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model);
++extern "C" LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model);
+ 
+ // Managed MTP target, owner-thread only. Zero means no tracked unmasked NextN decode.
+ // State imports, failed/new decodes, encode, output reservation and a NextN mode change invalidate the ID.
+@@ -179,7 +179,11 @@ LLAMA_API llama_kv_memory_stats llama_get_kv_memory_stats(const struct llama_con
+ // Set whether the context outputs nextn embeddings or not
+ // If masked == true,  output the embeddings only for the tokens with batch.logits != 0
+ // If masked == false, output the embeddings for all tokens in the batch regardless of batch.logits
+-LLAMA_API void llama_set_embeddings_nextn(struct llama_context * ctx, bool value, bool masked);
++//
++// extern "C" so an out-of-tree C caller links against these. The rest of this
++// header is C++ on purpose -- several entry points return std::map / std::vector --
++// so it cannot be wrapped at file scope. See patches/0004.
++extern "C" LLAMA_API void llama_set_embeddings_nextn(struct llama_context * ctx, bool value, bool masked);
+ 
+ // Select which appended NextN block the DECODER_MTP graph runs (offset past
+ // the trunk: il = n_layer() + offset). Used by the speculative NextN driver to
+@@ -191,7 +195,7 @@ LLAMA_API void llama_set_nextn_layer_offset(struct llama_context * ctx, int32_t
+ LLAMA_API float * llama_get_embeddings_nextn(struct llama_context * ctx);
+ 
+ // LLAMA_API float * llama_get_embeddings_ith(struct llama_context * ctx, int32_t i);
+-LLAMA_API float * llama_get_embeddings_nextn_ith(struct llama_context * ctx, int32_t i);
++extern "C" LLAMA_API float * llama_get_embeddings_nextn_ith(struct llama_context * ctx, int32_t i);
+ 
+ // Set whether the context outputs the input embeddings of a specific layer
+ LLAMA_API void llama_set_embeddings_layer_inp(struct llama_context * ctx, uint32_t lid, bool value);
+@@ -200,7 +204,7 @@ LLAMA_API void llama_set_embeddings_layer_inp(struct llama_context * ctx, uint32
+ // LLAMA_API float * llama_get_embeddings(struct llama_context * ctx);
+ LLAMA_API float * llama_get_embeddings_layer_inp(struct llama_context * ctx, uint32_t lid);
+ 
+-LLAMA_API llama_context * llama_get_ctx_other(struct llama_context * ctx);
++extern "C" LLAMA_API llama_context * llama_get_ctx_other(struct llama_context * ctx);
+ 
+ //
+ // model/context data extraction
+diff --git a/src/llama-model.cpp b/src/llama-model.cpp
+index bdb8ec939..2a1f0877a 100644
+--- a/src/llama-model.cpp
++++ b/src/llama-model.cpp
+@@ -2473,7 +2473,7 @@ bool llama_model::set_mtp_weights_resident(bool resident, llama_mtp_weights_faul
+     }
+ }
+ 
+-llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model) {
++extern "C" LLAMA_API llama_mtp_weights_info llama_model_mtp_weights_get_info(const llama_model * model) {
+     return model ? model->mtp_weights_info() : llama_mtp_weights_info{};
+ }
+ 

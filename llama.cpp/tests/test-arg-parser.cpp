@@ -1,0 +1,2011 @@
+#include "arg.h"
+#include "common.h"
+#include "download.h"
+#include "gguf.h"
+#include "llama.h"
+#include "preset.h"
+#include "speculative.h"
+
+#include <algorithm>
+#include <functional>
+#include <cmath>
+#include <filesystem>
+#include <limits>
+#include <string>
+#include <vector>
+#include <sstream>
+#include <string>
+#include <utility>
+#include <unordered_set>
+#include <vector>
+
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
+
+#undef NDEBUG
+#include <cassert>
+
+static std::string capture_stderr(const std::function<void()> & fn) {
+    fflush(stderr);
+    FILE * capture = tmpfile();
+    assert(capture != nullptr);
+
+#ifdef _WIN32
+    const int stderr_fd = _fileno(stderr);
+    const int saved_fd  = _dup(stderr_fd);
+    assert(saved_fd >= 0);
+    assert(_dup2(_fileno(capture), stderr_fd) == 0);
+#else
+    const int stderr_fd = fileno(stderr);
+    const int saved_fd  = dup(stderr_fd);
+    assert(saved_fd >= 0);
+    assert(dup2(fileno(capture), stderr_fd) == stderr_fd);
+#endif
+
+    fn();
+    fflush(stderr);
+    assert(fseek(capture, 0, SEEK_SET) == 0);
+
+    std::string result;
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), capture) != nullptr) {
+        result += buffer;
+    }
+
+#ifdef _WIN32
+    assert(_dup2(saved_fd, stderr_fd) == 0);
+    _close(saved_fd);
+#else
+    assert(dup2(saved_fd, stderr_fd) == stderr_fd);
+    close(saved_fd);
+#endif
+    fclose(capture);
+    return result;
+}
+
+static void set_test_env(const char * name, const char * value) {
+#ifdef _WIN32
+    assert(_putenv_s(name, value) == 0);
+#else
+    assert(setenv(name, value, true) == 0);
+#endif
+}
+
+static void unset_test_env(const char * name) {
+#ifdef _WIN32
+    assert(_putenv_s(name, "") == 0);
+#else
+    assert(unsetenv(name) == 0);
+#endif
+}
+
+static void test(void) {
+    common_params params;
+
+    auto assert_output_limits = [](int32_t n_batch, int32_t n_parallel, int32_t n_draft,
+                                   int32_t total, int32_t per_seq) {
+        const auto limits = common_speculative_get_output_limits(n_batch, n_parallel, n_draft);
+        assert(limits.total == total);
+        assert(limits.per_seq == per_seq);
+    };
+
+    assert_output_limits(16, 2,  3, 8, 4);
+    assert_output_limits(16, 2, -1, 2, 1);
+    assert_output_limits( 6, 2,  3, 6, 4);
+    assert_output_limits( 2, 1,  3, 2, 2);
+    assert_output_limits(
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max(),
+            std::numeric_limits<int32_t>::max());
+
+    {
+        common_params_speculative spec;
+        spec.synth_len = 3.4;
+
+        auto assert_invalid = [](const common_params_speculative & value, int32_t n_max) {
+            try {
+                common_speculative_synth_rates_resolve(&value, n_max);
+                assert(false);
+            } catch (const std::invalid_argument &) {
+            }
+        };
+
+        const auto rates = common_speculative_synth_rates_resolve(&spec, 4);
+        assert(rates.size() == 4);
+        assert(std::abs(rates[0] - 0.80581) < 1e-5);
+        assert(std::abs(rates[1] - 0.64933) < 1e-5);
+        assert(std::abs(rates[2] - 0.52323) < 1e-5);
+        assert(std::abs(rates[3] - 0.42163) < 1e-5);
+        assert(std::abs(1.0 + rates[0] + rates[1] + rates[2] + rates[3] - 3.4) < 1e-8);
+
+        spec.synth_len = 1.0;
+        assert(common_speculative_synth_rates_resolve(&spec, 4) == std::vector<double>({0.0, 0.0, 0.0, 0.0}));
+
+        spec.synth_len = 5.0;
+        assert(common_speculative_synth_rates_resolve(&spec, 4) == std::vector<double>({1.0, 1.0, 1.0, 1.0}));
+
+        spec.synth_len = 5.1;
+        assert_invalid(spec, 4);
+
+        spec.synth_len = std::numeric_limits<double>::quiet_NaN();
+        assert_invalid(spec, 4);
+
+        spec.synth_len = 0.0;
+        assert_invalid(spec, 4);
+
+        spec.synth_len = -1.0;
+        spec.synth_rates = {0.8, 0.6, 0.4};
+        assert_invalid(spec, 4);
+
+        spec.synth_rates = {0.8, 0.6, 0.4, 0.2};
+        assert(common_speculative_synth_rates_resolve(&spec, 4) == spec.synth_rates);
+
+        spec.synth_rates = {0.8, 0.9, 0.4, 0.2};
+        assert_invalid(spec, 4);
+
+        spec.synth_rates = {0.8, std::numeric_limits<double>::quiet_NaN(), 0.4, 0.2};
+        assert_invalid(spec, 4);
+
+        spec.synth_rates = {0.8, 0.6, 0.4, -0.2};
+        assert_invalid(spec, 4);
+
+        spec.synth_rates = {0.8, 0.6, 0.4, 0.2};
+        spec.synth_len = 3.0;
+        assert_invalid(spec, 4);
+    }
+
+    {
+        common_params base;
+        base.n_parallel = 4;
+        base.n_outputs_max_per_seq = 8;
+        base.remote_attn_cache_type_k = GGML_TYPE_Q4_0;
+        base.remote_attn_cache_type_v = GGML_TYPE_Q8_0;
+
+        const auto draft = common_base_params_to_speculative(base);
+        assert(draft.n_outputs_max == 4);
+        assert(draft.n_outputs_max_per_seq == 1);
+        assert(draft.remote_attn_cache_type_k == GGML_TYPE_COUNT);
+        assert(draft.remote_attn_cache_type_v == GGML_TYPE_COUNT);
+    }
+
+    printf("test-arg-parser: make sure there is no duplicated arguments in any examples\n\n");
+    for (int ex = 0; ex < LLAMA_EXAMPLE_COUNT; ex++) {
+        try {
+            auto ctx_arg = common_params_parser_init(params, (enum llama_example)ex);
+            common_params_add_preset_options(ctx_arg.options);
+            std::unordered_set<std::string> seen_args;
+            std::unordered_set<std::string> seen_env_vars;
+            for (const auto & opt : ctx_arg.options) {
+                // check for args duplications
+                for (const auto & arg : opt.get_args()) {
+                    if (seen_args.find(arg) == seen_args.end()) {
+                        seen_args.insert(arg);
+                    } else {
+                        fprintf(stderr, "test-arg-parser: found different handlers for the same argument: %s", arg.c_str());
+                        exit(1);
+                    }
+                }
+                // check for env var duplications
+                for (const auto & env : opt.get_env()) {
+                    if (seen_env_vars.find(env) == seen_env_vars.end()) {
+                        seen_env_vars.insert(env);
+                    } else {
+                        fprintf(stderr, "test-arg-parser: found different handlers for the same env var: %s", env.c_str());
+                        exit(1);
+                    }
+                }
+
+                // exclude spec args from this check
+                // ref: https://github.com/ggml-org/llama.cpp/pull/22397
+                const bool skip = opt.is_spec;
+
+                // ensure shorter argument precedes longer argument
+                if (!skip && opt.args.size() > 1) {
+                    const std::string first(opt.args.front());
+                    const std::string last(opt.args.back());
+
+                    if (first.length() > last.length()) {
+                        fprintf(stderr, "test-arg-parser: shorter argument should come before longer one: %s, %s\n",
+                                first.c_str(), last.c_str());
+                        assert(false);
+                    }
+                }
+
+                // same check for negated arguments
+                if (opt.args_neg.size() > 1) {
+                    const std::string first(opt.args_neg.front());
+                    const std::string last(opt.args_neg.back());
+
+                    if (first.length() > last.length()) {
+                        fprintf(stderr, "test-arg-parser: shorter negated argument should come before longer one: %s, %s\n",
+                                first.c_str(), last.c_str());
+                        assert(false);
+                    }
+                }
+            }
+        } catch (std::exception & e) {
+            printf("%s\n", e.what());
+            assert(false);
+        }
+    }
+
+    auto list_str_to_char = [](std::vector<std::string> & argv) -> std::vector<char *> {
+        std::vector<char *> res;
+        for (auto & arg : argv) {
+            res.push_back(const_cast<char *>(arg.data()));
+        }
+        return res;
+    };
+
+    std::vector<std::string> argv;
+
+    {
+        const std::string canary = "hf_PRODUCTION_READINESS_SECRET_CANARY_123456789";
+        std::vector<std::string> secret_argv = {"llama-server", "--hf-token", canary};
+        common_preset_context preset_ctx(LLAMA_EXAMPLE_SERVER);
+        common_preset preset = preset_ctx.load_from_args(
+            (int) secret_argv.size(), list_str_to_char(secret_argv).data());
+
+        const std::vector<std::string> rendered = preset.to_args("llama-server");
+        assert(std::find(rendered.begin(), rendered.end(), canary) == rendered.end());
+        assert(preset.to_ini().find(canary) == std::string::npos);
+    }
+
+    {
+        common_params rs_params;
+        argv = {"binary_name", "--no-offload-rs"};
+        assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), rs_params, LLAMA_EXAMPLE_SERVER));
+        assert(rs_params.no_offload_rs);
+        assert(common_context_params_to_llama(rs_params).no_offload_rs);
+
+        argv = {"binary_name", "--offload-rs"};
+        assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), rs_params, LLAMA_EXAMPLE_SERVER));
+        assert(!rs_params.no_offload_rs);
+        assert(!common_context_params_to_llama(rs_params).no_offload_rs);
+    }
+
+    printf("test-arg-parser: test invalid usage\n\n");
+
+    // missing value
+    argv = {"binary_name", "-m"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    // wrong value (int)
+    argv = {"binary_name", "-ngl", "hello"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    // wrong value (enum)
+    argv = {"binary_name", "-sm", "hello"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+params = common_params();
+    argv = {"binary_name", "--kv-kvarn", "kvarn_k4v2_g128"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "--cache-type-k", "kvarn7"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "--kv-tail-tokens", "auto,128"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "--kv-tail-tokens", "full=128,full=256"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "--kv-tail-type", "f32"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "--spec-draft-type-k", "kvarn7"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn2", "--kv-kvarn-sink-tokens", "256"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--kv-kvarn-sinkhorn-iters", "12"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--kv-kvarn-fallback"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--grp-attn-n", "2"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMPLETION));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--kv-kvarn-pool-mem-frac", "0.15"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    // checkpoint count cannot wrap through size_t during snapshot budgeting
+    argv = {"binary_name", "--ctx-checkpoints", "-1"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    {
+        common_params penalty_params;
+        assert(penalty_params.sampling.penalty_last_n == 64);
+        assert(penalty_params.sampling.dry_penalty_last_n == 64);
+
+        argv = {"binary_name", "--repeat-last-n", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--dry-penalty-last-n", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--repeat-penalty", "0"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--repeat-penalty", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--repeat-penalty", "nan"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--repeat-penalty", "inf"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        argv = {"binary_name", "--repeat-penalty", "-inf"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+
+        const char * penalty_options[] = {"--frequency-penalty", "--presence-penalty"};
+        const char * nonfinite_values[] = {"nan", "inf", "-inf"};
+        for (const char * option : penalty_options) {
+            for (const char * value : nonfinite_values) {
+                argv = {"binary_name", option, value};
+                assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), penalty_params, LLAMA_EXAMPLE_COMMON));
+            }
+        }
+    }
+
+    // Removed legacy speculative aliases, including --draft outside llama-speculative.
+    params = common_params();
+    argv = {"binary_name", "--draft", "123"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-n", "123"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-max", "123"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-min", "1"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-n-min", "1"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--tree-budget", "20"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--spec-dflash-default"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--dflash-max-slots", "1"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-topk", "4"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--draft-model", "draft.gguf"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--spec-replace", "TARGET", "DRAFT"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--spec-draft-replace", "TARGET", "DRAFT"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "-lm", "hello"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    printf("test-arg-parser: test valid usage\n\n");
+
+    argv = {"binary_name", "-m", "model_file.gguf"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.model.path == "model_file.gguf");
+    assert(params.kv_tail_tokens == "0");
+    assert(params.kv_tail_type == GGML_TYPE_COUNT);
+    assert(common_context_params_to_llama(params).kv_tail_tokens == 0);
+    assert(common_context_params_to_llama(params).kv_tail_type == GGML_TYPE_COUNT);
+
+    const llama_context_params context_defaults = llama_context_default_params();
+    assert(context_defaults.kv_tail_type == GGML_TYPE_COUNT);
+    assert(context_defaults.remote_attn_cache_type_k == GGML_TYPE_COUNT);
+    assert(context_defaults.remote_attn_cache_type_v == GGML_TYPE_COUNT);
+    assert(context_defaults.remote_attn_vulkan_reserve == 512u * 1024u * 1024u);
+
+    {
+        const std::vector<std::pair<const char *, ggml_type>> supported_remote_types = {
+            { "q4_0", GGML_TYPE_Q4_0 },
+            { "q5_0", GGML_TYPE_Q5_0 },
+            { "q6_0", GGML_TYPE_Q6_0 },
+            { "q8_0", GGML_TYPE_Q8_0 },
+        };
+        for (const auto & [name, type] : supported_remote_types) {
+            common_params mixed;
+            std::vector<std::string> mixed_argv = {
+                "binary_name", "-m", "model_file.gguf",
+                "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+                "--remote-attn", "vulkan:0",
+                "--remote-attn-cache-type-k", name,
+                "--remote-attn-cache-type-v", name,
+                "--remote-attn-vulkan-reserve", "640M",
+            };
+            assert(common_params_parse(
+                    mixed_argv.size(), list_str_to_char(mixed_argv).data(), mixed, LLAMA_EXAMPLE_SERVER));
+            mixed.n_parallel = 1;
+            const auto context = common_context_params_to_llama(mixed);
+            assert(context.remote_attn_cache_type_k == type);
+            assert(context.remote_attn_cache_type_v == type);
+            assert(context.remote_attn_vulkan_reserve == 640u * 1024u * 1024u);
+        }
+
+        auto invalid_mixed_context = [](common_params & mixed) {
+            try {
+                (void) common_context_params_to_llama(mixed);
+                return false;
+            } catch (const std::invalid_argument &) {
+                return true;
+            }
+        };
+
+        common_params missing_v;
+        std::vector<std::string> missing_v_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--remote-attn-cache-type-k", "q4_0",
+        };
+        assert(common_params_parse(
+                missing_v_argv.size(), list_str_to_char(missing_v_argv).data(), missing_v,
+                LLAMA_EXAMPLE_SERVER));
+        assert(invalid_mixed_context(missing_v));
+
+        common_params no_kvarn;
+        std::vector<std::string> no_kvarn_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--remote-attn", "vulkan:0",
+            "--remote-attn-cache-type-k", "q4_0",
+            "--remote-attn-cache-type-v", "q4_0",
+        };
+        assert(common_params_parse(
+                no_kvarn_argv.size(), list_str_to_char(no_kvarn_argv).data(), no_kvarn,
+                LLAMA_EXAMPLE_SERVER));
+        no_kvarn.n_parallel = 1;
+        assert(invalid_mixed_context(no_kvarn));
+
+        common_params remote_endpoint;
+        std::vector<std::string> remote_endpoint_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--remote-attn", "127.0.0.1:18090",
+            "--remote-attn-cache-type-k", "q4_0",
+            "--remote-attn-cache-type-v", "q4_0",
+        };
+        assert(common_params_parse(
+                remote_endpoint_argv.size(), list_str_to_char(remote_endpoint_argv).data(), remote_endpoint,
+                LLAMA_EXAMPLE_SERVER));
+        remote_endpoint.n_parallel = 1;
+        assert(invalid_mixed_context(remote_endpoint));
+
+        common_params extra_tail;
+        std::vector<std::string> extra_tail_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--remote-attn", "vulkan:0",
+            "--remote-attn-cache-type-k", "q4_0",
+            "--remote-attn-cache-type-v", "q4_0",
+            "--kv-tail-tokens", "1",
+        };
+        assert(common_params_parse(
+                extra_tail_argv.size(), list_str_to_char(extra_tail_argv).data(), extra_tail,
+                LLAMA_EXAMPLE_SERVER));
+        extra_tail.n_parallel = 1;
+        assert(invalid_mixed_context(extra_tail));
+
+        common_params flash_off;
+        std::vector<std::string> flash_off_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--remote-attn", "vulkan:0",
+            "--remote-attn-cache-type-k", "q4_0",
+            "--remote-attn-cache-type-v", "q4_0",
+            "--flash-attn", "off",
+        };
+        assert(common_params_parse(
+                flash_off_argv.size(), list_str_to_char(flash_off_argv).data(), flash_off,
+                LLAMA_EXAMPLE_SERVER));
+        flash_off.n_parallel = 1;
+        assert(invalid_mixed_context(flash_off));
+
+        common_params no_kv_offload;
+        std::vector<std::string> no_kv_offload_argv = {
+            "binary_name", "-m", "model_file.gguf",
+            "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--remote-attn", "vulkan:0",
+            "--remote-attn-cache-type-k", "q4_0",
+            "--remote-attn-cache-type-v", "q4_0",
+            "--no-kv-offload",
+        };
+        assert(common_params_parse(
+                no_kv_offload_argv.size(), list_str_to_char(no_kv_offload_argv).data(), no_kv_offload,
+                LLAMA_EXAMPLE_SERVER));
+        no_kv_offload.n_parallel = 1;
+        assert(invalid_mixed_context(no_kv_offload));
+    }
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "q4_0", "--cache-type-v", "q4_0",
+            "--kv-tail-tokens", "1024", "--kv-tail-type", "f16"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+    assert(params.kv_tail_type == GGML_TYPE_F16);
+    assert(common_context_params_to_llama(params).kv_tail_type == GGML_TYPE_F16);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--kv-tail-tokens", "1024"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V4_G128);
+    assert(params.kv_tail_type == GGML_TYPE_COUNT);
+    assert(common_context_params_to_llama(params).kv_tail_type == GGML_TYPE_COUNT);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--cache-type-v", "kvarn4",
+            "--kv-tail-tokens", "1024", "--kv-tail-type", "bf16"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V4_G128);
+    assert(params.kv_tail_type == GGML_TYPE_BF16);
+    assert(common_context_params_to_llama(params).kv_tail_type == GGML_TYPE_BF16);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--kv-tail-tokens", "2048", "--kv-tail-type", "bf16"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kv_tail_tokens == "2048");
+    assert(params.kv_tail_type == GGML_TYPE_BF16);
+    assert(common_context_params_to_llama(params).kv_tail_tokens == 2048);
+    assert(common_context_params_to_llama(params).kv_tail_type == GGML_TYPE_BF16);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--kv-tail-tokens", "auto"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kv_tail_tokens == "auto");
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--kv-tail-tokens", "128,512"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kv_tail_tokens == "128,512");
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--kv-tail-tokens", "full@l0=128,swa@l1=512"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kv_tail_tokens == "full@l0=128,swa@l1=512");
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--batch-layout", "round-robin", "--logits-out", "tail-logits.bin"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_BENCH));
+    assert(params.batched_bench_batch_layout == "round-robin");
+    assert(params.batched_bench_logits_out == "tail-logits.bin");
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--batch-layout", "invalid"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_BENCH));
+
+    argv = {"binary_name", "-m", "model_file.gguf", "-t", "1234"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.cpuparams.n_threads == 1234);
+
+    params = common_params();
+    argv = {
+        "binary_name", "-m", "model_file.gguf",
+        "--cache-type-k", "kvarn4",
+        "--cache-type-v", "kvarn2",
+    };
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V2_G128);
+    assert(params.kvarn.key_bits == 4);
+    assert(params.kvarn.value_bits == 2);
+    assert(params.kvarn.swa_key_bits == 0);
+    assert(params.kvarn.swa_value_bits == 0);
+    assert(params.kvarn.sink_tokens == 128);
+    assert(params.kvarn.sinkhorn_iters == 16);
+    assert(params.kvarn.fail_if_unsupported);
+    assert(params.cache_kvarn_bits_k == 4);
+    assert(params.cache_kvarn_bits_v == 2);
+    assert(params.cache_type_k == GGML_TYPE_Q4_0);
+    assert(params.cache_type_v == GGML_TYPE_Q2_0S);
+    assert(!params.kv_unified);
+    assert(common_context_params_to_llama(params).kvarn.type == LLAMA_KVARN_K4V2_G128);
+    assert(!common_context_params_to_llama(params).kv_unified);
+
+    params = common_params();
+    argv = {
+        "binary_name", "-m", "model_file.gguf",
+        "--cache-type-k", "kvarn4",
+        "--cache-type-v", "kvarn4",
+        "--cache-type-k-swa", "kvarn8",
+        "--cache-type-v-swa", "kvarn6",
+    };
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V4_G128);
+    assert(params.kvarn.swa_key_bits == 8);
+    assert(params.kvarn.swa_value_bits == 6);
+    assert(common_context_params_to_llama(params).kvarn.swa_key_bits == 8);
+    assert(common_context_params_to_llama(params).kvarn.swa_value_bits == 6);
+
+    params = common_params();
+    argv = {
+        "binary_name", "-m", "model_file.gguf",
+        "--cache-type-k", "kvarn4",
+        "--cache-type-v", "kvarn4",
+        "--cache-type-k-swa", "kvarn8",
+    };
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--kv-unified", "--cache-type-k", "kvarn4"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V4_G128);
+    assert(params.kv_unified);
+    assert(common_context_params_to_llama(params).kv_unified);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn3"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K3V3_G128);
+    assert(params.kvarn.key_bits == 3);
+    assert(params.kvarn.value_bits == 3);
+    assert(params.cache_kvarn_bits_k == 3);
+    assert(params.cache_kvarn_bits_v == 3);
+    assert(params.cache_type_k == GGML_TYPE_Q3_0);
+    assert(params.cache_type_v == GGML_TYPE_Q3_0);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-v", "kvarn2"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K2V2_G128);
+    assert(params.kvarn.key_bits == 2);
+    assert(params.kvarn.value_bits == 2);
+    assert(params.cache_kvarn_bits_k == 2);
+    assert(params.cache_kvarn_bits_v == 2);
+    assert(params.cache_type_k == GGML_TYPE_Q2_0S);
+    assert(params.cache_type_v == GGML_TYPE_Q2_0S);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn4", "--cache-type-v", "f16"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K4V4_G128);
+    assert(params.kvarn.key_bits == 4);
+    assert(params.kvarn.value_bits == 4);
+    assert(params.cache_kvarn_bits_k == 4);
+    assert(params.cache_kvarn_bits_v == 4);
+    assert(params.cache_type_k == GGML_TYPE_Q4_0);
+    assert(params.cache_type_v == GGML_TYPE_Q4_0);
+
+    params = common_params();
+    argv = {
+        "binary_name", "-m", "model_file.gguf",
+        "--cache-type-k", "kvarn5",
+        "--cache-type-v", "kvarn2",
+    };
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K5V2_G128);
+    assert(params.kvarn.key_bits == 5);
+    assert(params.kvarn.value_bits == 2);
+    assert(params.cache_kvarn_bits_k == 5);
+    assert(params.cache_kvarn_bits_v == 2);
+    assert(params.cache_type_k == GGML_TYPE_Q5_0);
+    assert(params.cache_type_v == GGML_TYPE_Q2_0S);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "kvarn6"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K6V6_G128);
+    assert(params.kvarn.key_bits == 6);
+    assert(params.kvarn.value_bits == 6);
+    assert(params.cache_kvarn_bits_k == 6);
+    assert(params.cache_kvarn_bits_v == 6);
+    assert(params.cache_type_k == GGML_TYPE_Q6_0);
+    assert(params.cache_type_v == GGML_TYPE_Q6_0);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-v", "kvarn8"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.type == LLAMA_KVARN_K8V8_G128);
+    assert(params.kvarn.key_bits == 8);
+    assert(params.kvarn.value_bits == 8);
+    assert(params.cache_kvarn_bits_k == 8);
+    assert(params.cache_kvarn_bits_v == 8);
+    assert(params.cache_type_k == GGML_TYPE_Q8_0);
+    assert(params.cache_type_v == GGML_TYPE_Q8_0);
+
+    // Removed Turbo cache spellings redirect to the equivalent target KVarN types.
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--cache-type-k", "turbo3", "--cache-type-v", "turbo4_tcq"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.kvarn.key_bits == 3);
+    assert(params.kvarn.value_bits == 4);
+    assert(params.cache_kvarn_bits_k == 3);
+    assert(params.cache_kvarn_bits_v == 4);
+    assert(params.cache_type_k == GGML_TYPE_Q3_0);
+    assert(params.cache_type_v == GGML_TYPE_Q4_0);
+
+    // Draft KVarN uses the same pseudo types, bit-pair normalization, and legacy redirects as target KVarN.
+    for (const int bits : { 2, 3, 4, 5, 6, 8 }) {
+        for (const bool key : { false, true }) {
+            params = common_params();
+            const std::string option = key ? "--spec-draft-type-k" : "--spec-draft-type-v";
+            const std::string value = "kvarn" + std::to_string(bits);
+            argv = {"binary_name", "-m", "model_file.gguf", "--spec-type", "draft-simple", option, value};
+            assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+            const auto & draft = params.speculative.draft;
+            assert(draft.cache_kvarn_bits_k == bits);
+            assert(draft.cache_kvarn_bits_v == bits);
+            assert(draft.kvarn.type == llama_kvarn_type_from_name(
+                    ("kvarn_k" + std::to_string(bits) + "v" + std::to_string(bits) + "_g128").c_str()));
+            assert(draft.kvarn.key_bits == bits);
+            assert(draft.kvarn.value_bits == bits);
+            assert(draft.kvarn.swa_key_bits == 0);
+            assert(draft.kvarn.swa_value_bits == 0);
+        }
+    }
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-type", "draft-simple", "--spec-draft-type-k", "kvarn4", "--spec-draft-type-v", "kvarn2"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.kvarn.type == LLAMA_KVARN_K4V2_G128);
+    assert(params.speculative.draft.cache_type_k == GGML_TYPE_Q4_0);
+    assert(params.speculative.draft.cache_type_v == GGML_TYPE_Q2_0S);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-type", "draft-simple", "--spec-draft-type-k", "kvarn2", "--spec-draft-type-v", "kvarn4"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.kvarn.type == LLAMA_KVARN_K2V4_G128);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-type", "draft-simple", "--spec-draft-type-k", "turbo2_tcq", "--spec-draft-type-v", "turbo4"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.kvarn.type == LLAMA_KVARN_K2V4_G128);
+    assert(params.speculative.draft.cache_type_k == GGML_TYPE_Q2_0S);
+    assert(params.speculative.draft.cache_type_v == GGML_TYPE_Q4_0);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-draft-type-k", "kvarn4", "--spec-draft-type-k", "f16", "--spec-draft-type-v", "f16"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+    assert(params.speculative.draft.cache_kvarn_bits_k == 0);
+    assert(params.speculative.draft.cache_kvarn_bits_v == 0);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-draft-type-k", "q2_1", "--spec-draft-type-v", "q3_0"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+    assert(params.speculative.draft.cache_type_k == GGML_TYPE_Q2_1);
+    assert(params.speculative.draft.cache_type_v == GGML_TYPE_Q3_0);
+
+    argv = {"binary_name", "--verbose"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.verbosity > 1);
+
+    argv = {"binary_name", "-m", "abc.gguf", "--predict", "6789", "--batch-size", "9090"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.model.path == "abc.gguf");
+    assert(params.n_predict == 6789);
+    assert(params.n_batch == 9090);
+
+unset_test_env("LLAMA_ARG_SPEC_DRAFT_N_MAX");
+    params = common_params();
+    argv = {"binary_name", "--spec-type", "draft-dflash"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+    assert(params.speculative.draft.n_max == 3);
+    assert(!params.speculative.draft_n_max_explicit);
+
+    params = common_params();
+    // --draft cannot be used outside llama-speculative
+    argv = {"binary_name", "--spec-draft-n-max", "123"};
+    {
+        common_params adaptive;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--fit", "off", "--parallel", "1",
+            "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), adaptive, LLAMA_EXAMPLE_SERVER));
+        assert(adaptive.ctx_size_mtp == 600);
+        assert(adaptive.mtp_max_tokens == 500);
+        assert(adaptive.split_mtp_weights);
+        assert(common_context_is_adaptive(adaptive));
+        assert(common_context_mtp_limit(adaptive) == 500);
+        assert(common_context_adaptive_error(adaptive).empty());
+
+        const auto budget = common_context_budget_for_task(adaptive, 499, -1, true);
+        assert(budget.prompt_tokens == 499);
+        assert(budget.output_reserve == 4096);
+        assert(budget.total_tokens == 4595);
+        assert(common_context_profile_for_budget(adaptive, 499) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(adaptive, 500) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(adaptive, 501) == COMMON_CONTEXT_PROFILE_LONG);
+        common_params threshold_profile = adaptive;
+        threshold_profile.remote_attn_host = "vulkan:0";
+        threshold_profile.remote_attn_min_ctx_size = 102401;
+        threshold_profile.ctx_size_xxlong = 204800;
+        threshold_profile.xxlong_max_tokens = 204800;
+        assert(!common_context_remote_attn_enabled(threshold_profile, 102400));
+        assert(common_context_remote_attn_enabled(threshold_profile, 102401));
+        assert(common_context_remote_attn_enabled(threshold_profile, 204800));
+        assert(common_context_adaptive_error(threshold_profile).empty());
+        assert(common_context_output_reserve(adaptive, 0, true) == 0);
+        assert(common_context_output_reserve(adaptive, -1, false) == 0);
+        assert(common_context_output_reserve(adaptive, 7, true) == 7);
+        adaptive.n_predict = 123;
+        assert(common_context_output_reserve(adaptive, -1, true) == 123);
+
+        adaptive.mtp_max_tokens = 0;
+        assert(common_context_mtp_limit(adaptive) == 600);
+        assert(common_context_adaptive_error(adaptive, 599) ==
+               "--ctx-size-mtp must not exceed the long context size");
+
+        common_params capped = adaptive;
+        capped.mtp_max_tokens = 500;
+        assert(common_context_adaptive_error(capped, 512) ==
+               "--ctx-size-mtp must not exceed the long context size");
+        capped.ctx_size_mtp = 400;
+        capped.mtp_max_tokens = 400;
+        assert(common_context_adaptive_error(capped, 512).empty());
+
+        common_params tri_profile = adaptive;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), tri_profile, LLAMA_EXAMPLE_SERVER));
+        assert(tri_profile.ctx_size_mtp_short == 300);
+        assert(tri_profile.mtp_short_max_tokens == 250);
+        assert(tri_profile.spec_draft_n_max_short == 4);
+        assert(common_context_mtp_short_limit(tri_profile) == 250);
+        assert(common_context_adaptive_error(tri_profile).empty());
+        assert(common_context_profile_for_budget(tri_profile, 249) == COMMON_CONTEXT_PROFILE_MTP_SHORT);
+        assert(common_context_profile_for_budget(tri_profile, 250) == COMMON_CONTEXT_PROFILE_MTP_SHORT);
+        assert(common_context_profile_for_budget(tri_profile, 251) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(tri_profile, 500) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(tri_profile, 501) == COMMON_CONTEXT_PROFILE_LONG);
+
+        common_params five_profile = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--spec-draft-n-max-long", "0",
+            "--ctx-size-xl", "1200", "--xl-max-tokens", "1200", "--batch-size-xl", "64",
+            "--spec-draft-n-max-xl", "0",
+            "--cache-type-k-xl", "q4_0", "--cache-type-v-xl", "q4_0",
+            "--ctx-size-xxl", "1400", "--xxl-max-tokens", "1400", "--batch-size-xxl", "64",
+            "--spec-draft-n-max-xxl", "0",
+            "--cache-type-k-xxl", "kvarn4", "--cache-type-v-xxl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), five_profile, LLAMA_EXAMPLE_SERVER));
+        assert(five_profile.ctx_size_xlong == 1200);
+        assert(five_profile.xlong_max_tokens == 1200);
+        assert(five_profile.batch_size_xlong == 64);
+        assert(five_profile.spec_draft_n_max_long == 0);
+        assert(five_profile.spec_draft_n_max_xlong == 0);
+        assert(five_profile.cache_type_k_xlong == GGML_TYPE_Q4_0);
+        assert(five_profile.cache_type_v_xlong == GGML_TYPE_Q4_0);
+        assert(five_profile.cache_kvarn_bits_k_xlong == 0);
+        assert(five_profile.kvarn_xlong.type == LLAMA_KVARN_TYPE_DISABLED);
+        assert(five_profile.ctx_size_xxlong == 1400);
+        assert(five_profile.xxlong_max_tokens == 1400);
+        assert(five_profile.batch_size_xxlong == 64);
+        assert(five_profile.spec_draft_n_max_xxlong == 0);
+        assert(five_profile.kvarn_xxlong.type != LLAMA_KVARN_TYPE_DISABLED);
+        assert(five_profile.cache_kvarn_bits_k_xxlong == 4);
+        assert(five_profile.cache_kvarn_bits_v_xxlong == 4);
+        assert(common_context_xlong_limit(five_profile) == 1200);
+        assert(common_context_xxlong_limit(five_profile) == 1400);
+        assert(common_context_adaptive_error(five_profile).empty());
+        assert(common_context_profile_for_budget(five_profile, 250) == COMMON_CONTEXT_PROFILE_MTP_SHORT);
+        assert(common_context_profile_for_budget(five_profile, 500) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(five_profile, 1000) == COMMON_CONTEXT_PROFILE_LONG);
+        assert(common_context_profile_for_budget(five_profile, 1001) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(five_profile, 1200) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(five_profile, 1201) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_profile_for_budget(five_profile, 1400) == COMMON_CONTEXT_PROFILE_XXLONG);
+
+        common_params six_profile = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--spec-draft-n-max-long", "0",
+            "--ctx-size-xl", "1200", "--xl-max-tokens", "1200", "--batch-size-xl", "64",
+            "--spec-draft-n-max-xl", "0",
+            "--cache-type-k-xl", "q4_0", "--cache-type-v-xl", "q4_0",
+            "--ctx-size-xxl", "1400", "--xxl-max-tokens", "1400", "--batch-size-xxl", "64",
+            "--spec-draft-n-max-xxl", "0",
+            "--cache-type-k-xxl", "kvarn4", "--cache-type-v-xxl", "kvarn4",
+            "--ctx-size-xxxl", "1600", "--xxxl-max-tokens", "1600", "--batch-size-xxxl", "64",
+            "--spec-draft-n-max-xxxl", "0",
+            "--cache-type-k-xxxl", "kvarn4", "--cache-type-v-xxxl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), six_profile, LLAMA_EXAMPLE_SERVER));
+        assert(six_profile.ctx_size_xxlong == 1400);
+        assert(six_profile.xxlong_max_tokens == 1400);
+        assert(six_profile.ctx_size_xxxlong == 1600);
+        assert(six_profile.xxxlong_max_tokens == 1600);
+        assert(six_profile.batch_size_xxxlong == 64);
+        assert(six_profile.spec_draft_n_max_xxxlong == 0);
+        assert(six_profile.kvarn_xxxlong.type != LLAMA_KVARN_TYPE_DISABLED);
+        assert(six_profile.cache_kvarn_bits_k_xxxlong == 4);
+        assert(six_profile.cache_kvarn_bits_v_xxxlong == 4);
+        assert(common_context_xxxlong_limit(six_profile) == 1600);
+        assert(common_context_adaptive_error(six_profile).empty());
+        assert(common_context_profile_for_budget(six_profile, 1000) == COMMON_CONTEXT_PROFILE_LONG);
+        assert(common_context_profile_for_budget(six_profile, 1001) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(six_profile, 1200) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(six_profile, 1201) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_profile_for_budget(six_profile, 1400) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_profile_for_budget(six_profile, 1401) == COMMON_CONTEXT_PROFILE_XXXLONG);
+        assert(common_context_profile_for_budget(six_profile, 1600) == COMMON_CONTEXT_PROFILE_XXXLONG);
+
+        // With XXXL disabled the five-tier selection is unchanged.
+        assert(six_profile.ctx_size_xxxlong != 0);
+        common_params six_profile_no_xxxl = six_profile;
+        six_profile_no_xxxl.ctx_size_xxxlong = 0;
+        six_profile_no_xxxl.xxxlong_max_tokens = 0;
+        assert(common_context_adaptive_error(six_profile_no_xxxl).empty());
+        assert(common_context_profile_for_budget(six_profile_no_xxxl, 1401) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_profile_for_budget(six_profile_no_xxxl, 1600) == COMMON_CONTEXT_PROFILE_XXLONG);
+
+        // XXXL validation errors.
+        common_params xxxl_invalid = six_profile;
+        xxxl_invalid.ctx_size_xxxlong = 1300;
+        xxxl_invalid.xxxlong_max_tokens = 0;
+        assert(common_context_adaptive_error(xxxl_invalid) ==
+               "--ctx-size-xxxlong must not be smaller than the preceding context size");
+        xxxl_invalid = six_profile;
+        xxxl_invalid.xxxlong_max_tokens = 1300;
+        assert(common_context_adaptive_error(xxxl_invalid) ==
+               "--xxxlong-max-tokens must not be smaller than the preceding context size");
+        xxxl_invalid = six_profile;
+        xxxl_invalid.ctx_size_xxxlong = 0;
+        assert(common_context_adaptive_error(xxxl_invalid) ==
+               "--xxxlong-max-tokens requires --ctx-size-xxxlong");
+        xxxl_invalid = six_profile;
+        xxxl_invalid.ctx_size_xxlong = 0;
+        xxxl_invalid.xxlong_max_tokens = 0;
+        assert(common_context_adaptive_error(xxxl_invalid) ==
+               "--ctx-size-xxxlong requires --ctx-size-xxlong");
+        xxxl_invalid = six_profile;
+        xxxl_invalid.spec_draft_n_max_xxxlong = -1;
+        assert(common_context_adaptive_error(xxxl_invalid) ==
+               "--spec-draft-n-max-xxxlong must be non-negative");
+
+        common_params ista_profile;
+        argv = {
+            "binary_name", "--ctx-size-s", "24576", "--s-max-tokens", "24576",
+            "--spec-draft-n-max-s", "6",
+            "--ctx-size-m", "40960", "--m-max-tokens", "40960",
+            "--spec-draft-n-max-m", "4",
+            "--ctx-size-l", "56320", "--spec-draft-n-max-l", "2",
+            "--cache-type-k-l", "q4_0", "--cache-type-v-l", "q4_0",
+            "--ctx-size-xl", "73728", "--xl-max-tokens", "73728",
+            "--spec-draft-n-max-xl", "0",
+            "--cache-type-k-xl", "kvarn4", "--cache-type-v-xl", "kvarn4",
+            "--ctx-size-xxl", "102400", "--xxl-max-tokens", "102400",
+            "--spec-draft-n-max-xxl", "0",
+            "--cache-type-k-xxl", "kvarn4", "--cache-type-v-xxl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), ista_profile, LLAMA_EXAMPLE_SERVER));
+        assert(ista_profile.n_ctx == 56320);
+        assert(ista_profile.ctx_size_long == 56320);
+        assert(ista_profile.ctx_size_mtp_short == 24576);
+        assert(ista_profile.ctx_size_mtp == 40960);
+        assert(ista_profile.spec_draft_n_max_short == 6);
+        assert(ista_profile.speculative.draft.n_max == 4);
+        assert(ista_profile.batch_size_short == 0);
+        assert(ista_profile.ubatch_size_short == 0);
+        assert(ista_profile.batch_size_medium == 0);
+        assert(ista_profile.ubatch_size_medium == 0);
+        assert(ista_profile.cache_type_k_short == ista_profile.cache_type_k);
+        assert(ista_profile.cache_type_v_short == ista_profile.cache_type_v);
+        assert(ista_profile.cache_type_k_medium == ista_profile.cache_type_k);
+        assert(ista_profile.cache_type_v_medium == ista_profile.cache_type_v);
+        assert(ista_profile.spec_draft_n_max_long == 2);
+        assert(ista_profile.cache_type_k_long == GGML_TYPE_Q4_0);
+        assert(ista_profile.cache_type_v_long == GGML_TYPE_Q4_0);
+        assert(ista_profile.cache_kvarn_bits_k_long == 0);
+        assert(ista_profile.cache_kvarn_bits_v_long == 0);
+        assert(ista_profile.ctx_size_xlong == 73728);
+        assert(ista_profile.cache_kvarn_bits_k_xlong == 4);
+        assert(ista_profile.cache_kvarn_bits_v_xlong == 4);
+        assert(ista_profile.ctx_size_xxlong == 102400);
+        assert(ista_profile.cache_kvarn_bits_k_xxlong == 4);
+        assert(ista_profile.cache_kvarn_bits_v_xxlong == 4);
+        assert(common_context_adaptive_error(ista_profile).empty());
+        assert(common_context_profile_for_budget(ista_profile, 24576) == COMMON_CONTEXT_PROFILE_MTP_SHORT);
+        assert(common_context_profile_for_budget(ista_profile, 24577) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(ista_profile, 40960) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(ista_profile, 40961) == COMMON_CONTEXT_PROFILE_LONG);
+        assert(common_context_profile_for_budget(ista_profile, 56320) == COMMON_CONTEXT_PROFILE_LONG);
+        assert(common_context_profile_for_budget(ista_profile, 56321) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(ista_profile, 73728) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(ista_profile, 73729) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_profile_for_budget(ista_profile, 102400) == COMMON_CONTEXT_PROFILE_XXLONG);
+
+        common_params ista_long_target_only = ista_profile;
+        ista_long_target_only.spec_draft_n_max_long = 0;
+        assert(common_context_adaptive_error(ista_long_target_only).empty());
+        assert(common_context_profile_for_budget(ista_long_target_only, 40961) == COMMON_CONTEXT_PROFILE_LONG);
+
+        common_params ista_invalid = ista_profile;
+        ista_invalid.spec_draft_n_max_long = -1;
+        assert(common_context_adaptive_error(ista_invalid) ==
+               "--spec-draft-n-max-long must be non-negative");
+        common_params ista_parse_invalid;
+        argv = {
+            "binary_name", "--ctx-size-l", "56320", "--ctx-size-m", "40960",
+            "--m-max-tokens", "40960", "--spec-draft-n-max-l", "-1",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(),
+                                    ista_parse_invalid, LLAMA_EXAMPLE_SERVER));
+
+        // Every adaptive profile may independently enable or disable resident MTP.
+        common_params ista_xl_mtp = ista_profile;
+        ista_xl_mtp.spec_draft_n_max_xlong = 2;
+        assert(common_context_adaptive_error(ista_xl_mtp).empty());
+        assert(common_context_profile_for_budget(ista_xl_mtp, 56321) == COMMON_CONTEXT_PROFILE_XLONG);
+        assert(common_context_profile_for_budget(ista_xl_mtp, 73728) == COMMON_CONTEXT_PROFILE_XLONG);
+        common_params ista_xl_invalid = ista_profile;
+        ista_xl_invalid.spec_draft_n_max_xlong = -1;
+        assert(common_context_adaptive_error(ista_xl_invalid) ==
+               "--spec-draft-n-max-xlong must be non-negative");
+        common_params ista_parse_xl_mtp = ista_profile;
+        argv = {
+            "binary_name", "--ctx-size-l", "56320", "--ctx-size-m", "40960",
+            "--m-max-tokens", "40960", "--spec-draft-n-max-l", "2",
+            "--ctx-size-xl", "73728", "--xl-max-tokens", "73728",
+            "--spec-draft-n-max-xl", "2",
+            "--cache-type-k-xl", "kvarn4", "--cache-type-v-xl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(),
+                                           ista_parse_xl_mtp, LLAMA_EXAMPLE_SERVER));
+        assert(ista_parse_xl_mtp.spec_draft_n_max_xlong == 2);
+        common_params ista_parse_xxl_mtp = ista_profile;
+        argv = {
+            "binary_name", "--ctx-size-l", "56320", "--ctx-size-m", "40960",
+            "--m-max-tokens", "40960", "--spec-draft-n-max-l", "2",
+            "--ctx-size-xl", "73728", "--xl-max-tokens", "73728",
+            "--spec-draft-n-max-xl", "2",
+            "--ctx-size-xxl", "102400", "--xxl-max-tokens", "102400",
+            "--spec-draft-n-max-xxl", "2",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(),
+                                           ista_parse_xxl_mtp, LLAMA_EXAMPLE_SERVER));
+        assert(ista_parse_xxl_mtp.spec_draft_n_max_xxlong == 2);
+        common_params ista_xxl_invalid = ista_profile;
+        ista_xxl_invalid.spec_draft_n_max_xxlong = -1;
+        assert(common_context_adaptive_error(ista_xxl_invalid) ==
+               "--spec-draft-n-max-xxlong must be non-negative");
+
+        // Per-tier draft KV types: explicit overrides and global inheritance.
+        common_params ista_draft_tiers = ista_profile;
+        argv = {
+            "binary_name", "--ctx-size-l", "56320", "--ctx-size-m", "40960",
+            "--m-max-tokens", "40960", "--spec-draft-n-max-l", "2",
+            "--ctx-size-xl", "73728", "--xl-max-tokens", "73728",
+            "--spec-draft-n-max-xl", "2",
+            "--cache-type-k-xl", "kvarn4", "--cache-type-v-xl", "kvarn4",
+            "--spec-draft-type-k-s", "q8_0", "--spec-draft-type-v-s", "q8_0",
+            "--spec-draft-type-k-l", "q8_0", "--spec-draft-type-v-l", "q8_0",
+            "--spec-draft-type-k-xl", "kvarn4", "--spec-draft-type-v-xl", "kvarn4",
+            "--spec-draft-type-k-xxl", "q8_0", "--spec-draft-type-v-xxl", "q8_0",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(),
+                                           ista_draft_tiers, LLAMA_EXAMPLE_SERVER));
+        assert(ista_draft_tiers.spec_draft_type_k_short == GGML_TYPE_Q8_0);
+        assert(ista_draft_tiers.spec_draft_type_v_short == GGML_TYPE_Q8_0);
+        assert(ista_draft_tiers.spec_draft_type_k_long == GGML_TYPE_Q8_0);
+        assert(ista_draft_tiers.spec_draft_kvarn_bits_k_xlong == 4);
+        assert(ista_draft_tiers.spec_draft_kvarn_bits_v_xlong == 4);
+        assert(ista_draft_tiers.spec_draft_type_k_xxlong == GGML_TYPE_Q8_0);
+        // Untouched tiers inherit the global draft KV type.
+        assert(ista_draft_tiers.spec_draft_type_k_medium ==
+               ista_draft_tiers.speculative.draft.cache_type_k);
+        assert(ista_draft_tiers.spec_draft_type_v_medium ==
+               ista_draft_tiers.speculative.draft.cache_type_v);
+
+        common_params five_profile_shorthand = adaptive;
+        argv = {
+            "binary_name", "--ctx-size-l", "1000", "--ctx-size-m", "600",
+            "--m-max-tokens", "500", "--ctx-size-s", "300",
+            "--s-max-tokens", "250", "--spec-draft-n-max-s", "4",
+            "--batch-size-s", "64", "--ubatch-size-s", "32",
+            "--cache-type-k-s", "q8_0", "--cache-type-v-s", "q8_0",
+            "--batch-size-m", "96", "--ubatch-size-m", "64",
+            "--cache-type-k-m", "kvarn3", "--cache-type-v-m", "kvarn3",
+            "--spec-draft-n-max-m", "2", "--spec-draft-n-max-l", "0",
+            "--ctx-size-xl", "1200", "--batch-size-xl", "64", "--ubatch-size-xl", "64",
+            "--spec-draft-n-max-xl", "0",
+            "--ctx-size-xxl", "1400", "--batch-size-xxl", "64", "--ubatch-size-xxl", "64",
+            "--spec-draft-n-max-xxl", "0",
+            "--cache-type-k-xxl", "kvarn4", "--cache-type-v-xxl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), five_profile_shorthand, LLAMA_EXAMPLE_SERVER));
+        assert(five_profile_shorthand.n_ctx == 1000);
+        assert(five_profile_shorthand.ctx_size_long == 1000);
+        assert(five_profile_shorthand.ctx_size_mtp == 600);
+        assert(five_profile_shorthand.mtp_max_tokens == 500);
+        assert(five_profile_shorthand.ctx_size_mtp_short == 300);
+        assert(five_profile_shorthand.mtp_short_max_tokens == 250);
+        assert(five_profile_shorthand.batch_size_short == 64);
+        assert(five_profile_shorthand.ubatch_size_short == 32);
+        assert(five_profile_shorthand.cache_type_k_short == GGML_TYPE_Q8_0);
+        assert(five_profile_shorthand.cache_type_v_short == GGML_TYPE_Q8_0);
+        assert(five_profile_shorthand.batch_size_medium == 96);
+        assert(five_profile_shorthand.ubatch_size_medium == 64);
+        assert(five_profile_shorthand.cache_kvarn_bits_k_medium == 3);
+        assert(five_profile_shorthand.cache_kvarn_bits_v_medium == 3);
+        assert(five_profile_shorthand.kvarn_medium.type != LLAMA_KVARN_TYPE_DISABLED);
+        assert(five_profile_shorthand.spec_draft_n_max_short == 4);
+        assert(five_profile_shorthand.speculative.draft.n_max == 2);
+        assert(five_profile_shorthand.spec_draft_n_max_long == 0);
+        assert(five_profile_shorthand.ctx_size_xlong == 1200);
+        assert(five_profile_shorthand.batch_size_xlong == 64);
+        assert(five_profile_shorthand.ubatch_size_xlong == 64);
+        assert(five_profile_shorthand.spec_draft_n_max_xlong == 0);
+        assert(five_profile_shorthand.ctx_size_xxlong == 1400);
+        assert(five_profile_shorthand.batch_size_xxlong == 64);
+        assert(five_profile_shorthand.ubatch_size_xxlong == 64);
+        assert(five_profile_shorthand.spec_draft_n_max_xxlong == 0);
+        assert(common_context_adaptive_error(five_profile_shorthand).empty());
+
+        common_params xlong_inherit = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--ctx-size-xl", "1200", "--xl-max-tokens", "1200",
+            "--ctx-size-xxl", "1400", "--xxl-max-tokens", "1400",
+            "--batch-size", "192", "--ubatch-size", "160",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), xlong_inherit, LLAMA_EXAMPLE_SERVER));
+        assert(xlong_inherit.n_batch == 192);
+        assert(xlong_inherit.n_ubatch == 160);
+        assert(xlong_inherit.batch_size_xlong == 0);
+        assert(xlong_inherit.ubatch_size_xlong == 0);
+        assert(xlong_inherit.batch_size_xxlong == 0);
+        assert(xlong_inherit.ubatch_size_xxlong == 0);
+        assert(xlong_inherit.cache_type_k_xlong == xlong_inherit.cache_type_k);
+        assert(xlong_inherit.cache_type_v_xlong == xlong_inherit.cache_type_v);
+        assert(xlong_inherit.cache_kvarn_bits_k_xlong == xlong_inherit.cache_kvarn_bits_k);
+        assert(xlong_inherit.cache_kvarn_bits_v_xlong == xlong_inherit.cache_kvarn_bits_v);
+        assert(xlong_inherit.kvarn_xlong.type == xlong_inherit.kvarn.type);
+
+        common_params xlong_kvarn = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--ctx-size-xl", "1200", "--xl-max-tokens", "1200", "--batch-size-xl", "64",
+            "--cache-type-k-xl", "kvarn4", "--cache-type-v-xl", "kvarn4",
+            "--ctx-size-xxl", "1400", "--xxl-max-tokens", "1400", "--batch-size-xxl", "64",
+            "--cache-type-k-xxl", "kvarn4", "--cache-type-v-xxl", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), xlong_kvarn, LLAMA_EXAMPLE_SERVER));
+        assert(xlong_kvarn.cache_kvarn_bits_k_xlong == 4);
+        assert(xlong_kvarn.cache_kvarn_bits_v_xlong == 4);
+        assert(xlong_kvarn.kvarn_xlong.type != LLAMA_KVARN_TYPE_DISABLED);
+
+        common_params wide_mtp = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--ctx-size-xl", "1200", "--ctx-size-xxl", "1400",
+            "--spec-draft-n-max-xxl", "2",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), wide_mtp, LLAMA_EXAMPLE_SERVER));
+        assert(wide_mtp.spec_draft_n_max_xxlong == 2);
+
+        common_params xxxl_long_forms = tri_profile;
+        argv = {
+            "binary_name", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+            "--mtp-max-tokens", "500", "--ctx-size-mtp-short", "300",
+            "--mtp-short-max-tokens", "250", "--spec-draft-n-max-short", "4",
+            "--ctx-size-xlong", "1200", "--xlong-max-tokens", "1200",
+            "--ctx-size-xxlong", "1400", "--xxlong-max-tokens", "1400",
+            "--ctx-size-xxxlong", "1600", "--xxxlong-max-tokens", "1600",
+            "--batch-size-xxxlong", "64", "--ubatch-size-xxxlong", "64",
+            "--spec-draft-n-max-xxxlong", "0",
+            "--cache-type-k-xxxlong", "kvarn4", "--cache-type-v-xxxlong", "kvarn4",
+            "--spec-draft-type-k-xxxlong", "kvarn4", "--spec-draft-type-v-xxxlong", "kvarn4",
+            "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), xxxl_long_forms, LLAMA_EXAMPLE_SERVER));
+        assert(xxxl_long_forms.ctx_size_xxxlong == 1600);
+        assert(xxxl_long_forms.xxxlong_max_tokens == 1600);
+        assert(xxxl_long_forms.batch_size_xxxlong == 64);
+        assert(xxxl_long_forms.ubatch_size_xxxlong == 64);
+        assert(xxxl_long_forms.spec_draft_n_max_xxxlong == 0);
+        assert(xxxl_long_forms.cache_kvarn_bits_k_xxxlong == 4);
+        assert(xxxl_long_forms.cache_kvarn_bits_v_xxxlong == 4);
+        assert(xxxl_long_forms.spec_draft_kvarn_bits_k_xxxlong == 4);
+        assert(xxxl_long_forms.spec_draft_kvarn_bits_v_xxxlong == 4);
+        assert(common_context_xxxlong_limit(xxxl_long_forms) == 1600);
+        assert(common_context_adaptive_error(xxxl_long_forms).empty());
+        assert(common_context_profile_for_budget(xxxl_long_forms, 1401) == COMMON_CONTEXT_PROFILE_XXXLONG);
+        assert(common_context_profile_for_budget(xxxl_long_forms, 1600) == COMMON_CONTEXT_PROFILE_XXXLONG);
+    }
+
+    {
+        auto make_adaptive = [] {
+            common_params value;
+            value.n_ctx = 1000;
+            value.ctx_size_mtp = 600;
+            value.mtp_max_tokens = 500;
+            value.n_parallel = 1;
+            value.fit_params = false;
+            value.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP };
+            return value;
+        };
+        auto expect_error = [&](const common_params & value, const char * expected) {
+            const std::string actual = common_context_adaptive_error(value);
+            if (actual != expected) {
+                fprintf(stderr, "expected adaptive error [%s], got [%s]\n", expected, actual.c_str());
+            }
+            assert(actual == expected);
+        };
+
+        common_params disabled;
+        assert(!common_context_is_adaptive(disabled));
+        assert(common_context_profile_for_budget(disabled, 0) == COMMON_CONTEXT_PROFILE_LONG);
+        assert(common_context_adaptive_error(disabled).empty());
+        disabled.mtp_max_tokens = 1;
+        expect_error(disabled, "--mtp-max-tokens requires --ctx-size-mtp");
+        disabled.mtp_max_tokens = 0;
+        disabled.ctx_size_mtp_short = 200;
+        expect_error(disabled, "--ctx-size-mtp-short requires --ctx-size-mtp");
+        disabled.ctx_size_mtp_short = 0;
+        disabled.mtp_short_max_tokens = 200;
+        expect_error(disabled, "--mtp-short-max-tokens requires --ctx-size-mtp-short");
+        disabled.remote_attn_host = "vulkan:0";
+        disabled.remote_attn_min_ctx_size = 1;
+        expect_error(disabled, "--remote-attn-min-context requires adaptive context");
+
+        auto adaptive = make_adaptive();
+        adaptive.split_mtp_weights = false;
+        assert(common_context_adaptive_normalize(adaptive).empty());
+        assert(adaptive.split_mtp_weights);
+        adaptive.ctx_size_mtp = -1;
+        expect_error(adaptive, "--ctx-size-mtp must be non-negative");
+        adaptive = make_adaptive();
+        adaptive.mtp_max_tokens = -1;
+        expect_error(adaptive, "--mtp-max-tokens must be non-negative");
+        adaptive.remote_attn_host = "vulkan:0";
+        adaptive.remote_attn_min_ctx_size = -1;
+        expect_error(adaptive, "--remote-attn-min-context must be non-negative");
+        adaptive = make_adaptive();
+        adaptive.remote_attn_min_ctx_size = 10;
+        expect_error(adaptive, "--remote-attn-min-context requires --remote-attn");
+        adaptive = make_adaptive();
+        adaptive.remote_attn_host = "127.0.0.1";
+        adaptive.remote_attn_min_ctx_size = 10;
+        expect_error(adaptive, "--remote-attn-min-context requires a local Vulkan --remote-attn backend");
+        adaptive = make_adaptive();
+        adaptive.remote_attn_host = "127.0.0.1";
+        expect_error(adaptive, "adaptive context does not support external --remote-attn HOST:PORT sessions");
+        adaptive = make_adaptive();
+        adaptive.remote_attn_host = "vulkan:0";
+        adaptive.remote_attn_min_ctx_size = 1001;
+        expect_error(adaptive, "--remote-attn-min-context exceeds the maximum adaptive context size");
+        adaptive = make_adaptive();
+        adaptive.n_ctx = 0; // model training context resolves the long ceiling after load
+        adaptive.remote_attn_host = "vulkan:0";
+        adaptive.remote_attn_min_ctx_size = 500;
+        assert(common_context_adaptive_error(adaptive).empty());
+        assert(common_context_adaptive_error(adaptive, 1024).empty());
+        adaptive.remote_attn_min_ctx_size = 1025;
+        assert(common_context_adaptive_error(adaptive, 1024) ==
+               "--remote-attn-min-context exceeds the maximum adaptive context size");
+        adaptive = make_adaptive();
+        adaptive.mtp_max_tokens = 601;
+        expect_error(adaptive, "--mtp-max-tokens must satisfy 0 < limit <= --ctx-size-mtp");
+        adaptive = make_adaptive();
+        adaptive.ctx_size_mtp_short = -1;
+        expect_error(adaptive, "--ctx-size-mtp-short must be non-negative");
+        adaptive = make_adaptive();
+        adaptive.mtp_short_max_tokens = -1;
+        expect_error(adaptive, "--mtp-short-max-tokens must be non-negative");
+        adaptive = make_adaptive();
+        adaptive.spec_draft_n_max_short = -1;
+        expect_error(adaptive, "--spec-draft-n-max-short must be non-negative");
+        adaptive = make_adaptive();
+        adaptive.ctx_size_mtp_short = 700;
+        expect_error(adaptive, "--ctx-size-mtp-short must not exceed --ctx-size-mtp");
+        adaptive = make_adaptive();
+        adaptive.ctx_size_mtp_short = 400;
+        adaptive.mtp_short_max_tokens = 450;
+        expect_error(adaptive, "--mtp-short-max-tokens must satisfy 0 < limit <= --ctx-size-mtp-short");
+        adaptive = make_adaptive();
+        adaptive.ctx_size_mtp_short = 400;
+        adaptive.mtp_max_tokens = 300;
+        adaptive.mtp_short_max_tokens = 350;
+        expect_error(adaptive, "--mtp-short-max-tokens must not exceed --mtp-max-tokens");
+        adaptive = make_adaptive();
+        adaptive.ctx_size_mtp_short = 400;
+        adaptive.spec_draft_n_max_short = 0;
+        assert(common_context_adaptive_error(adaptive).empty());
+        adaptive = make_adaptive();
+        adaptive.n_ctx = 500;
+        expect_error(adaptive, "--ctx-size-mtp must not exceed the long context size");
+        adaptive = make_adaptive();
+        adaptive.n_parallel = 2;
+        expect_error(adaptive, "adaptive context requires --parallel 1");
+        adaptive = make_adaptive();
+        adaptive.fit_params = true;
+        expect_error(adaptive, "adaptive context requires --fit off");
+        adaptive = make_adaptive();
+        adaptive.no_alloc = true;
+        expect_error(adaptive, "adaptive context requires allocated model tensors (no-alloc is unsupported)");
+        adaptive = make_adaptive();
+        adaptive.kv_paged = true;
+        expect_error(adaptive, "adaptive context requires traditional KV (paged KV is unsupported)");
+        adaptive = make_adaptive();
+        adaptive.kv_unified_per_slot = 1;
+        expect_error(adaptive, "adaptive context does not support --kv-unified-per-slot");
+        adaptive = make_adaptive();
+        adaptive.devices = { nullptr };
+        expect_error(adaptive, "adaptive context requires one CUDA device");
+        adaptive = make_adaptive();
+        adaptive.devices = { nullptr, nullptr };
+        expect_error(adaptive, "adaptive context requires one CUDA device");
+        assert(common_context_prepare_devices(adaptive) ==
+               "adaptive context requires exactly one selected CUDA device");
+        adaptive = make_adaptive();
+        adaptive.n_gpu_layers = 0;
+        adaptive.devices = { nullptr };
+        assert(common_context_adaptive_error(adaptive).empty());
+        assert(common_context_prepare_devices(adaptive).empty());
+        assert(adaptive.devices.size() == 1 && adaptive.devices.front() == nullptr);
+        adaptive = make_adaptive();
+        adaptive.mmproj.path = "mmproj.gguf";
+        expect_error(adaptive, "adaptive context does not support multimodal models");
+        adaptive = make_adaptive();
+        adaptive.lora_adapters.push_back({});
+        expect_error(adaptive, "adaptive context does not support LoRA or control vectors");
+        adaptive = make_adaptive();
+        adaptive.control_vectors.push_back({});
+        expect_error(adaptive, "adaptive context does not support LoRA or control vectors");
+        adaptive = make_adaptive();
+        adaptive.sleep_idle_seconds = 1;
+        expect_error(adaptive, "adaptive context does not support automatic sleep");
+        adaptive = make_adaptive();
+        adaptive.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE };
+        expect_error(adaptive, "adaptive context supports only draft-mtp speculative decoding");
+        adaptive = make_adaptive();
+        adaptive.speculative.types = { COMMON_SPECULATIVE_TYPE_NONE };
+        expect_error(adaptive, "adaptive context requires draft-mtp speculative decoding");
+        adaptive = make_adaptive();
+        adaptive.speculative.synth_len = 2.0;
+        expect_error(adaptive, "adaptive context does not support synthetic speculative decoding");
+        adaptive = make_adaptive();
+        adaptive.speculative.draft.mparams.path = "draft.gguf";
+        expect_error(adaptive, "adaptive context requires the resident model MTP head; external draft models are unsupported");
+
+        try {
+            common_context_budget_for_task(adaptive, -1, 0, true);
+            assert(false);
+        } catch (const std::invalid_argument & error) {
+            assert(std::string(error.what()) == "adaptive context prompt token count must be non-negative");
+        }
+        try {
+            common_context_budget_for_task(adaptive, std::numeric_limits<int64_t>::max(), 1, true);
+            assert(false);
+        } catch (const std::invalid_argument & error) {
+            assert(std::string(error.what()) == "adaptive context token budget overflow");
+        }
+
+        common_params parse_adaptive;
+        argv = {"binary_name", "--ctx-size-mtp", "600", "--fit", "off", "--parallel", "1",
+                "--mtp-max-tokens", "601", "--spec-type", "draft-mtp"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--ctx-size", "500", "--ctx-size-mtp", "600", "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--ctx-size-mtp", "600", "--parallel", "1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--ctx-size-mtp", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--ctx-size-xxxlong", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--xxxlong-max-tokens", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        argv = {"binary_name", "--mtp-max-tokens", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_adaptive, LLAMA_EXAMPLE_SERVER));
+
+        common_params parse_remote_threshold;
+        argv = {
+            "binary_name", "--ctx-size", "106496", "--ctx-size-mtp", "106496",
+            "--mtp-max-tokens", "106496", "--ctx-size-xxlong", "204800",
+            "--xxlong-max-tokens", "204800", "--remote-attn", "vulkan:0",
+            "--cache-type-k-xxlong", "kvarn2", "--cache-type-v-xxlong", "kvarn2",
+            "--spec-draft-type-k-xxlong", "kvarn2", "--spec-draft-type-v-xxlong", "kvarn2",
+            "--remote-attn-min-context", "106497", "--fit", "off", "--parallel", "1",
+            "--spec-type", "draft-mtp",
+        };
+        assert(true == common_params_parse(
+                argv.size(), list_str_to_char(argv).data(), parse_remote_threshold, LLAMA_EXAMPLE_SERVER));
+        assert(parse_remote_threshold.remote_attn_min_ctx_size == 106497);
+        assert(parse_remote_threshold.cache_kvarn_bits_k_xxlong == 2);
+        assert(parse_remote_threshold.cache_kvarn_bits_v_xxlong == 2);
+        assert(parse_remote_threshold.spec_draft_kvarn_bits_k_xxlong == 2);
+        assert(parse_remote_threshold.spec_draft_kvarn_bits_v_xxlong == 2);
+        assert(common_context_profile_for_budget(parse_remote_threshold, 106496) == COMMON_CONTEXT_PROFILE_MTP);
+        assert(common_context_profile_for_budget(parse_remote_threshold, 106497) == COMMON_CONTEXT_PROFILE_XXLONG);
+        assert(common_context_remote_attn_enabled(parse_remote_threshold, 106496) == false);
+        assert(common_context_remote_attn_enabled(parse_remote_threshold, 204800) == true);
+
+        argv = {"binary_name", "--remote-attn-min-context", "-1"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_remote_threshold, LLAMA_EXAMPLE_SERVER));
+
+        common_params parse_external_draft;
+        argv = {"binary_name", "--model", "model.gguf", "--ctx-size", "1000", "--ctx-size-mtp", "600",
+                "--fit", "off", "--parallel", "1", "--spec-type", "draft-mtp",
+                "--model-draft", "draft.gguf"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), parse_external_draft, LLAMA_EXAMPLE_SERVER));
+    }
+
+    argv = {"binary_name", "-m", "model_file.gguf", "--spec-draft-n-max", "123"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.n_max == 123);
+    assert(params.speculative.draft_n_max_explicit);
+
+    set_test_env("LLAMA_ARG_SPEC_DRAFT_N_MAX", "7");
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SPECULATIVE));
+    assert(params.speculative.draft.n_max == 7);
+    assert(params.speculative.draft_n_max_explicit);
+    unset_test_env("LLAMA_ARG_SPEC_DRAFT_N_MAX");
+
+    const std::filesystem::path dflash_fixture =
+            std::filesystem::temp_directory_path() / "beellama-dflash-depth-policy.gguf";
+    gguf_context * fixture = gguf_init_empty();
+    assert(fixture != nullptr);
+    gguf_set_val_str(fixture, "general.architecture", "dflash");
+    gguf_set_val_u32(fixture, "dflash.block_size", 16);
+    assert(gguf_write_to_file(fixture, dflash_fixture.string().c_str(), true));
+    gguf_free(fixture);
+
+    params = common_params();
+    params.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH };
+    assert(common_speculative_resolve_dflash_draft_n_max(params.speculative, dflash_fixture.string()));
+    assert(params.speculative.draft.n_max == 15);
+
+    params = common_params();
+    params.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH };
+    params.speculative.draft.n_max = 20;
+    params.speculative.draft_n_max_explicit = true;
+    assert(common_speculative_resolve_dflash_draft_n_max(params.speculative, dflash_fixture.string()));
+    assert(params.speculative.draft.n_max == 20);
+
+    params = common_params();
+    params.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE };
+    assert(common_speculative_resolve_dflash_draft_n_max(params.speculative, dflash_fixture.string()));
+    assert(params.speculative.draft.n_max == 3);
+    assert(std::filesystem::remove(dflash_fixture));
+
+    params = common_params();
+    argv = {"binary_name", "--spec-type", "dflash"};
+    bool dflash_parsed = true;
+    const std::string dflash_error = capture_stderr([&]() {
+        dflash_parsed = common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER);
+    });
+    assert(false == dflash_parsed);
+    assert(dflash_error.find("unknown speculative type: dflash") != std::string::npos);
+
+    for (const std::string removed : {"copyspec", "suffix", "recycle"}) {
+        params = common_params();
+        argv = {"binary_name", "--spec-type", removed};
+        bool parsed = true;
+        const std::string error = capture_stderr([&]() {
+            parsed = common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER);
+        });
+        assert(false == parsed);
+        assert(error.find("speculative type '" + removed +
+                          "' was removed in v0.4.0; use draft-dflash or upstream's ngram modes") != std::string::npos);
+    }
+
+    params = common_params();
+    assert(params.speculative.dm_profit_min == 0.05f);
+    assert(params.speculative.dm_profit_raise_margin == 0.05f);
+    assert(params.speculative.dm_profit_lower_margin == 0.05f);
+    assert(params.speculative.dm_controller == COMMON_SPECULATIVE_DM_CONTROLLER_PROFIT);
+    assert(params.speculative.dm_profit_min_samples == 3);
+    assert(params.speculative.dm_profit_warmup == 0);
+    assert(params.speculative.dm_profit_baseline_interval == 1024);
+    assert(!params.fit_params_target.empty());
+
+    argv = {"binary_name", "-m", "model_file.gguf", "--fit-target", "256"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    for (size_t target : params.fit_params_target) {
+        assert(target == 256ull * 1024ull * 1024ull);
+    }
+
+    argv = {
+        "binary_name",
+        "--spec-dm-controller", "fringe",
+    };
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    params = common_params();
+    argv = {
+        "binary_name",
+        "--spec-type", "draft-dflash",
+        "--spec-dm-controller", "profit",
+        "--spec-dm-profit-min", "0.03",
+        "--spec-dm-profit-raise-margin", "0.06",
+        "--spec-dm-profit-lower-margin", "0.02",
+        "--spec-dm-profit-ewma-alpha", "0.15",
+        "--spec-dm-profit-min-samples", "6",
+        "--spec-dm-profit-warmup", "4",
+        "--spec-dm-profit-baseline-interval", "256",
+    };
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+    assert(params.speculative.dm_controller == COMMON_SPECULATIVE_DM_CONTROLLER_PROFIT);
+    assert(params.speculative.dm_profit_min == 0.03f);
+    assert(params.speculative.dm_profit_raise_margin == 0.06f);
+    assert(params.speculative.dm_profit_lower_margin == 0.02f);
+    assert(params.speculative.dm_profit_ewma_alpha == 0.15f);
+    assert(params.speculative.dm_profit_min_samples == 6);
+    assert(params.speculative.dm_profit_warmup == 4);
+    assert(params.speculative.dm_profit_baseline_interval == 256);
+
+    argv = {"binary_name", "--spec-dm-controller", std::string("profit-") + "shadow"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--spec-dm-controller", "invalid"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {
+        "binary_name",
+        "--reasoning-loop-guard", "force-close",
+        "--reasoning-loop-min-tokens", "1024",
+        "--reasoning-loop-window", "2048",
+        "--reasoning-loop-max-period", "512",
+        "--reasoning-loop-min-coverage", "768",
+        "--reasoning-loop-check-interval", "32",
+        "--reasoning-loop-interventions", "1",
+    };
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+    assert(params.reasoning_loop_guard.mode == COMMON_REASONING_LOOP_GUARD_FORCE_CLOSE);
+    assert(params.reasoning_loop_guard.min_reasoning_tokens == 1024);
+    assert(params.reasoning_loop_guard.window_tokens == 2048);
+    assert(params.reasoning_loop_guard.max_period == 512);
+    assert(params.reasoning_loop_guard.min_repeated_coverage == 768);
+    assert(params.reasoning_loop_guard.check_interval == 32);
+    assert(params.reasoning_loop_guard.interventions_max == 1);
+
+    argv = {"binary_name", "--reasoning-loop-guard", "invalid"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    argv = {"binary_name", "--reasoning-loop-window", "64", "--reasoning-loop-min-coverage", "128"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_SERVER));
+
+    params = common_params();
+    {
+        common_params synth_params;
+        argv = {"binary_name", "--spec-synth-len", "3.4"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), synth_params, LLAMA_EXAMPLE_SERVER));
+        assert(synth_params.speculative.synth_len == 3.4);
+    }
+
+    {
+        common_params synth_params;
+        argv = {"binary_name", "--spec-synth-rates", "0.8,0.6,0.2"};
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), synth_params, LLAMA_EXAMPLE_SERVER));
+        assert(synth_params.speculative.synth_rates == std::vector<double>({0.8, 0.6, 0.2}));
+    }
+
+    {
+        common_params synth_params;
+        argv = {"binary_name", "--spec-synth-len", "3.4x"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), synth_params, LLAMA_EXAMPLE_SERVER));
+    }
+
+{
+        common_params power_params;
+        argv = {
+            "binary_name",
+            "--gpu-power-prefill", "200",
+            "--gpu-power-decode", "165",
+            "--gpu-power-device", "1",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), power_params, LLAMA_EXAMPLE_SERVER));
+        assert(power_params.gpu_power_prefill == 200);
+        assert(power_params.gpu_power_decode == 165);
+        assert(power_params.gpu_power_device == 1);
+
+        common_params mem_params;
+        argv = {
+            "binary_name",
+            "--gpu-mem-clock-decode", "10501",
+            "--gpu-mem-clock-prefill", "10251",
+        };
+        assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), mem_params, LLAMA_EXAMPLE_SERVER));
+        assert(mem_params.gpu_mem_clock_decode == 10501);
+        assert(mem_params.gpu_mem_clock_prefill == 10251);
+
+        common_params fabric_params;
+        argv = {"binary_name", "--gpu-power-backend", "amdgpu", "--gpu-fabric-state", "0"};
+        assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), fabric_params, LLAMA_EXAMPLE_SERVER));
+        assert(fabric_params.gpu_fabric_state == 0);
+        for (const auto * invalid : {"-1", "32"}) {
+            common_params invalid_fabric;
+            argv = {"binary_name", "--gpu-power-backend", "amdgpu", "--gpu-fabric-state", invalid};
+            assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(), invalid_fabric, LLAMA_EXAMPLE_SERVER));
+        }
+        common_params wrong_backend;
+        wrong_backend.gpu_power_backend = "nvml";
+        argv = {"binary_name", "--gpu-fabric-state", "0"};
+        assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(), wrong_backend, LLAMA_EXAMPLE_SERVER));
+
+        common_params tdp_params;
+        argv = {"binary_name", "--gpu-power-backend", "amdgpu", "--apu-tdp", "20"};
+        assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), tdp_params, LLAMA_EXAMPLE_SERVER));
+        assert(tdp_params.apu_tdp == 20);
+        for (const auto * invalid : {"-1", "0"}) {
+            common_params invalid_tdp;
+            argv = {"binary_name", "--gpu-power-backend", "amdgpu", "--apu-tdp", invalid};
+            assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(), invalid_tdp, LLAMA_EXAMPLE_SERVER));
+        }
+        common_params tdp_wrong_backend;
+        tdp_wrong_backend.gpu_power_backend = "nvml";
+        argv = {"binary_name", "--apu-tdp", "20"};
+        assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(), tdp_wrong_backend, LLAMA_EXAMPLE_SERVER));
+        common_params conflicting_tdp;
+        argv = {"binary_name", "--gpu-power-backend", "nvml", "--apu-tdp", "20"};
+        assert(!common_params_parse(argv.size(), list_str_to_char(argv).data(), conflicting_tdp, LLAMA_EXAMPLE_SERVER));
+
+        common_params incomplete_power_params;
+        argv = {"binary_name", "--gpu-power-prefill", "200"};
+        assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), incomplete_power_params, LLAMA_EXAMPLE_SERVER));
+    }
+
+    argv = {"binary_name", "-m", "model_file.gguf", "-lm", "none"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_NONE);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "-lm", "mmap"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MMAP);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "-lm", "mlock"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MLOCK);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "-lm", "mmap+mlock"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MMAP_MLOCK);
+
+    params = common_params();
+    argv = {"binary_name", "-m", "model_file.gguf", "-lm", "dio"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_DIRECT_IO);
+
+    // multi-value args (CSV)
+    params = common_params();
+    params.model.path = "model_file.gguf";
+    argv = {"binary_name", "--lora", "file1.gguf,\"file2,2.gguf\",\"file3\"\"3\"\".gguf\",file4\".gguf"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.lora_adapters.size() == 4);
+    assert(params.lora_adapters[0].path == "file1.gguf");
+    assert(params.lora_adapters[1].path == "file2,2.gguf");
+    assert(params.lora_adapters[2].path == "file3\"3\".gguf");
+    assert(params.lora_adapters[3].path == "file4\".gguf");
+
+// skip this part on windows, because setenv is not supported
+#ifdef _WIN32
+    printf("test-arg-parser: skip on windows build\n");
+#else
+    printf("test-arg-parser: test environment variables (valid + invalid usages)\n\n");
+
+    setenv("LLAMA_ARG_THREADS", "blah", true);
+    argv = {"binary_name"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    setenv("LLAMA_ARG_MODEL", "blah.gguf", true);
+    setenv("LLAMA_ARG_THREADS", "1010", true);
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.model.path == "blah.gguf");
+    assert(params.cpuparams.n_threads == 1010);
+
+    setenv("LLAMA_ARG_LOAD_MODE", "blah", true);
+    argv = {"binary_name"};
+    assert(false == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+
+    setenv("LLAMA_ARG_LOAD_MODE", "mmap", true);
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MMAP);
+
+    setenv("LLAMA_ARG_LOAD_MODE", "mlock", true);
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MLOCK);
+
+    setenv("LLAMA_ARG_LOAD_MODE", "mmap+mlock", true);
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_MMAP_MLOCK);
+
+    setenv("LLAMA_ARG_LOAD_MODE", "dio", true);
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_DIRECT_IO);
+
+    printf("test-arg-parser: test negated environment variables\n\n");
+
+    setenv("LLAMA_ARG_LOAD_MODE", "none", true);
+    setenv("LLAMA_ARG_NO_PERF", "1", true); // legacy format
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.load_mode == LLAMA_LOAD_MODE_NONE);
+    assert(params.no_perf == true);
+
+    printf("test-arg-parser: test environment variables being overwritten\n\n");
+
+    setenv("LLAMA_ARG_MODEL", "blah.gguf", true);
+    setenv("LLAMA_ARG_THREADS", "1010", true);
+    argv = {"binary_name", "-m", "overwritten.gguf"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), params, LLAMA_EXAMPLE_COMMON));
+    assert(params.model.path == "overwritten.gguf");
+    assert(params.cpuparams.n_threads == 1010);
+
+    setenv("LLAMA_ARG_GPU_POWER_PREFILL", "200", true);
+    setenv("LLAMA_ARG_GPU_POWER_DECODE", "165", true);
+    setenv("LLAMA_ARG_GPU_POWER_DEVICE", "1", true);
+    common_params power_env_params;
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), power_env_params, LLAMA_EXAMPLE_SERVER));
+    assert(power_env_params.gpu_power_prefill == 200);
+    assert(power_env_params.gpu_power_decode == 165);
+    assert(power_env_params.gpu_power_device == 1);
+    unsetenv("LLAMA_ARG_GPU_POWER_PREFILL");
+    unsetenv("LLAMA_ARG_GPU_POWER_DECODE");
+    unsetenv("LLAMA_ARG_GPU_POWER_DEVICE");
+
+    setenv("LLAMA_ARG_GPU_MEM_CLOCK_DECODE", "10501", true);
+    setenv("LLAMA_ARG_GPU_MEM_CLOCK_PREFILL", "10251", true);
+    common_params mem_env_params;
+    argv = {"binary_name"};
+    assert(true == common_params_parse(argv.size(), list_str_to_char(argv).data(), mem_env_params, LLAMA_EXAMPLE_SERVER));
+    assert(mem_env_params.gpu_mem_clock_decode == 10501);
+    assert(mem_env_params.gpu_mem_clock_prefill == 10251);
+    unsetenv("LLAMA_ARG_GPU_MEM_CLOCK_DECODE");
+    unsetenv("LLAMA_ARG_GPU_MEM_CLOCK_PREFILL");
+
+    setenv("LLAMA_ARG_GPU_POWER_BACKEND", "amdgpu", true);
+    setenv("LLAMA_ARG_GPU_FABRIC_STATE", "0", true);
+    common_params fabric_env_params;
+    argv = {"binary_name"};
+    assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), fabric_env_params, LLAMA_EXAMPLE_SERVER));
+    assert(fabric_env_params.gpu_fabric_state == 0);
+    unsetenv("LLAMA_ARG_GPU_POWER_BACKEND");
+    unsetenv("LLAMA_ARG_GPU_FABRIC_STATE");
+
+    setenv("LLAMA_ARG_GPU_POWER_BACKEND", "amdgpu", true);
+    setenv("LLAMA_ARG_APU_TDP", "20", true);
+    common_params tdp_env_params;
+    argv = {"binary_name"};
+    assert(common_params_parse(argv.size(), list_str_to_char(argv).data(), tdp_env_params, LLAMA_EXAMPLE_SERVER));
+    assert(tdp_env_params.apu_tdp == 20);
+    unsetenv("LLAMA_ARG_GPU_POWER_BACKEND");
+    unsetenv("LLAMA_ARG_APU_TDP");
+#endif // _WIN32
+
+    printf("test-arg-parser: test download functions\n\n");
+    const char * GOOD_URL = "http://ggml.ai/";
+    const char * BAD_URL  = "http://ggml.ai/404";
+
+    std::pair<long, std::vector<char>> good_url_res;
+    try {
+        good_url_res = common_remote_get_content(GOOD_URL, {});
+    } catch (std::exception & e) {
+        fprintf(stderr, "SKIP: could not fetch %s (%s)\n", GOOD_URL, e.what());
+        printf("test-arg-parser: all tests OK\n\n");
+        return;
+    }
+
+    {
+        printf("test-arg-parser: test good URL\n\n");
+        assert(good_url_res.first == 200);
+        assert(good_url_res.second.size() > 0);
+        std::string str(good_url_res.second.data(), good_url_res.second.size());
+        assert(str.find("llama.cpp") != std::string::npos);
+    }
+
+    {
+        printf("test-arg-parser: test bad URL\n\n");
+        auto res = common_remote_get_content(BAD_URL, {});
+        assert(res.first == 404);
+    }
+
+    {
+        printf("test-arg-parser: test max size error\n");
+        common_remote_params params;
+        params.max_size = 1;
+        try {
+            common_remote_get_content(GOOD_URL, params);
+            assert(false && "it should throw an error");
+        } catch (std::exception & e) {
+            printf("  expected error: %s\n\n", e.what());
+        }
+    }
+
+    printf("test-arg-parser: all tests OK\n\n");
+}
+
+static void test_draft_cache_configuration_is_independent() {
+    common_params defaults;
+    assert(defaults.speculative.draft.cache_kvarn_bits_k == 0);
+    assert(defaults.speculative.draft.cache_kvarn_bits_v == 0);
+    assert(defaults.speculative.draft.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+
+    common_params target_kvarn;
+    target_kvarn.kvarn = llama_kvarn_params_for_type(LLAMA_KVARN_K4V2_G128);
+    target_kvarn.cache_kvarn_bits_k = 4;
+    target_kvarn.cache_kvarn_bits_v = 2;
+    target_kvarn.cache_type_k = GGML_TYPE_Q4_0;
+    target_kvarn.cache_type_v = GGML_TYPE_Q2_0S;
+    target_kvarn.kv_tail_tokens = "512";
+
+    common_params draft = common_base_params_to_speculative(target_kvarn);
+    assert(draft.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+    assert(draft.cache_kvarn_bits_k == 0);
+    assert(draft.cache_kvarn_bits_v == 0);
+    assert(draft.cache_kvarn_swa_bits_k == 0);
+    assert(draft.cache_kvarn_swa_bits_v == 0);
+    assert(draft.kv_tail_tokens == "0");
+    assert(draft.kv_tail_type == GGML_TYPE_F16);
+
+    common_params independent;
+    independent.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP };
+    independent.speculative.draft.kvarn = llama_kvarn_params_for_type(LLAMA_KVARN_K6V4_G128);
+    independent.speculative.draft.cache_kvarn_bits_k = 6;
+    independent.speculative.draft.cache_kvarn_bits_v = 4;
+    independent.speculative.draft.cache_type_k = GGML_TYPE_Q6_0;
+    independent.speculative.draft.cache_type_v = GGML_TYPE_Q4_0;
+    draft = common_base_params_to_speculative(independent);
+    assert(independent.kvarn.type == LLAMA_KVARN_TYPE_DISABLED);
+    assert(draft.kvarn.type == LLAMA_KVARN_K6V4_G128);
+    assert(draft.cache_kvarn_bits_k == 6);
+    assert(draft.cache_kvarn_bits_v == 4);
+    assert(draft.cache_kvarn_swa_bits_k == 0);
+    assert(draft.cache_kvarn_swa_bits_v == 0);
+    assert(draft.kvarn.swa_key_bits == 0);
+    assert(draft.kvarn.swa_value_bits == 0);
+    assert(draft.kv_tail_tokens == "0");
+
+    independent.kvarn = llama_kvarn_params_for_type(LLAMA_KVARN_K4V2_G128);
+    draft = common_base_params_to_speculative(independent);
+    assert(independent.kvarn.type == LLAMA_KVARN_K4V2_G128);
+    assert(draft.kvarn.type == LLAMA_KVARN_K6V4_G128);
+
+    independent.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_DFLASH };
+    draft = common_base_params_to_speculative(independent);
+    assert(draft.kvarn.type == LLAMA_KVARN_K6V4_G128);
+
+    for (const auto supported : {
+            COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE,
+            COMMON_SPECULATIVE_TYPE_DRAFT_EAGLE3,
+            COMMON_SPECULATIVE_TYPE_DRAFT_DSPARK }) {
+        independent.speculative.types = { supported };
+        draft = common_base_params_to_speculative(independent);
+        assert(draft.kvarn.type == LLAMA_KVARN_K6V4_G128);
+        assert(draft.kv_tail_tokens == "0");
+        assert(draft.kv_tail_type == GGML_TYPE_F16);
+    }
+
+    independent.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP };
+    independent.remote_attn_cuda_reserve = 1250 * 1024 * 1024;
+    for (const char * endpoint : { "local", "vulkan", "vulkan:0", "local:0" }) {
+        independent.remote_attn_host = endpoint;
+        draft = common_base_params_to_speculative(independent);
+        assert(draft.remote_attn_host == endpoint);
+        assert(draft.remote_attn_layers == "auto");
+        assert(draft.remote_attn_prefill == "remote");
+        assert(draft.remote_attn_cuda_reserve == 650 * 1024 * 1024);
+    }
+    independent.remote_attn_cuda_reserve = 300 * 1024 * 1024;
+    draft = common_base_params_to_speculative(independent);
+    assert(draft.remote_attn_cuda_reserve == 300 * 1024 * 1024);
+    independent.remote_attn_host = "127.0.0.1";
+    independent.remote_attn_cuda_reserve = 1250 * 1024 * 1024;
+    draft = common_base_params_to_speculative(independent);
+    assert(draft.remote_attn_host.empty());
+
+    independent.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP, COMMON_SPECULATIVE_TYPE_NGRAM_CACHE };
+    draft = common_base_params_to_speculative(independent);
+    assert(draft.kvarn.type == LLAMA_KVARN_K6V4_G128);
+
+    for (const char * unsupported : { "none", "ngram-simple", "ngram-map-k", "ngram-map-k4v", "ngram-mod", "ngram-cache" }) {
+        common_params parsed;
+        std::vector<std::string> argv = {
+            "binary_name", "-m", "model.gguf", "--spec-type", unsupported,
+            "--spec-draft-type-k", "kvarn4", "--spec-draft-type-v", "kvarn2",
+        };
+        std::vector<char *> argv_ptrs;
+        for (std::string & arg : argv) {
+            argv_ptrs.push_back(arg.data());
+        }
+        const std::string error = capture_stderr([&]() {
+            assert(!common_params_parse((int) argv_ptrs.size(), argv_ptrs.data(), parsed, LLAMA_EXAMPLE_SPECULATIVE));
+        });
+        assert(error.find("requires exactly one model-backed speculative mode") != std::string::npos);
+    }
+
+    independent.speculative.types = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP, COMMON_SPECULATIVE_TYPE_DRAFT_SIMPLE };
+    try {
+        (void) common_base_params_to_speculative(independent);
+        assert(false && "ambiguous draft cache ownership must fail closed");
+    } catch (const std::invalid_argument &) {
+    }
+}
+
+static void test_single_device_draft_does_not_inherit_target_tensor_split() {
+    common_params params;
+    params.split_mode      = LLAMA_SPLIT_MODE_TENSOR;
+    params.tensor_split[0] = 3.0f;
+    params.tensor_split[1] = 1.0f;
+    params.speculative.draft.mparams.path = "draft.gguf";
+    params.speculative.draft.devices = {
+        reinterpret_cast<ggml_backend_dev_t>(uintptr_t{1}),
+        nullptr,
+    };
+
+    const common_params draft = common_base_params_to_speculative(params);
+
+    assert(draft.split_mode == LLAMA_SPLIT_MODE_LAYER);
+    assert(draft.split_mode != LLAMA_SPLIT_MODE_TENSOR);
+}
+
+int main(void) {
+    try {
+        test();
+        test_draft_cache_configuration_is_independent();
+        test_single_device_draft_does_not_inherit_target_tensor_split();
+    } catch (std::exception & e) {
+        fprintf(stderr, "test-arg-parser: exception: %s\n", e.what());
+        return 1;
+    }
+    return 0;
+}
