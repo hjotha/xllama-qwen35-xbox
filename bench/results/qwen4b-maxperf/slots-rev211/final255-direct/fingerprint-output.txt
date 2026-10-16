@@ -1,0 +1,1 @@
+PASS: Xbox 11/11 identity/version refusals, usable chat and original restore; original bytes preserved

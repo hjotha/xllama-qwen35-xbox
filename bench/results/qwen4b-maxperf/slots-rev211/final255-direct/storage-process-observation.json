@@ -1,0 +1,63 @@
+{
+  "utc": "2026-10-13T12:19:40.444833+00:00",
+  "linux": [
+    {
+      "path": "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf",
+      "device": 66306,
+      "available_bytes": 30290718720,
+      "free_inodes": 12737799,
+      "total_inodes": 15564800
+    },
+    {
+      "path": "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/build",
+      "device": 66306,
+      "available_bytes": 30290718720,
+      "free_inodes": 12737799,
+      "total_inodes": 15564800
+    },
+    {
+      "path": "/tmp",
+      "device": 66306,
+      "available_bytes": 30290718720,
+      "free_inodes": 12737799,
+      "total_inodes": 15564800
+    },
+    {
+      "path": "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211",
+      "device": 66306,
+      "available_bytes": 30290718720,
+      "free_inodes": 12737799,
+      "total_inodes": 15564800
+    }
+  ],
+  "windows193": {
+    "observed_local_time": "2026-10-13T14:15:24.2274811+02:00",
+    "volume": "C:",
+    "free_bytes": 15346028544,
+    "used_bytes": 224013672448,
+    "scope": "source worktree,build output,tmp and build logs under C:/Users/hjotha",
+    "inodes": "Not supplied by Get-PSDrive"
+  },
+  "xbox": {
+    "observed_utc": "2026-10-13T12:15:32Z",
+    "package": "GianlucaMazza.xllama_1.6.0.255_x64__pj67f1fcj4n14",
+    "pid_at_observation": 1236,
+    "working_set_bytes": 2904342528,
+    "snapshot_volume": "Q:",
+    "slots_list_empty": true,
+    "free_bytes": null,
+    "inodes": null,
+    "capacity_limit": "FileExplorer and /ext/xbox/info read routes exposed no capacity fields; no capacity claim"
+  },
+  "host_runner": {
+    "pid": 1911222,
+    "job": "Uj5hGIlcKe3BxrzdJKzNArrVArl2l4BW",
+    "stage": "b1"
+  },
+  "numeric": {
+    "main_rows": 50,
+    "shapes": 282,
+    "all_ok": true,
+    "finished_utc": "2026-10-13T12:12:34Z"
+  }
+}

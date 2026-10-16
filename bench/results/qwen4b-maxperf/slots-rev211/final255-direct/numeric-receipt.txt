@@ -1,0 +1,17 @@
+numeric_selftest_rev255 start=2026-10-13T12:12:34Z
+csv=d3d12be-rev255.csv rows=50
+silu_fused=1
+[xllama] silu selftest: backends ready, flag on
+[xllama] silu selftest: ctx ready
+[xllama] silu selftest: buffers allocated, setting inputs
+[xllama] silu selftest: GPU compute
+[xllama] silu selftest: GPU compute rc=0
+[xllama] silu selftest: post-GPU reached
+[xllama] silu selftest: CPU direct kernel
+[xllama] silu selftest: CPU direct done mxcsr_before=0x1fbb after=0x1fbb
+[xllama] swiglu selftest: GPU compute
+[xllama] swiglu selftest: GPU compute rc=0
+[xllama] swiglu selftest: CPU direct kernel
+[xllama] silu selftest: case done
+[xllama] d3d12be: silu_avx2 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36483 ord_ulp_max=2199553741 ord_abs=1.12e+03 ord_rel=1.04e+06 his[xllama] d3d12be: swiglu_avx2 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36115 ord_ulp_max=2201345552 ord_abs=3.62e+03 ord_rel=1.04e+06 h[xllama] d3d12be: add_f32 n=9216 k=4 ncols=4 rel_err=0 gpu_ms=0.0000 gbs=0.00 ok=1 err=bit_mismatch=0 max_ulp=0 nonfinite_mismatch=0 n=36864
+end=2026-10-13T12:12:34Z

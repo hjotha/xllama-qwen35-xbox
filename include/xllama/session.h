@@ -197,8 +197,15 @@ struct Session {
     // Both return false with *err on any failure, "unsupported backend"
     // included; a caller must treat that as "no cache, prefill normally",
     // never as a hard error.
-    virtual bool save_state(const std::string& path, std::string* err = nullptr) {
+    // request_nonce (T18 fault probe, plan 009): test-only identity of the
+    // caller's request, threaded from the LAN handler's X-Test-Nonce header
+    // through to save_state so an armed mid-write fault can bind to the exact
+    // disposable test request. Empty (the default) never matches any arm, so
+    // GUI snapshots and ordinary saves are unaffected.
+    virtual bool save_state(const std::string& path, std::string* err = nullptr,
+                            const std::string& request_nonce = "") {
         (void)path;
+        (void)request_nonce;
         if (err)
             *err = "state persistence not supported by this backend";
         return false;

@@ -1,0 +1,90 @@
+RECEIPT: plan 009 closing gates on the FINAL binary (rev216 LTCG) + slot
+validation. No push/merge (msg841 scope). Work branch feat/kv-slot-persist.
+
+Package
+- rev216 Final (LTCG, 906s): GianlucaMazza.xllama_1.6.0.216_x64__pj67f1fcj4n14
+  MSIX sha256 C09B6ECD00D182F7C4778F6E7D5192B0298092001C57C8A833035EE89D859D64
+  (mode=final recorded; iteration TPS never reported as final).
+  Sources = rev215-iteration sources: session.cpp (fp v2, drafter reset,
+  restore ms, reuse-diag), chat_prompt.cpp (suffix replay), api-server.cpp
+  (slots routes), MainPage.cpp (preload no-evict), tests (qwen expectation).
+- Installed over rev215; device left serving, FFN+MTP enabled (knob absent).
+
+Closing gates (fresh runs on the installed final package, never relabeled)
+- numeric: d3d12be-rev216.csv 50/50 ok, D2a PASS, silu/swiglu [fused]
+  bit-exact (ord/edge/nf/ulp/abs 0). Device run completed; local watcher
+  timed out (same pattern as rev209); results fetched at once. One older
+  ok=0/ord=6 silu line in the (since rotated) history belongs to a pre-fix
+  experimental build, not this run.
+- acceptance b1+b2: 96 measured lines (run_index 2/3), strict v3 validator
+  0 failures; all baseline digests exact (single-turn prompts render NO
+  history, so the template change cannot move them — confirmed); arm parity
+  exact. 24/24 OFF/ON comparisons positive: median +4.57%, mean +4.42%,
+  sd 0.75, q1 +4.06, q3 +5.14, min +3.00%, max +5.68%, 0 overlaps.
+  Memory: peak means 3562-3564 MB, max 3674 — unchanged.
+- termgate (labels corrected, 2nd revision): legacy ref/cand = one identical
+  bench_mtp=4 invocation AND byte-identical outputs; the device `arm` column
+  encodes twocol/repack scope (uwp/inference-bridge.cpp:1992), NOT the
+  invocation — proven by this run (same scenarios, arm=ref under clean
+  knobs vs arm=cand with twocol knobs; all other columns identical).
+  Gate: sw0==sw1 byte parity per real invocation (mtp0/mtp4) + legacy
+  baseline parity on behavior columns (arm excluded): 6/6 PASS.
+- vround (profile-enabled, delimited): chat256-mtp 93/arm, code256-mtp
+  87/arm; schedule/state canon IDENTICAL between arms AND identical to the
+  rev207 and rev209 canons (third package, same hashes); calls 185/153.
+- api recall: exact recall (RECALL-5), single bind on (mtp_capable=1),
+  qwen counters via swap-flush (no death race): 193 FFN SWIGLU + 120 GDN
+  dispatches; kept 41 of 61 established; MTP drafting active every turn.
+- slot smoke: restore-continue == fresh prefill (token-exact), garbage
+  refused, store empty afterwards.
+
+Slots battery (rev215 iteration, functional; relative criteria, both arms)
+- ON + OFF: 0 failures each (B1-B11 incl. rollback, divergence, EOS,
+  isolation, corrupt/truncated/wrong-version, tmp hygiene, fresh-process).
+  Quiesce pre/post quiet; no rotation (1119/1149-line windows); no
+  unexpected model swaps (preload fix verified: 0 mid-gate swaps).
+- Reuse mechanism: 7 kept lines per arm (kept 42 of 62 x5, 66/85, 64/85);
+  restore ~5-8ms (hot cache) vs prefill ~430-950ms by size; ON≈OFF prefill
+  ranges overlap.
+- MTP-off harvest probe (llama.ini mtp=0 temporarily, restored after):
+  kept 40 of 60 + tail-only prefill (kv_before=40 pf=20, 209.9ms vs ~640ms
+  full) + exact continuation — genuine end-to-end prefill savings.
+- MTP-on limit (precise, architectural): target-level prefix match is
+  established (kept counters real), but F3.5 clears the target because the
+  draft mirror cannot carry (pending is within-turn by design; mirror
+  rebuild needs target hidden rows = target prefill). Same work as before,
+  MTP stays active. Harvesting ON-savings needs a carry-at-boundary
+  redesign (MTP-owner scope) — flagged as the genuine out-of-scope
+  decision, not declared done. The template fix is its necessary
+  precondition (kept counters), and fully delivers OFF-path reuse.
+
+Infra notes (all recovered, none hidden)
+- Local watcher timeouts (numeric, vround-era api): device runs completed;
+  results fetched at once; receipts say so.
+- App wedge post-vround (API dead, process alive): clean restart recovered;
+  noted, not a product regression (vround's own runs completed OK).
+- Device log rotates: all slicing by content (delimited markers), never by
+  offsets; L0 method retired where unsafe.
+- External *.log deleter in the worktree (111 tracked .logs + untracked raw
+  logs removed ~20:0x): committed content recoverable from git; small
+  evidence restored; raw bulk left unrestored (publication excludes it
+  anyway). New evidence commits immediately; transient 100MB fetches
+  deleted after slicing.
+- Duplicate rev216 launch race (tool-timeout retry?): one instance owned
+  the task ("queued or running" guard worked); the running build was mine
+  (rev216 Final flags) and completed normally.
+
+Rollback/state
+- Immediate: knob0 + restart + API (tested pattern on rev209; knob absent
+  now = default ON).
+- Code: rev210 artifact preserved (accepted source, sha 7570FAB2) —
+  installable over revisions <210 only (UWP monotonicity); over rev216 a
+  fresh accepted-source rebuild at rev>216 is needed (~3 min iteration /
+  ~16 min Final). Procedure documented, not pre-built (no failure
+  warranting it).
+- Baseline preserved: rev209 published (main 3e631f3); this stage adds no
+  push/merge. Branch feat/kv-slot-persist holds full history + evidence.
+
+Constraints: no push/merge, no reboot/resetGPU, no provider/model change,
+.57 untouched (no SSH there at all), no credentials, no bulky logs in
+commits, no epsilon/threshold relaxation anywhere.

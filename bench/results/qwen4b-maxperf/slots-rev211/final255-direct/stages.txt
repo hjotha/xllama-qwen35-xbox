@@ -1,0 +1,43 @@
+cold start 2026-10-13T11:31:02Z
+xllama process: pid=2204 image=xllama.exe running=True ws=4044746752
+cold PASS 2026-10-13T11:33:26Z
+api start 2026-10-13T11:33:27Z
+xllama process: pid=3032 image=xllama.exe running=True ws=4040347648
+api PASS 2026-10-13T11:33:49Z
+slots-on start 2026-10-13T11:33:49Z
+slots-on start 2026-10-13T11:44:13Z
+xllama process: pid=6052 image=xllama.exe running=True ws=4042383360
+slots-on PASS 2026-10-13T11:46:12Z
+slots-off start 2026-10-13T11:46:12Z
+xllama process: pid=4000 image=xllama.exe running=True ws=4042649600
+slots-off PASS 2026-10-13T11:48:16Z
+aligned start 2026-10-13T11:48:16Z
+xllama process: pid=6476 image=xllama.exe running=True ws=4042506240
+aligned PASS 2026-10-13T11:49:55Z
+stability start 2026-10-13T11:49:55Z
+xllama process: pid=1124 image=xllama.exe running=True ws=4046237696
+stability PASS 2026-10-13T11:50:55Z
+concurrency start 2026-10-13T11:50:55Z
+xllama process: pid=1124 image=xllama.exe running=True ws=4046020608
+concurrency PASS 2026-10-13T11:50:57Z
+fault start 2026-10-13T11:50:57Z
+xllama process: pid=1124 image=xllama.exe running=True ws=4043141120
+fault PASS 2026-10-13T11:51:04Z
+fingerprint start 2026-10-13T11:51:05Z
+xllama process: pid=1124 image=xllama.exe running=True ws=4042833920
+fingerprint PASS 2026-10-13T11:51:29Z
+trailer start 2026-10-13T11:51:30Z
+xllama process: pid=1124 image=xllama.exe running=True ws=4042694656
+trailer PASS 2026-10-13T11:51:59Z
+termgate start 2026-10-13T11:52:00Z
+xllama process: not running
+termgate PASS 2026-10-13T11:55:51Z
+vround start 2026-10-13T11:55:51Z
+xllama process: not running
+vround PASS 2026-10-13T11:59:40Z
+numeric start 2026-10-13T12:00:24Z
+xllama process: not running
+numeric PASS 2026-10-13T12:12:34Z
+b1 start 2026-10-13T12:13:13Z
+xllama process: not running
+b1 PASS 2026-10-13T12:46:43Z

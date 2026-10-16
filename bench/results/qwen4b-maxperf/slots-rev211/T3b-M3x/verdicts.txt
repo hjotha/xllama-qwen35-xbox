@@ -1,0 +1,21 @@
+PASS: restart verified (divz-fresh)
+PASS: restart verified (divz-newproc)
+== DIV-ZERO (flag=zerocarry)
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+turn full=1 kv_before=42 pf=36 prompt=78
+prefill=391.2ms (36 tok) reuse=0
+drafted=7 (mtp=7 lookup=0) spec_accept=5
+response: I cannot repeat the cipher or provide the specific code you are referring to. I
+PASS: restart verified (longz-build)
+PASS: restart verified (longz-newproc)
+WS longz-pre: 3856 MB (raw=4044230656)
+== LONG-ZERO (flag=zerocarry)
+T1: rebuild mode=zerocarry n=151 harvest=0.0ms process=0.0ms OK pending=1 pos=150 carry_from_n=1
+turn full=1 kv_before=151 pf=22 prompt=173
+prefill=300.1ms (22 tok) reuse=0
+drafted=21 (mtp=21 lookup=0) spec_accept=17
+rounds=13 decodes=41 discarded=5 catchup_tok=32
+response: Here is the cipher "BRAVO-7" repeated three times with their respective indices:
+
+1.  **BRAVO-7** (Indices:  prompt_tok=22 completion_tok=32
+WS longz-post: 3858 MB (raw=4045582336)

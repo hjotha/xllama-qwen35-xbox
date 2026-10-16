@@ -1,0 +1,23 @@
+== G2 failed-save atomicity
+store before: []
+invalid-id save: http=400 body={"error":{"message":"missing or invalid 'slot' (alnum, '-' and '_' only, max 64 chars)","type":"xllama_error"}}
+PASS: restart verified (no-kv)
+no-resident-KV save: http=400 body={"error":{"message":"no resident session; chat first to load the model","type":"xllama_error"}}
+store after: []
+PASS: G2: store unchanged after both failed saves
+PASS: G2: no file for failed save 'bad/id'
+PASS: G2: no leftover .tmp for 'bad/id'
+PASS: G2: no file for failed save 't16-nokv'
+PASS: G2: no leftover .tmp for 't16-nokv'
+== G1 memory/stability (rev244 Final)
+PASS: restart verified (g1)
+WS g1-after-restart: 87 MB (raw=91553792)
+WS g1-after-seed+save: 3861 MB (raw=4048904192)
+PASS: restart verified (g1-restore)
+WS g1-after-preload: 3857 MB (raw=4044529664)
+WS g1-after-restore-turn: 3857 MB (raw=4045012992)
+WS g1-after-t2: 3857 MB (raw=4044947456)
+WS g1-after-t3: 3859 MB (raw=4046868480)
+{"ok":true,"slots":[{"slot":"t16","tokens":42,"bytes":54252722}]}== G3 fingerprint refusal (existing evidence, not rerun)
+PASS: B9 wrong-version refused
+198:hdr[3]='v9 edited-fp'

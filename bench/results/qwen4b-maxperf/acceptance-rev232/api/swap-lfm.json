@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791628038-3","object":"chat.completion","created":1791628038,"model":"lfm25-350m","choices":[{"index":0,"message":{"role":"assistant","content":"run"},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":28,"completion_tokens":1,"total_tokens":29}}

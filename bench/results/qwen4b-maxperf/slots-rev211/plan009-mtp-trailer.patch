@@ -1,0 +1,299 @@
+diff --git a/include/xllama/mtp_draft.h b/include/xllama/mtp_draft.h
+index 40e9873..6a58a2d 100644
+--- a/include/xllama/mtp_draft.h
++++ b/include/xllama/mtp_draft.h
+@@ -166,6 +166,18 @@ class MtpDrafter {
+         return m_params;
+     }
+ 
++    // Plan 009 complete-state persistence: the private draft KV is real
++    // state (Qwen3.5 keeps a private draft KV), so a slot file must be able
++    // to carry it or a restore silently degrades the drafter to a partial
++    // mirror (documented hole) with a decoy pending row. Test-only accessors
++    // follow for the aligned-comparison probes.
++    bool get_state(std::vector<uint8_t>& blob) const;
++    bool set_state(const uint8_t* data, size_t size);
++    // Install a REAL pending row (the true hidden state carried from the
++    // save). Fail-closed: no row, no valid pos => false and nothing changes.
++    bool prime_pending(const float* row, llama_pos pos);
++    llama_pos mirror_pos_min() const;
++
+     // Plan 009 S3 probe (test-only accessors): the pending row bytes and the
+     // mirror's position extent, so a diagnostic can compare drafter-boundary
+     // state between arms. Production paths never read these.
+diff --git a/src/bridge/mtp_draft.cpp b/src/bridge/mtp_draft.cpp
+index 67b02f9..5e869c5 100644
+--- a/src/bridge/mtp_draft.cpp
++++ b/src/bridge/mtp_draft.cpp
+@@ -518,6 +518,54 @@ bool MtpDrafter::prime_zero_carry(llama_pos pos) {
+     return true;
+ }
+ 
++// Plan 009 complete-state persistence (contract in mtp_draft.h).
++bool MtpDrafter::get_state(std::vector<uint8_t>& blob) const {
++    if (!m_ctx)
++        return false;
++    try {
++        const size_t need = llama_state_seq_get_size(m_ctx, 0);
++        if (need == 0)
++            return false;
++        blob.resize(need);
++        const size_t got = llama_state_seq_get_data(m_ctx, blob.data(), blob.size(), 0);
++        if (got == 0) {
++            blob.clear();
++            return false;
++        }
++        blob.resize(got);
++        return true;
++    } catch (const std::exception&) {
++        blob.clear();
++        return false;
++    }
++}
++
++bool MtpDrafter::set_state(const uint8_t* data, size_t size) {
++    if (!m_ctx || !data || size == 0)
++        return false;
++    try {
++        return llama_state_seq_set_data(m_ctx, data, size, 0) > 0;
++    } catch (const std::exception&) {
++        return false;
++    }
++}
++
++bool MtpDrafter::prime_pending(const float* row, llama_pos pos) {
++    if (!m_ctx || !row || pos < 0)
++        return false;
++    std::memcpy(m_pending_h.data(), row, m_pending_h.size() * sizeof(float));
++    m_pending_pos = pos;
++    m_pending_valid = true;
++    m_carry_valid = false; // a restored row is not a committed prefix end
++    return true;
++}
++
++llama_pos MtpDrafter::mirror_pos_min() const {
++    if (!m_ctx)
++        return -1;
++    return llama_memory_seq_pos_min(llama_get_memory(m_ctx), 0);
++}
++
+ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
+                          int n, llama_pos pos0, bool profile) {
+     if (!m_ctx || !tokens || n <= 0)
+diff --git a/src/bridge/session.cpp b/src/bridge/session.cpp
+index 3e54fd1..5fe7c78 100644
+--- a/src/bridge/session.cpp
++++ b/src/bridge/session.cpp
+@@ -1430,6 +1430,13 @@ class LlamaSession final : public Session {
+     // silent garbage.
+ 
+     static constexpr const char* kStateMagic = "xllama-kv";
++    // Plan 009 complete-state trailer (additive; a v2 reader stops at the
++    // target blob and never looks here). Carries the private draft KV + the
++    // real pending row + the mirror extent + a prefix hash that proves the
++    // mirror's rows correspond to the restored tokens. Refused unless every
++    // field validates; anything else falls back to the v2 prime path.
++    static constexpr const char* kMtpMagic = "XLMTPST1"; // 8 bytes, no NUL
++    static constexpr uint32_t kMtpTrailerVersion = 1;
+     // v2 (plan 009): the v1 fingerprint missed rope scale, YaRN-effective
+     // identity is model-side here (no session overrides), plus the effective
+     // K/V cache types and n_seq_max. A v1 file never matches a v2
+@@ -1446,7 +1453,7 @@ class LlamaSession final : public Session {
+     static constexpr size_t kMaxStateBytes = 512u << 20;
+ 
+     static FILE* open_state_file(const std::string& path, const char* mode) {
+-    #ifdef XLLAMA_UWP
++#ifdef XLLAMA_UWP
+         const std::string m(mode);
+         return _wfopen(utf8_to_wstring(path).c_str(), std::wstring(m.begin(), m.end()).c_str());
+     #else
+@@ -1472,9 +1479,10 @@ class LlamaSession final : public Session {
+     // request. Cache K/V types are re-derived from m_kv_q8 exactly as the
+     // context creation does; rope identity is model-side (this session never
+     // overrides rope/yarn). MTP depth is deliberately NOT part of identity:
+-    // the blob holds target-context state only and the private draft mirror
+-    // is always rebuilt after a load, so the same snapshot is valid with MTP
+-    // on or off.
++    // the target blob holds target-context state only. The drafter trailer
++    // (plan 009 #170c) is validated separately — its own magic/version, its
++    // mirror extent, its carry position and its prefix proof — and a file
++    // without it stays a valid v2 snapshot for MTP on or off.
+     std::string state_fingerprint() const {
+         char desc[192] = {};
+         llama_model_desc(m_model.get(), desc, sizeof(desc) - 1);
+@@ -1494,6 +1502,61 @@ class LlamaSession final : public Session {
+         return buf;
+     }
+ 
++    // FNV-1a 64 over a byte range — the prefix proof for the MTP trailer.
++    static uint64_t fnv1a(const void* data, size_t n) {
++        const uint8_t* p = static_cast<const uint8_t*>(data);
++        uint64_t h = 1469598103934665603ULL;
++        for (size_t i = 0; i < n; ++i) {
++            h ^= p[i];
++            h *= 1099511628211ULL;
++        }
++        return h;
++    }
++
++    // Plan 009: append the drafter trailer into an OPEN tmp file (already
++    // holding header+tokens+target blob). Returns false on any write
++    // failure so the caller removes the tmp instead of shipping a silently
++    // v2 file. No trailer when the drafter is absent (legit v2 file).
++    bool write_mtp_trailer(FILE* fp, const std::vector<llama_token>& tokens, bool* wrote) {
++        *wrote = false;
++        if (!m_mtp_drafter || !m_mtp_drafter->ready())
++            return true; // MTP off: a v2 file is the honest artifact
++        const llama_pos pmin = m_mtp_drafter->mirror_pos_min();
++        const llama_pos pmax = m_mtp_drafter->mirror_pos_max();
++        if (pmin < 0 || pmax < pmin)
++            return false;
++        const uint32_t pos_min = static_cast<uint32_t>(pmin);
++        const uint32_t cells = static_cast<uint32_t>(pmax - pmin + 1);
++        if (pos_min > tokens.size() || cells != tokens.size() - pos_min)
++            return false; // mirror extent must mirror the resident tokens
++        const float* pend = m_mtp_drafter->pending_row_data();
++        const llama_pos ppos = m_mtp_drafter->pending_pos();
++        if (!pend || ppos != static_cast<llama_pos>(tokens.size()) - 1)
++            return false; // the carry must describe the last token
++        std::vector<uint8_t> draft;
++        if (!m_mtp_drafter->get_state(draft) || draft.empty())
++            return false;
++        const uint32_t n_embd = static_cast<uint32_t>(llama_model_n_embd_out(m_model.get()));
++        const uint64_t prefix_hash =
++            fnv1a(tokens.data() + pos_min, (tokens.size() - pos_min) * sizeof(llama_token));
++        const uint32_t pending_pos = static_cast<uint32_t>(ppos);
++        const uint64_t draft_size = draft.size();
++        std::vector<float> pend_row(pend, pend + n_embd); // io_chunked needs void*
++        bool ok = std::fwrite(kMtpMagic, 1, 8, fp) == 8;
++        ok = ok && std::fwrite(&kMtpTrailerVersion, sizeof(kMtpTrailerVersion), 1, fp) == 1;
++        ok = ok && std::fwrite(&pos_min, sizeof(pos_min), 1, fp) == 1;
++        ok = ok && std::fwrite(&cells, sizeof(cells), 1, fp) == 1;
++        ok = ok && std::fwrite(&draft_size, sizeof(draft_size), 1, fp) == 1;
++        ok = ok && io_chunked(fp, draft.data(), draft.size(), /*write=*/true);
++        ok = ok && std::fwrite(&pending_pos, sizeof(pending_pos), 1, fp) == 1;
++        ok = ok && std::fwrite(&n_embd, sizeof(n_embd), 1, fp) == 1;
++        ok = ok && io_chunked(fp, pend_row.data(), static_cast<size_t>(n_embd) * sizeof(float),
++                              /*write=*/true);
++        ok = ok && std::fwrite(&prefix_hash, sizeof(prefix_hash), 1, fp) == 1;
++        *wrote = ok;
++        return ok;
++    }
++
+     bool save_state(const std::string& path, std::string* err) override {
+         if (!ensure_ctx(err))
+             return false;
+@@ -1537,6 +1600,8 @@ class LlamaSession final : public Session {
+         ok = ok && io_chunked(fp, m_kv_tokens.data(), m_kv_tokens.size() * sizeof(llama_token),
+                               /*write=*/true);
+         ok = ok && io_chunked(fp, blob.data(), n_state, /*write=*/true);
++        bool wrote_trailer = false;
++        ok = ok && write_mtp_trailer(fp, m_kv_tokens, &wrote_trailer);
+         ok = (std::fclose(fp) == 0) && ok;
+ 
+         std::error_code ec;
+@@ -1553,13 +1618,76 @@ class LlamaSession final : public Session {
+                 *err = "rename failed: " + ec.message();
+             return false;
+         }
+-        char lb[160];
+-        snprintf(lb, sizeof(lb), "[xllama] session: KV state saved — %zu tokens, %.1f MB (#170b)\n",
+-                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0));
++        char lb[192];
++        snprintf(lb, sizeof(lb),
++                 "[xllama] session: KV state saved — %zu tokens, %.1f MB%s (#170b)\n",
++                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0),
++                 wrote_trailer ? " + MTP mirror trailer" : " (no MTP trailer: drafter absent)");
+         log_output(lb);
+         return true;
+     }
+ 
++    // Plan 009: try to restore the drafter state from the slot trailer. The
++    // file pointer sits right after the target blob. Returns true only when
++    // EVERY field validates and the draft context accepted the blob; any
++    // failure logs the reason and returns false so the caller keeps the v2
++    // behavior (clear + prime) instead of claiming a mirror it does not have.
++    bool try_restore_mtp_trailer(FILE* fp, const std::vector<llama_token>& tokens) {
++        auto refuse = [](const char* why) {
++            log_output(std::string("[xllama] MTP trailer refused (") + why +
++                       ") — falling back to v2 restore (clear + prime)\n");
++            return false;
++        };
++        if (!m_mtp_drafter || !m_mtp_drafter->ready())
++            return false; // nothing to restore into; v2 semantics
++        char magic[8] = {};
++        if (std::fread(magic, 1, 8, fp) != 8)
++            return false; // clean EOF: v2 file without a trailer
++        if (std::memcmp(magic, kMtpMagic, 8) != 0)
++            return refuse("bad magic");
++        uint32_t version = 0, pos_min = 0, cells = 0, pending_pos = 0, n_embd = 0;
++        uint64_t draft_size = 0, stored_hash = 0;
++        bool ok = std::fread(&version, sizeof(version), 1, fp) == 1;
++        ok = ok && std::fread(&pos_min, sizeof(pos_min), 1, fp) == 1;
++        ok = ok && std::fread(&cells, sizeof(cells), 1, fp) == 1;
++        ok = ok && std::fread(&draft_size, sizeof(draft_size), 1, fp) == 1;
++        if (!ok)
++            return refuse("header truncated");
++        if (version != kMtpTrailerVersion)
++            return refuse("version");
++        if (draft_size == 0 || draft_size > kMaxStateBytes)
++            return refuse("draft blob size");
++        if (pos_min > tokens.size() || cells != tokens.size() - pos_min)
++            return refuse("mirror extent vs tokens");
++        std::vector<uint8_t> draft(static_cast<size_t>(draft_size));
++        if (!io_chunked(fp, draft.data(), draft.size(), /*write=*/false))
++            return refuse("draft blob truncated");
++        if (std::fread(&pending_pos, sizeof(pending_pos), 1, fp) != 1 ||
++            std::fread(&n_embd, sizeof(n_embd), 1, fp) != 1)
++            return refuse("carry header truncated");
++        if (pending_pos != tokens.size() - 1)
++            return refuse("carry pos != last token");
++        if (n_embd != static_cast<uint32_t>(llama_model_n_embd_out(m_model.get())))
++            return refuse("carry width");
++        std::vector<float> pend(static_cast<size_t>(n_embd));
++        if (!io_chunked(fp, pend.data(), pend.size() * sizeof(float), /*write=*/false))
++            return refuse("carry row truncated");
++        if (std::fread(&stored_hash, sizeof(stored_hash), 1, fp) != 1)
++            return refuse("prefix proof truncated");
++        const uint64_t hash =
++            fnv1a(tokens.data() + pos_min, (tokens.size() - pos_min) * sizeof(llama_token));
++        if (hash != stored_hash)
++            return refuse("prefix proof mismatch");
++        if (!m_mtp_drafter->set_state(draft.data(), draft.size()))
++            return refuse("draft set_data rejected");
++        if (!m_mtp_drafter->prime_pending(pend.data(), static_cast<llama_pos>(pending_pos)))
++            return refuse("carry install failed");
++        log_output("[xllama] MTP trailer restored — drafter mirror cells=" + std::to_string(cells) +
++                   " pos_min=" + std::to_string(pos_min) + " carry@" +
++                   std::to_string(pending_pos) + " (prefix proof OK)\n");
++        return true;
++    }
++
+     bool load_state(const std::string& path, std::string* err) override {
+         if (!ensure_ctx(err))
+             return false;
+@@ -1664,6 +1792,10 @@ class LlamaSession final : public Session {
+         // vector) still clears safely there instead of here.
+         const bool same_prefix = (m_kv_tokens == tokens);
+         m_kv_tokens = std::move(tokens);
++        // Plan 009: a slot with a drafter trailer restores the mirror for
++        // real (only meaningful when the resident prefix differs; the
++        // same-prefix path keeps the live mirror anyway).
++        const bool mirror_restored = !same_prefix && try_restore_mtp_trailer(fp, m_kv_tokens);
+         // The native blob restores the TARGET context only. A live MTP
+         // drafter still mirrors the pre-load prefix plus a pending row for
+         // it; letting that survive would feed the draft head a hidden state
+@@ -1678,6 +1810,13 @@ class LlamaSession final : public Session {
+                      "prefix, carry preserved if valid) (#170b)\n",
+                      m_kv_tokens.size());
+             log_output(lb2);
++        } else if (mirror_restored) {
++            char lb3[192];
++            snprintf(lb3, sizeof(lb3),
++                     "[xllama] session: KV state loaded — MTP mirror restored from trailer "
++                     "(%zu tokens, drafting continues on real state) (#170c)\n",
++                     m_kv_tokens.size());
++            log_output(lb3);
+         } else if (m_mtp_drafter && m_mtp_drafter->ready() && !m_mtp_drafter->align_to(0)) {
+             llama_memory_clear(llama_get_memory(m_ctx.get()), true);
+             m_kv_tokens.clear();

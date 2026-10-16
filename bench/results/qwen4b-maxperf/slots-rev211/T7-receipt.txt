@@ -1,0 +1,75 @@
+# Receipt — G-L multi-ubatch ISOLADO: proveniência de estado, não não-determinismo
+
+Artefato: rev241 Iteration validado por identidade ANTES do uso
+(sha256 CA52C9A39DF2673E81DDB577CE26CB6F473B06C45D9937192797A4E6E7FB17D6,
+22.044.218 bytes, AppxManifest Version=1.6.0.241, origem
+`C:\Users\hjotha\build\xllama-q5k\xllama-q5k-fixed.msix` na .193;
+instalado por upgrade, device confiou a assinatura sem install-cert extra).
+PFN instalado: GianlucaMazza.xllama_1.6.0.241_x64__pj67f1fcj4n14. Nenhum
+build/download repetido. Modelo, 256/64, formato v2, gates e baselines
+preservados; sem push/merge; sem epsilon.
+
+## Matriz T7 (mesmo prompt fixo, modo idêntico, n=187 + geração 32)
+
+| par | logits por passo | token ids | verdictão |
+| --- | ---------------- | --------- | --------- |
+| F1 vs F2 (fresh × 2) | **BYTE-IGUAL** (`023eb4f3…`) | byte-igual | fresh determinístico |
+| R1 vs R2 (mesmo slot × 2) | **BYTE-IGUAL** (`69bcc029…`) | byte-igual | **restore determinístico** |
+| F1 vs R1 | diferem (32/32 passos, 1º passo já difere, max_abs 9,9e-03) | **byte-igual** | divergência determinística |
+
+T7d/T6d resta explicado: a diferença restore/restore vista antes era
+**procedência do slot** (T6d reconstruiu o histórico por outro caminho de
+prefill), não não-determinismo — com o MESMO arquivo de slot, R1==R2.
+
+## Estado (T7b, comparação byte dos arquivos de slot pós-turno)
+
+| par | resultado |
+| --- | --------- |
+| roundtrip src vs (restore→save) | **BYTE-IDÊNTICO**, 58.824.767 bytes, 0 diferenças — o restauro é fiel ao blob |
+| freshcont vs restorecont (pós-turno) | mesmos 61.284.467 bytes; 1ª diferença no offset 546.171; 27.389.118 bytes diferem (~45%) |
+| src vs freshcont | 1ª diferença no offset 10 (header: 187 vs 262 tokens — esperado) |
+
+MTP (T7, `chat-dump.mtp`): `mirror_pos_max=229` e `pending_valid=1` nos
+dois braços; pending row DIFERE (fresh `9847e255…` vs restore
+`e9bccebd…`, 10.240 bytes = 2560 f32) — proveniência dos hidden states,
+determinística.
+
+## Conclusão (diferenciação pedida)
+
+- **NÃO é não-determinismo de execução**: ambos os caminhos são
+  byte-reproduzíveis (F1==F2 e R1==R2).
+- **NÃO é perda de estado no restore**: o blob restaura e re-salva
+  byte-idêntico (roundtrip 58,8MB, zero diferenças).
+- **É proveniência de estado, determinística**: no braço fresh as linhas KV
+  vêm de um prefill de 230 tokens em 4 ubatches (64/64/64/38); no braço
+  restore vêm do blob (produzido pelo histórico multi-turno do slot) + um
+  prefill de cauda de 43. Ordens de acumulação f32 diferentes → deltas de
+  logits na classe 1e-3..4,5e-2 (magnitude dos logits ~10-20), com
+  **argmax idêntico em todos os passos**, token ids e texto byte-iguais.
+
+## Situação do gate G-L
+
+- Caso single-ubatch (prompt fresh ≤ 64 tok): logits **byte-iguais**.
+- Caso multi-ubatch: os bytes dos logits **não** são byte-iguais entre
+  fresh e restore — por proveniência aritmética do estado, provado acima.
+  O gate "byte/token equality, no epsilon" da S3 portanto fecha para
+  TOKENS (byte-igual em todos os cenários) e para LOGITS só no caso
+  single-ubatch; no multi-ubatch o critério byte de logits não é atingível
+  no caminho de reuso — limite estrutural do reuso, não do restore, e não
+  relaxável sem alterar o critério (não feito).
+
+## Nota de instrumentação
+
+O dump direto do blob KV (`chat-dump.kv`) não funcionou: a consulta de
+tamanho `llama_state_seq_get_data(ctx,nullptr,0,0)` retorna 0 neste fork
+(log `kv_bytes=0`); a comparação de estado foi feita sem build novo via
+slot restore→save e slots pós-turno. Menor correção futura, se um probe
+precisar do dump direto: pré-alocar buffer (ex. 160MB) e chamar get_data
+com buffer real — mudança de probe only, NÃO executada (evitando build
+extra; a pergunta já foi respondida pelos slots).
+
+## Estado do dispositivo
+
+rev241 servindo, slots vazios, flag ausente (404 — default OFF preservado).
+rev238 Final intacto (25ed611a…). Baseline 89F82DB7 mantida (a rev241 foi
+assinada com a mesma cadeia confiável). Rollback inalterado.

@@ -1,0 +1,3 @@
+PASS: exact slot/nonce isolation and snapshot identity before contention
+PASS: two concurrent exact-nonce saves -> one HTTP400 and one HTTP200, one fault log, no tmp, restore succeeds
+snapshot_sha256=4d142988eeb8117657f712ee95bf0a48e8c8452c8319af910eb12b1830983510

@@ -1,0 +1,82 @@
+diff --git a/include/xllama/mtp_draft.h b/include/xllama/mtp_draft.h
+index 9701081..d5228e0 100644
+--- a/include/xllama/mtp_draft.h
++++ b/include/xllama/mtp_draft.h
+@@ -185,6 +185,23 @@ class MtpDrafter {
+     // snapshot survives (only process() success writes it).
+     bool commit_carry(llama_pos committed_end);
+ 
++    // Plan 009 slot-restore: after the mirror was cleared because a disk
++    // restore replaced the target prefix (new process), the pending row is
++    // gone, so F3.5 would refuse the carry and the next turn would full-
++    // prefill. Priming a ZERO pending row at |pos| (the last restored
++    // token) makes can_carry_from(pos+1) true again so the tail-only turn
++    // keeps MTP drafting. The row is a deliberate DECOY: the draft context
++    // below |pos| stays empty and this row does not describe the target's
++    // hidden state of that token. It is safe by the same contract every
++    // draft already lives under — the target verifies every candidate, so
++    // a wrong draft costs time, never output text, and draft() returning
++    // empty falls back to classic decode (F2.3). Worst case measured on
++    // the rev234 zerocarry arms: acceptance halves, text identical, no
++    // state divergence in the target. Fail-closed: returns false (leaving
++    // the cleared mirror, i.e. full prefill) unless the drafter is ready
++    // and |pos| >= 0.
++    bool prime_zero_carry(llama_pos pos);
++
+   private:
+     llama_context* m_ctx = nullptr;
+     llama_sampler* m_smpl = nullptr;
+diff --git a/src/bridge/mtp_draft.cpp b/src/bridge/mtp_draft.cpp
+index 5b31e55..67b02f9 100644
+--- a/src/bridge/mtp_draft.cpp
++++ b/src/bridge/mtp_draft.cpp
+@@ -504,6 +504,20 @@ bool MtpDrafter::commit_carry(llama_pos committed_end) {
+     return true;
+ }
+ 
++// Plan 009 slot-restore prime (contract in mtp_draft.h). Fail-closed: a
++// false return leaves the already-cleared mirror (full prefill).
++bool MtpDrafter::prime_zero_carry(llama_pos pos) {
++    if (!m_ctx || pos < 0)
++        return false;
++    if (m_pending_pos == pos && m_pending_valid)
++        return true; // already primed for exactly this position
++    std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
++    m_pending_pos = pos;
++    m_pending_valid = true;
++    m_carry_valid = false; // a decoy row is not a committed prefix end
++    return true;
++}
++
+ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
+                          int n, llama_pos pos0, bool profile) {
+     if (!m_ctx || !tokens || n <= 0)
+diff --git a/src/bridge/session.cpp b/src/bridge/session.cpp
+index bc81569..a23a490 100644
+--- a/src/bridge/session.cpp
++++ b/src/bridge/session.cpp
+@@ -1580,6 +1580,24 @@ class LlamaSession final : public Session {
+             if (err)
+                 *err = "MTP draft mirror refused the post-restore clear";
+             return false;
++        } else if (m_mtp_drafter && m_mtp_drafter->ready() && !m_kv_tokens.empty()) {
++            // Plan 009: with the mirror cleared, F3.5 would refuse the carry
++            // on the next turn and full-prefill it, so the restored prefix
++            // was dead weight for MTP users. Prime a zero pending row at the
++            // last restored token so the tail-only turn keeps drafting; the
++            // decoy row's only effect is one draft-mirror row's input and
++            // the target still verifies every candidate (contract in
++            // mtp_draft.h:prime_zero_carry). Fail-closed: a failed prime
++            // leaves the cleared mirror = the pre-009 full-prefill path.
++            const llama_pos prime_pos = static_cast<llama_pos>(m_kv_tokens.size()) - 1;
++            if (m_mtp_drafter->prime_zero_carry(prime_pos)) {
++                log_output("[xllama] mtp: post-restore carry primed at pos=" +
++                           std::to_string(static_cast<int>(prime_pos)) +
++                           " (zero decoy row; drafting stays on, target verifies)\n");
++            } else {
++                log_output("[xllama] mtp: post-restore carry prime failed — full "
++                           "prefill on the next turn (fail-closed)\n");
++            }
+         }
+         const double load_ms =
+             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_load0)

@@ -1,0 +1,11 @@
+== G1 memory/stability (rev255 Final)
+PASS: restart verified (g1)
+WS g1-after-restart: 83 MB (raw=87805952)
+WS g1-after-seed+save: 3861 MB (raw=4049297408)
+PASS: restart verified (g1-restore)
+WS g1-after-preload: 3856 MB (raw=4043567104)
+WS g1-after-restore-turn: 3857 MB (raw=4045029376)
+WS g1-after-t2: 3857 MB (raw=4044976128)
+WS g1-after-t3: 3858 MB (raw=4046180352)
+{"ok":true,"slots":[{"slot":"r255stability","tokens":42,"bytes":54252828}]}
+PASS bounded stability cycle; WS samples bytes: [87805952, 4049297408, 4043567104, 4045029376, 4044976128, 4046180352] loaded range: 4043567104 4049297408

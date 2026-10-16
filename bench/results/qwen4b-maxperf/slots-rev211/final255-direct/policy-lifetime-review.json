@@ -1,0 +1,14 @@
+{
+  "scope": "Static control-flow review, no device execution",
+  "finding": "No reachable bench/termgate mutation of policy with a live interactive API context",
+  "evidence": [
+    "uwp/App.cpp:401-421 headless bench selected before Application::Start and process exits afterwards",
+    "uwp/App.cpp:533-540 equivalent exclusive headless termgate entry",
+    "uwp/App.cpp:209+ interactive OnLaunched follows headless selection",
+    "uwp/inference-bridge.cpp:940-944 apply_startup_profile guarded by s_prof_applied before session initialization"
+  ],
+  "limits": [
+    "Environment is process global; external process-memory tampering/hot runtime mutation is not a supported configuration mechanism",
+    "Changing LocalState flashattn.txt requires normal app restart to select new policy"
+  ]
+}

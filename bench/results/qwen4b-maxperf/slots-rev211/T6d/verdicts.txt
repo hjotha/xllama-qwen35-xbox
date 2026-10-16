@@ -1,0 +1,8 @@
+PASS: restart verified (seed)
+PASS: restart verified (fresh2-new)
+turn full=1 kv_before=0 pf=230 prompt=230
+prefill=2500.1ms (230 tok) reuse=0
+PASS: restart verified (restore2-new)
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=498.0ms (43 tok) reuse=0
+== compare (vs T6c first runs)

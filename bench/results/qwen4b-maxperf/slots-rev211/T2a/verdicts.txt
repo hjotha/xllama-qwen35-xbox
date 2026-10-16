@@ -1,0 +1,70 @@
+PASS: restart verified (fresh)
+WS fresh-pre: 3848 MB (raw=4034977792)
+== FRESH (no restore)
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=652.4ms (62 tok) reuse=0
+response: BRAVO-7 prompt_tok=62 completion_tok=4
+WS fresh-post: 3851 MB (raw=4038393856)
+PASS: restart verified (control-fresh)
+PASS: restart verified (control-newproc)
+WS control-post-restore-pre: 3857 MB (raw=4045225984)
+== CONTROL (restore, no flag)
+KV state loaded — 42 tokens, 51.6 MB, 7.8 ms
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=675.2ms (62 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response: BRAVO-7 prompt_tok=62 completion_tok=4
+WS control-post: 3857 MB (raw=4045086720)
+PASS: restart verified (full-fresh)
+PASS: restart verified (full-newproc)
+WS full-post-restore-pre: 3856 MB (raw=4044173312)
+== FULL (flag=full)
+T1: rebuild mode=full n=42 harvest=442.1ms process=20.4ms OK pending=1 pos=41 carry_from_n=1
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=232.2ms (20 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response: BRAVO-7 prompt_tok=20 completion_tok=4
+WS full-post: 3858 MB (raw=4045594624)
+PASS: restart verified (long-build)
+prompt_tok=119 completion_tok=32
+PASS: restart verified (longfresh)
+== LONG-FRESH (no restore)
+turn full=1 kv_before=0 pf=173 prompt=173
+prefill=1866.6ms (173 tok) reuse=0
+response: Here is the cipher "BRAVO-7" repeated three times with their respective indices:
+
+1.  **BRAVO-7** (Indices:  prompt_tok=173 completion_tok=32
+PASS: restart verified (longfull-newproc)
+WS long-pre: 3856 MB (raw=4043685888)
+== LONG-FULL (flag=full)
+T1: rebuild mode=full n=151 harvest=1537.9ms process=78.3ms OK pending=1 pos=150 carry_from_n=1
+turn full=1 kv_before=151 pf=22 prompt=173
+prefill=269.2ms (22 tok) reuse=0
+drafted=21 (mtp=21 lookup=0) spec_accept=17
+response: Here is the cipher "BRAVO-7" repeated three times with their respective indices:
+
+1.  **BRAVO-7** (Indices:  prompt_tok=22 completion_tok=32
+WS long-post: 3858 MB (raw=4046159872)
+PASS: restart verified (divfresh)
+PASS: restart verified (div-control-newproc)
+== DIV-control
+turn full=1 kv_before=0 pf=78 prompt=78
+response: I cannot repeat the cipher or provide the specific code you are referring to. I
+PASS: restart verified (div-full-newproc)
+== DIV-full
+turn full=1 kv_before=42 pf=36 prompt=78
+response: I cannot repeat the cipher or provide the specific code you are referring to. I
+PASS: restart verified (rollback-build)
+PASS: restart verified (rollback-newproc)
+== ROLLBACK (restore older slot A in new process)
+turn full=1 kv_before=0 pf=62 prompt=62
+response: BRAVO-7 (want BRAVO-7, A's line)
+PASS: restart verified (eosstop-fresh)
+PASS: restart verified (eosstop-newproc)
+PASS: restart verified (eosstop-newproc2)
+== EOSSTOP (max_tokens=2 stop + save/restore/continue, flag=full)
+turn full=1 kv_before=42 pf=20 prompt=62
+stop_completion: 'BRAVO' finish: length
+post-restore response: BRAVO-7

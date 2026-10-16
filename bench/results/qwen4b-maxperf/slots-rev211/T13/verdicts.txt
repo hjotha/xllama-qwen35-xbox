@@ -1,0 +1,36 @@
+flag armed
+PASS: restart verified (P)
+save(api): 64 ms; tokens=187 bytes=59605543
+PASS: restart verified (C)
+== C tail
+S3: state dumped — kv_bytes=60233920 mirror_bytes=947652 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=506.0ms (43 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+rounds=11 decodes=39 discarded=5 catchup_tok=32
+== C t5
+S3: state dumped — kv_bytes=62299816 mirror_bytes=1207212 mirror_pos=292 pending=1 kv_tokens=293
+turn full=1 kv_before=262 pf=31 prompt=293
+prefill=386.3ms (31 tok) reuse=0
+drafted=27 (mtp=27 lookup=0) spec_accept=21
+rounds=17 decodes=71 discarded=17 catchup_tok=48
+PASS: restart verified (R)
+restore(api): 74 ms
+== R tail
+S3: state dumped — kv_bytes=60233920 mirror_bytes=947652 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=494.3ms (43 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+rounds=11 decodes=39 discarded=5 catchup_tok=32
+== R t5
+S3: state dumped — kv_bytes=62299816 mirror_bytes=1207212 mirror_pos=292 pending=1 kv_tokens=293
+turn full=1 kv_before=262 pf=31 prompt=293
+prefill=371.6ms (31 tok) reuse=0
+drafted=27 (mtp=27 lookup=0) spec_accept=21
+rounds=17 decodes=71 discarded=17 catchup_tok=48
+restore[badmagic]: http=200 ok=True session_alive=YES
+restore[badversion]: http=200 ok=True session_alive=YES
+restore[badhash]: http=200 ok=True session_alive=YES
+restore[truncated]: http=200 ok=True session_alive=YES
+restore[v2only]: http=200 ok=True session_alive=YES
+== compare

@@ -1,0 +1,4 @@
+numeric_selftest_rev227 utc=2026-10-10T04:22:08Z mode=final sha=A5895842
+csv=d3d12be-rev227.csv rows=50 result=50/50 ok D2a=PASS slow=0
+silu/swiglu [fused] bit-exact (ord/edge/nf/ulp/abs 0)
+note=device run completed; local watcher timed out; fetched at once

@@ -1,0 +1,20 @@
+native width-prefix vs wide first1_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.315 B_ms=231.901 hashA=8b55219af69c5615 hashB=8b55219af69c5615
+auto width-prefix repeat first1_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.218 B_ms=0.213 hashA=8b55219af69c5615 hashB=8b55219af69c5615
+reference width-prefix vs wide first1_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.212 B_ms=231.765 hashA=8b55219af69c5615 hashB=8b55219af69c5615
+controls: CPU backend only; D=256 Qheads=16 KVheads=4 keys=256 prefix=1 wide=64; F32 Q/F16 K,V; causal_base=0; threads=2; split-KV disabled; force-query-tiling=off
+native width-prefix vs wide first2_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.696 B_ms=231.368 hashA=d36e215994bbf864 hashB=d36e215994bbf864
+auto width-prefix repeat first2_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.599 B_ms=0.578 hashA=d36e215994bbf864 hashB=d36e215994bbf864
+reference width-prefix vs wide first2_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=0.573 B_ms=226.798 hashA=d36e215994bbf864 hashB=d36e215994bbf864
+controls: CPU backend only; D=256 Qheads=16 KVheads=4 keys=256 prefix=2 wide=64; F32 Q/F16 K,V; causal_base=0; threads=2; split-KV disabled; force-query-tiling=off
+native width-prefix vs wide first4_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=1.706 B_ms=230.537 hashA=448370b009b09213 hashB=448370b009b09213
+auto width-prefix repeat first4_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=1.665 B_ms=1.663 hashA=448370b009b09213 hashB=448370b009b09213
+reference width-prefix vs wide first4_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=1.650 B_ms=246.389 hashA=448370b009b09213 hashB=448370b009b09213
+controls: CPU backend only; D=256 Qheads=16 KVheads=4 keys=256 prefix=4 wide=64; F32 Q/F16 K,V; causal_base=0; threads=2; split-KV disabled; force-query-tiling=off
+native width-prefix vs wide first40_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=98.222 B_ms=233.832 hashA=3cf7b1855335bcf3 hashB=3cf7b1855335bcf3
+auto width-prefix repeat first40_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=94.575 B_ms=94.023 hashA=3cf7b1855335bcf3 hashB=3cf7b1855335bcf3
+reference width-prefix vs wide first40_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=88.753 B_ms=217.821 hashA=3cf7b1855335bcf3 hashB=3cf7b1855335bcf3
+controls: CPU backend only; D=256 Qheads=16 KVheads=4 keys=256 prefix=40 wide=64; F32 Q/F16 K,V; causal_base=0; threads=2; split-KV disabled; force-query-tiling=off
+native width-prefix vs wide first64_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=217.379 B_ms=226.757 hashA=77a895317ad1ffd1 hashB=77a895317ad1ffd1
+auto width-prefix repeat first64_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=236.536 B_ms=227.565 hashA=77a895317ad1ffd1 hashB=77a895317ad1ffd1
+reference width-prefix vs wide first64_bitwise_equal=yes max_abs=0 first_diff_float=none first_diff_query=none A_ms=230.112 B_ms=224.162 hashA=77a895317ad1ffd1 hashB=77a895317ad1ffd1
+controls: CPU backend only; D=256 Qheads=16 KVheads=4 keys=256 prefix=64 wide=64; F32 Q/F16 K,V; causal_base=0; threads=2; split-KV disabled; force-query-tiling=off

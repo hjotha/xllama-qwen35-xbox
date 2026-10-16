@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791612493-2","object":"chat.completion","created":1791612493,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"Smoke cipher SEAL-11. Reply: sealed."},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":56,"completion_tokens":11,"total_tokens":67}}

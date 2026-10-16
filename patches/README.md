@@ -44,3 +44,42 @@ that redundant patch. The CPU backend remains statically linked on UWP.
 Regenerate each maintained patch against the new pin. Check whether the fork
 already carries the fix before retaining it, then verify clean application and
 compilation on Linux and both UWP variants.
+
+Patch 0007-context-rope-identity.patch exports a read-only copy of the resolved
+context RoPE/YaRN parameters. Snapshot fingerprint v3 uses exact float bits;
+no inference arithmetic or model defaults change.
+
+For an imported Windows checkout where llama.cpp is a directory inside the
+parent Git repository, apply 0007 from that parent with
+`git apply --directory=llama.cpp patches/0007-context-rope-identity.patch`.
+A reverse check invoked inside the directory can skip every patch path and
+misreport success. Verify the declaration, definition and source hashes;
+the ordinary standalone-submodule workflow is unchanged.
+
+Patch 0008-flash-attn-query-consistency.patch adds an explicit CPU flash
+attention query policy. UWP's existing opt-in `flashattn.txt=2` selects
+`GGML_FLASH_ATTN_NO_QUERY_TILING=4` together with split-KV disabled. For
+F32 Q and F16 K/V, policy 4 uses one scalar reduction at all query widths,
+retains Q precision through an F32 dot product with expanded K, and keeps
+the original online softmax and F16 value accumulator. Unsupported types
+retain native dispatch. Value `1` retains the earlier scalar control;
+absent, empty, and other values use native dispatch. These internal values
+do not change the UWP default or native modes.
+
+Snapshot identity records `fa_query`; snapshots produced with a different
+query policy are refused before import. Scratch allocation is unchanged:
+the former quantized-Q staging region holds one expanded K row without
+aliasing the value accumulator. The opt-in policy also applies to normal
+API requests and automatic reuse, independently of diagnostic capture.
+
+The Xbox249 first-attention capture established the width-dependent output
+mismatch with identical Q/K/V/mask inputs. Iteration254 preserves the strict
+historical VROUND 93/87 schedules and all eight token files, and its five
+cold/control/restored artifacts are byte-identical. Uniform tiled and F32
+value-accumulation candidates 252/253 were rejected; their experimental
+paths were removed before Final255. Evidence is under
+`bench/results/qwen4b-maxperf/slots-rev211/segmentation-diagnosis/`,
+`qk254-direct/`, and `final255-direct/`. Final255 acceptance remains pending.
+
+For an imported Windows llama.cpp directory, apply the maintained patch
+from its parent with `git apply --directory=llama.cpp`.

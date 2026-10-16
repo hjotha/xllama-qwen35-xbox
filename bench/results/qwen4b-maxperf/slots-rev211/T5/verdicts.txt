@@ -1,0 +1,23 @@
+PASS: restart verified (hist-build)
+PASS: restart verified (fresh-fresh)
+WS fresh-pre: 94 MB (raw=99340288)
+== fresh
+PRIME_LINE_ABSENT
+turn full=1 kv_before=0 pf=243 prompt=243
+prefill=2618.0ms (243 tok) reuse=0
+drafted=99 (mtp=99 lookup=0) spec_accept=84
+rounds=60 decodes=265 discarded=66 catchup_tok=183
+CTOK=243/188 sha=b66495492af4
+WS fresh-post: 3855 MB (raw=4043288576)
+PASS: restart verified (restore-fresh)
+WS restore-pre: 3854 MB (raw=4041334784)
+== restore
+mtp: post-restore carry primed at pos=186 (zero decoy row; drafting stays on, target verifies)
+KV state loaded — 187 tokens, 56.1 MB, 8.3 ms
+KV prefix reuse — kept 187 of 243 tokens
+turn full=1 kv_before=187 pf=56 prompt=243
+prefill=635.2ms (56 tok) reuse=0
+drafted=100 (mtp=100 lookup=0) spec_accept=78
+rounds=61 decodes=276 discarded=72 catchup_tok=181
+CTOK=56/188 sha=b66495492af4
+WS restore-post: 3855 MB (raw=4043051008)

@@ -1,0 +1,911 @@
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=20 resident=68 prompt=40
+[xllama] session: turn full=1 kv_before=0 pf=40 prompt=40
+[xllama] DSTEP kind=prefill width=40 wall=403.97 d3w=280.72 d3g=0.00 cpu=812.50 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=40 wall=19.16 d3w=13.55 d3g=0.00 cpu=15.62 calls=50 mm=80
+[xllama] PHASE_PREFILL n_prompt=40 rows_kept=40 n_ubatch=64 calls=203 matmuls=281 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=40 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=40 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=40 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=40 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=40 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=40 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=40 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=40 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=40 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=40 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=10
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=10 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=20 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=10
+[xllama] DSTEP kind=draft width=2 wall=10.78 d3w=5.37 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] EOG after 2 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=2 wall=1.65 d3w=0.97 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=82.33 d3w=43.37 d3g=0.00 cpu=156.25 calls=170 mm=227 classic_steps=0
+[xllama] VROUND width=3 wall=67.56 d3w=37.04 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=1856,290,248046 gen=2
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=41 mirror_end=41 kv_tokens=42
+[xllama] session generate: n=2 prefill=423.4ms (40 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=530.8 prefill_ms=423.4 decode_ms=82.3 accounted_ms=81.6 residual_decode_ms=0.8 load_plus_setup_ms=25.2 draft_ms=6.5 sample_ms=1.2 topprob_ms=3.0 catchup_ms=1.6 verify_ms=67.6 verify_d3w=37.0 verify_d3g=0.0 verify_cpu=125.0 rounds_split=1 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=1.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=2 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=3 discarded=0 catchup_tok=2 draft_ms=6.5 sample_ms=1.2 topprob_ms=3.0 catchup_ms=1.6 verify_ms=67.6 corrective_ms=0.0
+[xllama] session: KV state saved — 42 tokens, 51.6 MB (#170b)
+[xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+[xllama] session: turn full=1 kv_before=42 pf=20 prompt=62
+[xllama] DSTEP kind=prefill width=20 wall=222.98 d3w=149.36 d3g=0.00 cpu=437.50 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=20 wall=10.40 d3w=6.75 d3g=0.00 cpu=15.62 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=20 rows_kept=20 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=20 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=20 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=20 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=20 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=20 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=20 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5
+[xllama] DSTEP kind=draft width=2 wall=10.56 d3w=5.39 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.10 d3w=1.19 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.58 d3w=5.45 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] EOG after 4 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=1 wall=1.29 d3w=0.72 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=162.79 d3w=87.12 d3g=0.00 cpu=312.50 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=68.04 d3w=37.13 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=227916,10844,12 gen=4
+[xllama] VROUND width=3 wall=66.19 d3w=37.24 d3g=0.00 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=22,248046,198 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=233.6ms (20 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3 (mtp=3 lookup=0)
+[xllama] PHASE total_ms=396.9 prefill_ms=233.6 decode_ms=162.8 accounted_ms=161.3 residual_decode_ms=1.5 load_plus_setup_ms=0.6 draft_ms=13.0 sample_ms=2.0 topprob_ms=6.0 catchup_ms=3.3 verify_ms=134.2 verify_d3w=74.4 verify_d3g=0.0 verify_cpu=250.0 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=33 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=33 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=33 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=4 draft_ms=13.0 sample_ms=2.0 topprob_ms=6.0 catchup_ms=3.3 verify_ms=134.2 corrective_ms=0.0
+[xllama] mtp: post-restore carry primed at pos=41 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 42 tokens, 51.6 MB, 5.7 ms (#170b)
+16:54:23.230 [xllama] App::App()
+16:54:23.319 [xllama] App::App() complete
+16:54:23.380 [xllama] App::OnLaunched
+[xllama] startup: Q6_K LM-head columns=0
+[xllama] startup: Q8_0 matmul=D3D12
+[xllama] startup: fused attention=forced
+[xllama] startup: attention split-KV=disabled for consistent query reduction
+[xllama] startup: GATED_DELTA_NET=D3D12
+[xllama] startup: FFN SWIGLU D3D12=all
+[xllama] startup: gpu timestamps=off (profile-bound default)
+[xllama] startup: d3d12twocol.txt='(absent)' -> kernel variant 0 (prev 0)
+[xllama] startup: cpurepackforcegemv.txt='(absent)' -> repack control off (baseline)
+[xllama] startup: d3d12island.txt='(absent)' -> island CPU
+[xllama] startup profile: twocol='(absent=default)' repack='(absent=default)' (immutable for this process lifetime; restart the app to change)
+16:54:23.384 [xllama] building MainPageController
+16:54:23.403 [xllama] MainPageController built
+[xllama] EnsureModel: begin 'lfm25-350m'
+16:54:23.405 [xllama] MainPageController init done
+16:54:23.405 [xllama] Window.Content set
+16:54:23.405 [xllama] Window activated
+16:54:23.409 [caprec] AppRecordingManager present=0 GraphicsCaptureSession present=1
+16:54:23.409 [mic] AudioGraph present=1 MediaCapture present=1 (presence is not permission — see uwp-constraints.md)
+[gcprobe] session_present=1 item_present=1 viable=0 encoder=0 presence_error=0 duration_us=70
+16:54:23.410 [xllama] api.flag detected -> starting LAN HTTP endpoint
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] EnsureModel: 'lfm25-350m' already provisioned
+[xllama] api: listening on 0.0.0.0:11434 (OpenAI-compat /v1/chat/completions)
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4121 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] d3d12: FFN SWIGLU profile bound: on (mtp_capable=1)
+[xllama] session: n_seq_max=2 (sequences share n_ctx=2048)
+[xllama] session: speculative n_rs_seq=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   301.50 MiB
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,1,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,32,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 62.6 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.63 MiB
+[llama] sched_reserve: graph splits = 210
+[xllama] session effective threads: decode=2 batch=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=40 prompt=40
+[xllama] d3d12: D3D12_Host buffer 4.4 MiB
+[xllama] DSTEP kind=prefill width=40 wall=411.79 d3w=282.63 d3g=0.00 cpu=781.25 calls=153 mm=201
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] DSTEP kind=catchup width=40 wall=20.10 d3w=13.66 d3g=0.00 cpu=31.25 calls=50 mm=80
+[xllama] PHASE_PREFILL n_prompt=40 rows_kept=40 n_ubatch=64 calls=203 matmuls=281 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=40 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=40 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=40 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=40 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=40 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=40 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=40 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=40 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=40 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=40 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=10
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=10 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=20 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=10
+[xllama] mtp: first draft pos=40 n_embd=2560 n_max=2 row[min,max]=[-19.969519,17.056316] dft_n_batch=4 dft_pos_max=39
+[xllama] DSTEP kind=draft width=2 wall=11.22 d3w=5.39 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] d3d12: D3D12_Host buffer 5.3 MiB
+[xllama] EOG after 2 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=2 wall=1.63 d3w=0.97 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=84.06 d3w=43.32 d3g=0.00 cpu=156.25 calls=170 mm=227 classic_steps=0
+[xllama] VROUND width=3 wall=68.67 d3w=36.96 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=1856,290,248046 gen=2
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=41 mirror_end=41 kv_tokens=42
+[xllama] session generate: n=2 prefill=432.1ms (40 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=613.5 prefill_ms=432.1 decode_ms=84.1 accounted_ms=83.1 residual_decode_ms=1.0 load_plus_setup_ms=97.3 draft_ms=6.4 sample_ms=1.6 topprob_ms=3.0 catchup_ms=1.6 verify_ms=68.7 verify_d3w=37.0 verify_d3g=0.0 verify_cpu=125.0 rounds_split=1 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=1.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=2 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=2 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=3 discarded=0 catchup_tok=2 draft_ms=6.4 sample_ms=1.6 topprob_ms=3.0 catchup_ms=1.6 verify_ms=68.7 corrective_ms=0.0
+[xllama] session preload skipped: qwen35-4b-mtp resident
+[xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+[xllama] session: turn full=1 kv_before=42 pf=20 prompt=62
+[xllama] DSTEP kind=prefill width=20 wall=249.10 d3w=171.73 d3g=0.00 cpu=500.00 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=20 wall=10.58 d3w=6.83 d3g=0.00 cpu=31.25 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=20 rows_kept=20 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=20 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=20 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=20 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=20 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=20 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=20 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5
+[xllama] DSTEP kind=draft width=2 wall=10.72 d3w=5.32 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.10 d3w=1.21 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.71 d3w=5.46 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] EOG after 4 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=1 wall=1.23 d3w=0.66 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSPLIT wall=166.16 d3w=86.95 d3g=0.00 cpu=328.12 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=71.22 d3w=37.26 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=227916,10844,12 gen=4
+[xllama] VROUND width=3 wall=66.03 d3w=37.03 d3g=0.00 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=22,248046,198 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=259.9ms (20 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3 (mtp=3 lookup=0)
+[xllama] PHASE total_ms=426.7 prefill_ms=259.9 decode_ms=166.2 accounted_ms=164.6 residual_decode_ms=1.6 load_plus_setup_ms=0.6 draft_ms=13.1 sample_ms=2.3 topprob_ms=6.1 catchup_ms=3.3 verify_ms=137.2 verify_d3w=74.3 verify_d3g=0.0 verify_cpu=250.0 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=33 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=33 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=33 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=4 draft_ms=13.1 sample_ms=2.3 topprob_ms=6.1 catchup_ms=3.3 verify_ms=137.2 corrective_ms=0.0
+[xllama] mtp: post-restore carry primed at pos=41 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 42 tokens, 51.6 MB, 6.3 ms (#170b)
+[xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+[xllama] session: turn full=1 kv_before=42 pf=20 prompt=62
+[xllama] DSTEP kind=prefill width=20 wall=224.37 d3w=149.47 d3g=0.00 cpu=437.50 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=20 wall=9.30 d3w=6.68 d3g=0.00 cpu=15.62 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=20 rows_kept=20 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=20 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=20 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=20 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=20 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=20 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=20 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5
+[xllama] DSTEP kind=draft width=2 wall=4.03 d3w=2.82 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.47 d3w=20.32 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.09 d3w=0.64 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.41 d3w=5.34 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=1.96 d3w=1.19 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=129.22 d3w=67.58 d3g=0.00 cpu=234.38 calls=334 mm=445 classic_steps=1
+[xllama] VROUND width=3 wall=68.60 d3w=37.27 d3g=0.00 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=10844,12,22 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=233.9ms (20 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=363.7 prefill_ms=233.9 decode_ms=129.2 accounted_ms=128.2 residual_decode_ms=1.0 load_plus_setup_ms=0.6 draft_ms=9.7 sample_ms=1.6 topprob_ms=3.1 catchup_ms=3.0 verify_ms=68.6 verify_d3w=37.3 verify_d3g=0.0 verify_cpu=156.2 rounds_split=1 corrective_ms=0.0 classic_decode_ms=39.5 classic_catchup_ms=1.1 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=44 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=3 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=3 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=24 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=24 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=44 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=20 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=8 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=44 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=44 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=5 discarded=1 catchup_tok=4 draft_ms=9.7 sample_ms=1.6 topprob_ms=3.1 catchup_ms=3.0 verify_ms=68.6 corrective_ms=0.0
+[xllama] session: KV prefix reuse — kept 66 of 85 tokens (#170)
+[xllama] session: turn full=1 kv_before=66 pf=19 prompt=85
+[xllama] DSTEP kind=prefill width=19 wall=241.47 d3w=162.95 d3g=0.00 cpu=484.38 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=19 wall=9.91 d3w=6.55 d3g=0.00 cpu=0.00 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=19 rows_kept=19 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=19 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=19 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=19 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=19 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=19 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=19 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=19 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=19 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=19 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=19 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=4
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=4 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=4 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=4 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=8 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=4 | ctx=target phase=prefill t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=3 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=4.18 d3w=2.75 d3g=0.00 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=41.57 d3w=20.41 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.15 d3w=0.66 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.07 d3w=2.83 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.34 d3w=20.57 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.20 d3w=0.67 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.90 d3w=2.64 d3g=0.00 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.75 d3w=20.87 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.18 d3w=0.64 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=5.25 d3w=2.61 d3g=0.00 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.20 d3w=20.42 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.17 d3w=0.65 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=182.98 d3w=95.73 d3g=0.00 cpu=343.75 calls=656 mm=872 classic_steps=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=88 mirror_end=88 kv_tokens=89
+[xllama] session generate: n=4 prefill=251.7ms (19 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=435.3 prefill_ms=251.7 decode_ms=183.0 accounted_ms=181.7 residual_decode_ms=1.3 load_plus_setup_ms=0.7 draft_ms=13.3 sample_ms=2.2 topprob_ms=1.9 catchup_ms=4.6 verify_ms=0.0 verify_d3w=0.0 verify_d3g=0.0 verify_cpu=0.0 rounds_split=0 corrective_ms=0.0 classic_decode_ms=156.9 classic_catchup_ms=4.6 lookup_ms=0.0 sample_target_ms=2.9 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=96 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=96 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=256
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=80 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=16 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=32 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=4
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=4
+[xllama] MTP_STATS rounds=0 decodes=8 discarded=4 catchup_tok=4 draft_ms=13.3 sample_ms=2.2 topprob_ms=1.9 catchup_ms=4.6 verify_ms=0.0 corrective_ms=0.0
+[xllama] session: KV state saved — 89 tokens, 53.0 MB (#170b)
+[xllama] mtp: post-restore carry primed at pos=41 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 42 tokens, 51.6 MB, 5.6 ms (#170b)
+[xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+[xllama] session: turn full=1 kv_before=42 pf=20 prompt=62
+[xllama] DSTEP kind=prefill width=20 wall=228.47 d3w=152.44 d3g=0.00 cpu=453.12 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=20 wall=9.61 d3w=6.94 d3g=0.00 cpu=15.62 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=20 rows_kept=20 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=20 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=20 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=20 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=20 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=20 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=20 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5
+[xllama] DSTEP kind=draft width=2 wall=3.95 d3w=2.73 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.38 d3w=20.43 d3g=0.00 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.09 d3w=0.64 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.54 d3w=5.45 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=1.93 d3w=1.23 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=129.23 d3w=67.52 d3g=0.00 cpu=250.00 calls=334 mm=445 classic_steps=1
+[xllama] VROUND width=3 wall=68.65 d3w=37.05 d3g=0.00 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=10844,12,22 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=238.3ms (20 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=368.1 prefill_ms=238.3 decode_ms=129.2 accounted_ms=128.2 residual_decode_ms=1.0 load_plus_setup_ms=0.5 draft_ms=9.7 sample_ms=1.6 topprob_ms=3.2 catchup_ms=3.0 verify_ms=68.7 verify_d3w=37.0 verify_d3g=0.0 verify_cpu=156.2 rounds_split=1 corrective_ms=0.0 classic_decode_ms=39.4 classic_catchup_ms=1.1 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=44 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=3 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=3 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=24 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=24 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=44 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=20 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=8 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=44 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=44 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=5 discarded=1 catchup_tok=4 draft_ms=9.7 sample_ms=1.6 topprob_ms=3.2 catchup_ms=3.0 verify_ms=68.7 corrective_ms=0.0
+[xllama] mtp: post-restore carry primed at pos=88 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 89 tokens, 53.0 MB, 5.4 ms (#170b)
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=84 resident=89 prompt=85
+[xllama] session: turn full=1 kv_before=0 pf=85 prompt=85
+[xllama] DSTEP kind=prefill width=85 wall=881.57 d3w=606.59 d3g=0.00 cpu=1781.25 calls=305 mm=401
+[xllama] DSTEP kind=catchup width=85 wall=42.77 d3w=29.09 d3g=0.00 cpu=31.25 calls=110 mm=176
+[xllama] PHASE_PREFILL n_prompt=85 rows_kept=85 n_ubatch=64 calls=415 matmuls=577 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=35 | ctx=target phase=prefill t=14 N=8192 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=64 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=64 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=64 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=64 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=64 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=64 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=64 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=64 thr=128 mm=16 | ctx=target phase=prefill t=14 N=8192 K=2560 B=21 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=21 thr=64 mm=24
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=35 | ctx=target phase=prefill t=13 N=2560 K=4096 B=21 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=21 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=21 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=21 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=21 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=21 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=21 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=21 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=21 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=21 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=21
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=35 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=21 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=21 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=42 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=21 | ctx=target phase=prefill t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=4.37 d3w=2.69 d3g=0.00 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.69 d3w=20.29 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.27 d3w=0.64 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.17 d3w=2.79 d3g=0.00 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.94 d3w=20.92 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.17 d3w=0.62 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.89 d3w=2.61 d3g=0.00 cpu=31.25 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.57 d3w=20.46 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.19 d3w=0.62 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.94 d3w=2.66 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=58.75 d3w=39.81 d3g=0.00 cpu=125.00
+[xllama] DSTEP kind=catchup width=1 wall=1.31 d3w=0.66 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=201.50 d3w=114.76 d3g=0.00 cpu=390.62 calls=656 mm=872 classic_steps=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=88 mirror_end=88 kv_tokens=89
+[xllama] session generate: n=4 prefill=924.6ms (85 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=1146.0 prefill_ms=924.6 decode_ms=201.5 accounted_ms=200.2 residual_decode_ms=1.3 load_plus_setup_ms=19.9 draft_ms=13.5 sample_ms=2.3 topprob_ms=0.6 catchup_ms=4.8 verify_ms=0.0 verify_d3w=0.0 verify_d3g=0.0 verify_cpu=0.0 rounds_split=0 corrective_ms=0.0 classic_decode_ms=175.9 classic_catchup_ms=4.8 lookup_ms=0.0 sample_target_ms=3.1 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=96 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=96 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=256
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=80 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=16 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=32 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=4
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=4
+[xllama] MTP_STATS rounds=0 decodes=8 discarded=4 catchup_tok=4 draft_ms=13.5 sample_ms=2.3 topprob_ms=0.6 catchup_ms=4.8 verify_ms=0.0 corrective_ms=0.0
+[xllama] session: KV state saved — 89 tokens, 53.0 MB (#170b)
+[xllama] mtp: post-restore carry primed at pos=41 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 42 tokens, 51.6 MB, 5.5 ms (#170b)
+[xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+[xllama] session: turn full=1 kv_before=42 pf=20 prompt=62
+[xllama] DSTEP kind=prefill width=20 wall=227.54 d3w=149.92 d3g=0.00 cpu=468.75 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=20 wall=9.43 d3w=6.82 d3g=0.00 cpu=0.00 calls=25 mm=40
+[xllama] PHASE_PREFILL n_prompt=20 rows_kept=20 n_ubatch=64 calls=178 matmuls=241 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/2 keys_total=18 | ctx=target phase=prefill t=14 N=8192 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=20 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=20 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=20 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=20 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=20 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=20 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=20 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=20 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/2 keys_total=18 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5
+[xllama] DSTEP kind=draft width=2 wall=4.25 d3w=2.82 d3g=0.00 cpu=15.62 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.73 d3w=20.61 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.12 d3w=0.65 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.38 d3w=5.34 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.06 d3w=1.28 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=136.22 d3w=73.56 d3g=0.00 cpu=265.62 calls=334 mm=445 classic_steps=1
+[xllama] VROUND width=3 wall=75.03 d3w=42.87 d3g=0.00 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=10844,12,22 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=237.2ms (20 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] PHASE total_ms=374.0 prefill_ms=237.2 decode_ms=136.2 accounted_ms=135.2 residual_decode_ms=1.1 load_plus_setup_ms=0.6 draft_ms=9.7 sample_ms=1.7 topprob_ms=3.2 catchup_ms=3.1 verify_ms=75.0 verify_d3w=42.9 verify_d3g=0.0 verify_cpu=156.2 rounds_split=1 corrective_ms=0.0 classic_decode_ms=39.7 classic_catchup_ms=1.1 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/4 keys_total=44 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=3 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=3 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=6 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=3 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=3 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=24 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=24 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/4 keys_total=44 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=20 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=12 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=8 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=16 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/4 keys_total=44 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=64 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=16
+[xllama] d3d12_shape label=session_decode part=4/4 keys_total=44 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=5 discarded=1 catchup_tok=4 draft_ms=9.7 sample_ms=1.7 topprob_ms=3.2 catchup_ms=3.1 verify_ms=75.0 corrective_ms=0.0
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=61 resident=66 prompt=62
+[xllama] session: turn full=1 kv_before=0 pf=62 prompt=62
+[xllama] DSTEP kind=prefill width=62 wall=630.66 d3w=437.20 d3g=0.00 cpu=1250.00 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=62 wall=31.22 d3w=21.53 d3g=0.00 cpu=31.25 calls=80 mm=128
+[xllama] PHASE_PREFILL n_prompt=62 rows_kept=62 n_ubatch=64 calls=233 matmuls=329 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=62 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=62 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=62 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=62 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=62 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=62 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=62 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=62 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=62 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=62 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=15
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=15 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=15 | ctx=target phase=prefill t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=2 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=10.73 d3w=5.49 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.08 d3w=1.20 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.65 d3w=5.28 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] EOG after 4 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=1 wall=1.28 d3w=0.64 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=166.75 d3w=87.10 d3g=0.00 cpu=343.75 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=71.25 d3w=37.41 d3g=0.00 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=227916,10844,12 gen=4
+[xllama] VROUND width=3 wall=66.68 d3w=37.08 d3g=0.00 cpu=125.00 reuse=1 accepted=1 calls=153 mm=201 feed=22,248046,198 gen=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=65 mirror_end=65 kv_tokens=66
+[xllama] session generate: n=4 prefill=662.1ms (62 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3 (mtp=3 lookup=0)
+[xllama] PHASE total_ms=848.8 prefill_ms=662.1 decode_ms=166.7 accounted_ms=165.3 residual_decode_ms=1.5 load_plus_setup_ms=19.9 draft_ms=13.0 sample_ms=2.2 topprob_ms=6.1 catchup_ms=3.3 verify_ms=137.9 verify_d3w=74.5 verify_d3g=0.0 verify_cpu=281.2 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=2.7 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=33 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=33 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=33 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=4 draft_ms=13.0 sample_ms=2.2 topprob_ms=6.1 catchup_ms=3.3 verify_ms=137.9 corrective_ms=0.0
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=61 resident=66 prompt=62
+[xllama] session: turn full=1 kv_before=0 pf=62 prompt=62
+[xllama] DSTEP kind=prefill width=62 wall=619.61 d3w=429.00 d3g=0.00 cpu=1234.38 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=62 wall=30.60 d3w=21.31 d3g=0.00 cpu=46.88 calls=80 mm=128
+[xllama] PHASE_PREFILL n_prompt=62 rows_kept=62 n_ubatch=64 calls=233 matmuls=329 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=62 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=62 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=62 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=62 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=62 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=62 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=62 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=62 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=62 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=62 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=15
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=15 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=15 | ctx=target phase=prefill t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=2 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] DSTEP kind=draft width=1 wall=5.33 d3w=2.67 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] DSTEP kind=catchup width=2 wall=1.74 d3w=0.99 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=61.77 d3w=31.84 d3g=0.00 cpu=125.00 calls=164 mm=218 classic_steps=0
+[xllama] VROUND width=2 wall=52.82 d3w=28.18 d3g=0.00 cpu=125.00 reuse=0 accepted=1 calls=153 mm=201 feed=227916,10844 gen=2
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=63 mirror_end=63 kv_tokens=64
+[xllama] session generate: n=2 prefill=650.4ms (62 tok) reuse=0 drafted=1 (mtp=1 lookup=0) spec_accept=1 (mtp=1 lookup=0)
+[xllama] PHASE total_ms=728.0 prefill_ms=650.4 decode_ms=61.8 accounted_ms=61.0 residual_decode_ms=0.7 load_plus_setup_ms=15.8 draft_ms=3.3 sample_ms=0.5 topprob_ms=1.5 catchup_ms=1.7 verify_ms=52.8 verify_d3w=28.2 verify_d3g=0.0 verify_cpu=125.0 rounds_split=1 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=1.2 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=1 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=16 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] MTP_STATS rounds=1 decodes=2 discarded=0 catchup_tok=2 draft_ms=3.3 sample_ms=0.5 topprob_ms=1.5 catchup_ms=1.7 verify_ms=52.8 corrective_ms=0.0
+[xllama] session: KV state saved — 64 tokens, 52.3 MB (#170b)
+[xllama] session: KV state loaded — mirror kept (identical 64-token prefix, carry preserved if valid) (#170b)
+[xllama] session: KV state loaded — 64 tokens, 52.3 MB, 4.7 ms (#170b)
+[xllama] session: KV prefix reuse — kept 64 of 85 tokens (#170)
+[xllama] session: turn full=1 kv_before=64 pf=21 prompt=85
+[xllama] DSTEP kind=prefill width=21 wall=236.55 d3w=156.29 d3g=0.00 cpu=468.75 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=21 wall=12.00 d3w=7.35 d3g=0.00 cpu=15.62 calls=30 mm=48
+[xllama] PHASE_PREFILL n_prompt=21 rows_kept=21 n_ubatch=64 calls=183 matmuls=249 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=21 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=21 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=21 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=21 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=21 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=21 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=21 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=21 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=21 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=21 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=5
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=5 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=5 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=10 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=5 | ctx=target phase=prefill t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=4.23 d3w=2.81 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=39.48 d3w=20.07 d3g=0.00 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.23 d3w=0.62 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=4.02 d3w=2.64 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.82 d3w=20.69 d3g=0.00 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.18 d3w=0.63 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.92 d3w=2.66 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.44 d3w=20.49 d3g=0.00 cpu=93.75
+[xllama] DSTEP kind=catchup width=1 wall=1.22 d3w=0.67 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.98 d3w=2.73 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.35 d3w=20.25 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.22 d3w=0.65 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] EOG after 4 tokens tok=248046 branch=classic
+[xllama] DSPLIT wall=180.12 d3w=94.90 d3g=0.00 cpu=359.38 calls=656 mm=872 classic_steps=4
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=88 mirror_end=88 kv_tokens=89
+[xllama] session generate: n=4 prefill=248.8ms (21 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] PHASE total_ms=429.6 prefill_ms=248.8 decode_ms=180.1 accounted_ms=178.8 residual_decode_ms=1.3 load_plus_setup_ms=0.7 draft_ms=13.4 sample_ms=2.1 topprob_ms=0.6 catchup_ms=4.7 verify_ms=0.0 verify_d3w=0.0 verify_d3g=0.0 verify_cpu=0.0 rounds_split=0 corrective_ms=0.0 classic_decode_ms=155.1 classic_catchup_ms=4.7 lookup_ms=0.0 sample_target_ms=2.9 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=26 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=96 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=96 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=256
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=26 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=80 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=16 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=32 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=64 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=4
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=26 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=4
+[xllama] MTP_STATS rounds=0 decodes=8 discarded=4 catchup_tok=4 draft_ms=13.4 sample_ms=2.1 topprob_ms=0.6 catchup_ms=4.7 verify_ms=0.0 corrective_ms=0.0
+[xllama] mtp: post-restore carry primed at pos=41 (zero decoy row; drafting stays on, target verifies)
+[xllama] session: KV state loaded — 42 tokens, 51.6 MB, 5.2 ms (#170b)
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=20 resident=42 prompt=63
+[xllama] session: turn full=1 kv_before=0 pf=63 prompt=63
+[xllama] DSTEP kind=prefill width=63 wall=627.38 d3w=436.61 d3g=0.00 cpu=1250.00 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=63 wall=30.97 d3w=21.52 d3g=0.00 cpu=31.25 calls=80 mm=128
+[xllama] PHASE_PREFILL n_prompt=63 rows_kept=63 n_ubatch=64 calls=233 matmuls=329 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=63 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=63 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=63 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=63 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=63 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=63 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=63 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=63 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=63 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=63 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=15
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=15 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=15 | ctx=target phase=prefill t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=3 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=10.59 d3w=5.42 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.34 d3w=1.39 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=11.84 d3w=6.35 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] EOG after 5 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=2 wall=1.84 d3w=1.04 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=169.39 d3w=91.71 d3g=0.00 cpu=343.75 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=70.65 d3w=39.25 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=14793,43,5203 gen=5
+[xllama] VROUND width=3 wall=67.42 d3w=38.27 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=12,24,248046 gen=5
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=67 mirror_end=67 kv_tokens=68
+[xllama] session generate: n=5 prefill=658.6ms (63 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=4 (mtp=4 lookup=0)
+[xllama] PHASE total_ms=840.4 prefill_ms=658.6 decode_ms=169.4 accounted_ms=167.8 residual_decode_ms=1.6 load_plus_setup_ms=12.4 draft_ms=14.1 sample_ms=2.2 topprob_ms=6.1 catchup_ms=4.0 verify_ms=138.1 verify_d3w=77.5 verify_d3g=0.0 verify_cpu=250.0 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=3.3 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=33 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=33 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=33 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=5 draft_ms=14.1 sample_ms=2.2 topprob_ms=6.1 catchup_ms=4.0 verify_ms=138.1 corrective_ms=0.0
+16:55:00.430 [xllama] App::App()
+16:55:00.506 [xllama] App::App() complete
+16:55:00.573 [xllama] App::OnLaunched
+[xllama] startup: Q6_K LM-head columns=0
+[xllama] startup: Q8_0 matmul=D3D12
+[xllama] startup: fused attention=forced
+[xllama] startup: attention split-KV=disabled for consistent query reduction
+[xllama] startup: GATED_DELTA_NET=D3D12
+[xllama] startup: FFN SWIGLU D3D12=all
+[xllama] startup: gpu timestamps=off (profile-bound default)
+[xllama] startup: d3d12twocol.txt='(absent)' -> kernel variant 0 (prev 0)
+[xllama] startup: cpurepackforcegemv.txt='(absent)' -> repack control off (baseline)
+[xllama] startup: d3d12island.txt='(absent)' -> island CPU
+[xllama] startup profile: twocol='(absent=default)' repack='(absent=default)' (immutable for this process lifetime; restart the app to change)
+16:55:00.577 [xllama] building MainPageController
+16:55:00.597 [xllama] MainPageController built
+[xllama] EnsureModel: begin 'lfm25-350m'
+16:55:00.599 [xllama] MainPageController init done
+16:55:00.599 [xllama] Window.Content set
+16:55:00.599 [xllama] Window activated
+16:55:00.603 [caprec] AppRecordingManager present=0 GraphicsCaptureSession present=1
+16:55:00.603 [mic] AudioGraph present=1 MediaCapture present=1 (presence is not permission — see uwp-constraints.md)
+[gcprobe] session_present=1 item_present=1 viable=0 encoder=0 presence_error=0 duration_us=99
+16:55:00.605 [xllama] api.flag detected -> starting LAN HTTP endpoint
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] EnsureModel: 'lfm25-350m' already provisioned
+[xllama] api: listening on 0.0.0.0:11434 (OpenAI-compat /v1/chat/completions)
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] ini mtp REJECTED: model 'lfm25-350m' is not the exact selected qwen35-4b-mtp -> MTP OFF
+[xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4121 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: D3D12_Weights buffer 206.6 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 15 repeating layers to GPU
+[llama] load_tensors: offloaded 17/17 layers to GPU
+[llama] load_tensors:          CPU model buffer size =    52.75 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =   206.65 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[manifest] merging LocalState\manifest.json override (per-entry)
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] gguf gpu layers: 34 on D3D12
+[llama] llama_model_loader: mmap is not supported on this platform
+[llama] llama_prepare_model_devices: using device D3D12 (xllama D3D12 compute (Q4_0/Q4_K/Q5_K/Q6_K matmul)) (unknown id) - 4121 MiB free
+[llama] load_tensors: layer   0 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   1 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   2 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   3 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   4 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   5 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   6 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   7 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   8 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer   9 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  10 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  11 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  12 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  13 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  14 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  15 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  16 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  17 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  18 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  19 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  20 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  21 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  22 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  23 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  24 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  25 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  26 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  27 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  28 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  29 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  30 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  31 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  32 assigned to device D3D12, is_swa = 0
+[llama] load_tensors: layer  33 assigned to device D3D12, is_swa = 0
+[xllama] d3d12: MUL_MAT refused: f32 2560x32 x [2560,512,1,1] src1=f32 dst=f32
+[xllama] d3d12: D3D12_Weights buffer 2674.5 MiB
+[llama] load_tensors: offloading output layer to GPU
+[llama] load_tensors: offloading 32 repeating layers to GPU
+[llama] load_tensors: offloaded 34/34 layers to GPU
+[llama] load_tensors:          CPU model buffer size =   516.03 MiB
+[llama] load_tensors: D3D12_Weights model buffer size =  2674.51 MiB
+[llama] load_all_data: buffer type D3D12_Weights is not the default buffer type for device D3D12 for async uploads
+[xllama] Session: GGUF model loaded via llama.cpp (persistent)
+[xllama] d3d12: FFN SWIGLU profile bound: on (mtp_capable=1)
+[xllama] session: n_seq_max=2 (sequences share n_ctx=2048)
+[xllama] session: speculative n_rs_seq=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =    64.00 MiB
+[llama] llama_memory_recurrent:        CPU RS buffer size =   301.50 MiB
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,1,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: MUL_MAT refused: q5_K 4096x2560 x [4096,32,2,1] src1=f32 dst=f32
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[xllama] d3d12: D3D12_Host buffer 62.6 MiB
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.0.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.1.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.2.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.4.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.5.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.6.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.8.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.9.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.10.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.12.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.13.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.14.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.16.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.17.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.18.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.20.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.21.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.22.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.24.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.25.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.26.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.28.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.29.ssm_out.weight, the weight will need to be copied
+[llama] ggml_backend_sched_backend_from_buffer: warning: no backend supports op NONE with a weight with buffer type D3D12_Weights used in tensor blk.30.ssm_out.weight, the weight will need to be copied
+[llama] sched_reserve: D3D12_Host compute buffer size =    62.63 MiB
+[llama] sched_reserve: graph splits = 210
+[xllama] session effective threads: decode=2 batch=2
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[llama] llama_context: D3D12_Host  output buffer size =     1.89 MiB
+[llama] llama_kv_cache:        CPU KV buffer size =     8.00 MiB
+[xllama] d3d12: D3D12_Host buffer 3.9 MiB
+[llama] sched_reserve: D3D12_Host compute buffer size =     3.88 MiB
+[llama] sched_reserve: graph splits = 12
+[xllama] mtp: draft CPU threads=1 (within the target's shared pool capacity)
+[xllama] mtp: draft ready, n_max=2 p_min=0.500000 dft_n_batch=4
+[xllama] mtp: target nextn head layers=1
+[xllama] mtp: split_mtp_weights=0 resident=0 tensors=0
+[xllama] session: can_shift=0 (memory_can_shift=0 n_swa=0)
+[xllama] session: turn full=1 kv_before=0 pf=25 prompt=25
+[xllama] d3d12: D3D12_Host buffer 4.4 MiB
+[xllama] DSTEP kind=prefill width=25 wall=273.34 d3w=182.81 d3g=0.00 cpu=500.00 calls=153 mm=201
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] DSTEP kind=catchup width=25 wall=13.16 d3w=8.69 d3g=0.00 cpu=15.62 calls=35 mm=56
+[xllama] PHASE_PREFILL n_prompt=25 rows_kept=25 n_ubatch=64 calls=188 matmuls=257 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=25 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=25 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=25 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=25 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=25 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=25 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=25 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=25 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=25 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=25 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=6
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=6 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=6 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=6 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=6 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=12 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=6 | ctx=target phase=prefill t=8 N=2560 K=5120 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=1 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=1 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=1 thr=128 mm=1
+[xllama] mtp: first draft pos=25 n_embd=2560 n_max=2 row[min,max]=[-23.544783,16.085215] dft_n_batch=4 dft_pos_max=24
+[xllama] DSTEP kind=draft width=2 wall=9.52 d3w=5.40 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=2 wall=1.59 d3w=0.99 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.36 d3w=5.40 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] d3d12: D3D12_Host buffer 5.3 MiB
+[xllama] DSTEP kind=catchup width=3 wall=2.19 d3w=1.46 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.33 d3w=5.34 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=1.91 d3w=1.20 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=3.99 d3w=2.82 d3g=0.00 cpu=0.00 calls=6 mm=9
+[xllama] CSTEP kind=classic width=1 wall=38.62 d3w=20.35 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.05 d3w=0.61 d3g=0.00 cpu=31.25 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.45 d3w=5.44 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=1.94 d3w=1.21 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.59 d3w=5.46 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=1.95 d3w=1.21 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSTEP kind=draft width=0 wall=0.01 d3w=0.00 d3g=0.00 cpu=0.00 calls=0 mm=0
+[xllama] CSTEP kind=classic width=1 wall=38.75 d3w=20.62 d3g=0.00 cpu=62.50
+[xllama] DSTEP kind=catchup width=1 wall=1.08 d3w=0.63 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSPLIT wall=475.29 d3w=254.80 d3g=0.00 cpu=937.50 calls=1172 mm=1562 classic_steps=2
+[xllama] VROUND width=2 wall=52.34 d3w=28.32 d3g=0.00 cpu=93.75 reuse=0 accepted=1 calls=153 mm=201 feed=9419,0 gen=16
+[xllama] VROUND width=3 wall=68.34 d3w=37.16 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=1049,4816,1040 gen=16
+[xllama] VROUND width=3 wall=65.74 d3w=37.39 d3g=0.00 cpu=156.25 reuse=1 accepted=2 calls=153 mm=201 feed=488,2493,599 gen=16
+[xllama] VROUND width=3 wall=66.83 d3w=36.96 d3g=0.00 cpu=156.25 reuse=0 accepted=2 calls=153 mm=201 feed=328,87,1 gen=16
+[xllama] VROUND width=3 wall=65.37 d3w=36.84 d3g=0.00 cpu=125.00 reuse=1 accepted=2 calls=153 mm=201 feed=539,11095,13 gen=16
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=40 mirror_end=40 kv_tokens=41
+[xllama] session generate: n=16 prefill=286.7ms (25 tok) reuse=0 drafted=9 (mtp=9 lookup=0) spec_accept=9 (mtp=9 lookup=0)
+[xllama] PHASE total_ms=861.7 prefill_ms=286.7 decode_ms=475.3 accounted_ms=471.0 residual_decode_ms=4.3 load_plus_setup_ms=99.7 draft_ms=35.2 sample_ms=6.1 topprob_ms=13.8 catchup_ms=11.5 verify_ms=318.6 verify_d3w=176.7 verify_d3g=0.0 verify_cpu=656.2 rounds_split=5 corrective_ms=0.0 classic_decode_ms=77.4 classic_catchup_ms=2.1 lookup_ms=0.0 sample_target_ms=8.4 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/6 keys_total=62 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=11 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=11 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=11 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=11 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=22 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=11 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=11 | ctx=target phase=verify t=14 N=8192 K=2560 B=2 thr=64 mm=12 | ctx=target phase=verify t=12 N=4096 K=2560 B=2 thr=64 mm=24 | ctx=target phase=verify t=13 N=2560 K=4096 B=2 thr=128 mm=24 | ctx=target phase=verify t=12 N=9216 K=2560 B=2 thr=64 mm=64
+[xllama] d3d12_shape label=session_decode part=2/6 keys_total=62 | ctx=target phase=verify t=14 N=2560 K=9216 B=2 thr=128 mm=16 | ctx=target phase=verify t=12 N=8192 K=2560 B=2 thr=64 mm=20 | ctx=target phase=verify t=14 N=1024 K=2560 B=2 thr=64 mm=4 | ctx=target phase=verify t=12 N=1024 K=2560 B=2 thr=64 mm=12 | ctx=target phase=verify t=12 N=2560 K=4096 B=2 thr=128 mm=8 | ctx=target phase=verify t=12 N=2560 K=9216 B=2 thr=128 mm=16 | ctx=target phase=verify t=14 N=248320 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/6 keys_total=62 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=96 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=96 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=256 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=64 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=80 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=16 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=64
+[xllama] d3d12_shape label=session_decode part=4/6 keys_total=62 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=4 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=4 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=8 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=4 | ctx=target phase=classic t=14 N=8192 K=2560 B=1 thr=64 mm=24 | ctx=target phase=classic t=12 N=4096 K=2560 B=1 thr=64 mm=48 | ctx=target phase=classic t=13 N=2560 K=4096 B=1 thr=128 mm=48 | ctx=target phase=classic t=12 N=9216 K=2560 B=1 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=5/6 keys_total=62 | ctx=target phase=classic t=14 N=2560 K=9216 B=1 thr=128 mm=32 | ctx=target phase=classic t=12 N=8192 K=2560 B=1 thr=64 mm=40 | ctx=target phase=classic t=14 N=1024 K=2560 B=1 thr=64 mm=8 | ctx=target phase=classic t=12 N=1024 K=2560 B=1 thr=64 mm=24 | ctx=target phase=classic t=12 N=2560 K=4096 B=1 thr=128 mm=16 | ctx=target phase=classic t=12 N=2560 K=9216 B=1 thr=128 mm=32 | ctx=target phase=classic t=14 N=248320 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=1 thr=128 mm=2 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=1 thr=64 mm=2 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=1 thr=128 mm=2
+[xllama] d3d12_shape label=session_decode part=6/6 keys_total=62 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=1 thr=128 mm=2
+[xllama] MTP_STATS rounds=5 decodes=18 discarded=2 catchup_tok=16 draft_ms=35.2 sample_ms=6.1 topprob_ms=13.8 catchup_ms=11.5 verify_ms=318.6 corrective_ms=0.0
+[xllama] session: KV rewind unsupported (hybrid cache) — full re-prefill (#170): common=15 resident=41 prompt=63
+[xllama] session: turn full=1 kv_before=0 pf=63 prompt=63
+[xllama] DSTEP kind=prefill width=63 wall=652.59 d3w=456.52 d3g=0.00 cpu=1312.50 calls=153 mm=201
+[xllama] DSTEP kind=catchup width=63 wall=30.74 d3w=21.32 d3g=0.00 cpu=31.25 calls=80 mm=128
+[xllama] PHASE_PREFILL n_prompt=63 rows_kept=63 n_ubatch=64 calls=233 matmuls=329 gpu_ms=0.000000
+[xllama] d3d12_shape label=session_prefill part=1/3 keys_total=25 | ctx=target phase=prefill t=14 N=8192 K=2560 B=63 thr=64 mm=12 | ctx=target phase=prefill t=12 N=4096 K=2560 B=63 thr=64 mm=24 | ctx=target phase=prefill t=13 N=2560 K=4096 B=63 thr=128 mm=24 | ctx=target phase=prefill t=12 N=9216 K=2560 B=63 thr=64 mm=64 | ctx=target phase=prefill t=14 N=2560 K=9216 B=63 thr=128 mm=16 | ctx=target phase=prefill t=12 N=8192 K=2560 B=63 thr=64 mm=20 | ctx=target phase=prefill t=14 N=1024 K=2560 B=63 thr=64 mm=4 | ctx=target phase=prefill t=12 N=1024 K=2560 B=63 thr=64 mm=12 | ctx=target phase=prefill t=12 N=2560 K=4096 B=63 thr=128 mm=8 | ctx=target phase=prefill t=12 N=2560 K=9216 B=63 thr=128 mm=16 | ctx=target phase=prefill t=14 N=248320 K=2560 B=1 thr=64 mm=1 | ctx=target phase=prefill t=8 N=2560 K=5120 B=4 thr=128 mm=15
+[xllama] d3d12_shape label=session_prefill part=2/3 keys_total=25 | ctx=target phase=prefill t=12 N=8192 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=14 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=1024 K=2560 B=4 thr=64 mm=15 | ctx=target phase=prefill t=12 N=2560 K=4096 B=4 thr=128 mm=15 | ctx=target phase=prefill t=12 N=9216 K=2560 B=4 thr=64 mm=30 | ctx=target phase=prefill t=14 N=2560 K=9216 B=4 thr=128 mm=15 | ctx=target phase=prefill t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=target phase=prefill t=12 N=2560 K=4096 B=3 thr=128 mm=1 | ctx=target phase=prefill t=12 N=9216 K=2560 B=3 thr=64 mm=2
+[xllama] d3d12_shape label=session_prefill part=3/3 keys_total=25 | ctx=target phase=prefill t=14 N=2560 K=9216 B=3 thr=128 mm=1
+[xllama] DSTEP kind=draft width=2 wall=11.04 d3w=5.49 d3g=0.00 cpu=31.25 calls=12 mm=18
+[xllama] DSTEP kind=catchup width=3 wall=2.08 d3w=1.22 d3g=0.00 cpu=15.62 calls=5 mm=8
+[xllama] DSTEP kind=draft width=2 wall=10.55 d3w=5.40 d3g=0.00 cpu=0.00 calls=12 mm=18
+[xllama] EOG after 5 tokens (spec) tok=248046 branch=spec
+[xllama] DSTEP kind=catchup width=2 wall=1.71 d3w=0.96 d3g=0.00 cpu=0.00 calls=5 mm=8
+[xllama] DSPLIT wall=164.95 d3w=86.88 d3g=0.00 cpu=343.75 calls=340 mm=454 classic_steps=0
+[xllama] VROUND width=3 wall=69.09 d3w=37.03 d3g=0.00 cpu=125.00 reuse=0 accepted=2 calls=153 mm=201 feed=14793,43,5203 gen=5
+[xllama] VROUND width=3 wall=65.93 d3w=36.77 d3g=0.00 cpu=140.62 reuse=1 accepted=2 calls=153 mm=201 feed=12,24,248046 gen=5
+[xllama] mtp: turn-end drafter state: pending_valid=1 pending_pos=67 mirror_end=67 kv_tokens=68
+[xllama] session generate: n=5 prefill=683.6ms (63 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=4 (mtp=4 lookup=0)
+[xllama] PHASE total_ms=860.9 prefill_ms=683.6 decode_ms=164.9 accounted_ms=163.4 residual_decode_ms=1.5 load_plus_setup_ms=12.4 draft_ms=13.1 sample_ms=2.3 topprob_ms=6.1 catchup_ms=3.7 verify_ms=135.0 verify_d3w=73.8 verify_d3g=0.0 verify_cpu=265.6 rounds_split=2 corrective_ms=0.0 classic_decode_ms=0.0 classic_catchup_ms=0.0 lookup_ms=0.0 sample_target_ms=3.1 emit_ms=0.0 maintain_ms=0.0 profile=1
+[xllama] d3d12_shape label=session_decode part=1/3 keys_total=33 | ctx=draft phase=draft t=8 N=2560 K=5120 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=8192 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=14 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=1024 K=2560 B=1 thr=64 mm=4 | ctx=draft phase=draft t=12 N=2560 K=4096 B=1 thr=128 mm=4 | ctx=draft phase=draft t=12 N=9216 K=2560 B=1 thr=64 mm=8 | ctx=draft phase=draft t=14 N=2560 K=9216 B=1 thr=128 mm=4 | ctx=draft phase=draft t=14 N=248320 K=2560 B=1 thr=64 mm=4 | ctx=target phase=verify t=14 N=8192 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=4096 K=2560 B=3 thr=64 mm=48 | ctx=target phase=verify t=13 N=2560 K=4096 B=3 thr=128 mm=48 | ctx=target phase=verify t=12 N=9216 K=2560 B=3 thr=64 mm=128
+[xllama] d3d12_shape label=session_decode part=2/3 keys_total=33 | ctx=target phase=verify t=14 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=12 N=8192 K=2560 B=3 thr=64 mm=40 | ctx=target phase=verify t=14 N=1024 K=2560 B=3 thr=64 mm=8 | ctx=target phase=verify t=12 N=1024 K=2560 B=3 thr=64 mm=24 | ctx=target phase=verify t=12 N=2560 K=4096 B=3 thr=128 mm=16 | ctx=target phase=verify t=12 N=2560 K=9216 B=3 thr=128 mm=32 | ctx=target phase=verify t=14 N=248320 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=3 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=3 thr=128 mm=1
+[xllama] d3d12_shape label=session_decode part=3/3 keys_total=33 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=3 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=3 thr=128 mm=1 | ctx=draft phase=catchup t=8 N=2560 K=5120 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=8192 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=14 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=1024 K=2560 B=2 thr=64 mm=1 | ctx=draft phase=catchup t=12 N=2560 K=4096 B=2 thr=128 mm=1 | ctx=draft phase=catchup t=12 N=9216 K=2560 B=2 thr=64 mm=2 | ctx=draft phase=catchup t=14 N=2560 K=9216 B=2 thr=128 mm=1
+[xllama] MTP_STATS rounds=2 decodes=6 discarded=0 catchup_tok=5 draft_ms=13.1 sample_ms=2.3 topprob_ms=6.1 catchup_ms=3.7 verify_ms=135.0 corrective_ms=0.0
+[xllama] session: KV state saved — 68 tokens, 52.4 MB (#170b)
+[xllama] session: KV state loaded — mirror kept (identical 68-token prefix, carry preserved if valid) (#170b)
+[xllama] session: KV state loaded — 68 tokens, 52.4 MB, 8.0 ms (#170b)

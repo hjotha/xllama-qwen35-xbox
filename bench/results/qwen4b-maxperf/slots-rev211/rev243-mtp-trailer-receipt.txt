@@ -1,0 +1,100 @@
+# Receipt — correção de persistência de slots (#170c) validada na rev243
+
+## Artefato efetivamente testado (identidade completa)
+
+| item | valor |
+| ---- | ----- |
+| PFN instalado | `GianlucaMazza.xllama_1.6.0.243_x64__pj67f1fcj4n14` |
+| Versão (AppxManifest) | 1.6.0.243 |
+| MSIX sha256 | `2cc87201ae67b8dc913be49a2dedefa134bd83696697be3332e2c61accca5900` |
+| MSIX bytes | 22.049.003 |
+| Modo | **Iteration** (linha exclusiva da build "Iteration: reusing installed NuGet packages"; binário em `Release-iteration`; assinatura manual com o cert dev 89F82DB7 — MSBuild não assina Iteration) |
+| Origem | .193 `worktrees/xllama-mtp-fast`, build log `build-rev243.log` |
+| Fonte | rev242 + patch `slots-rev211/plan009-mtp-trailer.patch` (3 arquivos, +299/−4) |
+
+## A correção (menor mudança local, reversível, sem migração destrutiva)
+
+Trailer **aditivo** no arquivo de slot, escrito no MESMO tmp antes do rename
+(atômico, como o blob v2):
+```
+magic "XLMTPST1" + u32 version(=1) + u32 pos_min + u32 cells + u64 draft_size
++ blob KV do draft-context (llama_state_seq_get_data) + u32 carry_pos
++ u32 n_embd + n_embd floats (carry/pending REAL) + u64 prefix_hash
+(FNV-1a sobre os token ids [pos_min, n))
+```
+- **Leitura v2 preservada**: um leitor v2 para no blob do target e ignora o
+  trailer; um leitor novo aceita arquivo v2 (sem trailer) e cai no caminho
+  seguro documentado (clear + prime zero-carry) — **nunca** tratado como
+  igualdade de espelho.
+- **Versionamento/fingerprint**: magic+version próprios; o fingerprint v2
+  (modelo/ctx) continua gateando o blob do target; o trailer ainda exige
+  extensão do espelho consistente com os tokens, carry no último token,
+  largura do carry e **prova de prefixo** (hash).
+- **Fail-closed comprovado** (T13a, 5 variantes crafted, cada uma com o
+  motivo no log do device e sessão íntegra depois):
+  `bad magic` → refused + prime · `version` → refused + prime ·
+  `prefix proof mismatch` → refused + prime · `draft blob truncated` →
+  refused + prime · arquivo sem trailer (v2) → caminho prime, sem
+  reivindicação de espelho.
+- **Rollback**: reverter o patch (git) + build Iteration monotônica, ou
+  reinstalar o MSIX anterior (rev242, preservado). Nenhuma migração
+  destrutiva: arquivos e baselines v2 intactos.
+
+## Evidência de estado (rev243, tight bytes, sem epsilon)
+
+Comparação alinhada C (trajetória fresca idêntica + cauda) vs R (restore com
+trailer + mesma cauda), no mesmo ponto pós-prefill/pré-decode:
+
+| caso | logits | tokens | **KV/GDN (57.348.224 B)** | espelho | pending/mtp | posições |
+| ---- | ------ | ------ | -------------------------- | ------- | ----------- | -------- |
+| T13a t4 (187 tok) | = | = | (não coletado) | **=** | **=** | cells=230 @0 ambos |
+| T13a t5 | = | = | (não coletado) | **=** | **=** | cells=293 @0 ambos |
+| T13b curto (42) | = | = | (não coletado) | **=** | **=** | cells=67 @0 |
+| T13b médio (115) | = | = | (não coletado) | **=** | **=** | cells=94 @0 |
+| T13b longo (187) | = | = | (não coletado) | **=** | **=** | cells=214 @0 |
+| T13c (115) | = | = | **= (`ede8a04e…`)** | **=** | **=** | cells=142 @0 |
+
+Aceitação/rejeição/rollback idênticos (T13a t4): C drafted=20 accept=18
+rounds=11 decodes=39 discarded=5 vs R idêntico; fases de decode
+(MTP_STATS) C draft=89.3/verify=757.9 vs R 97.3/732.3 (ruído de contenção).
+T13c: rounds=9 decodes=28 discarded=4 nos dois; accept 14/14.
+Continuidade: t4→t5 (e 15 turnos na bateria) sem degeneração.
+Tempos separados: restore via API 73–78ms; prefill da cauda 322,2ms/27tok
+(R) vs alinhado (C); decode medido por MTP_STATS (draft/verify/catchup).
+
+**Limite honesto (não é equivalência global)**: a igualdade byte demonstrada
+vale quando o controle repete a MESMA trajetória/segmentação. Um prefill
+integral fresco vs restore continua diferindo nos bytes de KV/logits/espelho
+com decisões idênticas — foi exatamente o que o primeiro braço C do T13c
+mediu por engano (harness: o C não repetia a trajetória) antes da correção;
+o efeito é a segmentação isolada em T10/T11b, não o trailer.
+
+## Gates na rev243 (todos com modo/identidade verificados)
+
+| gate | resultado | evidência |
+| ---- | --------- | --------- |
+| Bateria slots ON (`FFN SWIGLU D3D12=all`, bind=3) | failures=0 | slots-rev211/slots-on/ |
+| Bateria slots OFF (`FFN SWIGLU D3D12=off`, bind=0, ffn_disp=0 via api-recall) | failures=0 | slots-rev211/slots-off/ + acceptance-rev242/api |
+| T2b (isolamento, concorrência 4/4, corrupt 4/4, cancel, sessão íntegra) | 18/18 | slots-rev211/T2b-rev243/ |
+| Fail-closed do trailer (5 variantes) | 5/5 refused+fallback | T13a + log do device |
+| VROUND canon (93/87 idênticos 209/216/232) | PASS 8/8 | acceptance-rev243/vround/ |
+| Termgate full-field | failures=0 | termgate-rev243/ |
+| api-recall (RECALL-5, bind on, 184/120) | PASS | acceptance-rev243/api/ |
+
+## Ainda não medido neste artefato (transporte justificado)
+Numéricos D2a/shapecost (50/50, 282/282) e blocos 24-comparisons: a mudança
+é only em session.cpp save/load; decode loop e kernels intactos desde a
+rev232 — transporte por identidade de fonte + gates de amarração acima
+(vround/termgate/api-recall/bateria). Reruns só se o alvo mudar.
+
+## Estado do dispositivo
+rev243 servindo; slots vazios; `chat-dump.flag` e `d3d12swiglu.txt`
+ausentes (404). Baselines 209/210/188/192/216/232/235 e rev238 preservados;
+modelo, 256/64 e limiares intactos. Sem push/merge.
+
+## Nota de estado final (higiene de knob)
+O vround (gate de binding) sobe `d3d12swiglu.txt` e não o remove; ao fim
+de todos os testes o device estava com o arquivo "1" (equivalente ao
+default ON). Removido + restart: `chat-dump.flag` 404, `d3d12swiglu.txt`
+404 (default ON), slots vazios, rev243 servindo. Nenhum efeito de medição
+(todos os gates já haviam verificado seus modos efetivos).

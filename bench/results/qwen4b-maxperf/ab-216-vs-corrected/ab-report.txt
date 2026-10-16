@@ -1,0 +1,91 @@
+# A/B controlado: fontes rev216 (2e20b3e) vs correção (29665e2/HEAD)
+
+Data: 2026-10-10. Dispositivo 192.168.1.26. Mesma configuração e modelo em
+todos os builds: qwen35-4b-mtp, threads=2 ctx=2048 gpu-layers=34 batch=256
+ubatch=64 mtp=2 pmin=50 greedy seed=1 n_predict=256, d3d12swiglu=1 (sw1).
+Builds todos `-Final` (LTCG), UWP monotônicos 229<230<231<232. Quiescência
+pré-medida: 60s com delta de turnos = 0 em todos. Aquecimento: run1 do
+bench descartado (protocolo nativo, 3 runs por célula).
+
+## Builds
+
+| rev | fontes              | sha256 (fixed msix, prefixo) | papel            |
+| --- | ------------------- | ---------------------------- | ---------------- |
+| 229 | 2e20b3e (rev216)    | 8100F3FD…                    | A, ordem 1       |
+| 230 | HEAD corrigido      | D1EE8DF7…                    | B, ordem 2       |
+| 231 | 2e20b3e (rev216)    | AEBC8D1D…                    | A, ordem 3 (reversão) |
+| 232 | HEAD corrigido      | EDCC7C4E…                    | B final instalado |
+
+Diffs de build entre A e B: apenas src/bridge/{decode_loop.h,mtp_draft.cpp,
+session.cpp} + include/xllama/mtp_draft.h (chain pós-216: trailing
+catch-up, commit-carry, EOG n_keep, restore keep-mirror, remoção do
+replay corretivo).
+
+## Desenho (correto: pacotes A–B–A; ordem de CÉLULAS NÃO invertida)
+
+Sequência de pacotes: A (rev229, fontes216) → B (rev230, corrigido) →
+A (rev231, fontes216, repetição). Em TODOS os pacotes a ordem de células
+foi FIXA: chat256-mtp primeiro, code256-mtp depois. O desenho replica a
+ordem de pacotes A–B–A, mas NÃO inverte a ordem de células — efeito de
+ordem de célula fica portanto não separado por este desenho. Adendum B'
+(rev232, mesmas fontes de B, ordem de células invertida: code, depois
+chat) cobre o lado B dessa questão; o lado A invertido não foi medido
+(exigiria novo build das fontes216 — evitado como build desnecessária).
+
+## Termgate (contadores MTP absolutos)
+
+Braço A (216src, rev229) e braço B (corrigido, rev230): full-field parity
+(todos os campos exceto `arm`) vs baselines legado rev192 — **failures=0
+em ambos**. Contadores idênticos ao legado nos dois:
+
+- mtp0: active/drafted/rounds = 0/0/0 em todas as cenas
+- mtp4 eog@0: drafted=51 rounds=18; eog@1: 24/14; eog@2: 37/24; eog@3: 8/2
+  (idênticos a restore-rev192 term-sw*-cand/ref)
+
+O colapso de drafting (51→4) visto em rev227 não existe em nenhum dos
+dois lados: a remoção do replay corretivo (dc394fb) devolveu a paridade
+completa; as fontes 216 nunca tiveram o colapso.
+
+## TPS (gen tok/s, coluna 7 dos CSVs do dispositivo; run1 aquecimento
+descartado; linhas medidas = run2/run3)
+
+| célula         | A ordem1 (229) | B ordem2 (230) | A ordem3 (231, reversão) | B − média A   |
+| -------------- | -------------- | -------------- | ------------------------ | ------------- |
+| chat256-mtp-sw1 | 29.17 / 29.45 | 28.79 / 29.09  | 29.34 / 29.34            | −1.31%        |
+| code256-mtp-sw1 | 34.66 / 34.75  | 34.46 / 34.23  | 34.57 / 34.55            | −0.83%        |
+
+Interpretação (fatos, sem atribuição causal):
+- B ficou abaixo de A em ambas as células nas comparações diretas, e A
+  foi estável nas suas duas aparições de pacote (29.17/29.45 e 29.34/
+  29.34; 34.66/34.75 e 34.57/34.55).
+- NÃO se atribui a queda a bookkeeping do decode-loop nem a outra causa:
+  o desenho isola o pacote de fontes, não o mecanismo.
+- NÃO se exclui efeito térmico/ambiental: não houve telemetria de
+  temperatura; o dispositivo ficou ocioso durante os builds entre
+  pacotes, mas ociosidade não é evidência de isenção térmica.
+- Custo/benefício contexto (não parte da medição): contadores de
+  terminação idênticos ao legado em ambos os lados; o ganho funcional
+  do lado B é prefill por reuse (~231ms vs ~640ms) e persistência de
+  slot. Aderência do B' (células invertidas) é reportada abaixo.
+
+## Adendum B' — ordem de células invertida (rev232, mesmas fontes de B)
+
+Mesma configuração; quiescência prévia; run1 descartado. Ordem: code256-mtp
+PRIMEIRO, chat256-mtp depois (inversão em relação aos pacotes A e B):
+
+| célula          | B' (rev232, invertida) | B original (rev230)  |
+| --------------- | ---------------------- | -------------------- |
+| code256-mtp-sw1 | 34.41 / 34.58          | 34.46 / 34.23        |
+| chat256-mtp-sw1 | 28.89 / 28.89          | 28.79 / 29.09        |
+
+Fato: os números de B' ficam dentro da faixa já observada de B; a inversão
+da ordem de células não moveu B de forma material. O lado A com células
+invertidas não foi medido (exigiria build novo das fontes216 — evitado).
+Nenhuma atribuição causal adicional é feita.
+
+## Estado final do dispositivo
+
+rev232 (corrigido, EDCC7C4E…) instalado; knobs transitórios
+(d3d12swiglu/bench_mtp/termgate) removidos; GET ok; chat live; FFN default
+ON (knob ausente). Artefatos preservados:
+/tmp/opencode/qwen4b-builds/rev{229,230,231,232}/.

@@ -1,0 +1,26 @@
+flag armed
+PASS: restart verified (P)
+P done; slot tokens: 187
+PASS: restart verified (C1)
+MISSING chat-dump.logits
+MISSING chat-dump.tokens
+MISSING chat-dump.tokens.prefill
+MISSING chat-dump.kv
+MISSING chat-dump.mirror
+MISSING chat-dump.mtp
+== C tail
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=503.2ms (43 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+PASS: restart verified (R)
+== R tail
+KV state loaded — 187 tokens, 56.1 MB, 8.4 ms
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=469.2ms (43 tok) reuse=0
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+PASS: restart verified (F)
+== F tail
+turn full=1 kv_before=0 pf=230 prompt=230
+prefill=2521.8ms (230 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+== compare (byte only)

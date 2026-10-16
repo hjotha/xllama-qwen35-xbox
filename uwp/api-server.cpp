@@ -22,6 +22,7 @@
     #include "xllama/api_policy.h"
     #include "xllama/api_pull_policy.h"
     #include "xllama/chat_prompt.h"
+    #include "xllama/kv_store.h"
     #include "xllama/model_provision.h"
     #include "xllama/path_utils.h"
     #include "xllama/personalize.h"
@@ -138,6 +139,10 @@ struct HttpRequest {
     std::string method;
     std::string path;
     std::string body;
+    // T18 fault probe (plan 009): test-only request identity from the
+    // optional X-Test-Nonce header. Empty when absent — the probe can then
+    // never match an armed nonce, so ordinary requests are untouched.
+    std::string test_nonce;
     bool ok = false;
     bool chunked = false; // Transfer-Encoding: chunked (unsupported framing)
 };
@@ -187,7 +192,13 @@ HttpRequest read_request(StreamSocket const& socket) {
     // an empty body.
     size_t content_length = 0;
     {
-        const std::string headers = to_lower(data.substr(line_end + 2, header_end - line_end - 2));
+        const std::string raw_headers = data.substr(line_end + 2, header_end - line_end - 2);
+        const std::string headers = to_lower(raw_headers);
+        // T18: optional test-only X-Test-Nonce; the shared, host-tested
+        // slicer owns the exact offset (13, incl. colon), the zero/one/many
+        // space handling, the case-sensitive value, and the 64-byte cap.
+        // Absent/empty/oversized -> "" and can never match an armed nonce.
+        req.test_nonce = ::xllama::parse_test_nonce_header(raw_headers);
         if (headers.find("transfer-encoding:") != std::string::npos &&
             headers.find("chunked") != std::string::npos) {
             req.chunked = true;
@@ -1346,6 +1357,194 @@ void handle_pull(StreamSocket const& socket, const std::string& body, uint64_t g
     }
 }
 
+// ---------------------------------------------------------------------------
+// Named KV slots on disk (plan 009). Save/restore/list/delete the resident
+// session's sequence-0 state under LocalState\slots\. Additive routes; the
+// hub lock serializes with chat like every other stateful route. Filenames
+// can never escape the slots dir (KvStore::valid_id). A failed restore
+// clears the resident KV (fail-closed, same contract as the GUI snapshot
+// path) — the client simply chats afterwards and gets a normal full
+// prefill. Slots never auto-load and are never pruned automatically;
+// lifetime is explicit save/restore/delete.
+// ---------------------------------------------------------------------------
+::xllama::KvStore slot_store() {
+    const std::string dir = ::xllama::resolve_local_path("slots");
+    std::error_code ec;
+    std::filesystem::create_directories(dir, ec);
+    return ::xllama::KvStore{dir};
+}
+
+// Reads the text header of a slot file (magic, n_state, n_tokens) without
+// loading the blob. False when the file is missing or malformed.
+bool read_slot_header(const std::string& path, size_t& n_tokens, uint64_t& bytes) {
+    n_tokens = 0;
+    bytes = 0;
+    std::error_code ec;
+    bytes = std::filesystem::file_size(path, ec);
+    if (ec)
+        return false;
+    FILE* fp = nullptr;
+    {
+        const std::wstring wpath = ::xllama::utf8_to_wstring(path);
+        fp = _wfopen(wpath.c_str(), L"rb");
+    }
+    if (!fp)
+        return false;
+    char hdr[512] = {};
+    const bool got = std::fgets(hdr, sizeof(hdr), fp) != nullptr;
+    std::fclose(fp);
+    if (!got)
+        return false;
+    std::string line(hdr);
+    while (!line.empty() && (line.back() == '\n' || line.back() == '\r'))
+        line.pop_back();
+    // magic \t n_state \t n_tokens \t fingerprint(rest of line)
+    size_t pos = 0;
+    for (int i = 0; i < 3; ++i) {
+        const size_t t = line.find('\t', pos);
+        if (t == std::string::npos)
+            return false;
+        if (i == 0 && line.substr(pos, t - pos) != "xllama-kv")
+            return false;
+        if (i == 2) {
+            try {
+                n_tokens = std::stoull(line.substr(pos, t - pos));
+            } catch (const std::exception&) {
+                return false;
+            }
+        }
+        pos = t + 1;
+    }
+    return n_tokens > 0;
+}
+
+bool slot_id_from_body(const std::string& body, std::string& id_out, const char*& status,
+                       std::string& err_json) {
+    JsonObject root{nullptr};
+    if (!JsonObject::TryParse(winrt::to_hstring(body), root) || root == nullptr) {
+        status = "400 Bad Request";
+        err_json = error_json("invalid JSON body");
+        return false;
+    }
+    const std::string id = winrt::to_string(root.GetNamedString(L"slot", L""));
+    if (!::xllama::KvStore::valid_id(id)) {
+        status = "400 Bad Request";
+        err_json = error_json("missing or invalid 'slot' (alnum, '-' and '_' only, max 64 chars)");
+        return false;
+    }
+    id_out = id;
+    return true;
+}
+
+std::string slot_ok_json(const std::string& id, uint64_t bytes, size_t tokens) {
+    JsonObject root;
+    root.Insert(L"ok", JsonValue::CreateBooleanValue(true));
+    root.Insert(L"slot", JsonValue::CreateStringValue(winrt::to_hstring(id)));
+    root.Insert(L"bytes", JsonValue::CreateNumberValue(static_cast<double>(bytes)));
+    root.Insert(L"tokens", JsonValue::CreateNumberValue(static_cast<double>(tokens)));
+    return winrt::to_string(root.Stringify());
+}
+
+// All handlers run under session_hub().mtx (already locked by the caller).
+// request_nonce: test-only X-Test-Nonce identity, threaded to save_state so
+// an armed T18 fault binds to the exact disposable request (empty otherwise).
+std::string handle_slot_save_locked(const std::string& body, const char*& status,
+                                    const std::string& request_nonce) {
+    std::string id, ej;
+    if (!slot_id_from_body(body, id, status, ej))
+        return ej;
+    auto& hub = ::xllama::session_hub();
+    if (!hub.session) {
+        status = "400 Bad Request";
+        return error_json("no resident session; chat first to load the model");
+    }
+    const std::string path = slot_store().path_for(id);
+    if (path.empty()) {
+        status = "400 Bad Request";
+        return error_json("invalid slot id");
+    }
+    std::string err;
+    if (!hub.session->save_state(path, &err, request_nonce)) {
+        status = "400 Bad Request";
+        return error_json("slot save failed: " + err);
+    }
+    size_t n_tokens = 0;
+    uint64_t bytes = 0;
+    if (!read_slot_header(path, n_tokens, bytes)) {
+        status = "500 Internal Server Error";
+        return error_json("slot saved but its header is unreadable");
+    }
+    return slot_ok_json(id, bytes, n_tokens);
+}
+
+std::string handle_slot_restore_locked(const std::string& body, const char*& status) {
+    std::string id, ej;
+    if (!slot_id_from_body(body, id, status, ej))
+        return ej;
+    auto& hub = ::xllama::session_hub();
+    if (!hub.session) {
+        status = "400 Bad Request";
+        return error_json("no resident session; chat first to load the model");
+    }
+    const std::string path = slot_store().path_for(id);
+    if (path.empty()) {
+        status = "400 Bad Request";
+        return error_json("invalid slot id");
+    }
+    std::string err;
+    if (!hub.session->load_state(path, &err)) {
+        status = "400 Bad Request";
+        return error_json("slot restore failed: " + err);
+    }
+    size_t n_tokens = 0;
+    uint64_t bytes = 0;
+    (void)read_slot_header(path, n_tokens, bytes);
+    return slot_ok_json(id, bytes, n_tokens);
+}
+
+std::string handle_slots_list_locked(const char*& status) {
+    JsonArray items;
+    const std::string dir = ::xllama::resolve_local_path("slots");
+    std::error_code ec;
+    for (const auto& e : std::filesystem::directory_iterator(dir, ec)) {
+        if (ec)
+            break;
+        if (!e.is_regular_file(ec) || ec)
+            continue;
+        const std::string name = e.path().filename().string();
+        if (name.size() <= 3 || name.substr(name.size() - 3) != ".kv")
+            continue;
+        const std::string id = name.substr(0, name.size() - 3);
+        if (!::xllama::KvStore::valid_id(id))
+            continue;
+        size_t n_tokens = 0;
+        uint64_t bytes = 0;
+        if (!read_slot_header(e.path().string(), n_tokens, bytes))
+            continue; // one bad file never fails the list; restore reports it
+        JsonObject item;
+        item.Insert(L"slot", JsonValue::CreateStringValue(winrt::to_hstring(id)));
+        item.Insert(L"tokens", JsonValue::CreateNumberValue(static_cast<double>(n_tokens)));
+        item.Insert(L"bytes", JsonValue::CreateNumberValue(static_cast<double>(bytes)));
+        items.Append(item);
+    }
+    JsonObject root;
+    root.Insert(L"ok", JsonValue::CreateBooleanValue(true));
+    root.Insert(L"slots", items);
+    status = "200 OK";
+    return winrt::to_string(root.Stringify());
+}
+
+std::string handle_slot_delete_locked(const std::string& body, const char*& status) {
+    std::string id, ej;
+    if (!slot_id_from_body(body, id, status, ej))
+        return ej;
+    slot_store().erase(id);
+    JsonObject root;
+    root.Insert(L"ok", JsonValue::CreateBooleanValue(true));
+    root.Insert(L"slot", JsonValue::CreateStringValue(winrt::to_hstring(id)));
+    return winrt::to_string(root.Stringify());
+}
+
 void handle_connection(StreamSocket const& socket, uint64_t generation) {
     try {
         const HttpRequest req = read_request(socket);
@@ -1416,6 +1615,47 @@ void handle_connection(StreamSocket const& socket, uint64_t generation) {
             } catch (...) {
                 status = "400 Bad Request";
                 json = error_json("malformed request body");
+            }
+            write_response(socket, status, json);
+            return;
+        }
+
+        // Plan 009: named KV slots on disk. Same lock + generation guard as
+        // chat; failures answer 400 with the reason, never 500, so a client
+        // can always fall back to a normal chat (full prefill).
+        const bool is_slot_save = req.method == "POST" && req.path == "/v1/slots/save";
+        const bool is_slot_restore = req.method == "POST" && req.path == "/v1/slots/restore";
+        const bool is_slot_delete = req.method == "POST" && req.path == "/v1/slots/delete";
+        const bool is_slot_list = req.method == "GET" && req.path == "/v1/slots";
+        if (is_slot_save || is_slot_restore || is_slot_delete || is_slot_list) {
+            std::unique_lock<std::mutex> lk = acquire_hub_or_busy();
+            if (!lk.owns_lock()) {
+                write_response(socket, "503 Service Unavailable", error_json("busy"));
+                return;
+            }
+            bool active = false;
+            {
+                std::lock_guard<std::mutex> state_lock(g_state_mtx);
+                active = g_status.state == ServerState::Running && generation == g_generation;
+            }
+            if (!active) {
+                write_response(socket, "503 Service Unavailable", error_json("server stopped"));
+                return;
+            }
+            const char* status = "200 OK";
+            std::string json;
+            try {
+                if (is_slot_save)
+                    json = handle_slot_save_locked(req.body, status, req.test_nonce);
+                else if (is_slot_restore)
+                    json = handle_slot_restore_locked(req.body, status);
+                else if (is_slot_delete)
+                    json = handle_slot_delete_locked(req.body, status);
+                else
+                    json = handle_slots_list_locked(status);
+            } catch (...) {
+                status = "400 Bad Request";
+                json = error_json("malformed slots request");
             }
             write_response(socket, status, json);
             return;

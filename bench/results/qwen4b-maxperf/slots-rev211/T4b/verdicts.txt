@@ -1,0 +1,49 @@
+PASS: restart verified (E-build)
+E-seed-saved prompt_tok=24 completion_tok=48
+PASS: restart verified (E-fresh)
+== E FRESH (deep prefix, no restore)
+turn full=1 kv_before=0 pf=225 prompt=225
+prefill=2395.7ms (225 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+response: 'BRAVO-7'
+PASS: restart verified (E-control-newproc)
+WS E-control-pre: 3857 MB (raw=4044861440)
+== E control (flag=none)
+KV state loaded — 187 tokens, 56.1 MB, 9.0 ms
+T1_LINE_ABSENT
+KV prefix reuse — kept 187 of 225 tokens
+turn full=1 kv_before=0 pf=225 prompt=225
+prefill=2423.9ms (225 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response: 'BRAVO-7'
+WS E-control-post: 3858 MB (raw=4045602816)
+PASS: restart verified (E-zero-newproc)
+WS E-zero-pre: 3856 MB (raw=4044173312)
+== E zero (flag=zerocarry)
+KV state loaded — 187 tokens, 56.1 MB, 9.3 ms
+T1: rebuild mode=zerocarry n=187 harvest=0.0ms process=0.0ms OK pending=1 pos=186 carry_from_n=1
+KV prefix reuse — kept 187 of 225 tokens
+turn full=1 kv_before=187 pf=38 prompt=225
+prefill=441.7ms (38 tok) reuse=0
+drafted=2 (mtp=2 lookup=0) spec_accept=2
+rounds=1 decodes=7 discarded=2 catchup_tok=4
+response: 'BRAVO-7'
+WS E-zero-post: 3858 MB (raw=4045680640)
+PASS: restart verified (E-full-newproc)
+WS E-full-pre: 3857 MB (raw=4045066240)
+== E full (flag=full)
+KV state loaded — 187 tokens, 56.1 MB, 2027.7 ms
+T1: rebuild mode=full n=187 harvest=1883.8ms process=104.1ms OK pending=1 pos=186 carry_from_n=1
+KV prefix reuse — kept 187 of 225 tokens
+turn full=1 kv_before=187 pf=38 prompt=225
+prefill=454.1ms (38 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response: 'BRAVO-7'
+WS E-full-post: 3858 MB (raw=4045742080)
+PASS: restart verified (mcontrol-build)
+PASS: restart verified (mcontrol-newproc)
+== mcontrol MULTI-TURN (post-restore t1..t3 same process)
+KV state loaded — 42 tokens
+T1_LINE_ABSENT

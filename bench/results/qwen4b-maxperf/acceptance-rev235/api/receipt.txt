@@ -1,0 +1,15 @@
+api_recall_rev227 utc=2026-10-10T15:03:18Z PFN=GianlucaMazza.xllama_1.6.0.235_x64__pj67f1fcj4n14 mode=final
+recall=PASS t2=[RECALL-5] swapback=[home]
+bind_on_mtp1=1 ffn_disp=184 gdn=120
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=39 prompt=39
+[xllama] session generate: n=2 prefill=455.1ms (39 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] session: KV prefix reuse — kept 41 of 61 tokens (#170)
+[xllama] session: turn full=1 kv_before=41 pf=20 prompt=61
+[xllama] session generate: n=4 prefill=233.9ms (20 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3 (mtp=3 lookup=0)
+[xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=28 prompt=28
+[xllama] session generate: n=1 prefill=22.7ms (28 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=31 prompt=31
+[xllama] session generate: n=1 prefill=356.6ms (31 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=1 (mtp=1 lookup=0)

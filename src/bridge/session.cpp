@@ -410,7 +410,9 @@ std::unique_ptr<Session> create_ort(const SessionParams& sp, std::string* err) {
 // ---------------------------------------------------------------------------
 #ifdef XLLAMA_USE_LLAMA
 
+    #include "ggml-backend.h"
     #include "llama.h"
+    #include "state_identity.h"
 
     #include "decode_loop.h" // shared prefill + generation loops; needs llama.h
     #include "llama_gpu.h"
@@ -484,6 +486,57 @@ class LlamaSession final : public Session {
           m_gpu_layers(gpu_layers), m_mtp(mtp), m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min),
           m_n_seq_max(n_seq_max > 0 ? n_seq_max : 1) {}
 
+    // Plan 009 diagnostic: one bounded first-attention capture per target context.
+    // Dormant unless fa-capture.flag is exactly "1"; never installed by default.
+    bool m_fa_captured = false;
+    int m_fa_query_policy = 0;
+    static bool capture_first_fa(ggml_tensor* t, bool ask, void* opaque) {
+        auto* self = static_cast<LlamaSession*>(opaque);
+        if (self->m_fa_captured || t->op != GGML_OP_FLASH_ATTN_EXT || !t->src[0] ||
+            t->src[0]->ne[1] <= 1)
+            return false;
+        if (ask)
+            return true;
+        self->m_fa_captured = true;
+        FILE* fp = open_state_file(resolve_local_path("fa-probe.bin"), "wb");
+        if (!fp) {
+            log_output("[xllama] fa-probe: open failed\n");
+            return true;
+        }
+        bool ok = true;
+        auto write = [&](const void* p, size_t n) {
+            if (ok && std::fwrite(p, 1, n, fp) != n)
+                ok = false;
+        };
+        const uint32_t header[2] = {0x31414658, 5}; // XFA1, q/k/v/mask/output
+        write(header, sizeof(header));
+        for (int i = 0; i < 5 && ok; ++i) {
+            ggml_tensor* node = i < 4 ? t->src[i] : t;
+            if (!node || !node->data || ggml_nbytes(node) > (8u << 20)) {
+                ok = false;
+                break;
+            }
+            const int32_t fields[3] = {i, static_cast<int32_t>(node->op),
+                                       static_cast<int32_t>(node->type)};
+            const uint64_t bytes = ggml_nbytes(node);
+            uint64_t strides[4];
+            for (int a = 0; a < 4; ++a)
+                strides[a] = node->nb[a];
+            write(fields, sizeof(fields));
+            write(node->ne, sizeof(node->ne));
+            write(strides, sizeof(strides));
+            write(&bytes, sizeof(bytes));
+            write(node->name, sizeof(node->name));
+            std::vector<uint8_t> raw(static_cast<size_t>(bytes));
+            ggml_backend_tensor_get(node, raw.data(), 0, raw.size());
+            write(raw.data(), raw.size());
+        }
+        if (std::fclose(fp) != 0)
+            ok = false;
+        log_output(ok ? "[xllama] fa-probe: complete\n" : "[xllama] fa-probe: FAILED\n");
+        return true;
+    }
+
     // Lazy context creation, shared by generate() and the state-file entry
     // points (#170b needs a context before the first turn). Returns false and
     // sets *err on failure; m_ctx stays null.
@@ -533,6 +586,10 @@ class LlamaSession final : public Session {
                            std::to_string(cparams.n_rs_seq) + "\n");
 
             apply_gguf_gpu_context(m_gpu_layers, cparams);
+            const char* no_tile = std::getenv("GGML_FLASH_ATTN_NO_QUERY_TILING");
+            m_fa_query_policy = no_tile && std::strcmp(no_tile, "4") == 0   ? 4
+                                : no_tile && std::strcmp(no_tile, "1") == 0 ? 1
+                                                                            : 0;
             if (for_embedding) {
                 // Non-causal embedding graphs cannot split a sequence into
                 // physical micro-batches (llama.cpp asserts instead of failing).
@@ -547,6 +604,18 @@ class LlamaSession final : public Session {
                 cparams.type_k = GGML_TYPE_Q8_0;
                 cparams.type_v = GGML_TYPE_Q8_0;
                 cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+            }
+            if (m_mtp) {
+                FILE* flag = open_state_file(resolve_local_path("fa-capture.flag"), "rb");
+                if (flag) {
+                    const bool enabled = std::fgetc(flag) == '1' && std::fgetc(flag) == EOF;
+                    std::fclose(flag);
+                    if (enabled) {
+                        m_fa_captured = false;
+                        cparams.cb_eval = capture_first_fa;
+                        cparams.cb_eval_user_data = this;
+                    }
+                }
             }
             m_ctx.reset(llama_init_from_model(m_model.get(), cparams));
             if (!m_ctx && m_kv_q8) {
@@ -685,6 +754,47 @@ class LlamaSession final : public Session {
             while (kv_keep < m_kv_tokens.size() && kv_keep < max_keep &&
                    m_kv_tokens[kv_keep] == tokens[kv_keep])
                 ++kv_keep;
+            // Plan 009 diagnostic: `kv_reuse_diag.txt` containing `1` logs
+            // the common-prefix seam (resident vs prompt token ids + pieces
+            // + prompt tail) for every full-prompt turn. Default off;
+            // log-only — the reuse decision below is untouched. Absolute
+            // LocalState path: the process CWD is not LocalState.
+            {
+                FILE* df = open_state_file(resolve_local_path("kv_reuse_diag.txt"), "rb");
+                bool diag = false;
+                if (df) {
+                    diag = std::fgetc(df) == '1';
+                    std::fclose(df);
+                }
+                if (diag) {
+                    std::string d =
+                        "[xllama] session: reuse-diag common=" + std::to_string(kv_keep) +
+                        " resident=" + std::to_string(m_kv_tokens.size()) +
+                        " prompt=" + std::to_string(tokens.size());
+                    auto show = [&](const char* tag, const std::vector<llama_token>& v, size_t from,
+                                    size_t count) {
+                        d += tag;
+                        for (size_t i = from; i < from + count && i < v.size(); ++i) {
+                            char tmp[64] = {};
+                            llama_token_to_piece(vocab, v[i], tmp, sizeof(tmp) - 1, 0, true);
+                            for (char* c = tmp; *c; ++c)
+                                if (*c < 0x20 || *c > 0x7e)
+                                    *c = '.';
+                            d += " " + std::to_string(v[i]) + ":'" + tmp + "'";
+                        }
+                    };
+                    const size_t r0 = kv_keep >= 3 ? kv_keep - 3 : 0;
+                    show(" resident_tail", m_kv_tokens, r0, kv_keep + 3 - r0);
+                    const size_t p0 = kv_keep >= 3 ? kv_keep - 3 : 0;
+                    show(" prompt_at_seam", tokens, p0, 6);
+                    const size_t tail = gp.prompt.size() > 100 ? gp.prompt.size() - 100 : 0;
+                    std::string pt = gp.prompt.substr(tail);
+                    for (char& c : pt)
+                        c = (c == '\n') ? '|' : ((c < 0x20 || c > 0x7e) ? '.' : c);
+                    d += " prompt_tail='" + pt + "'\n";
+                    log_output(d.c_str());
+                }
+            }
             if (kv_keep > 0) {
                 // Pure extension (no divergent tail) needs no removal. When a
                 // tail must go, honor seq_rm's result: hybrid caches (LFM2's
@@ -732,6 +842,11 @@ class LlamaSession final : public Session {
             // |kv_keep|; a full clear (kv_keep == 0) needs none of this.
             if (m_mtp_drafter && m_mtp_drafter->ready() && kv_keep > 0 &&
                 !m_mtp_drafter->can_carry_from(static_cast<llama_pos>(kv_keep))) {
+                // Plan 009 note: the committed carry (MtpDrafter::commit_carry,
+                // installed at the previous turn end) is what normally avoids
+                // this clear; reaching here means no valid committed carry
+                // (divergent tail, empty/fresh mirror, post-failure, or a turn
+                // that never established one). Fall through to the clear.
                 llama_memory_clear(mem, true);
                 m_kv_tokens.clear();
                 kv_keep = 0;
@@ -874,8 +989,9 @@ class LlamaSession final : public Session {
         // buffer describes only the last batch). The drafter's own n_batch is
         // n_max+2, so the replay is chunked inside process().
         int mtp_prefill_rows = 0;
-        const int pf_rows =
-            prefill_chunked(ctx, pf, n_pf, [&](int off, int n_rows, llama_pos pos0) {
+        const int pf_rows = prefill_chunked(
+            ctx, pf, n_pf,
+            [&](int off, int n_rows, llama_pos pos0) {
                 if (m_mtp_drafter && m_mtp_drafter->ready()) {
                     if (!detail::mtp_catchup_batch(m_mtp_drafter.get(), ctx, pf + off, n_rows, pos0,
                                                    llama_model_n_embd_out(m_model.get()),
@@ -885,7 +1001,8 @@ class LlamaSession final : public Session {
                         m_mtp_drafter.reset();
                     }
                 }
-            }, gp.profile_phases);
+            },
+            gp.profile_phases);
         if (pf_rows < 0) {
             res.error_msg = "prompt decode failed";
             log_output("[xllama] session generate: prompt decode failed\n");
@@ -933,6 +1050,87 @@ class LlamaSession final : public Session {
         }
         llama_sampler* sampler_chain = m_sampler.get();
 
+        // Plan 009 S3 probe: post-prefill state bytes, armed by
+        // LocalState\chat-dump.flag (same flag as the logits capture). Dumps
+        // the TARGET seq-0 KV blob, the MTP mirror's position extent and the
+        // drafter pending row, so fresh vs post-restore runs can be compared
+        // state-for-state and a logits difference can be attributed to state
+        // provenance vs execution non-determinism. Fail-closed: any failure
+        // logs and leaves generation untouched.
+        {
+            FILE* kf = open_state_file(resolve_local_path("chat-dump.flag"), "rb");
+            if (kf) {
+                std::fclose(kf);
+                // Size the buffer with the fork's own query (get_data(nullptr,0)
+                // returns 0 here — do NOT use it), then dump the target seq-0
+                // state and the MTP mirror state, both post-prefill/pre-decode.
+                size_t kv_bytes = 0, mirror_bytes = 0;
+                try {
+                    const size_t need = llama_state_seq_get_size(m_ctx.get(), 0);
+                    if (need > 0) {
+                        std::vector<uint8_t> kbuf(need);
+                        kv_bytes =
+                            llama_state_seq_get_data(m_ctx.get(), kbuf.data(), kbuf.size(), 0);
+                        if (FILE* out = open_state_file(resolve_local_path("chat-dump.kv"), "wb")) {
+                            const size_t w = std::fwrite(kbuf.data(), 1, kv_bytes, out);
+                            std::fclose(out);
+                            if (w != kv_bytes)
+                                log_output("[xllama] WARN: S3 kv dump short write\n");
+                        }
+                    }
+                    if (m_mtp_drafter && m_mtp_drafter->ready()) {
+                        llama_context* dctx = m_mtp_drafter->ctx();
+                        const size_t mneed = llama_state_seq_get_size(dctx, 0);
+                        if (mneed > 0) {
+                            std::vector<uint8_t> mbuf(mneed);
+                            mirror_bytes =
+                                llama_state_seq_get_data(dctx, mbuf.data(), mbuf.size(), 0);
+                            if (FILE* out =
+                                    open_state_file(resolve_local_path("chat-dump.mirror"), "wb")) {
+                                const size_t w = std::fwrite(mbuf.data(), 1, mirror_bytes, out);
+                                std::fclose(out);
+                                if (w != mirror_bytes)
+                                    log_output("[xllama] WARN: S3 mirror dump short write\n");
+                            }
+                        }
+                    }
+                } catch (const std::exception& e) {
+                    log_output(std::string("[xllama] WARN: S3 state dump failed: ") + e.what() +
+                               "\n");
+                }
+                llama_pos mirror_max = -1;
+                const float* pend = nullptr;
+                int pend_n = 0;
+                if (m_mtp_drafter && m_mtp_drafter->ready()) {
+                    mirror_max = m_mtp_drafter->mirror_pos_max();
+                    pend = m_mtp_drafter->pending_row_data();
+                    pend_n = llama_model_n_embd_out(m_model.get());
+                }
+                if (FILE* out = open_state_file(resolve_local_path("chat-dump.mtp"), "wb")) {
+                    char meta[224];
+                    const int mn = std::snprintf(
+                        meta, sizeof(meta),
+                        "kv_tokens=%zu mirror_pos_max=%d pending_valid=%d n_embd=%d\n",
+                        m_kv_tokens.size(), static_cast<int>(mirror_max), pend ? 1 : 0, pend_n);
+                    std::fwrite(meta, 1, static_cast<size_t>(mn), out);
+                    if (pend && pend_n > 0)
+                        std::fwrite(pend, sizeof(float), static_cast<size_t>(pend_n), out);
+                    const uint32_t ntok = static_cast<uint32_t>(m_kv_tokens.size());
+                    std::fwrite(&ntok, sizeof(ntok), 1, out);
+                    if (ntok)
+                        std::fwrite(m_kv_tokens.data(), sizeof(llama_token), ntok, out);
+                    std::fclose(out);
+                }
+                char lb[256];
+                std::snprintf(lb, sizeof(lb),
+                              "[xllama] S3: state dumped — kv_bytes=%zu mirror_bytes=%zu "
+                              "mirror_pos=%d pending=%d kv_tokens=%zu\n",
+                              kv_bytes, mirror_bytes, static_cast<int>(mirror_max), pend ? 1 : 0,
+                              m_kv_tokens.size());
+                log_output(lb);
+            }
+        }
+
         const auto t_decode0 = std::chrono::steady_clock::now();
 
         // Clean stop at the context end (#173): each generated token needs a KV
@@ -971,25 +1169,48 @@ class LlamaSession final : public Session {
         // compare an integral sequence (plan 003 stage 1). Empty request = no
         // sink, no cost.
         std::vector<llama_token> turn_ids;
-        if (!gp.dump_tokens_path.empty())
+        std::string dump_tokens_path = gp.dump_tokens_path;
+        if (!dump_tokens_path.empty())
             dlp.out_token_ids = &turn_ids;
+
+        // Plan 009 S3 probe: LocalState\chat-dump.flag (presence arms it)
+        // captures per-step logits bytes + sampled ids AND the per-turn token
+        // ids, so a fresh run and a post-restore run can be compared byte for
+        // byte. Default OFF: no flag, no file, no hot-path cost beyond the
+        // existence check done once per turn here. Fail-closed: the capture
+        // disables itself on any I/O failure inside emit_token.
+        {
+            FILE* cf = open_state_file(resolve_local_path("chat-dump.flag"), "rb");
+            if (cf) {
+                std::fclose(cf);
+                const std::string lp = resolve_local_path("chat-dump.logits");
+                std::remove(lp.c_str()); // one turn's capture per generate
+                dlp.logits_dump_path = lp;
+                if (dump_tokens_path.empty()) {
+                    const std::string tp = resolve_local_path("chat-dump.tokens");
+                    std::remove(tp.c_str());
+                    dump_tokens_path = tp; // ids + .prefill ids of THIS turn
+                    dlp.out_token_ids = &turn_ids;
+                }
+                log_output("[xllama] S3: chat-dump.flag armed -> " + lp + "\n");
+            }
+        }
 
         const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
 
-        if (!gp.dump_tokens_path.empty()) {
-            if (FILE* tf = std::fopen(gp.dump_tokens_path.c_str(), "w")) {
+        if (!dump_tokens_path.empty()) {
+            if (FILE* tf = std::fopen(dump_tokens_path.c_str(), "w")) {
                 for (llama_token t : turn_ids)
                     std::fprintf(tf, "%d\n", static_cast<int>(t));
                 std::fclose(tf);
             } else {
-                log_output("[xllama] WARN: per-turn token dump failed: " + gp.dump_tokens_path +
-                           "\n");
+                log_output("[xllama] WARN: per-turn token dump failed: " + dump_tokens_path + "\n");
             }
             // The ids THIS turn decoded. Together with the previous turns' dumps they
             // reconstruct the exact resident history, token for token — which is what
             // a cold reference has to reproduce. Comparing output ids alone cannot
             // prove that: text concatenation may retokenize at the boundaries.
-            const std::string pf_path = gp.dump_tokens_path + ".prefill";
+            const std::string pf_path = dump_tokens_path + ".prefill";
             if (FILE* pf2 = std::fopen(pf_path.c_str(), "w")) {
                 for (int i = 0; i < n_pf; ++i)
                     std::fprintf(pf2, "%d\n", static_cast<int>(pf[i]));
@@ -1040,6 +1261,23 @@ class LlamaSession final : public Session {
             return res;
         }
         res.success = true;
+
+        // Plan 009 turn-end drafter state (log-only): what the NEXT turn's
+        // F3.5 can_carry check will see (pending carry + mirror end vs the
+        // committed token count). Diagnoses carry staleness without touching
+        // the reuse decision.
+        if (m_mtp_drafter && m_mtp_drafter->ready()) {
+            const llama_pos mirror_end =
+                llama_memory_seq_pos_max(llama_get_memory(m_mtp_drafter->ctx()), 0);
+            char db[224];
+            snprintf(db, sizeof(db),
+                     "[xllama] mtp: turn-end drafter state: pending_valid=%d pending_pos=%d "
+                     "mirror_end=%d kv_tokens=%zu\n",
+                     m_mtp_drafter->pending_valid() ? 1 : 0,
+                     static_cast<int>(m_mtp_drafter->pending_pos()), static_cast<int>(mirror_end),
+                     m_kv_tokens.size());
+            log_output(db);
+        }
 
         char log_buf[320];
         snprintf(log_buf, sizeof(log_buf),
@@ -1263,7 +1501,16 @@ class LlamaSession final : public Session {
     // silent garbage.
 
     static constexpr const char* kStateMagic = "xllama-kv";
-    static constexpr int kStateVersion = 1;
+    // Plan 009 complete-state trailer (additive; a v2 reader stops at the
+    // target blob and never looks here). Carries the private draft KV + the
+    // real pending row + the mirror extent + a prefix hash that proves the
+    // mirror's rows correspond to the restored tokens. Refused unless every
+    // field validates; anything else falls back to the v2 prime path.
+    static constexpr const char* kMtpMagic = "XLMTPST1"; // 8 bytes, no NUL
+    static constexpr uint32_t kMtpTrailerVersion = 1;
+    // v3 binds the resolved RoPE/YaRN parameters with exact float identity.
+    // Older v1/v2 snapshots fail closed before native state installation.
+    static constexpr int kStateVersion = 3;
     // AppContainer dislikes very large single reads: ORT's 1 GB
     // ReadFileIntoBuffer had to come down to 16 MB before errcode 1450
     // (ERROR_NO_SYSTEM_RESOURCES) stopped appearing (uwp-constraints §9), and
@@ -1283,12 +1530,17 @@ class LlamaSession final : public Session {
     #endif
     }
 
-    static bool io_chunked(FILE* fp, void* data, size_t n, bool write) {
+    static bool io_chunked(FILE* fp, void* data, size_t n, bool write,
+                           size_t* transferred = nullptr) {
+        if (transferred)
+            *transferred = 0;
         auto* p = static_cast<uint8_t*>(data);
         for (size_t off = 0; off < n;) {
             const size_t want = std::min(kIoChunk, n - off);
             const size_t got =
                 write ? std::fwrite(p + off, 1, want, fp) : std::fread(p + off, 1, want, fp);
+            if (transferred)
+                *transferred += got;
             if (got != want)
                 return false;
             off += want;
@@ -1296,20 +1548,192 @@ class LlamaSession final : public Session {
         return true;
     }
 
-    // Identity of the weights + context this cache was built on. Computed
-    // after ensure_ctx() so it reflects the kv_q8 fallback (#171), not the
-    // request.
+    // TEST-ONLY mid-write fault probe (plan 009 / T18, authorized msg 1414).
+    // Armed by the fixed-name LOCALSTATE file "slot-fault.target.txt" whose
+    // content is "<target-basename> <bytes> <nonce>". OFF by default: no
+    // file, a malformed/legacy knob, or any failed match returns 0 with zero
+    // behaviour change. The knob is opened read-only on every *.kv save; the
+    // nonce AND the slot basename are verified BEFORE the atomic claim, so a
+    // save with no nonce, a divergent nonce, or another slot never claims,
+    // never consumes, and never fires the arm. A pre-existing ".claimed"
+    // blocks the fire fail-closed (knob untouched, save proceeds normally):
+    // it belongs to a previous round and is never replaced or deleted here,
+    // and destination-replace semantics differ per OS, so the claim never
+    // depends on them. The claim is a single rename() — of any number of
+    // concurrent matching saves exactly one wins and only that one injects.
+    // Returns the fault offset to write (strictly inside the blob) or 0 = off.
+    static size_t probe_fault_bytes_for(const std::string& path, const std::string& nonce,
+                                        size_t n_state) {
+        if (nonce.empty() || n_state == 0)
+            return 0; // no request identity -> never match, knob untouched
+        const size_t slash = path.find_last_of("/\\");
+        const std::string target = slash == std::string::npos ? path : path.substr(slash + 1);
+        if (target.size() < 4 || target.compare(target.size() - 3, 3, ".kv") != 0)
+            return 0; // *.tmp and friends are disarmed before any I/O
+        const std::string knob = resolve_local_path("slot-fault.target.txt");
+        FILE* k = open_state_file(knob, "rb"); // read-only; the read itself is harmless
+        if (!k)
+            return 0;
+        char b[256] = {};
+        const size_t n = std::fread(b, 1, sizeof(b) - 1, k);
+        std::fclose(k);
+        if (n == 0)
+            return 0;
+        // arm layout: exactly three whitespace-separated tokens
+        // "<target-basename> <bytes> <nonce>" and nothing else — a missing
+        // token, a fourth token, or a second line never arms (plain buffers,
+        // no sscanf into std::string, no format-string pitfalls on MSVC).
+        const char* cur = b;
+        auto next_token = [&cur](char* out, size_t cap) -> bool {
+            while (*cur == ' ' || *cur == '\t' || *cur == '\r' || *cur == '\n')
+                ++cur;
+            if (*cur == '\0')
+                return false;
+            size_t i = 0;
+            while (*cur != '\0' && *cur != ' ' && *cur != '\t' && *cur != '\r' && *cur != '\n') {
+                if (i + 1 >= cap)
+                    return false;
+                out[i++] = *cur++;
+            }
+            out[i] = '\0';
+            return true;
+        };
+        char armed_target[80] = {}, bytes_txt[80] = {}, armed_nonce[80] = {};
+        if (!next_token(armed_target, sizeof(armed_target)) ||
+            !next_token(bytes_txt, sizeof(bytes_txt)) ||
+            !next_token(armed_nonce, sizeof(armed_nonce)))
+            return 0;
+        while (*cur == ' ' || *cur == '\t' || *cur == '\r' || *cur == '\n')
+            ++cur;
+        if (*cur != '\0')
+            return 0; // trailing junk or a second line: never arms
+        if (nonce != armed_nonce)
+            return 0; // divergent nonce -> no claim, arm kept
+        if (target != armed_target)
+            return 0; // other slot -> no claim, arm kept
+        for (const char* nc = armed_nonce; *nc; ++nc) {
+            const bool okc = (*nc >= 'a' && *nc <= 'z') || (*nc >= 'A' && *nc <= 'Z') ||
+                             (*nc >= '0' && *nc <= '9') || *nc == '-' || *nc == '_';
+            if (!okc)
+                return 0;
+        }
+        size_t v = 0;
+        for (const char* c = bytes_txt; *c; ++c) {
+            if (*c < '0' || *c > '9')
+                return 0;
+            const size_t d = static_cast<size_t>(*c - '0');
+            // Rejected BEFORE the multiply: v*10+d <= kMaxStateBytes is
+            // enforced exactly, so a long decimal string can never overflow
+            // size_t — and the check happens pre-claim, so a malformed arm
+            // is neither fired nor consumed.
+            if (v > (kMaxStateBytes - d) / 10)
+                return 0;
+            v = v * 10 + d;
+        }
+        if (v == 0 || v >= n_state)
+            return 0; // must land strictly inside the blob; checked pre-claim
+        // FAIL-CLOSED on a pre-existing claim marker: a ".claimed" left by a
+        // previous round belongs to that round — never replace or delete it
+        // here, and never fire into it. Destination-replace semantics differ
+        // per OS (POSIX rename(2) replaces; the UWP STL behavior is not
+        // provable from the Linux host), so the claim must not depend on
+        // them: with a marker standing, this save proceeds normally, the arm
+        // stays armed and untouched, and exactly-once per arm is preserved on
+        // every platform. The device runbook clears ".claimed" before
+        // re-arming; nothing here re-arms or consumes while a marker stands.
+        std::error_code ec1;
+        if (std::filesystem::exists(knob + ".claimed", ec1))
+            return 0;
+        // ATOMIC CLAIM: rename is one namespace operation (POSIX rename(2),
+        // MoveFileEx on NTFS) — of concurrent matching saves exactly one
+        // moves the knob; every other contender fails here and injects
+        // nothing. Non-matching saves never reach this line.
+        std::error_code ec0;
+        std::filesystem::rename(knob, knob + ".claimed", ec0);
+        if (ec0)
+            return 0; // lost the claim (or stale/absent knob)
+        return v;
+    }
+
+    // Target context identity; the MTP trailer validates its own state.
+    // RoPE/YaRN values come from the resolved context, not rounded metadata.
+    // This is configuration identity, not a cryptographic weight checksum.
     std::string state_fingerprint() const {
         char desc[192] = {};
         llama_model_desc(m_model.get(), desc, sizeof(desc) - 1);
-        char buf[320];
-        snprintf(buf, sizeof(buf), "v%d n_ctx=%d kv_q8=%d lora=%.4f params=%llu %s", kStateVersion,
-                 m_n_ctx, m_kv_q8 ? 1 : 0, m_adapter ? m_lora_scale : 0.0f,
+        const int type_k =
+            static_cast<int>(m_kv_q8 ? GGML_TYPE_Q8_0 : llama_context_default_params().type_k);
+        const int type_v =
+            static_cast<int>(m_kv_q8 ? GGML_TYPE_Q8_0 : llama_context_default_params().type_v);
+        const auto rope = state_rope_identity(llama_get_context_rope_params(m_ctx.get()));
+        char buf[768];
+        snprintf(buf, sizeof(buf),
+                 "v%d n_ctx=%d n_seq_max=%d kv_q8=%d type_k=%d type_v=%d rope_type=%d "
+                 "%s fa_query=%d lora=%08x params=%llu %s",
+                 kStateVersion, m_n_ctx, m_n_seq_max, m_kv_q8 ? 1 : 0, type_k, type_v,
+                 static_cast<int>(llama_model_rope_type(m_model.get())), rope.c_str(),
+                 m_fa_query_policy, state_float_bits(m_adapter ? m_lora_scale : 0.0f),
                  static_cast<unsigned long long>(llama_model_n_params(m_model.get())), desc);
         return buf;
     }
 
-    bool save_state(const std::string& path, std::string* err) override {
+    // FNV-1a 64 over a byte range — the prefix proof for the MTP trailer.
+    static uint64_t fnv1a(const void* data, size_t n) {
+        const uint8_t* p = static_cast<const uint8_t*>(data);
+        uint64_t h = 1469598103934665603ULL;
+        for (size_t i = 0; i < n; ++i) {
+            h ^= p[i];
+            h *= 1099511628211ULL;
+        }
+        return h;
+    }
+
+    // Plan 009: append the drafter trailer into an OPEN tmp file (already
+    // holding header+tokens+target blob). Returns false on any write
+    // failure so the caller removes the tmp instead of shipping a silently
+    // v2 file. No trailer when the drafter is absent (legit v2 file).
+    bool write_mtp_trailer(FILE* fp, const std::vector<llama_token>& tokens, bool* wrote) {
+        *wrote = false;
+        if (!m_mtp_drafter || !m_mtp_drafter->ready())
+            return true; // MTP off: a v2 file is the honest artifact
+        const llama_pos pmin = m_mtp_drafter->mirror_pos_min();
+        const llama_pos pmax = m_mtp_drafter->mirror_pos_max();
+        if (pmin < 0 || pmax < pmin)
+            return false;
+        const uint32_t pos_min = static_cast<uint32_t>(pmin);
+        const uint32_t cells = static_cast<uint32_t>(pmax - pmin + 1);
+        if (pos_min > tokens.size() || cells != tokens.size() - pos_min)
+            return false; // mirror extent must mirror the resident tokens
+        const float* pend = m_mtp_drafter->pending_row_data();
+        const llama_pos ppos = m_mtp_drafter->pending_pos();
+        if (!pend || ppos != static_cast<llama_pos>(tokens.size()) - 1)
+            return false; // the carry must describe the last token
+        std::vector<uint8_t> draft;
+        if (!m_mtp_drafter->get_state(draft) || draft.empty())
+            return false;
+        const uint32_t n_embd = static_cast<uint32_t>(llama_model_n_embd_out(m_model.get()));
+        const uint64_t prefix_hash =
+            fnv1a(tokens.data() + pos_min, (tokens.size() - pos_min) * sizeof(llama_token));
+        const uint32_t pending_pos = static_cast<uint32_t>(ppos);
+        const uint64_t draft_size = draft.size();
+        std::vector<float> pend_row(pend, pend + n_embd); // io_chunked needs void*
+        bool ok = std::fwrite(kMtpMagic, 1, 8, fp) == 8;
+        ok = ok && std::fwrite(&kMtpTrailerVersion, sizeof(kMtpTrailerVersion), 1, fp) == 1;
+        ok = ok && std::fwrite(&pos_min, sizeof(pos_min), 1, fp) == 1;
+        ok = ok && std::fwrite(&cells, sizeof(cells), 1, fp) == 1;
+        ok = ok && std::fwrite(&draft_size, sizeof(draft_size), 1, fp) == 1;
+        ok = ok && io_chunked(fp, draft.data(), draft.size(), /*write=*/true);
+        ok = ok && std::fwrite(&pending_pos, sizeof(pending_pos), 1, fp) == 1;
+        ok = ok && std::fwrite(&n_embd, sizeof(n_embd), 1, fp) == 1;
+        ok = ok && io_chunked(fp, pend_row.data(), static_cast<size_t>(n_embd) * sizeof(float),
+                              /*write=*/true);
+        ok = ok && std::fwrite(&prefix_hash, sizeof(prefix_hash), 1, fp) == 1;
+        *wrote = ok;
+        return ok;
+    }
+
+    bool save_state(const std::string& path, std::string* err,
+                    const std::string& request_nonce) override {
         if (!ensure_ctx(err))
             return false;
         if (m_kv_tokens.empty()) {
@@ -1344,14 +1768,43 @@ class LlamaSession final : public Session {
                 *err = "cannot open " + tmp;
             return false;
         }
-        char hdr[512];
+        char hdr[1024];
         const int hn = snprintf(hdr, sizeof(hdr), "%s\t%zu\t%zu\t%s\n", kStateMagic, n_state,
                                 m_kv_tokens.size(), state_fingerprint().c_str());
         bool ok = hn > 0 && static_cast<size_t>(hn) < sizeof(hdr) &&
                   std::fwrite(hdr, 1, static_cast<size_t>(hn), fp) == static_cast<size_t>(hn);
         ok = ok && io_chunked(fp, m_kv_tokens.data(), m_kv_tokens.size() * sizeof(llama_token),
                               /*write=*/true);
-        ok = ok && io_chunked(fp, blob.data(), n_state, /*write=*/true);
+        // T18 fault probe (test-only): claim only after a healthy header +
+        // token write and only on an exact nonce+slot match; a losing or
+        // non-matching save writes the whole blob as always.
+        size_t fault = 0;
+        if (ok)
+            fault = probe_fault_bytes_for(path, request_nonce, n_state);
+        if (fault > 0) {
+            // Persist only up to the armed offset, then take the normal
+            // failure path below (remove tmp, false -> HTTP 400). The final
+            // <id>.kv is only ever touched by the rename, which is skipped.
+            size_t written = 0;
+            const bool write_ok = io_chunked(fp, blob.data(), fault, true, &written);
+            const int flush_result = std::fflush(fp);
+            std::error_code size_error;
+            const auto observed_size = std::filesystem::file_size(tmp, size_error);
+            log_output("[xllama] session: fault probe — abort save after " + std::to_string(fault) +
+                       " bytes (test-only); fwrite_bytes=" + std::to_string(written) +
+                       " write_ok=" + std::to_string(write_ok) +
+                       " flush_rc=" + std::to_string(flush_result) + " tmp_size=" +
+                       (size_error ? std::string("unavailable") : std::to_string(observed_size)) +
+                       " expected_size=" +
+                       std::to_string(static_cast<size_t>(hn) +
+                                      m_kv_tokens.size() * sizeof(llama_token) + written) +
+                       " (observed after fflush; not fsync durability)\n");
+            ok = false;
+        } else {
+            ok = ok && io_chunked(fp, blob.data(), n_state, /*write=*/true);
+        }
+        bool wrote_trailer = false;
+        ok = ok && write_mtp_trailer(fp, m_kv_tokens, &wrote_trailer);
         ok = (std::fclose(fp) == 0) && ok;
 
         std::error_code ec;
@@ -1368,10 +1821,73 @@ class LlamaSession final : public Session {
                 *err = "rename failed: " + ec.message();
             return false;
         }
-        char lb[160];
-        snprintf(lb, sizeof(lb), "[xllama] session: KV state saved — %zu tokens, %.1f MB (#170b)\n",
-                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0));
+        char lb[192];
+        snprintf(lb, sizeof(lb),
+                 "[xllama] session: KV state saved — %zu tokens, %.1f MB%s (#170b)\n",
+                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0),
+                 wrote_trailer ? " + MTP mirror trailer" : " (no MTP trailer: drafter absent)");
         log_output(lb);
+        return true;
+    }
+
+    // Plan 009: try to restore the drafter state from the slot trailer. The
+    // file pointer sits right after the target blob. Returns true only when
+    // EVERY field validates and the draft context accepted the blob; any
+    // failure logs the reason and returns false so the caller keeps the v2
+    // behavior (clear + prime) instead of claiming a mirror it does not have.
+    bool try_restore_mtp_trailer(FILE* fp, const std::vector<llama_token>& tokens) {
+        auto refuse = [](const char* why) {
+            log_output(std::string("[xllama] MTP trailer refused (") + why +
+                       ") — falling back to v2 restore (clear + prime)\n");
+            return false;
+        };
+        if (!m_mtp_drafter || !m_mtp_drafter->ready())
+            return false; // nothing to restore into; v2 semantics
+        char magic[8] = {};
+        if (std::fread(magic, 1, 8, fp) != 8)
+            return false; // clean EOF: v2 file without a trailer
+        if (std::memcmp(magic, kMtpMagic, 8) != 0)
+            return refuse("bad magic");
+        uint32_t version = 0, pos_min = 0, cells = 0, pending_pos = 0, n_embd = 0;
+        uint64_t draft_size = 0, stored_hash = 0;
+        bool ok = std::fread(&version, sizeof(version), 1, fp) == 1;
+        ok = ok && std::fread(&pos_min, sizeof(pos_min), 1, fp) == 1;
+        ok = ok && std::fread(&cells, sizeof(cells), 1, fp) == 1;
+        ok = ok && std::fread(&draft_size, sizeof(draft_size), 1, fp) == 1;
+        if (!ok)
+            return refuse("header truncated");
+        if (version != kMtpTrailerVersion)
+            return refuse("version");
+        if (draft_size == 0 || draft_size > kMaxStateBytes)
+            return refuse("draft blob size");
+        if (pos_min > tokens.size() || cells != tokens.size() - pos_min)
+            return refuse("mirror extent vs tokens");
+        std::vector<uint8_t> draft(static_cast<size_t>(draft_size));
+        if (!io_chunked(fp, draft.data(), draft.size(), /*write=*/false))
+            return refuse("draft blob truncated");
+        if (std::fread(&pending_pos, sizeof(pending_pos), 1, fp) != 1 ||
+            std::fread(&n_embd, sizeof(n_embd), 1, fp) != 1)
+            return refuse("carry header truncated");
+        if (pending_pos != tokens.size() - 1)
+            return refuse("carry pos != last token");
+        if (n_embd != static_cast<uint32_t>(llama_model_n_embd_out(m_model.get())))
+            return refuse("carry width");
+        std::vector<float> pend(static_cast<size_t>(n_embd));
+        if (!io_chunked(fp, pend.data(), pend.size() * sizeof(float), /*write=*/false))
+            return refuse("carry row truncated");
+        if (std::fread(&stored_hash, sizeof(stored_hash), 1, fp) != 1)
+            return refuse("prefix proof truncated");
+        const uint64_t hash =
+            fnv1a(tokens.data() + pos_min, (tokens.size() - pos_min) * sizeof(llama_token));
+        if (hash != stored_hash)
+            return refuse("prefix proof mismatch");
+        if (!m_mtp_drafter->set_state(draft.data(), draft.size()))
+            return refuse("draft set_data rejected");
+        if (!m_mtp_drafter->prime_pending(pend.data(), static_cast<llama_pos>(pending_pos)))
+            return refuse("carry install failed");
+        log_output("[xllama] MTP trailer restored — drafter mirror cells=" + std::to_string(cells) +
+                   " pos_min=" + std::to_string(pos_min) + " carry@" + std::to_string(pending_pos) +
+                   " (prefix proof OK)\n");
         return true;
     }
 
@@ -1392,7 +1908,7 @@ class LlamaSession final : public Session {
             }
         } closer{fp};
 
-        char hdr[512] = {};
+        char hdr[1024] = {};
         if (!std::fgets(hdr, sizeof(hdr), fp)) {
             if (err)
                 *err = "empty state file";
@@ -1452,6 +1968,7 @@ class LlamaSession final : public Session {
             return false;
         }
 
+        const auto t_load0 = std::chrono::steady_clock::now();
         size_t used = 0;
         try {
             used = llama_state_seq_set_data(m_ctx.get(), blob.data(), blob.size(), 0);
@@ -1468,11 +1985,73 @@ class LlamaSession final : public Session {
                 *err = "llama_state_seq_set_data rejected the file";
             return false;
         }
+        // Plan 009 identical-prefix fast path: when the loaded tokens are
+        // byte-identical to the resident ones, no divergent turn ran between
+        // save and restore (every mutation moves m_kv_tokens in lockstep),
+        // so the mirror already holds this exact prefix — skip its clear and
+        // keep a valid pending carry if one survived. F3.5 re-verifies via
+        // can_carry before any use, so even a pathological interleaving
+        // (e.g. a zero-generate divergent prefill, which moves neither token
+        // vector) still clears safely there instead of here.
+        const bool same_prefix = (m_kv_tokens == tokens);
         m_kv_tokens = std::move(tokens);
-        char lb[160];
+        // Plan 009: a slot with a drafter trailer restores the mirror for
+        // real (only meaningful when the resident prefix differs; the
+        // same-prefix path keeps the live mirror anyway).
+        const bool mirror_restored = !same_prefix && try_restore_mtp_trailer(fp, m_kv_tokens);
+        // The native blob restores the TARGET context only. A live MTP
+        // drafter still mirrors the pre-load prefix plus a pending row for
+        // it; letting that survive would feed the draft head a hidden state
+        // from dropped positions. align_to(0) clears the mirror and the
+        // pending row so the next generate rebuilds it via catch-up. Fail
+        // closed: a mirror that refuses the clear must not coexist with the
+        // restored target.
+        if (same_prefix) {
+            char lb2[160];
+            snprintf(lb2, sizeof(lb2),
+                     "[xllama] session: KV state loaded — mirror kept (identical %zu-token "
+                     "prefix, carry preserved if valid) (#170b)\n",
+                     m_kv_tokens.size());
+            log_output(lb2);
+        } else if (mirror_restored) {
+            char lb3[192];
+            snprintf(lb3, sizeof(lb3),
+                     "[xllama] session: KV state loaded — MTP mirror restored from trailer "
+                     "(%zu tokens, drafting continues on real state) (#170c)\n",
+                     m_kv_tokens.size());
+            log_output(lb3);
+        } else if (m_mtp_drafter && m_mtp_drafter->ready() && !m_mtp_drafter->align_to(0)) {
+            llama_memory_clear(llama_get_memory(m_ctx.get()), true);
+            m_kv_tokens.clear();
+            if (err)
+                *err = "MTP draft mirror refused the post-restore clear";
+            return false;
+        } else if (m_mtp_drafter && m_mtp_drafter->ready() && !m_kv_tokens.empty()) {
+            // Plan 009: with the mirror cleared, F3.5 would refuse the carry
+            // on the next turn and full-prefill it, so the restored prefix
+            // was dead weight for MTP users. Prime a zero pending row at the
+            // last restored token so the tail-only turn keeps drafting; the
+            // decoy row's only effect is one draft-mirror row's input and
+            // the target still verifies every candidate (contract in
+            // mtp_draft.h:prime_zero_carry). Fail-closed: a failed prime
+            // leaves the cleared mirror = the pre-009 full-prefill path.
+            const llama_pos prime_pos = static_cast<llama_pos>(m_kv_tokens.size()) - 1;
+            if (m_mtp_drafter->prime_zero_carry(prime_pos)) {
+                log_output("[xllama] mtp: post-restore carry primed at pos=" +
+                           std::to_string(static_cast<int>(prime_pos)) +
+                           " (zero decoy row; drafting stays on, target verifies)\n");
+            } else {
+                log_output("[xllama] mtp: post-restore carry prime failed — full "
+                           "prefill on the next turn (fail-closed)\n");
+            }
+        }
+        const double load_ms =
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_load0)
+                .count();
+        char lb[192];
         snprintf(lb, sizeof(lb),
-                 "[xllama] session: KV state loaded — %zu tokens, %.1f MB (#170b)\n",
-                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0));
+                 "[xllama] session: KV state loaded — %zu tokens, %.1f MB, %.1f ms (#170b)\n",
+                 m_kv_tokens.size(), (double)n_state / (1024.0 * 1024.0), load_ms);
         log_output(lb);
         return true;
     }

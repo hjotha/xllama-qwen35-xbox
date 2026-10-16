@@ -1,0 +1,21 @@
+{
+  "sha256": "2f40f9e2a15ba071245c30fd2308a26347f38cc88af7e1bb356be24f7879c910",
+  "bytes": 21869737,
+  "identity": {
+    "Name": "GianlucaMazza.xllama",
+    "Publisher": "CN=xllama-dev",
+    "Version": "1.6.0.255",
+    "ProcessorArchitecture": "x64"
+  },
+  "signature_sha256": "115fe7f6741e369fe243fef8b176f27be842d9965c0d2cc78ea7bc69aa2183a5",
+  "crt": {
+    "MSVCP140.dll": "0f885b509a685d2bbfa652fed26b5fb31d88fbdab0a978c641d1c7b8aa460aa9",
+    "MSVCP140_1.dll": "bfad5aef4c63a669e3c140655cdfdf395b6c979b400a447bd5dcb65ed8826c3d",
+    "VCRUNTIME140.dll": "d5e4d9a3e835fa679450145d6a7d94e36573a509317111904d9b3712c30d9066",
+    "VCRUNTIME140_1.dll": "1f2d41c4aa5db0bc33ebf7b66d72943a817d7ce6cbe880502a9403823633093f"
+  },
+  "mode": "Final/LTCG",
+  "build_job": "BjO58pV7sZsmbdTGw5-MkBmkmI71K1fu",
+  "exe_sha256": "19f3921aec29f81f9ef6103f6dd38e5edc9bbf437d7184bc6eea2c8b3aa63155",
+  "exe_bytes": 7757312
+}

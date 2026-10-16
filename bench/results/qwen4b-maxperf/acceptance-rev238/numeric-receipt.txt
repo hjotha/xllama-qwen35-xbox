@@ -1,0 +1,6 @@
+numeric_selftest_rev238 (2026-10-10):
+d3d12be-rev227.csv rows=50 D2a=PASS; rel_err/ok columns identical to the
+rev227 baseline (only gpu_ms/packed_gbs/date differ — timing fields).
+d3d12sc-rev227.csv rows=282 282/282 ok — watcher timed out at 600s as
+usual (documented pattern since rev232); CSV + .done fetched from the
+device LocalState after completion, same procedure as rev232/rev235.

@@ -1,0 +1,141 @@
+# Receipt — T18 host mid-write test: cooperative observation (plan 009)
+
+Worktree: /home/hjotha/worktrees/xllama-qwen35-4b-maxperf (feat/kv-slot-persist)
+Scope: authorization 1414, host test only. Production untouched (git diff HEAD
+over src/ and include/: 0 files). No tolerance/gate change, no .57, no push,
+no merge.
+
+## Results (real command output)
+
+Full suite before the observation change:
+
+    ctest --test-dir build/linux-test --output-on-failure
+    -> 1/1 Passed, 135.10 s, 100%
+
+Focal case then (log /tmp/opencode/t18-run-full.log):
+    test cases: 1 | 1 passed | 0 failed | 349 skipped
+    assertions: 33 | 33 passed | 0 failed
+
+Full suite on the FINAL committed code (commit 62ff76a, after the final
+instrumentation; exit code preserved):
+
+    ctest --test-dir build/linux-test --output-on-failure
+    -> exit=0, 1/1 Test #1 Passed, 69.78 sec, 100% tests passed
+       (log /tmp/opencode/t18-ctest-final.log)
+
+Observation runs, all focal:
+    XLLAMA_TEST_MODEL=/tmp/opencode/models/stories15M-q4_0.gguf \
+      ./build/linux-test/tests/xllama-tests --test-case="Session: save_state fails cleanly*"
+
+Variant A — capture on IN_CREATE (event-driven):
+    run1: fault.kv.tmp max=181254 open=1 del=1; ref.kv.tmp max=181254 open=1 del=1;
+          unexpected=0; assertions 49/49; exit 0
+    run2: open=0 max=0 del=1 both; 1 failed; exit 1 — race lost
+
+Variant B — head-start open() spin:
+    run1: max=181254 open=1 del=1 both; 49/49; exit 0
+    run2: max=181254 open=1 del=1 both; 49/49; exit 0
+    run3: open=0 max=0 del=1 both; 1 failed; exit 1 — still scheduling-racy
+
+Variant C — pre-created tmp inodes + ready-pipe handshake (final code in
+tests/test_session.cpp; save_state opens the tmp with "wb", no O_EXCL and no
+pre-remove — src/bridge/session.cpp:1589, failure path :1609 removes only the
+name):
+
+    runs 1-5 (t18-final-run{1..5}.log):
+    fault.kv.tmp max=181254 open=1 del=1
+    ref.kv.tmp   max=181254 open=1 del=1
+    unexpected=0; assertions: 49 | 49 passed | 0 failed; exit 0
+    => PASS 5/5, deterministic by construction (ordering fixed by the pipe
+       handshake; fstat through the held fd works even for a late IN_DELETE)
+
+Direct observation: 181254 B (= L exactly) were effectively persisted in each
+disposable .tmp by the REAL save_state — no write faked or replaced — before
+its failure path removed the file name. L sits inside the blob window
+[4608, 357900) of S=353634 B, tokens=51. 49 assertions = 33 base + 16
+observation assertions.
+
+## Scope distinctions (explicit — what the observation is and is not)
+
+1. Pre-created tmp + observer-held inode vs a write that starts with no
+   prior file. The mechanism pre-creates both `*.kv.tmp` names (empty) and
+   holds the fds across the ready handshake; save_state's
+   `fopen(..., "wb")` (session.cpp:1589 — no pre-remove, no O_EXCL) then
+   truncates THOSE inodes and its failure path (`:1609`) removes only the
+   name. A production save does NOT start from a pre-existing file: the
+   fresh-create branch makes the inode itself. Shared between the two: the
+   bytes written, the chunked write, the fault detection, fclose and the
+   remove of the name. Different: who created the inode (observer vs
+   save_state) and the creation event. The measured size is a property of
+   the write/failure path, obtained through an inode lifecycle that a cold
+   production save does not use; the observation mechanism, not the write,
+   is what pre-creates the file.
+2. Observed file size != fsync/durability. The capture is `fstat` size on
+   the held inode: it proves the bytes went through libc into the file
+   (address space / page cache), not that they reached durable media.
+   Neither this test nor production `save_state` calls
+   fsync/fdatasync/FlushFileBuffers (grep over src/bridge/session.cpp and
+   src/bridge/*.cpp: none). Production atomicity claims in this plan are
+   namespace atomicity (tmp+rename) under process failure — NOT power-loss
+   durability of file contents. No fsync or durability claim is made here.
+3. Simulated I/O failure != process death, != concurrency, != Xbox handler.
+   RLIMIT_FSIZE makes the kernel reject the write beyond L: a clean
+   in-process I/O error following the real failure path. It does NOT kill
+   the process mid-write (SIGXFSZ explicitly ignored; the process-death
+   variant stays structurally covered only — loader reads the final path,
+   B11, prune). It exercises a single-threaded save with no concurrent
+   saver (device-side slot concurrency is a separate, already-passed gate:
+   T2b 4/4 on device — not demonstrated by this host test). It contains no
+   network code (grep http|socket|connect over the run logs: 0), so the
+   Xbox API handler's behavior for a mid-write I/O failure is NOT
+   exercised here — only F1/F2/T16 (open, rename, pre-write rejections)
+   ran on the device; a mid-write I/O failure on the device remains part
+   of the open device-side gap until the probe (if approved) runs there.
+
+
+## Refusals preserved (no alternate route taken)
+
+1. `rm -rf /tmp/xllama-t18-midwrite-*` — REFUSED. The three SIGILL orphan
+   directories are kept untouched as evidence:
+       /tmp/xllama-t18-midwrite-567003-7579670436272
+       /tmp/xllama-t18-midwrite-567489-7608072346432
+       /tmp/xllama-t18-midwrite-573885-7727943793060
+2. `strace` and reading `/proc/sys/kernel/yama/ptrace_scope` — REFUSED.
+   No ptrace/strace via any other route was used; yama and permissions were
+   not altered. The observation is cooperative and in-process only: a forked
+   test child with inotify and pre-created fds — no tracer, no LD_PRELOAD,
+   no seccomp, no privilege.
+
+## Host-test limits (what this does NOT prove)
+
+- Fixture stories15M-q4_0.gguf (19.077.344 B) proves I/O mechanics of the
+  save path only — not the Xbox model, gates, TPS or numerics.
+- Simulated I/O failure (RLIMIT_FSIZE + SIGXFSZ ignored) is not process
+  death mid-write, and neither is an API request on the Xbox; those remain
+  separate claims (process-death gap stays structurally covered by B11 and
+  prune only).
+- Host test process only: rlimit and SIGXFSZ are per-process (setrlimit /
+  signal semantics) and RAII-restored; the armed window has a single thread
+  executing save_state, no concurrent save, no network code (run log grep
+  http|socket|connect = 0), no Xbox contact; parallel executions are
+  unaffected — no global knob (grep slot-fault over src/ and include/ = 0).
+
+## Byte/space limits
+
+- L=181254 B applied to this process during the armed window only; window
+  closes via Arm destructor (restore on REQUIRE unwinding included).
+- Pre-created .tmps are empty (0 blocks) until the parent writes; both names
+  are removed after each fault (observed del=1); post-window the directory
+  holds exactly {ref.kv}; the watcher creates only pipes, no files; net disk
+  delta 0; 10 s watchdog in the child.
+- Watcher is forked BEFORE arming, so it never inherits L.
+
+## Status
+
+- Format: clang-format 22.1.5 dry-run clean on tests/test_session.cpp.
+- src/ and include/ unchanged (0 files vs HEAD).
+- Artifacts: tests/test_session.cpp, T18-host-midwrite-test.md (plan §9-9.2),
+  this receipt. Logs: /tmp/opencode/t18-obs-rev-run*.log,
+  /tmp/opencode/t18-final-run{1..5}.log, /tmp/opencode/t18-run-full.log.
+- Device rev244: this test has no network path and did not contact it; last
+  device verification stands in T18-atomicity-receipt.txt.

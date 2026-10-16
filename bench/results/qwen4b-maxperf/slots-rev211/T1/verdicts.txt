@@ -1,0 +1,27 @@
+PASS: restart verified (control-fresh)
+PASS: restart verified (control-newproc)
+== arm control (flag=none)
+T1_LINE_ABSENT
+KV state loaded — 42 tokens, 51.6 MB, 7.9 ms
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=677.0ms (62 tok) reuse=0
+reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3
+response: BRAVO-7
+PASS: restart verified (full-fresh)
+PASS: restart verified (full-newproc)
+== arm full (flag=full)
+T1: rebuild mode=full n=42 harvest=418.6ms process=20.6ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 474.1 ms
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=251.1ms (20 tok) reuse=0
+reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3
+response: BRAVO-7
+PASS: restart verified (carryonly-fresh)
+PASS: restart verified (carryonly-newproc)
+== arm carryonly (flag=carryonly)
+T1: rebuild mode=carryonly n=42 harvest=457.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 495.4 ms
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=232.8ms (20 tok) reuse=0
+reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2
+response: BRAVO-7

@@ -1,0 +1,21 @@
+flag armed
+PASS: restart verified (fresh)
+WS fresh-pre: 95 MB (raw=100478976)
+== FRESH
+no-restore (fresh arm: no restore ran)
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=684.2ms (62 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+text_sha 55857d7da21611b3
+WS fresh-post: 3857 MB (raw=4045045760)
+PASS: restart verified (restore-seed)
+PASS: restart verified (restore-new)
+WS restore-pre: 3854 MB (raw=4041777152)
+== RESTORE
+KV state loaded — 42 tokens, 51.6 MB, 7.7 ms
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=235.4ms (20 tok) reuse=0
+drafted=2 (mtp=2 lookup=0) spec_accept=2
+text_sha 55857d7da21611b3
+WS restore-post: 3858 MB (raw=4045733888)
+== compare

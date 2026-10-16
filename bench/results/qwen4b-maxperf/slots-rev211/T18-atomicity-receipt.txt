@@ -1,0 +1,83 @@
+# Receipt — atomicidade determinística + explicação das falhas pós-kill (T18, rev244)
+
+Sem novos kills por tempo (T17/T17b já mostraram que a escrita completa em
+<0,18s e que o `.tmp` parcial não é observável pelo listing do portal).
+Este teste usa mecanismos **determinísticos, isolados e reversíveis** que
+já existem na rotina de escrita, apenas com ids de teste e dois diretórios
+criados/removidos aqui — sem encher disco, danificar dados ou tocar em
+produção.
+
+## F1 — falha determinística no OPEN (tmp é um diretório)
+- Criado `LocalState\slots\t18.kv.tmp` como **diretório**.
+- `POST /v1/slots/save {"slot":"t18"}` → http 400, `slot save failed:
+  cannot open …\t18.kv.tmp` — a rotina falha **antes** de qualquer escrita.
+- **Snapshot anterior preservado**: `t18.kv` manteve sha
+  `a7518436a94e1788` (54.252.722 B) idêntico ao baseline; restore + chat
+  devolveram `BRAVO-7`. Nenhum arquivo parcial.
+
+## F2 — falha determinística no RENAME (alvo é um diretório)
+- Criado `LocalState\slots\t19.kv` como **diretório**; save completo de
+  `t19` (59 MB) é escrito no tmp, o `fclose` passa e o
+  `rename` falha → http 400 `slot save failed: rename failed: The
+  operation completed successfully.` (o código de erro do rename não
+  distingue; a mensagem do ec é suficiente).
+- **Tratamento do temporário comprovado**: nenhum `t19.kv.tmp` restou
+  (fetch 404); a listagem do diretório mostra apenas os itens esperados;
+  a loja não listou `t19` — **nenhum arquivo parcial virou slot**.
+
+## F3 — explicação reproduzível das falhas de save/restore após os kills do T17
+Reproduzido deterministicamente (sem kills):
+1. **save logo após restart** → http 400 `no resident session; chat first
+   to load the model`. Esta é a explicação de `FAIL: slot save t17` no
+   T17: o script não aquecia a sessão depois do kill.
+2. **restore logo após restart** → http 400 `state file belongs to a
+   different model or context`: após o restart o modelo residente é o
+   default (`lfm25-350m`), não o do slot (`qwen35-4b-mtp`) — recusa de
+   fingerprint. Explica `FAIL: restore after mid-write kill` no T17.
+3. Após **um chat** com `qwen35-4b-mtp`, save e restore passam
+   (`http 200`, `t18.kv` escrito). A falha remanescente do próprio T18
+   (`FAIL: slot save t18` no fim do F3) foi o diretório residual do F1
+   ainda presente durante aquele save — confirmado removendo o diretório:
+   chat + save → http 200. Também um artefato de harness, não do produto.
+
+## Situação do subgate de atomicidade
+- **Demonstrado deterministicamente**: (a) preservação de snapshot
+  anterior válido através de um save que falha; (b) tratamento do
+  temporário em falha real da rotina (rename) — sem parcial, sem entrada
+  parcial na loja; (c) rejeições antes da escrita sem deixar vestígios
+  (T16); (d) `.tmp` stale inerte (B11); (e) o loader só lê o caminho
+  final.
+- **Não demonstrado (lacuna exta, proporção de teste para decisão)**:
+  morte do processo no meio da gravação do blob, deixando um `.tmp`
+  parcial — inalcançável com segurança pelos meios atuais (kills por
+  tempo caem após o rename; o listing do portal não vê o `.tmp` em 60
+  polls; encher disco é proibido). **Proposta de teste**: injeção de
+  falha inside do app (ex.: knob `slot-fail-after-bytes` que aborta o
+  save após N bytes do blob, removendo o tmp pelo caminho de falha já
+  existente) — mudança de código em `save_state`, FORA do escopo autorizado
+  agora; se aprovada, é um probe Iteration de ~20 linhas, reversível.
+  Até lá o subgate fica **parcialmente demonstrado** (rotina + snapshot +
+  temporário em falhas determinísticas), sem fechamento da morte
+  mid-write.
+
+## Estado final do Xbox
+rev244 Final servindo (default ON); `store final {"ok":true,"slots":[]}`;
+diretório `slots` vazio; `chat-dump.flag`/`d3d12swiglu.txt` ausentes.
+Baselines, snapshots e rollback preservados. Sem push/merge.
+
+## Encerramento da limpeza (verificado depois do run)
+A verificação avulsa do passo 3 do F3 (chat + save para confirmar o
+http 200 após remover o diretório residual) criou o slot `t18`; ele foi
+removido em seguida com `POST /v1/slots/delete {"slot":"t18"}` e o
+arquivo `t18.kv` apagado. Estado reconferido: loja `{"ok":true,
+"slots":[]}` e diretório `slots` vazio. Nenhum outro id de teste
+(`t19`) permaneceu; nenhum diretório de teste ficou para trás.
+
+## Lacuna mid-write — proposta documentada (não implementada)
+O desenho do probe de falha após N bytes, vinculado exclusivamente a um
+slot e a um request de teste (comparação do basename do path, knob
+one-shot consumido na leitura, auto-consumo e limpeza), com a análise de
+isolamento, concorrência, limites da prova e riscos, está em
+`T18-midwrite-probe-proposal.md`. Nada foi implementado nem executado;
+aguarda decisão.
+

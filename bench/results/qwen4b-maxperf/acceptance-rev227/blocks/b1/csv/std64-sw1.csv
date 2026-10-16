@@ -1,0 +1,3 @@
+model,quant,backend,n_ctx,n_threads,prompt_tok_s,decode_tok_s,peak_ws_mb,load_ms,gpu_mem_mb,gpu_budget_mb,n_prompt_tok,n_gen_tok,max_length,host,date,run_index,prefill_ms,ttft_ms
+qwen35-4b-mtp,Q4_K_M,d3d12,2048,2,100.47,25.01,3448,7173,2614,4147,298,64,0,xbox-series-t2-u64-b256-greedy-s1-g34-noeog-prof0,2026-10-10T04:29:20Z,2,2966.1,2967.5
+qwen35-4b-mtp,Q4_K_M,d3d12,2048,2,99.30,24.72,3462,7213,2614,4147,298,64,0,xbox-series-t2-u64-b256-greedy-s1-g34-noeog-prof0,2026-10-10T04:29:45Z,3,3001.1,3002.5

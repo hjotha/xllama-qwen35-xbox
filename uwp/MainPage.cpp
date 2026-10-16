@@ -2655,10 +2655,21 @@ void MainPageController::PreloadSessionAsync() {
         hub.preloading.store(true); // API waits briefly instead of 503-ing
         try {
             std::lock_guard<std::mutex> hub_lk(hub.mtx);
-            std::string err;
-            if (!self->EnsureSession(model, &err))
+            // Plan 009: a warm-up preload must never evict a live session.
+            // The GUI default-model preload used to swap out an API chat
+            // session (and its KV) seconds after boot/activity, making any
+            // cross-request reuse racy. Preload only into an empty hub; a
+            // user-initiated GUI turn still swaps explicitly via
+            // EnsureSession, and the API waits on `preloading` as before.
+            if (hub.session) {
                 ::xllama::log_output(
-                    ("[xllama] session preload failed (non-fatal): " + err + "\n").c_str());
+                    ("[xllama] session preload skipped: " + hub.model + " resident\n").c_str());
+            } else {
+                std::string err;
+                if (!self->EnsureSession(model, &err))
+                    ::xllama::log_output(
+                        ("[xllama] session preload failed (non-fatal): " + err + "\n").c_str());
+            }
         } catch (...) {
         }
         hub.preloading.store(false);

@@ -9,8 +9,10 @@
 #include "xllama/decode_trace.h" // boundary-diagnosis knob (plan 004)
 #include "xllama/ggml_d3d12.h"   // shape histogram scope tags
 #include "xllama/mtp_draft.h"    // MtpDrafter
+#include "xllama/path_utils.h"   // resolve_local_path (diag knob)
 #include "xllama/platform.h"     // log_output
 #include "xllama/speculative.h"  // prompt_lookup_draft (#210)
+#include "xllama/utf8_utils.h"   // utf8_to_wstring (diag knob, UWP)
 
 #include <atomic>
 #include <chrono>
@@ -205,6 +207,24 @@ struct DecodeLoopParams {
     // sets it when a caller asks for a per-turn token dump (plan 003 stage 1:
     // greedy parity must compare integral ids, not text).
     std::vector<llama_token>* out_token_ids = nullptr;
+
+    // Plan 009 S3 probe: byte capture of per-step decisions. Empty in every
+    // production path (the Session arms it only when LocalState\chat-dump.flag
+    // exists), so the hot loop pays one empty-string check per emit. Each
+    // emitted token appends: int32 token id (native endian) followed by
+    // n_vocab f32 logits of the target context's LAST row at emission (the
+    // row the sample was read from on the classic path; MTP-verify rounds
+    // emit from their own verify rows, so the row index is part of the
+    // compare, never assumed). Fail-closed: any failure logs once and
+    // disables the capture; generation never depends on it.
+    std::string logits_dump_path;
+    mutable bool logits_dump_failed = false;
+    // Snapshot of the logits row that DECIDED the token about to be emitted.
+    // Captured at each sample site (row -1 for classic/anchor, row i-1 for
+    // verify-accepted candidates), because emission of the anchor happens
+    // after a decode has already overwritten the context's last row.
+    mutable std::vector<float> capture_row;
+    mutable bool capture_valid = false;
 };
 
 struct DecodeLoopResult {
@@ -358,6 +378,32 @@ inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string
                        DecodeLoopResult* out = nullptr) {
     if (p.out_token_ids)
         p.out_token_ids->push_back(token);
+    // Plan 009 S3 probe: per-step byte capture (armed by LocalState\chat-dump.flag).
+    if (!p.logits_dump_path.empty() && !p.logits_dump_failed) {
+        const int32_t n_vocab = llama_vocab_n_tokens(p.vocab);
+        if (p.capture_valid && n_vocab > 0 &&
+            static_cast<int>(p.capture_row.size()) == n_vocab) {
+            if (FILE* df = std::fopen(p.logits_dump_path.c_str(), "ab")) {
+                const int32_t tok = static_cast<int32_t>(token);
+                const size_t w1 = std::fwrite(&tok, sizeof(tok), 1, df);
+                const size_t w2 =
+                    std::fwrite(p.capture_row.data(), sizeof(float),
+                                static_cast<size_t>(n_vocab), df);
+                std::fclose(df);
+                if (w1 != 1 || w2 != static_cast<size_t>(n_vocab)) {
+                    log_output("[xllama] WARN: S3 logits capture short write; disabled\n");
+                    p.logits_dump_failed = true;
+                }
+            } else {
+                log_output("[xllama] WARN: S3 logits capture open failed; disabled\n");
+                p.logits_dump_failed = true;
+            }
+        } else {
+            log_output("[xllama] WARN: S3 logits row snapshot missing at emit; "
+                       "capture disabled\n");
+            p.logits_dump_failed = true;
+        }
+    }
     // Detokenisation is real per-token work that no decode timer covered.
     const bool prof = out && p.profile_phases;
     const auto t_emit0 =
@@ -740,6 +786,31 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     const bool lookup_enabled = p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0;
     bool spec_enabled = mtp_enabled || lookup_enabled;
 
+    // Plan 009 (single-token variant of replay_committed below): replay one
+    // just-decoded token so the carry covers it. Function scope (used both
+    // inside the walk and at the F4.1 loop-end flush): |tok| at |pos| with
+    // its row live (caller guarantees: single decode just ran). Same
+    // fail-closed contract and accounting shape; no sampling, commits, or
+    // output change.
+    auto replay_one = [&](llama_token tok, llama_pos pos) {
+        if (!(mtp_ok && p.mtp != nullptr && !out.rewind_failed))
+            return;
+        const MtpDraftStats before_1 = p.mtp->stats();
+        detail::ScopeTag scope("draft", "catchup");
+        if (!detail::mtp_catchup_batch(p.mtp, p.ctx, &tok, 1, pos, p.mtp_n_embd,
+                                       p.profile_phases)) {
+            log_output("[xllama] mtp: single-row catch-up failed — falling back to classic "
+                       "decoding\n");
+            mtp_ok = false;
+            spec_enabled = false;
+        } else {
+            const MtpDraftStats after_1 = p.mtp->stats();
+            out.n_catchup_tokens += 1;
+            out.n_mtp_decodes += after_1.n_decodes - before_1.n_decodes;
+            out.mtp_catchup_ms += after_1.catchup_ms - before_1.catchup_ms;
+        }
+    };
+
     // F4.1 (plan 003): a corrected token from a rejected MTP draft is emitted
     // immediately but NOT decoded right away — it becomes the anchor of the next
     // round, so the correction shares that round's verify batch instead of
@@ -791,7 +862,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             const auto t_sm0 = p.profile_phases ? std::chrono::steady_clock::now()
                                                 : std::chrono::steady_clock::time_point{};
             token = llama_sampler_sample(p.sampler, p.ctx, -1);
-            if (p.profile_phases)
+
+            if (!p.logits_dump_path.empty()) {
+                const int32_t nv = llama_vocab_n_tokens(p.vocab);
+                const float* sr = llama_get_logits_ith(p.ctx, -1);
+                if (sr && nv > 0) {
+                    p.capture_row.assign(sr, sr + nv);
+                    p.capture_valid = true;
+                }
+            }            if (p.profile_phases)
                 out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
                                               std::chrono::steady_clock::now() - t_sm0)
                                               .count();
@@ -970,7 +1049,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 const auto t_sm1 = p.profile_phases ? std::chrono::steady_clock::now()
                                                     : std::chrono::steady_clock::time_point{};
                 first = llama_sampler_sample(p.sampler, p.ctx, -1);
-                if (p.profile_phases)
+
+            if (!p.logits_dump_path.empty()) {
+                const int32_t nv = llama_vocab_n_tokens(p.vocab);
+                const float* sr = llama_get_logits_ith(p.ctx, -1);
+                if (sr && nv > 0) {
+                    p.capture_row.assign(sr, sr + nv);
+                    p.capture_valid = true;
+                }
+            }                if (p.profile_phases)
                     out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
                                                   std::chrono::steady_clock::now() - t_sm1)
                                                   .count();
@@ -1059,7 +1146,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                                                         : std::chrono::steady_clock::time_point{};
                     const llama_token t =
                         lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
-                    if (p.profile_phases)
+
+            if (!p.logits_dump_path.empty()) {
+                const int32_t nv = llama_vocab_n_tokens(p.vocab);
+                const float* sr = llama_get_logits_ith(p.ctx, -1);
+                if (sr && nv > 0) {
+                    p.capture_row.assign(sr, sr + nv);
+                    p.capture_valid = true;
+                }
+            }                    if (p.profile_phases)
                         out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
                                                       std::chrono::steady_clock::now() - t_sm2)
                                                       .count();
@@ -1176,6 +1271,68 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // the very token that was just decoded: it recomputes the same `keep`
         // boundary and deletes |cand| along with the rejected drafts.
         bool tail_already_trimmed = false;
+        // Plan 009 turn-end carry: replay the committed prefix into the draft
+        // mirror so the pending row covers the final committed token. This is
+        // the F2 body factored — the normal path below calls it too, with
+        // identical behavior. The committed count is read back from the KV
+        // ground truth, so EOG/stop cut-offs are covered; rows must be live
+        // (callers guarantee: the verify batch just decoded, nothing decoded
+        // since). Fail-closed exactly like the normal path (F2.3). No
+        // sampling, no commits, no output change. NOT used on error paths
+        // (decode/trim failure: rows untrustworthy) nor for the corrective
+        // single decode (its token is not feed[]-addressable; left for a
+        // follow-up if ever needed — the turn still ends correctly, just
+        // without a refreshed carry).
+        auto replay_committed = [&] {
+            if (!(mtp_ok && p.mtp != nullptr && !out.rewind_failed))
+                return;
+            const int n_committed = static_cast<int>(llama_memory_seq_pos_max(mem, 0) - pos_before);
+            // Plan 009 diagnostic (behind kv_reuse_diag.txt): replay span vs
+            // ground truth, so an off-by-one between committed extents and
+            // replayed rows is visible instead of inferred. Temporary.
+            {
+                FILE* df = nullptr;
+                {
+                    const std::string dp = ::xllama::resolve_local_path("kv_reuse_diag.txt");
+#ifdef XLLAMA_UWP
+                    df = _wfopen(::xllama::utf8_to_wstring(dp).c_str(), L"rb");
+#else
+                    df = std::fopen(dp.c_str(), "rb");
+#endif
+                }
+                if (df) {
+                    const bool on = std::fgetc(df) == '1';
+                    std::fclose(df);
+                    if (on) {
+                        char db[256];
+                        snprintf(db, sizeof(db),
+                                 "[xllama] mtp: replay n=%d pos_before=%d kv_end=%d mirror_end=%d "
+                                 "gen=%d nkeep=%d nfeed=%d\n",
+                                 n_committed, static_cast<int>(pos_before),
+                                 static_cast<int>(llama_memory_seq_pos_max(mem, 0)),
+                                 p.mtp ? static_cast<int>(llama_memory_seq_pos_max(
+                                             llama_get_memory(p.mtp->ctx()), 0))
+                                       : -2,
+                                 out.n_generated, n_keep, n_feed);
+                        log_output(db);
+                    }
+                }
+            }
+            const MtpDraftStats before_cu = p.mtp->stats();
+            detail::ScopeTag scope("draft", "catchup");
+            if (!detail::mtp_catchup_batch(p.mtp, p.ctx, feed.data(), n_committed, pos_before + 1,
+                                           p.mtp_n_embd, p.profile_phases)) {
+                log_output("[xllama] mtp: catch-up failed — falling back to classic "
+                           "decoding\n");
+                mtp_ok = false;
+                spec_enabled = false;
+            } else if (n_committed > 0) {
+                const MtpDraftStats after_cu = p.mtp->stats();
+                out.n_catchup_tokens += n_committed;
+                out.n_mtp_decodes += after_cu.n_decodes - before_cu.n_decodes;
+                out.mtp_catchup_ms += after_cu.catchup_ms - before_cu.catchup_ms;
+            }
+        };
         for (size_t i = 1; i < feed.size(); ++i) {
             if (out.n_generated >= p.n_predict || (p.abort_flag && p.abort_flag->load())) {
                 // Termination-state gate: fires only for an armed abort, so
@@ -1187,6 +1344,10 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                                " n_generated=" + std::to_string(out.n_generated) + "\n");
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
                     fail_rewind();
+                // Plan 009: replay the committed prefix before exiting, so the
+                // carry covers the final token (no-op on error paths via the
+                // lambda's own guards).
+                replay_committed();
                 stop_all = true;
                 break;
             }
@@ -1196,6 +1357,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                                                     : std::chrono::steady_clock::time_point{};
                 const llama_token t =
                     llama_sampler_sample(p.sampler, p.ctx, static_cast<int32_t>(i - 1));
+                    if (!p.logits_dump_path.empty()) {
+                        const int32_t nv = llama_vocab_n_tokens(p.vocab);
+                        const float* sr = llama_get_logits_ith(
+                            p.ctx, static_cast<int32_t>(i - 1));
+                        if (sr && nv > 0) {
+                            p.capture_row.assign(sr, sr + nv);
+                            p.capture_valid = true;
+                        }
+                    }
                 if (p.profile_phases)
                     out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
                                                   std::chrono::steady_clock::now() - t_sm3)
@@ -1250,8 +1420,18 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                     ++out.n_lookup_accepted;
                 ++n_keep;
                 if (!commit_draft(cand)) {
+                    // Plan 009: this cand hit EOG/stop — it was counted above
+                    // but never mirrored (commit failed before the push), yet
+                    // it sits decoded in the KV tail. Exclude it from the
+                    // extents BEFORE trim+replay, or trim keeps its row, the
+                    // replay covers it, and the stash describes a token the
+                    // mirror lacks — breaking can_carry on every EOG turn.
+                    --n_keep;
                     if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
                         fail_rewind();
+                    // Plan 009: EOG/stop inside the walk still leaves committed
+                    // tokens behind — replay them so the carry is fresh.
+                    replay_committed();
                     stop_all = true;
                     break;
                 }
@@ -1269,6 +1449,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
                            " tokens (spec reject) tok=" + std::to_string(cand) +
                            " branch=spec-reject\n");
+                replay_committed();
                 stop_all = true;
                 break;
             }
@@ -1277,6 +1458,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 out.stop_branch = "spec-reject";
                 out.stop_round = loop_iter;
                 ++out.n_generated;
+                replay_committed();
                 stop_all = true;
                 break;
             }
@@ -1313,6 +1495,11 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             }
             ++out.n_generated;
             tail_already_trimmed = true;
+            // Plan 009 note: no replay here — the normal F2 catch-up below
+            // covers this correction (KV ground truth includes it), and an
+            // extra replay would add a trim-refusal disable path that legacy
+            // never had (its refusal kills drafting for the rest of the
+            // turn). The F4.1 loop-end replay stays: nothing follows it.
             break;
         }
 
@@ -1341,26 +1528,8 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // carries the drafter's pending row, which the last process() call
         // left at the last committed position; a failure disables drafting for
         // the rest of the generation (F2.3: never speculate on an unknown
-        // state).
-        if (mtp_ok && p.mtp != nullptr && !out.rewind_failed) {
-            const int n_committed = static_cast<int>(llama_memory_seq_pos_max(mem, 0) - pos_before);
-            // Delta against the post-draft() snapshot: only what THIS catch-up
-            // did, so the draft's decodes are not counted twice.
-            const MtpDraftStats before_cu = p.mtp->stats();
-            detail::ScopeTag scope("draft", "catchup");
-            if (!detail::mtp_catchup_batch(p.mtp, p.ctx, feed.data(), n_committed, pos_before + 1,
-                                           p.mtp_n_embd, p.profile_phases)) {
-                log_output("[xllama] mtp: catch-up failed — falling back to classic "
-                           "decoding\n");
-                mtp_ok = false;
-                spec_enabled = false;
-            } else if (n_committed > 0) {
-                const MtpDraftStats after_cu = p.mtp->stats();
-                out.n_catchup_tokens += n_committed;
-                out.n_mtp_decodes += after_cu.n_decodes - before_cu.n_decodes;
-                out.mtp_catchup_ms += after_cu.catchup_ms - before_cu.catchup_ms;
-            }
-        }
+        // state). Body factored as replay_committed() (plan 009) — identical.
+        replay_committed();
     }
 
     // F4.1 contract: a pending correction was emitted and counted but never
@@ -1378,8 +1547,27 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         else
             log_output("[xllama] decode failed for pending correction at end of "
                        "generation\n");
+        // Plan 009: replay the flushed correction for the same reason as
+        // above (its row is live: single decode just ran). Fail-closed.
+        if (ok)
+            replay_one(mtp_pending_tok, llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0));
         mtp_pending_anchor = false;
         mtp_pending_tok = LLAMA_TOKEN_NULL;
+    }
+
+    // Plan 009 turn-end carry commit: install the snapshot (last successfully
+    // replayed prefix end) as the pending carry when it describes exactly the
+    // last committed token and the mirror holds it. Draft rounds after the
+    // last replay leave pending on future positions; without this, every
+    // multi-turn continuation pays a full re-prefill even with a fully
+    // matching prefix. Fail-closed (returns false, nothing touched): the
+    // next turn then clears and rebuilds as today. No sampling, no commits,
+    // no output change. The session's turn-end drafter-state line shows the
+    // outcome (pending_valid/pos after this call).
+    if (p.mtp && p.mtp->ready()) {
+        const llama_pos committed_end = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0);
+        if (committed_end >= 0)
+            p.mtp->commit_carry(committed_end);
     }
 
     // Wall clock of the loop is always measured: t_decode_ms is the denominator the

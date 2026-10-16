@@ -1,0 +1,60 @@
+PASS: restart verified (control-fresh)
+PASS: restart verified (control-newproc)
+WS control-pre: 3847 MB (raw=4034875392)
+== arm control (flag=none)
+T1_LINE_ABSENT
+KV state loaded — 42 tokens, 51.6 MB, 7.9 ms
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=671.9ms (62 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response='BRAVO-7' prompt_tok=62 completion_tok=4
+WS control-post: 3851 MB (raw=4038320128)
+PASS: restart verified (full-fresh)
+PASS: restart verified (full-newproc)
+WS full-pre: 3858 MB (raw=4045492224)
+== arm full (flag=full)
+T1: rebuild mode=full n=42 harvest=421.7ms process=19.6ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 476.4 ms
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=249.9ms (20 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+response='BRAVO-7' prompt_tok=20 completion_tok=4
+WS full-post: 3857 MB (raw=4044988416)
+PASS: restart verified (zerocarry-fresh)
+PASS: restart verified (zerocarry-newproc)
+WS zerocarry-pre: 3858 MB (raw=4045578240)
+== arm zerocarry (flag=zerocarry)
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 8.1 ms
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=235.4ms (20 tok) reuse=0
+drafted=2 (mtp=2 lookup=0) spec_accept=2
+rounds=1 decodes=5 discarded=1 catchup_tok=4
+response='BRAVO-7' prompt_tok=20 completion_tok=4
+WS zerocarry-post: 3857 MB (raw=4044808192)
+PASS: restart verified (full64-fresh)
+PASS: restart verified (full64-newproc)
+WS full64-pre: 3856 MB (raw=4044222464)
+== arm full64 (flag=full)
+T1: rebuild mode=full n=42 harvest=437.5ms process=20.5ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 495.9 ms
+turn full=1 kv_before=42 pf=42 prompt=84
+prefill=450.2ms (42 tok) reuse=0
+drafted=34 (mtp=34 lookup=0) spec_accept=29
+rounds=21 decodes=89 discarded=21 catchup_tok=63
+response='I cannot provide an explanation of the "' prompt_tok=42 completion_tok=64
+WS full64-post: 3858 MB (raw=4045447168)
+PASS: restart verified (zerocarry64-fresh)
+PASS: restart verified (zerocarry64-newproc)
+WS zerocarry64-pre: 3856 MB (raw=4044124160)
+== arm zerocarry64 (flag=zerocarry)
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+KV state loaded — 42 tokens, 51.6 MB, 8.1 ms
+turn full=1 kv_before=42 pf=42 prompt=84
+prefill=454.8ms (42 tok) reuse=0
+drafted=32 (mtp=32 lookup=0) spec_accept=28
+rounds=20 decodes=88 discarded=23 catchup_tok=61
+response='I cannot provide an explanation of the "' prompt_tok=42 completion_tok=64
+WS zerocarry64-post: 3858 MB (raw=4045447168)

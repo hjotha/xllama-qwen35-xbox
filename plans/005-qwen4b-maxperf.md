@@ -144,3 +144,54 @@ report. "Maximum practical" means evidence-bounded, not theoretical.
    prefill win without the t6 decode loss), C2 (draft threads), then the
    structural options (deferred D3D12 wait, D3D12-side ops, catch-up
    elimination). No code built from it yet.
+
+8. **Status KV/slots 2026-10-10 (workstream em plans/009, não neste plano):**
+   rev232 Final validada (24/24 OFF/ON +, mediana +4,44%; 50/50 numéricos;
+   282/282 shapes; termgate full; bateria ON/OFF failures=0; VROUND232 =
+   cânones 209/216, 93/87, SW0=SW1). Restore em processo novo com MTP
+   segue em full prefill; teste T1 em rev233 Iteration mediu rebuild v2
+   funcional sem ganho de latência (detalhes em plans/009). Nada neste
+   plano muda por isso; sem conclusão do objetivo 009.
+
+9. **Status KV/slots 2026-10-10 (2ª atualização, workstream em plans/009):**
+   T2 (16/16 + 18/18: fresh/long/divergente/rollback/stop/cancel/isolamento/
+   concorrência/corrompidos) verde na rev233; M3 zero-carry (rev234)
+   mediu reconstrução v2 harvest-free com drafting (~6x vs fresh em
+   n=151, mesma aceitação) — promissor, validade geral aberta. Baseline
+   restaurada em rev235 Final (fontes232 verificadas) + revalidação
+   direcionada PASS. v3 passa a fallback; M3-first como proposta NÃO
+   implementada. Objetivo 009 segue incompleto.
+
+10. **Status KV/slots 2026-10-10 (3ª atualização, workstream em plans/009):**
+    M3 zero-carry virou caminho selado (prime pós-clear no load_state,
+    fail-closed, MTP sempre ligado). Candidato Final rev238: bateria
+    ON/OFF failures=0, slotsmoke/api-recall/vround PASS, reuso real
+    entre requests desde o 1º turno pós-restore (kv_before>0, pf=cauda,
+    drafted>0). Lacunas: gerações longas + deep-prefix longo + revisão
+    do contrato do decoy. Objetivo 009 pendência central resolvida com
+    bounds; plano não declarado completo.
+
+11. **Status KV/slots 2026-10-10 (fechamento, workstream em plans/009):**
+    lacunas 1–4 fechadas no rev238 Final por medida direta (T5 long/deep,
+    termgate 0, D2a 50/50, shapes 282/282); falhas de harness
+    (pipefail/SIGPIPE, `local` self-ref, outfile) diferenciadas de
+    defeito e corrigidas. Persistência completa do espelho MTP = v3, não
+    autorizada. Ver plans/009.
+
+## 2026-10-13 validation status
+
+The current slot/reuse workstream and its exact evidence are recorded in
+[Plan 009](009-kv-slot-persist.md#current-validation-status--2026-10-13).
+Final251 exposed a real 94-versus-93 chat scheduling regression. Iteration254
+resolved the isolated QK precision issue while preserving the exact 93/87
+canonical schedules and all eight token files; strict cold/control/restored
+comparison also passes for all five artifacts, without epsilon. Rejected
+252/253 experiments and Final251 evidence remain preserved.
+
+The minimized Final255/LTCG package is signed, installed and running its
+own device campaign; no final acceptance is claimed yet. An auxiliary
+native-state parser still fixes the older run's 230 positions, whereas the
+254 API and dumps have 229. Automatic review blocked adapting that parser;
+it remains unchanged pending specific authorization. The independent
+byte-equality and historical VROUND acceptance gates remain unchanged.
+The rev209 main baseline and prior measurements remain preserved.

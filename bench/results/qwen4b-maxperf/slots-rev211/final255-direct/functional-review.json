@@ -1,0 +1,124 @@
+{
+  "revision": 255,
+  "mode": "Final/LTCG",
+  "utc": "2026-10-13T12:09:50.996848+00:00",
+  "functional_stages_passed": {
+    "cold": "cold PASS 2026-10-13T11:33:26Z",
+    "api": "api PASS 2026-10-13T11:33:49Z",
+    "slots-on": "slots-on PASS 2026-10-13T11:46:12Z",
+    "slots-off": "slots-off PASS 2026-10-13T11:48:16Z",
+    "aligned": "aligned PASS 2026-10-13T11:49:55Z",
+    "stability": "stability PASS 2026-10-13T11:50:55Z",
+    "concurrency": "concurrency PASS 2026-10-13T11:50:57Z",
+    "fault": "fault PASS 2026-10-13T11:51:04Z",
+    "fingerprint": "fingerprint PASS 2026-10-13T11:51:29Z",
+    "trailer": "trailer PASS 2026-10-13T11:51:59Z",
+    "termgate": "termgate PASS 2026-10-13T11:55:51Z",
+    "vround": "vround PASS 2026-10-13T11:59:40Z"
+  },
+  "vround": "4 canonical schedules +8 full token files byte-equal to rev209;93/87; unchanged validator",
+  "limits": [
+    "15-turn slot battery compares response content, not token IDs; token-ID parity has separate cold/VROUND evidence",
+    "Bounded stability cycle, not long soak",
+    "Controlled write abort only; no power-loss/fsync durability claim",
+    "Native KV structural parser remains unmodified and blocked pending AUTH; not replaced by logit capture reporting",
+    "Numeric and performance acceptance not included in this functional receipt"
+  ],
+  "evidence": [
+    {
+      "path": "cold-prefill/strict-receipt.json",
+      "bytes": 2348,
+      "sha256": "08fa7032b0dc077d1329d84e2a069945a09011e6427cd5bd9afd9c2a60a6a771"
+    },
+    {
+      "path": "cold-prefill/capture-integrity.json",
+      "bytes": 4228,
+      "sha256": "c0e1f1dc405fd4b2aa06bf88cf736e4129195c055d702dd21ff14ae9f1d7bf4c"
+    },
+    {
+      "path": "cold-prefill/timing-observation.json",
+      "bytes": 1645,
+      "sha256": "7ef4a04189b816e00eff98130c728183e9a500cbc48f7f778cad14ea5b86f30c"
+    },
+    {
+      "path": "fingerprint-device/receipt.json",
+      "bytes": 595,
+      "sha256": "10fc8ce6842a4508ac185b18a437d1f6582923f08694fde90dac042a5bb2aa6c"
+    },
+    {
+      "path": "fingerprint-device/preservation-proof.json",
+      "bytes": 3043,
+      "sha256": "982e932e8649f01004f3c9da32502fd6dcddf02264d0c3609e3f708681261250"
+    },
+    {
+      "path": "fault-contention/actual-write-observation.json",
+      "bytes": 196,
+      "sha256": "5680c378b2074ece2f0bbbeface410a9b8f26fac86217f0786b39a9b09790ea0"
+    },
+    {
+      "path": "stages.txt",
+      "bytes": 1653,
+      "sha256": "8d66ad4bf0f25d51002c3ffbf039aa06b758b3fac12b24b8b29c8d3fda6da5ef"
+    },
+    {
+      "path": "cold-output.txt",
+      "bytes": 1730,
+      "sha256": "568a510b163c3d4a58a0050e2dc96516230173e6d12899712636cc2d4de19046"
+    },
+    {
+      "path": "api-output.txt",
+      "bytes": 1377,
+      "sha256": "c6e719f91476485a0025953332d4274499052c7f18768b022eda048e33998a1c"
+    },
+    {
+      "path": "slots-on-output.txt",
+      "bytes": 1990,
+      "sha256": "77780c94c05523523001afcde464a80a0b2d6f8bebb82c1d9893025e2237bf8c"
+    },
+    {
+      "path": "slots-off-output.txt",
+      "bytes": 1992,
+      "sha256": "322bdb71ddd38087196d4d525edc8334c5c35d7673c807e58ded2e4005e9d4d7"
+    },
+    {
+      "path": "aligned-output.txt",
+      "bytes": 1050,
+      "sha256": "e5b4468ace66bdcaab6cf8e7eecbbb29705e6724124156bc01561eda049c3b81"
+    },
+    {
+      "path": "stability-output.txt",
+      "bytes": 602,
+      "sha256": "7f3ae6fa8cf025acab113cd89561f2dc0a0f31452265c2dca64bd1da94914366"
+    },
+    {
+      "path": "concurrency-output.txt",
+      "bytes": 70,
+      "sha256": "225c5737cb8e9c12767b08f35411a7e5d4ba5e53988e8f7104d409ae17751975"
+    },
+    {
+      "path": "fault-output.txt",
+      "bytes": 265,
+      "sha256": "9e32b01a8dde99ce44c5e0580668535df4c8d5ee9ccfc439508bdbfdf042153b"
+    },
+    {
+      "path": "fingerprint-output.txt",
+      "bytes": 103,
+      "sha256": "0d5ea19972814c2f0679e904278efad0bab7fc6ae929cdc3ff2d887f16d294cc"
+    },
+    {
+      "path": "trailer-output.txt",
+      "bytes": 61,
+      "sha256": "1e73fbe11ffc2f1b44c677dce92f0f239d0af8f61bde8c02e58ec98f2832b63a"
+    },
+    {
+      "path": "termgate-output.txt",
+      "bytes": 1336,
+      "sha256": "d8cec021f9023b1ec1736ad45437031c345be8b9401437ec64fb04868143660f"
+    },
+    {
+      "path": "vround-output.txt",
+      "bytes": 1599,
+      "sha256": "a06b195f4d108e3c48e4f0782e583644ea04c1dbe384f511ed947f5608ea9bd1"
+    }
+  ]
+}

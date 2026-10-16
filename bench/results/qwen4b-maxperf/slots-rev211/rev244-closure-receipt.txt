@@ -1,0 +1,90 @@
+# Receipt — fechamento #170c: famílias ampliadas (T14) + validação Final/LTCG (rev244)
+
+## Pendências fechadas a partir do receipt rev243
+1. Famílias/trajetórias ampliadas com controles alinhados, comparando
+   **KV/GDN** além de logits/tokens/espelho/pending (T14, rev243).
+2. Validação **Final/LTCG** do artefato que carrega a correção (rev244).
+
+## T14 — famílias ampliadas (rev243 Iteration, controle alinhado vs trailer)
+
+Controle alinhado = frescor replayando a MESMA trajetória; restauração com
+trailer; mesmo ponto pós-prefill/pré-decode; cinco classes comparadas:
+
+| caso | família / trajetória | logits | tokens | **KV/GDN** | espelho | pending | posições |
+| ---- | -------------------- | ------ | ------ | ---------- | ------- | ------- | -------- |
+| code | spec-code-edit (~300 tok) + follow-up | = | = | **=** `563cf9ad…` | = `8c4f0b39…` | = | 352 células @0 |
+| std512 | standard-512 técnico + claim | = | = | **=** `771902bd…` | = `60b5b086…` | = | 322 @0 |
+| divergent | trajetória com turno divergente (edição da linha) | = | = | **=** `7f9fd081…` | = `12d8e4a3…` | = | 112 @0 |
+
+Texto da cauda idêntico nos três; restore 73ms; aceitação/discarded iguais
+por braço. Também cobre o caso de prefixo divergente após restore
+(kv_before=0 nos dois braços, bytes iguais).
+
+## T15 + gates no FINAL/LTCG (rev244)
+
+Artefato Final: PFN `GianlucaMazza.xllama_1.6.0.244`, MSIX sha256
+`638ee54d1115f13e6b65b68ec7a1425563952c0c7f4a45ecc6dd5701c7b0f56a`,
+Version 1.6.0.244, build **Final/LTCG** (link completo 8m37s; sem as linhas
+de Iteration; fontes verificadas idênticas ao worktree: session.cpp
+`5681da56…`). Instalado por upgrade 243→244 (monotônica).
+
+| gate (rev244 Final) | resultado | evidência |
+| ------------------- | --------- | --------- |
+| **#170c alinhado (T15)** — logits/tokens/KV/espelho/pending | **5/5 byte-iguais**; shas IDÊNTICOS aos da rev243 (Iteration): logits `f5e9300f…`, KV `ede8a04e…`, espelho `bd703bef…`, pending `807588c8…` | slots-rev211/T15/ |
+| Bateria slots ON (`FFN SWIGLU D3D12=all`, verificada) | failures=0 | slots-rev211/slots-on/ |
+| Bateria slots OFF (`FFN SWIGLU D3D12=off`, verificada) | failures=0 | slots-rev211/slots-off/ |
+| VROUND canon (93/87; SW0=SW1) | PASS 8/8 | acceptance-rev244/vround/ |
+| Termgate full-field | failures=0 | termgate-rev244/ |
+| api-recall (RECALL-5, bind on, 184/120) | PASS | acceptance-rev244/api/ |
+
+O fato de os bytes do T15 (Final) serem idênticos aos do T13c (Iteration)
+evidencia que os dois modos de build produzem o mesmo resultado de
+inferência para a mesma entrada — comparação de bytes de estado/decisão,
+não de TPS (Iteration vs Final nunca comparados em velocidade). Contagem
+vigente: 5 cenários com cinco classes + 5 cenários com quatro classes
+(ver "Correção de contagem" abaixo).
+
+## Correção de contagem (auditoria 2026-10-12)
+Afirmação anterior ("9 cenários, cinco classes") estava SUPERDECLARADA.
+Prova real:
+- **5 cenários com as CINCO classes byte-iguais** (logits, tokens,
+  KV/GDN, espelho, pending): **T13c** (115 tok), **T14 code**,
+  **T14 std512**, **T14 divergent**, **T15** (Final rev244).
+- **5 cenários com QUATRO classes medidas** (logits, tokens, espelho,
+  pending): T13a t4, T13a t5, T13b curto, T13b médio e T13b longo — nesses
+  o **KV/GDN não foi coletado** (marcado "não coletado" no receipt rev243);
+  a igualdade de target nesses casos está coberta por logits/tokens
+  byte-idênticos + pelos 5 cenários com KV, não por medição direta do blob.
+Nenhum campo medido foi mascarado; a contagem segue a prova.
+
+## Distinção preservada (sem equivalência global)
+- Igualdade byte demonstrada NO CONTROLE ALINHADO (mesma trajetória):
+  logits, tokens, KV/GDN, espelho e pending em **5 cenários** — T13c,
+  T14 code, T14 std512, T14 divergent, T15 Final. Em outros **5
+  cenários** (T13a t4/t5, T13b curto/médio/longo) foram medidas **quatro
+  classes** (logits, tokens, espelho, pending), sem KV/GDN coletado.
+- Prefill integral vs restore continua diferindo em bytes de KV/logits/
+  espelho com decisões idênticas (segmentação, T10/T11b) — limite
+  registrado, não tratado como igualdade.
+- Nenhuma família além das testadas é reivindicada; o transporte de
+  numéricos/shapes/24-comp permanece justificado (mudança só em
+  session.cpp).
+
+## Estado final do Xbox
+rev244 Final servindo; knob transitório do vround removido + restart;
+`chat-dump.flag` e `d3d12swiglu.txt` ausentes (default ON); slots vazios.
+Baselines 209/210/188/192/216/232/235 preservadas; rev238/rev243
+preservados como rollback. Sem push/merge.
+
+## Lacunas do gate original fechadas no artefato Final (T16, 2026-10-12)
+
+| lacuna | veredito | evidência |
+| ------ | -------- | --------- |
+| **memória/estabilidade NA rev244** (WS histórico da rev241 não serve) | WS medido por fase: 87 MB pós-restart (modelo não carregado) → **3861 MB** após seed+save (modelo carregado) → 3857 MB após preload → 3857/3857/**3859 MB** nos 3 turnos pós-restore (±2 MB, plano). App servindo através de 3 restarts verificados + restore + 3 turnos; slots operando | T16/verdicts.txt (ws_sample via portal) |
+| **save falho sem arquivo parcial** | id inválido → http 400 "missing or invalid 'slot'"; sem KV residente → http 400 "no resident session; chat first"; store inalterado (`[]`→`[]`); **nenhum arquivo e nenhum `.tmp`** para os ids tentados | T16/verdicts.txt |
+| **recusa de fingerprint incompatível** | coberta por evidência existente sem rerun: `slot-battery.sh:198` altera `hdr[3]` — o campo **fingerprint** do header v2 de um slot válido — e `load_state` compara esse campo contra `state_fingerprint()` (session.cpp), recusando com "state file belongs to a different model or context" ANTES de qualquer leitura do trailer. O rótulo "wrong-version" no veredito da bateria **não** é um teste separado de versão do trailer; o teste de versão do trailer é o T13a `version` (rev243). Mecanismo distinto da recusa de prefix-proof do trailer (T13a badhash). | slots-on/verdicts.txt + slot-battery.sh:198 + session.cpp state_fingerprint |
+
+Limites: WS medido no portal (WorkingSetSize) em um único ciclo; não há
+telemetria térmica; save-falho por disco cheio não é simulável no dispositivo
+(o caminho tmp+remove está no código e a ausência de parcial foi verificada
+nos dois vetores testáveis).

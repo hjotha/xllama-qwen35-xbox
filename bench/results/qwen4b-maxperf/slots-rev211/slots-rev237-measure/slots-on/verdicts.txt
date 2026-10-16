@@ -1,0 +1,57 @@
+== battery knob=on start=2026-10-10T16:53:31Z
+PASS: quiesce pre: device quiet
+FAIL: B1 store not empty
+PASS: B2 seed+save s1 (tokens>0, bytes>0)
+PASS: restart verified (B3 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B3 reuse==fresh prefill (BRAVO-7...)
+PASS: B4 fresh-process reuse (restart between save and restore, B3 equality holds)
+PASS: B4b restore-after-restart matches fresh
+PASS: B6 rollback to s1 matches
+PASS: B8 slot isolation (s1/s2/s1copy independent)
+PASS: B9 garbage refused
+PASS: B9 truncated refused
+PASS: B9 wrong-version refused
+PASS: B9 session usable after refusals
+PASS: B7 EOS save/restore/continue sane
+PASS: restart verified (B5 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B5 divergent continuation == fresh prefill
+PASS: B5 divergent content correct
+PASS: B11 stale .tmp does not poison save/restore
+-- turns: 15/15 expected
+   TURN_MISMATCH #5 cont-postrestart got=('1', '42', '20', '62') want=('1', '0', '62', '62')
+   TURN_MISMATCH #7 cont-rollback got=('1', '42', '20', '62') want=('1', '0', '62', '62')
+   TURN_MISMATCH #9 cont-s1c got=('1', '42', '20', '62') want=('1', '0', '62', '62')
+FAIL: collection integrity: turn sequence mismatch (see analysis above)
+-- prefix: log-end[1..612035] byte-identical to quiesce-b (sha=29b24a6860c02c9c); slice is a pure continuation
+-- chain: 15 turn lines, 15 turn-end lines
+   link #2 cont-restore: kv_before=42 == prev turn-end kv_tokens (log lines 612048 -> 612057)
+   link #4 cont-fresh: kv_before=42 == prev turn-end kv_tokens (log lines 612338 -> 612347)
+   link #6 adv: kv_before=66 == prev turn-end kv_tokens (log lines 612385 -> 612394)
+   link #12 cont-eos: kv_before=64 == prev turn-end kv_tokens (log lines 612540 -> 612551)
+   coherence: prompt==kv+pf 15/15, pos==mirror 15/15, kv==pos+1 15/15, json<->log pf 15/15
+   CHAIN_TUPLE_FAIL turn sequence != expected table
+FAIL: log chain / prefix / JSON-log cross mismatch (see analysis above)
+-- turn IDs: 15 checked, failures=0
+PASS: turn response IDs: 15/15 match expected content
+-- request identity: 15 turns, (created,suffix) monotonic, ids bound, prompt_tokens match; log continuity: turns=15 kept=7 slice=911
+   IDENT_FAIL cont-postrestart: prompt_tokens=20 want=62
+   IDENT_FAIL cont-rollback: prompt_tokens=20 want=62
+   IDENT_FAIL cont-s1c: prompt_tokens=20 want=62
+FAIL: request identity / log continuity (see analysis above)
+-- window swaps (session config lines): 3
+   slice-L73: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+   slice-L598: [xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+   slice-L628: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+-- unexpected lfm swaps outside startup: 0
+-- kept lines: 7
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 66 of 85 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 64 of 85 tokens (#170)
+-- turns: 15 (pf,prompt) sequence: ['40', '20', '40', '20', '20', '19', '20', '85', '20', '62', '62', '21', '63', '25', '63']
+PASS: no unexpected model swaps in window
+PASS: quiesce post: quiet
+== battery knob=on end=2026-10-10T16:55:16Z failures=4

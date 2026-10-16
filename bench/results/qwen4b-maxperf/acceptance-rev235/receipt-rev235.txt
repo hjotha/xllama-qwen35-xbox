@@ -1,0 +1,49 @@
+# Receipt — baseline rev235 (Final, fontes rev232 verificadas)
+
+Artefato: GianlucaMazza.xllama_1.6.0.235, sha256 msix
+79151d7750f1707f6905ce77252f568cad1d816c1ed4039cfe1c4156f448b7e2
+(build Final LTCG, 561s, SDK 26100 override — 22621 ausente na .193;
+mesmo cert de teste 89F82DB7…, já confiável no device; assinatura
+automática do fluxo Final, AppxSignature.p7x presente).
+Fontes: VERIFICADAS idênticas às da rev232 antes do build (sha256):
+- src/bridge/session.cpp    0c4ec98fbbbb08ec5f3b8a7678b260893ea6c342bb7e873f61b104b37da28db3
+- src/bridge/mtp_draft.cpp  15b0a65b48f60a05a4fb03748638d5e12ee37fa9f86f98cea78f6785af361c23
+- include/xllama/mtp_draft.h 2a5fcbabd323121b00805e44b6a6286ac88c96c9393d3a18ca2e587e1181d8815
+(spot-check api-server.cpp/decode_loop.h inalterados desde a checagem
+anterior; worktree src limpo — hook T1/M3 revertido, patch preservado
+apenas como evidência em slots-rev211/T1-rebuild-hook.patch).
+Configuração: n_batch=256 n_ubatch=64, mtp=2 pmin=50, gpu=34,
+modelo qwen35-4b-mtp. Instalação por UPGRADE 234→235 (monotônica; sem
+uninstall, LocalState e modelos preservados). PFN instalado:
+GianlucaMazza.xllama_1.6.0.235_x64__pj67f1fcj4n14. Servindo, slots vazios.
+
+## Gates revalidados NA rev235 (binding do artefato)
+
+| gate | resultado | evidência |
+| ---- | --------- | --------- |
+| VROUND canon (chat256/code256-mtp sw0/sw1): 93 linhas cf2b67cc… + 87 linhas b11d233f… IDÊNTICOS 209/216/232/235, SW0=SW1; 8/8 sidecars = baselines históricas | PASS | acceptance-rev235/vround/ |
+| Slotsmoke (restore-continue==fresh, refusal, list) | PASS exit=0 | acceptance-rev235/slotsmoke/ |
+| api-recall v3: recall exato (RECALL-5), bind único on, contadores 184/120 idênticos | PASS | acceptance-rev235/api/receipt.txt |
+
+Estes três gates amarram o artefato: determinismo greedy bit-idêntico
+(LTCG/SDK não deslocaram numerics), slots íntegros, recall/contadores
+idênticos — apesar do ambiente de build divergente (SDK 26100) e do LTCG.
+
+## Evidência transportada (rationale explícito, não oculto)
+
+Blocos b1+b2 + 24 comparações, termgate full-field, bateria ON/OFF com
+chain+prefixo+cross, numérico D2a + shape-cost — todos medidos na rev232
+(receipt-rev232.txt) — transportados para rev235 POR identidade de
+fontes verificada (hashes acima) + gates de amarração (tabela). Limite
+honesto: reruns pesados dispensados por identidade, não por irrelevância;
+qualquer mudança futura de src reabre todos os gates. TPS de Iteration
+(233/234) nunca comparado com Final.
+
+## Estado do dispositivo ao fim
+
+rev235 Final instalada e servindo; knobs transitórios ausentes; slots
+vazios; flag T1 ausente (inerte de todo modo — hook inexistente neste
+binário). Modelos provisionados (upgrade preservou LocalState).
+Objetivo do plano 009 NÃO declarado completo: pêndencia central agora é
+a validação ampla + produtização da via M3 (alternativa mínima
+apresentada, NÃO implementada) ou v3 (fallback) — ver plans/009.

@@ -60,20 +60,47 @@ this is Dev Mode research, not a hosted service.
 
 ## Protocol (v1)
 
-| Method    | Path                     | Behaviour                                                                                                                                         |
-| --------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`     | `/` or `/health`         | `200 {"status":"ok","service":"xllama"}` — the spike/liveness probe.                                                                              |
-| `GET`     | `/v1/models`             | OpenAI model discovery — every servable on-device model; non-standard `"active": true` marks the one currently loaded.                            |
-| `GET`     | `/api/tags`              | Ollama model discovery — same list, Ollama shape.                                                                                                 |
-| `POST`    | `/api/pull`              | Pull a trusted catalogue chat/embedding model with Ollama-style NDJSON progress; load it when complete.                                           |
-| `POST`    | `/v1/chat/completions`   | OpenAI-compatible chat completion, **non-streaming**.                                                                                             |
-| `POST`    | `/api/embed`             | Ollama-style embeddings for one string or a batch, catalogue embedding GGUF/llama.cpp only.                                                       |
-| `POST`    | `/api/embeddings`        | Deprecated Ollama single-prompt embeddings adapter.                                                                                               |
-| `POST`    | `/v1/embeddings`         | OpenAI embeddings shape; `encoding_format` accepts `float` or `base64`.                                                                           |
-| `POST`    | `/v1/preferences`        | Append a preference sample (`label` + `messages[]`) to `training/samples.jsonl` — same contract as the UI rate op (#118).                         |
-| `GET`     | `/v1/training/status`    | `result.done` / `progress.json` / last personalized `result.json` + usable sample count (#118).                                                   |
-| `POST`    | `/v1/images/generations` | SD-Turbo image gen (`prompt`, `steps` 1–4, `seed`); returns OpenAI-ish `{data:[{b64_json,path}]}` (#118). Shares the single-slot mutex with chat. |
-| `OPTIONS` | _any_                    | CORS preflight (`204` + `Allow-Methods/Headers`) for browser clients.                                                                             |
+| Method    | Path                     | Behaviour                                                                                                                                                                                      |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`     | `/` or `/health`         | `200 {"status":"ok","service":"xllama"}` — the spike/liveness probe.                                                                                                                           |
+| `GET`     | `/v1/models`             | OpenAI model discovery — every servable on-device model; non-standard `"active": true` marks the one currently loaded.                                                                         |
+| `GET`     | `/api/tags`              | Ollama model discovery — same list, Ollama shape.                                                                                                                                              |
+| `POST`    | `/api/pull`              | Pull a trusted catalogue chat/embedding model with Ollama-style NDJSON progress; load it when complete.                                                                                        |
+| `POST`    | `/v1/chat/completions`   | OpenAI-compatible chat completion, **non-streaming**.                                                                                                                                          |
+| `POST`    | `/api/embed`             | Ollama-style embeddings for one string or a batch, catalogue embedding GGUF/llama.cpp only.                                                                                                    |
+| `POST`    | `/api/embeddings`        | Deprecated Ollama single-prompt embeddings adapter.                                                                                                                                            |
+| `POST`    | `/v1/embeddings`         | OpenAI embeddings shape; `encoding_format` accepts `float` or `base64`.                                                                                                                        |
+| `POST`    | `/v1/preferences`        | Append a preference sample (`label` + `messages[]`) to `training/samples.jsonl` — same contract as the UI rate op (#118).                                                                      |
+| `GET`     | `/v1/training/status`    | `result.done` / `progress.json` / last personalized `result.json` + usable sample count (#118).                                                                                                |
+| `POST`    | `/v1/images/generations` | SD-Turbo image gen (`prompt`, `steps` 1–4, `seed`); returns OpenAI-ish `{data:[{b64_json,path}]}` (#118). Shares the single-slot mutex with chat.                                              |
+| `POST`    | `/v1/slots/save`         | Save the resident session's sequence-0 KV state to a named slot under `LocalState\slots\` (plan 009). Body `{"slot":"<id>"}`; id is alnum/`-`/`_` only, max 64 chars.                          |
+| `POST`    | `/v1/slots/restore`      | Restore a named slot into the resident session (same body). Fingerprint/version/token checks refuse incompatible files; a refusal clears the resident KV (fail-closed) — just chat afterwards. |
+| `GET`     | `/v1/slots`              | List slots as `{ok,slots:[{slot,tokens,bytes}]}`; unreadable files are skipped, never fail the list.                                                                                           |
+| `POST`    | `/v1/slots/delete`       | Delete a named slot (same body). Slots are never auto-loaded and never pruned automatically.                                                                                                   |
+| `OPTIONS` | _any_                    | CORS preflight (`204` + `Allow-Methods/Headers`) for browser clients.                                                                                                                          |
+
+### Slots (`/v1/slots/*`, plan 009)
+
+Snapshot fingerprint v3 also binds the CPU flash-attention query-reduction policy
+(`fa_query`). Older snapshots without this field and snapshots from a different
+policy are refused before import; their files are not rewritten.
+
+Snapshot fingerprint v3 binds the resolved RoPE base, scale, scaling type,
+original YaRN context and all four YaRN parameters using exact float bits,
+as well as the context/cache configuration and LoRA scale. Old v1/v2
+snapshots are refused without rewriting their files. This configuration
+identity is not a cryptographic checksum of model or adapter weights.
+
+A slot is a named, versioned snapshot of the resident session's sequence-0
+state (attention KV + recurrent state + token ids), stored as one file per
+slot under `LocalState\slots\`. Save captures the live session; restore
+replaces it after fingerprint, version and shape checks. A refused restore
+clears the resident KV (fail-closed, same contract as the GUI snapshot
+path): the next chat simply does a normal full prefill. Slots never
+auto-load, are never pruned automatically, and filenames cannot escape the
+slots directory. Restoring never rewinds: the following turn reuses the
+restored prefix through the normal common-prefix path (full prefill of the
+divergent tail only).
 
 ### Model pulling (`POST /api/pull`)
 

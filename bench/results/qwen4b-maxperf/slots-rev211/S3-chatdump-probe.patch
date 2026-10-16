@@ -1,0 +1,188 @@
+diff --git a/src/bridge/decode_loop.h b/src/bridge/decode_loop.h
+index 0a0d9aa..b7c5d68 100644
+--- a/src/bridge/decode_loop.h
++++ b/src/bridge/decode_loop.h
+@@ -207,6 +207,24 @@ struct DecodeLoopParams {
+     // sets it when a caller asks for a per-turn token dump (plan 003 stage 1:
+     // greedy parity must compare integral ids, not text).
+     std::vector<llama_token>* out_token_ids = nullptr;
++
++    // Plan 009 S3 probe: byte capture of per-step decisions. Empty in every
++    // production path (the Session arms it only when LocalState\chat-dump.flag
++    // exists), so the hot loop pays one empty-string check per emit. Each
++    // emitted token appends: int32 token id (native endian) followed by
++    // n_vocab f32 logits of the target context's LAST row at emission (the
++    // row the sample was read from on the classic path; MTP-verify rounds
++    // emit from their own verify rows, so the row index is part of the
++    // compare, never assumed). Fail-closed: any failure logs once and
++    // disables the capture; generation never depends on it.
++    std::string logits_dump_path;
++    mutable bool logits_dump_failed = false;
++    // Snapshot of the logits row that DECIDED the token about to be emitted.
++    // Captured at each sample site (row -1 for classic/anchor, row i-1 for
++    // verify-accepted candidates), because emission of the anchor happens
++    // after a decode has already overwritten the context's last row.
++    mutable std::vector<float> capture_row;
++    mutable bool capture_valid = false;
+ };
+ 
+ struct DecodeLoopResult {
+@@ -360,6 +378,32 @@ inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string
+                        DecodeLoopResult* out = nullptr) {
+     if (p.out_token_ids)
+         p.out_token_ids->push_back(token);
++    // Plan 009 S3 probe: per-step byte capture (armed by LocalState\chat-dump.flag).
++    if (!p.logits_dump_path.empty() && !p.logits_dump_failed) {
++        const int32_t n_vocab = llama_vocab_n_tokens(p.vocab);
++        if (p.capture_valid && n_vocab > 0 &&
++            static_cast<int>(p.capture_row.size()) == n_vocab) {
++            if (FILE* df = std::fopen(p.logits_dump_path.c_str(), "ab")) {
++                const int32_t tok = static_cast<int32_t>(token);
++                const size_t w1 = std::fwrite(&tok, sizeof(tok), 1, df);
++                const size_t w2 =
++                    std::fwrite(p.capture_row.data(), sizeof(float),
++                                static_cast<size_t>(n_vocab), df);
++                std::fclose(df);
++                if (w1 != 1 || w2 != static_cast<size_t>(n_vocab)) {
++                    log_output("[xllama] WARN: S3 logits capture short write; disabled\n");
++                    p.logits_dump_failed = true;
++                }
++            } else {
++                log_output("[xllama] WARN: S3 logits capture open failed; disabled\n");
++                p.logits_dump_failed = true;
++            }
++        } else {
++            log_output("[xllama] WARN: S3 logits row snapshot missing at emit; "
++                       "capture disabled\n");
++            p.logits_dump_failed = true;
++        }
++    }
+     // Detokenisation is real per-token work that no decode timer covered.
+     const bool prof = out && p.profile_phases;
+     const auto t_emit0 =
+@@ -818,7 +862,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
+             const auto t_sm0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                 : std::chrono::steady_clock::time_point{};
+             token = llama_sampler_sample(p.sampler, p.ctx, -1);
+-            if (p.profile_phases)
++
++            if (!p.logits_dump_path.empty()) {
++                const int32_t nv = llama_vocab_n_tokens(p.vocab);
++                const float* sr = llama_get_logits_ith(p.ctx, -1);
++                if (sr && nv > 0) {
++                    p.capture_row.assign(sr, sr + nv);
++                    p.capture_valid = true;
++                }
++            }            if (p.profile_phases)
+                 out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                               std::chrono::steady_clock::now() - t_sm0)
+                                               .count();
+@@ -997,7 +1049,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
+                 const auto t_sm1 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                     : std::chrono::steady_clock::time_point{};
+                 first = llama_sampler_sample(p.sampler, p.ctx, -1);
+-                if (p.profile_phases)
++
++            if (!p.logits_dump_path.empty()) {
++                const int32_t nv = llama_vocab_n_tokens(p.vocab);
++                const float* sr = llama_get_logits_ith(p.ctx, -1);
++                if (sr && nv > 0) {
++                    p.capture_row.assign(sr, sr + nv);
++                    p.capture_valid = true;
++                }
++            }                if (p.profile_phases)
+                     out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                   std::chrono::steady_clock::now() - t_sm1)
+                                                   .count();
+@@ -1086,7 +1146,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
+                                                         : std::chrono::steady_clock::time_point{};
+                     const llama_token t =
+                         lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
+-                    if (p.profile_phases)
++
++            if (!p.logits_dump_path.empty()) {
++                const int32_t nv = llama_vocab_n_tokens(p.vocab);
++                const float* sr = llama_get_logits_ith(p.ctx, -1);
++                if (sr && nv > 0) {
++                    p.capture_row.assign(sr, sr + nv);
++                    p.capture_valid = true;
++                }
++            }                    if (p.profile_phases)
+                         out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                       std::chrono::steady_clock::now() - t_sm2)
+                                                       .count();
+@@ -1289,6 +1357,15 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
+                                                     : std::chrono::steady_clock::time_point{};
+                 const llama_token t =
+                     llama_sampler_sample(p.sampler, p.ctx, static_cast<int32_t>(i - 1));
++                    if (!p.logits_dump_path.empty()) {
++                        const int32_t nv = llama_vocab_n_tokens(p.vocab);
++                        const float* sr = llama_get_logits_ith(
++                            p.ctx, static_cast<int32_t>(i - 1));
++                        if (sr && nv > 0) {
++                            p.capture_row.assign(sr, sr + nv);
++                            p.capture_valid = true;
++                        }
++                    }
+                 if (p.profile_phases)
+                     out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                   std::chrono::steady_clock::now() - t_sm3)
+diff --git a/src/bridge/session.cpp b/src/bridge/session.cpp
+index a23a490..4b4352a 100644
+--- a/src/bridge/session.cpp
++++ b/src/bridge/session.cpp
+@@ -1017,25 +1017,49 @@ class LlamaSession final : public Session {
+         // compare an integral sequence (plan 003 stage 1). Empty request = no
+         // sink, no cost.
+         std::vector<llama_token> turn_ids;
+-        if (!gp.dump_tokens_path.empty())
++        std::string dump_tokens_path = gp.dump_tokens_path;
++        if (!dump_tokens_path.empty())
+             dlp.out_token_ids = &turn_ids;
+ 
++        // Plan 009 S3 probe: LocalState\chat-dump.flag (presence arms it)
++        // captures per-step logits bytes + sampled ids AND the per-turn token
++        // ids, so a fresh run and a post-restore run can be compared byte for
++        // byte. Default OFF: no flag, no file, no hot-path cost beyond the
++        // existence check done once per turn here. Fail-closed: the capture
++        // disables itself on any I/O failure inside emit_token.
++        {
++            FILE* cf = open_state_file(resolve_local_path("chat-dump.flag"), "rb");
++            if (cf) {
++                std::fclose(cf);
++                const std::string lp = resolve_local_path("chat-dump.logits");
++                std::remove(lp.c_str()); // one turn's capture per generate
++                dlp.logits_dump_path = lp;
++                if (dump_tokens_path.empty()) {
++                    const std::string tp = resolve_local_path("chat-dump.tokens");
++                    std::remove(tp.c_str());
++                    dump_tokens_path = tp; // ids + .prefill ids of THIS turn
++                    dlp.out_token_ids = &turn_ids;
++                }
++                log_output("[xllama] S3: chat-dump.flag armed -> " + lp + "\n");
++            }
++        }
++
+         const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
+ 
+-        if (!gp.dump_tokens_path.empty()) {
+-            if (FILE* tf = std::fopen(gp.dump_tokens_path.c_str(), "w")) {
++        if (!dump_tokens_path.empty()) {
++            if (FILE* tf = std::fopen(dump_tokens_path.c_str(), "w")) {
+                 for (llama_token t : turn_ids)
+                     std::fprintf(tf, "%d\n", static_cast<int>(t));
+                 std::fclose(tf);
+             } else {
+-                log_output("[xllama] WARN: per-turn token dump failed: " + gp.dump_tokens_path +
++                log_output("[xllama] WARN: per-turn token dump failed: " + dump_tokens_path +
+                            "\n");
+             }
+             // The ids THIS turn decoded. Together with the previous turns' dumps they
+             // reconstruct the exact resident history, token for token — which is what
+             // a cold reference has to reproduce. Comparing output ids alone cannot
+             // prove that: text concatenation may retokenize at the boundaries.
+-            const std::string pf_path = gp.dump_tokens_path + ".prefill";
++            const std::string pf_path = dump_tokens_path + ".prefill";
+             if (FILE* pf2 = std::fopen(pf_path.c_str(), "w")) {
+                 for (int i = 0; i < n_pf; ++i)
+                     std::fprintf(pf2, "%d\n", static_cast<int>(pf[i]));

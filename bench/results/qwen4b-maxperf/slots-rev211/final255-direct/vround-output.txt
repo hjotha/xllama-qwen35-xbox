@@ -1,0 +1,21 @@
+done chat256-mtp-sw0 utc=2026-10-13T11:56:46Z
+done chat256-mtp-sw1 utc=2026-10-13T11:57:39Z
+done code256-mtp-sw0 utc=2026-10-13T11:58:33Z
+done code256-mtp-sw1 utc=2026-10-13T11:59:28Z
+VROUND_RUN_REV209_DONE
+chat256-mtp-sw0: vround_lines=93 (whole_log=801060 segment=494)
+  schedule-canon sha256=cf2b67ccb0bae8add4cb88e2f7554c379149b74318e461da13473a69eba44bb9 calls=185
+chat256-mtp-sw1: vround_lines=93 (whole_log=802104 segment=494)
+  schedule-canon sha256=cf2b67ccb0bae8add4cb88e2f7554c379149b74318e461da13473a69eba44bb9 calls=153
+code256-mtp-sw0: vround_lines=87 (whole_log=802880 segment=361)
+  schedule-canon sha256=b11d233f6062742126003832732b0a47a8735228aaacc8171c51322b389686a5 calls=185
+code256-mtp-sw1: vround_lines=87 (whole_log=803658 segment=361)
+  schedule-canon sha256=b11d233f6062742126003832732b0a47a8735228aaacc8171c51322b389686a5 calls=153
+chat256-mtp: schedule/state sw0 vs sw1 = IDENTICAL (cf2b67ccb0bae8ad)
+code256-mtp: schedule/state sw0 vs sw1 = IDENTICAL (b11d233f60627421)
+failures=0
+chat256-mtp-sw0 canonical and both token files byte-equal to rev209 cf2b67ccb0bae8add4cb88e2f7554c379149b74318e461da13473a69eba44bb9
+chat256-mtp-sw1 canonical and both token files byte-equal to rev209 cf2b67ccb0bae8add4cb88e2f7554c379149b74318e461da13473a69eba44bb9
+code256-mtp-sw0 canonical and both token files byte-equal to rev209 b11d233f6062742126003832732b0a47a8735228aaacc8171c51322b389686a5
+code256-mtp-sw1 canonical and both token files byte-equal to rev209 b11d233f6062742126003832732b0a47a8735228aaacc8171c51322b389686a5
+PASS: 4 canonical schedules, 8 token files, counts 93/87

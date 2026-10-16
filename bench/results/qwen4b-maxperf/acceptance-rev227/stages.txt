@@ -1,0 +1,288 @@
+Uploading d3d12be.flag → LocalState\\d3d12be.flag ...
+Done.
+Stopped GianlucaMazza.xllama_1.6.0.227_x64__pj67f1fcj4n14.
+Started GianlucaMazza.xllama_1.6.0.227_x64__pj67f1fcj4n14.
+Waiting for d3d12be-result.csv.done (timeout 600s) ...
+Fetched d3d12be-result.csv.done -> /tmp/tmp.fZZTSAl0oq/done
+Fetched d3d12be-result.csv -> /tmp/tmp.fZZTSAl0oq/r.csv
+Wrote /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/acceptance-rev227/d3d12be-rev227.csv
+type,n,k,ncols,rel_err,gpu_ms,packed_gbs,ok,d3d12_ran,host,date,error
+q4_0,8192,2048,1,1.51e-07,0.0544,173.55,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_0,2048,8192,1,1.63e-07,0.0572,164.92,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,11008,2048,1,2.38e-07,0.0565,224.28,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,2048,11008,1,1.79e-07,0.0629,201.68,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,11008,2048,1,1.92e-07,0.0701,221.24,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,2048,11008,1,1.85e-07,0.0812,190.87,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,2048,11008,1,1.01e-07,0.0912,202.81,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,65536,1024,1,1.05e-07,0.2503,219.90,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_0,1024,1024,7,1.71e-07,0.0170,34.61,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,1024,1024,7,1.52e-07,0.0145,40.74,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,1024,1024,7,1.86e-07,0.0186,38.83,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,1024,1024,7,1.13e-07,0.0215,40.09,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_0,1024,1024,512,1.78e-07,0.5503,1.07,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,1024,1024,512,1.7e-07,0.6581,0.90,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,1024,1024,512,1.73e-07,0.9572,0.75,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,1024,1024,512,1.17e-07,0.9648,0.89,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,2560,5120,1,9.97e-08,0.0731,190.40,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,2560,5120,2,9.97e-08,0.1292,107.75,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,2560,5120,3,9.91e-08,0.1879,74.10,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,2560,5120,4,9.91e-08,0.2547,54.68,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,2560,5120,5,9.73e-08,0.3139,44.37,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q8_0,13,256,512,1.09e-07,0.0387,0.09,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,11008,2048,1,2.38e-07,0.0548,231.34,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,11008,2048,2,2.07e-07,0.1052,120.52,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,11008,2048,3,2.07e-07,0.1525,83.18,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,11008,2048,5,2.07e-07,0.2466,51.42,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,2048,11008,1,1.01e-07,0.0924,200.16,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,2048,11008,2,1.37e-07,0.1785,103.61,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,2048,11008,3,1.37e-07,0.2499,74.00,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,2048,11008,5,1.07e-07,0.4006,46.16,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,11008,2048,1,1.92e-07,0.0687,225.64,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,11008,2048,2,1.66e-07,0.1309,118.38,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,11008,2048,3,1.66e-07,0.1884,82.29,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,11008,2048,5,1.66e-07,0.3095,50.08,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,2048,11008,1,1.85e-07,0.0894,173.40,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,2048,11008,2,1.85e-07,0.1423,108.91,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,2048,11008,3,1.97e-07,0.1973,78.56,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q5_k,2048,11008,5,1.56e-07,0.3172,48.86,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,2048,11008,1,1.79e-07,0.0634,199.90,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,2048,11008,2,1.77e-07,0.1119,113.35,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,2048,11008,3,1.77e-07,0.1597,79.42,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q4_k,2048,11008,5,1.42e-07,0.2571,49.33,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,65536,1024,1,1.05e-07,0.2411,228.35,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,65536,1024,2,1.09e-07,0.4743,116.06,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,65536,1024,3,1.09e-07,0.7072,77.84,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+q6_k,65536,1024,5,1.23e-07,1.1834,46.52,1,1,xbox-series-s,2026-10-10T04:08:17Z,-
+silu_avx2,9216,4,4,0,0.0000,0.00,1,1,xbox-series-s,2026-10-10T04:08:17Z,mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36483 ord_ulp_max=2199553741 ord_abs=1.12e+03 ord_rel=1.04e+06 hist0/1/2/3/4-7/8+=0/0/0/0/0/36483 edge=60 nf=0 all_ulp_max=2199553741 all_abs=1.12e+03 all_rel=1.04e+06 [i=1 in=0xc1339e6a got=0xb91cce16 ref=0x319f93c9] [i=2 in=0x412aa138 got=0x412aa033 ref=0x40913ce3] [i=3 in=0xc05eb0a0 got=0xbdd51266 ref=0x3ac21abb] [i=4 in=0x41939490 got=0x41939490 ref=0x4192d7da]
+swiglu_avx2,9216,4,4,0,0.0000,0.00,1,1,xbox-series-s,2026-10-10T04:08:17Z,mxcsr=0x1fbb [fused] ok=1 ord=0 ord_ulp_max=0 ord_abs=0 ord_rel=0 hist0/1/2/3/4-7/8+=0/0/0/0/0/0 edge=0 nf=0 all_ulp_max=0 all_abs=0 all_rel=0 | [unfused] ok=0 ord=36115 ord_ulp_max=2201345552 ord_abs=3.62e+03 ord_rel=1.04e+06 hist0/1/2/3/4-7/8+=0/42/0/0/0/36073 edge=318 nf=28 all_ulp_max=4226993221 all_abs=1.7e+38 all_rel=1.04e+06 [i=1 in=0x414100c8 got=0xc1362f96 ref=0xc0e2946f] [i=2 in=0x4181439e got=0xc0c28a10 ref=0xc0bb23f5] [i=3 in=0x4133a068 got=0x3fb0dbd2 ref=0x3f3b62b5] [i=4 in=0x416ffc0c got=0x41ad0d89 ref=0x41a35ab9]
+add_f32,9216,4,4,0,0.0000,0.00,1,1,xbox-series-s,2026-10-10T04:08:17Z,bit_mismatch=0 max_ulp=0 nonfinite_mismatch=0 n=36864
+rms_norm_f32,9216,4,4,0,0.0000,0.00,1,1,xbox-series-s,2026-10-10T04:08:17Z,exact=36864/36864 mismatch=0 max_rel=0 max_ulp=0 nonfinite_mismatch=0
+--- D2a gate: 50/50 cases correct; 0 decode case(s) under 100 GB/s ---
+D2a=PASS
+
+--- isolated matmul cost on the Qwen shapes (plan 003 stage 2) ---
+  type      n      k   B     gpu_ms      GB/s    rel_err
+  q4_k  11008   2048   1     0.0565    224.28   2.38e-07
+  q4_k  11008   2048   1     0.0548    231.34   2.38e-07
+  q4_k  11008   2048   2     0.1052    120.52   2.07e-07
+  q4_k  11008   2048   3     0.1525     83.18   2.07e-07
+  q4_k  11008   2048   5     0.2466     51.42   2.07e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:0.97x, B=2:1.86x, B=3:2.70x, B=5:4.36x
+  q4_k   2048  11008   1     0.0629    201.68   1.79e-07
+  q4_k   2048  11008   1     0.0634    199.90   1.79e-07
+  q4_k   2048  11008   2     0.1119    113.35   1.77e-07
+  q4_k   2048  11008   3     0.1597     79.42   1.77e-07
+  q4_k   2048  11008   5     0.2571     49.33   1.42e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:1.01x, B=2:1.78x, B=3:2.54x, B=5:4.09x
+  q5_k  11008   2048   1     0.0701    221.24   1.92e-07
+  q5_k  11008   2048   1     0.0687    225.64   1.92e-07
+  q5_k  11008   2048   2     0.1309    118.38   1.66e-07
+  q5_k  11008   2048   3     0.1884     82.29   1.66e-07
+  q5_k  11008   2048   5     0.3095     50.08   1.66e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:0.98x, B=2:1.87x, B=3:2.69x, B=5:4.42x
+  q5_k   2048  11008   1     0.0812    190.87   1.85e-07
+  q5_k   2048  11008   1     0.0894    173.40   1.85e-07
+  q5_k   2048  11008   2     0.1423    108.91   1.85e-07
+  q5_k   2048  11008   3     0.1973     78.56   1.97e-07
+  q5_k   2048  11008   5     0.3172     48.86   1.56e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:1.10x, B=2:1.75x, B=3:2.43x, B=5:3.91x
+  q6_k   2048  11008   1     0.0912    202.81   1.01e-07
+  q6_k   2048  11008   1     0.0924    200.16   1.01e-07
+  q6_k   2048  11008   2     0.1785    103.61   1.37e-07
+  q6_k   2048  11008   3     0.2499     74.00   1.37e-07
+  q6_k   2048  11008   5     0.4006     46.16   1.07e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:1.01x, B=2:1.96x, B=3:2.74x, B=5:4.39x
+  q6_k  65536   1024   1     0.2503    219.90   1.05e-07
+  q6_k  65536   1024   1     0.2411    228.35   1.05e-07
+  q6_k  65536   1024   2     0.4743    116.06   1.09e-07
+  q6_k  65536   1024   3     0.7072     77.84   1.09e-07
+  q6_k  65536   1024   5     1.1834     46.52   1.23e-07
+       per-column cost vs B=1: B=1:1.00x, B=1:0.96x, B=2:1.89x, B=3:2.83x, B=5:4.73x
+  q8_0   2560   5120   1     0.0731    190.40   9.97e-08
+  q8_0   2560   5120   2     0.1292    107.75   9.97e-08
+  q8_0   2560   5120   3     0.1879     74.10   9.91e-08
+  q8_0   2560   5120   5     0.3139     44.37   9.73e-08
+       per-column cost vs B=1: B=1:1.00x, B=2:1.77x, B=3:2.57x, B=5:4.29x
+Waiting for d3d12sc-result.csv.done (timeout 600s) ...
+timeout waiting for d3d12sc-result.csv.done
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 11.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 12.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 13.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 18.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 18.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 18.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 18.5 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 4.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 4.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 512.5 MiB
+[xllama] d3d12: D3D12_Host buffer 4.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 1.9 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 2.8 MiB
+[xllama] d3d12: D3D12_Weights buffer 497.3 MiB
+[xllama] d3d12: D3D12_Host buffer 4.7 MiB
+[xllama] d3d12: D3D12_Weights buffer 512.5 MiB
+block=b1 start_utc=2026-10-10T04:22:09Z
+cell=chat64 sw=0 rows=2 utc=2026-10-10T04:23:28Z
+cell=chat64 sw=1 rows=2 utc=2026-10-10T04:24:47Z
+cell=code64 sw=0 rows=2 utc=2026-10-10T04:26:05Z
+cell=code64 sw=1 rows=2 utc=2026-10-10T04:27:23Z
+cell=std64 sw=0 rows=2 utc=2026-10-10T04:28:39Z
+cell=std64 sw=1 rows=2 utc=2026-10-10T04:29:55Z
+cell=chat256 sw=0 rows=2 utc=2026-10-10T04:31:11Z
+cell=chat256 sw=1 rows=2 utc=2026-10-10T04:32:28Z
+cell=code256 sw=0 rows=2 utc=2026-10-10T04:34:15Z
+cell=code256 sw=1 rows=2 utc=2026-10-10T04:36:03Z
+cell=std256 sw=0 rows=2 utc=2026-10-10T04:37:50Z
+cell=std256 sw=1 rows=2 utc=2026-10-10T04:39:38Z
+cell=chat64-mtp sw=0 rows=2 utc=2026-10-10T04:40:55Z
+cell=chat64-mtp sw=1 rows=2 utc=2026-10-10T04:42:13Z
+cell=code64-mtp sw=0 rows=2 utc=2026-10-10T04:43:29Z
+cell=code64-mtp sw=1 rows=2 utc=2026-10-10T04:44:45Z
+cell=std64-mtp sw=0 rows=2 utc=2026-10-10T04:46:02Z
+cell=std64-mtp sw=1 rows=2 utc=2026-10-10T04:47:19Z
+cell=chat256-mtp sw=0 rows=2 utc=2026-10-10T04:48:35Z
+cell=chat256-mtp sw=1 rows=2 utc=2026-10-10T04:49:51Z
+cell=code256-mtp sw=0 rows=2 utc=2026-10-10T04:51:38Z
+cell=code256-mtp sw=1 rows=2 utc=2026-10-10T04:52:56Z
+cell=std256-mtp sw=0 rows=2 utc=2026-10-10T04:54:42Z
+cell=std256-mtp sw=1 rows=2 utc=2026-10-10T04:56:30Z
+block=b1 end_utc=2026-10-10T04:56:30Z
+== /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/acceptance-rev227/blocks/b1: failures=0 (cells=12, csvs required=24)
+-- baseline classification (explicit):
+  chat64                BASELINE=84e081965076a0c9
+  code64                BASELINE=ff42c5beec71ff49
+  std64                 BASELINE=44546453971b25da
+  chat256               BASELINE=f78ce8372ccc7281
+  code256               BASELINE=c7d84255e08e2077
+  std256                BASELINE=none (no historical run; arm-parity gate only)
+  chat64-mtp     [MTP]  BASELINE=84e081965076a0c9
+  code64-mtp     [MTP]  BASELINE=ff42c5beec71ff49
+  std64-mtp      [MTP]  BASELINE=44546453971b25da
+  chat256-mtp    [MTP]  BASELINE=f78ce8372ccc7281
+  code256-mtp    [MTP]  BASELINE=c7d84255e08e2077
+  std256-mtp     [MTP]  BASELINE=none (no historical run; arm-parity gate only)
+-- decode means (measured run_index 2,3 only):
+cell           sw0_mean sw1_mean  delta%
+chat64            24.34    25.45  +4.58%
+code64            23.70    24.90  +5.09%
+std64             23.96    24.87  +3.78%
+chat256           24.43    25.61  +4.83%
+code256           23.59    24.39  +3.43%
+std256            23.64    24.65  +4.25%
+chat64-mtp        24.27    25.45  +4.84%
+code64-mtp        34.58    35.75  +3.38%
+std64-mtp         23.15    23.84  +2.98%
+chat256-mtp       23.97    24.92  +3.96%
+code256-mtp       27.28    28.53  +4.56%
+std256-mtp        22.89    23.98  +4.74%
+block=b2 start_utc=2026-10-10T04:56:30Z
+cell=chat64 sw=0 rows=2 utc=2026-10-10T04:57:48Z
+cell=chat64 sw=1 rows=2 utc=2026-10-10T04:59:06Z
+cell=code64 sw=0 rows=2 utc=2026-10-10T05:00:23Z
+cell=code64 sw=1 rows=2 utc=2026-10-10T05:01:39Z
+cell=std64 sw=0 rows=2 utc=2026-10-10T05:02:57Z
+cell=std64 sw=1 rows=2 utc=2026-10-10T05:04:13Z
+cell=chat256 sw=0 rows=2 utc=2026-10-10T05:05:30Z
+cell=chat256 sw=1 rows=2 utc=2026-10-10T05:06:47Z
+cell=code256 sw=0 rows=2 utc=2026-10-10T05:08:34Z
+cell=code256 sw=1 rows=2 utc=2026-10-10T05:10:21Z
+cell=std256 sw=0 rows=2 utc=2026-10-10T05:12:09Z
+cell=std256 sw=1 rows=2 utc=2026-10-10T05:13:57Z
+cell=chat64-mtp sw=0 rows=2 utc=2026-10-10T05:15:16Z
+cell=chat64-mtp sw=1 rows=2 utc=2026-10-10T05:16:34Z
+cell=code64-mtp sw=0 rows=2 utc=2026-10-10T05:17:52Z
+cell=code64-mtp sw=1 rows=2 utc=2026-10-10T05:19:09Z
+cell=std64-mtp sw=0 rows=2 utc=2026-10-10T05:20:25Z
+cell=std64-mtp sw=1 rows=2 utc=2026-10-10T05:21:42Z
+cell=chat256-mtp sw=0 rows=2 utc=2026-10-10T05:22:59Z
+cell=chat256-mtp sw=1 rows=2 utc=2026-10-10T05:24:15Z
+cell=code256-mtp sw=0 rows=2 utc=2026-10-10T05:26:02Z
+cell=code256-mtp sw=1 rows=2 utc=2026-10-10T05:27:29Z
+cell=std256-mtp sw=0 rows=2 utc=2026-10-10T05:29:17Z
+cell=std256-mtp sw=1 rows=2 utc=2026-10-10T05:31:04Z
+block=b2 end_utc=2026-10-10T05:31:04Z
+== /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/acceptance-rev227/blocks/b2: failures=0 (cells=12, csvs required=24)
+-- baseline classification (explicit):
+  chat64                BASELINE=84e081965076a0c9
+  code64                BASELINE=ff42c5beec71ff49
+  std64                 BASELINE=44546453971b25da
+  chat256               BASELINE=f78ce8372ccc7281
+  code256               BASELINE=c7d84255e08e2077
+  std256                BASELINE=none (no historical run; arm-parity gate only)
+  chat64-mtp     [MTP]  BASELINE=84e081965076a0c9
+  code64-mtp     [MTP]  BASELINE=ff42c5beec71ff49
+  std64-mtp      [MTP]  BASELINE=44546453971b25da
+  chat256-mtp    [MTP]  BASELINE=f78ce8372ccc7281
+  code256-mtp    [MTP]  BASELINE=c7d84255e08e2077
+  std256-mtp     [MTP]  BASELINE=none (no historical run; arm-parity gate only)
+-- decode means (measured run_index 2,3 only):
+cell           sw0_mean sw1_mean  delta%
+chat64            24.40    25.79  +5.68%
+code64            23.63    24.96  +5.61%
+std64             23.99    24.92  +3.88%
+chat256           24.34    25.59  +5.14%
+code256           23.25    24.30  +4.52%
+std256            23.45    24.65  +5.14%
+chat64-mtp        24.37    25.54  +4.82%
+code64-mtp        34.28    35.62  +3.92%
+std64-mtp         22.95    24.19  +5.43%
+chat256-mtp       24.09    25.07  +4.07%
+code256-mtp       27.30    28.50  +4.41%
+std256-mtp        22.84    24.07  +5.36%
+== termgate corrected labels: failures=4
+   LEGACY_BASE_FAIL term-sw0-mtp4.csv vs term-sw0-cand.csv
+   LEGACY_BASE_FAIL term-sw0-mtp4.csv vs term-sw0-ref.csv
+   LEGACY_BASE_FAIL term-sw1-mtp4.csv vs term-sw1-cand.csv
+   LEGACY_BASE_FAIL term-sw1-mtp4.csv vs term-sw1-ref.csv
+   note: legacy ref/cand were one identical bench_mtp=4 invocation;
+   device arm column encodes twocol/repack scope, not the invocation.
+done chat256-mtp-sw0 utc=2026-10-10T06:04:16Z
+done chat256-mtp-sw1 utc=2026-10-10T06:05:09Z
+done code256-mtp-sw0 utc=2026-10-10T06:06:23Z
+done code256-mtp-sw1 utc=2026-10-10T06:07:38Z
+VROUND_RUN_REV209_DONE
+t2_reply=RECALL-5
+api_recall_rev227 utc=2026-10-10T06:08:00Z PFN=GianlucaMazza.xllama_1.6.0.227_x64__pj67f1fcj4n14 mode=final
+recall=PASS t2=[RECALL-5] swapback=[home]
+bind_on_mtp1=1 ffn_disp=184 gdn=120
+[xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=39 prompt=39
+[xllama] session generate: n=2 prefill=418.6ms (39 tok) reuse=0 drafted=2 (mtp=2 lookup=0) spec_accept=2 (mtp=2 lookup=0)
+[xllama] session: KV prefix reuse — kept 41 of 61 tokens (#170)
+[xllama] session: turn full=1 kv_before=41 pf=20 prompt=61
+[xllama] session generate: n=4 prefill=231.0ms (20 tok) reuse=0 drafted=4 (mtp=4 lookup=0) spec_accept=3 (mtp=3 lookup=0)
+[xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=28 prompt=28
+[xllama] session generate: n=1 prefill=22.7ms (28 tok) reuse=0 drafted=0 (mtp=0 lookup=0) spec_accept=0 (mtp=0 lookup=0)
+[xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+[xllama] session: turn full=1 kv_before=0 pf=31 prompt=31
+API_RECALL_DONE
+SMOKE restore-continue==fresh [Smoke cipher SEAL-11. Reply: sealed.]
+SMOKE refusal ok
+{"ok":true,"slots":[]}
+SLOT_SMOKE_DONE

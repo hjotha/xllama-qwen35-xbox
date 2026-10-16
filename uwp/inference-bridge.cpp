@@ -888,6 +888,9 @@ static void apply_q8_knob(const char* who) {
     const bool flash = flash_mode == "1" || flash_mode == "2";
     _putenv(flash ? "XLLAMA_FLASH_ATTN=1" : "XLLAMA_FLASH_ATTN=0");
     _putenv(flash_mode == "2" ? "GGML_FLASH_ATTN_NO_SPLIT_KV=1" : "GGML_FLASH_ATTN_NO_SPLIT_KV=0");
+    // Consistent-query mode preserves F32 queries in scalar attention QK.
+    _putenv(flash_mode == "2" ? "GGML_FLASH_ATTN_NO_QUERY_TILING=4"
+                              : "GGML_FLASH_ATTN_NO_QUERY_TILING=0");
     log_output(std::string("[xllama] ") + who + ": fused attention=" + (flash ? "forced" : "auto") +
                "\n");
     log_output(std::string("[xllama] ") + who + ": attention split-KV=" +

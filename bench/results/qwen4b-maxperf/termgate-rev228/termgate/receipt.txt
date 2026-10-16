@@ -1,0 +1,3 @@
+termgate start_utc=2026-10-10T07:18:33Z PFN=GianlucaMazza.xllama_1.6.0.228_x64__pj67f1fcj4n14
+termgate mode=gates-only (CSVs already collected)
+termgate end_utc=2026-10-10T07:18:33Z

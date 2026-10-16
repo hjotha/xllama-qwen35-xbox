@@ -1,0 +1,89 @@
+RECEIPT: plan 009 closing gates on the FINAL binary (rev227 LTCG) + slot
+validation. Branch feat/kv-slot-persist. No push/merge (msg841 scope).
+
+Package
+- rev227 Final (LTCG, 796s): GianlucaMazza.xllama_1.6.0.227_x64__pj67f1fcj4n14
+  MSIX sha256 A5895842F0EB2743C7FB2B31949CA011D5A58708C915F0BE4D19B35F396159B4
+  (mode=final recorded; iteration TPS never reported as final).
+  Sources: template suffix replay, preload no-evict, fingerprint v2,
+  drafter reset on load, slots API, committed-carry snapshot+commit,
+  trailing catch-ups (walk/EOG/stop/max + corrective + F4.1), EOG n_keep
+  fix, reuse observability. Installed over rev226; device left serving,
+  FFN+MTP enabled (knob absent).
+
+Closing gates (fresh runs on the installed final package, never relabeled)
+- numeric: d3d12be-rev227.csv 50/50 ok, D2a PASS, silu/swiglu [fused]
+  bit-exact. Device run completed; local watcher timed out; fetched after.
+- acceptance b1+b2: 96 measured lines, strict v3 validator 0 failures;
+  baselines exact; arm parity exact. 24/24 OFF/ON comparisons positive:
+  median +4.57%, mean +4.52%, sd 0.71, q1 +3.94, q3 +5.14, min +2.98%,
+  max +5.68%, 0 overlaps. Memory peak means 3562-3564 MB, max 3674.
+- termgate (labels corrected, 2nd revision): legacy ref/cand = one
+  identical bench_mtp=4 invocation AND byte-identical outputs; the device
+  `arm` column encodes twocol/repack scope (inference-bridge.cpp:1992),
+  NOT the invocation (proven: same scenarios emit ref under clean knobs
+  vs cand with twocol knobs; all other columns identical). Gate compares
+  verdict columns strictly (scenario,ok,reason,n_ids,n_ref,parity,
+  first_diff,n_eval,eog_tok,eog_branch,stop_branch,stop_round): 6/6 PASS;
+  activity counters (arm,active,drafted,rounds,lookup,ews) reported only.
+  Drafted-count drift vs legacy (e.g. 51->4) is activity, not verdict:
+  ok/parity/tokens/branches identical; MTP alive per acceptance gains +
+  live probes (drafted>0, spec_accept>0). Leading hypothesis documented:
+  corrective-path replay trim-refusal disables drafting for the turn
+  (F2.3, fail-closed, correct outputs); needs a quiesced re-run with diag
+  to confirm vs foreign-state contamination (see infra notes).
+- vround (profile-enabled, delimited): chat256-mtp 93/arm, code256-mtp
+  87/arm; schedule/state canon IDENTICAL between arms AND to the rev207,
+  rev209 and rev216 canons (fourth package, same hashes); calls 185/153.
+- api recall: exact recall (RECALL-5), single bind on (mtp_capable=1),
+  qwen counters via swap-flush (184 FFN SWIGLU + 120 GDN, segment.txt:331; an
+  earlier draft of this receipt mistyped 193 — corrected here to the evidence);
+  MTP drafting active every turn. App wedge post-vround recovered by
+  restart (infra flake, noted).
+- slot smoke: restore-continue == fresh prefill (token-exact), garbage
+  refused, store empty. NOTE: its embedded restart completed in 16s total
+  (no real restart occurred — stop failed silently); its equality verdicts
+  stand (deterministic), but fresh-process proof rests on the v2 battery
+  (verified restarts via listening lines), not this smoke.
+
+Slots battery (rev226 iteration + rev225 probes; relative criteria)
+- ON + OFF: 0 failures (B1-B11: reuse==fresh, rollback, divergence, EOS,
+  isolation, corrupt/truncated/wrong-version, tmp hygiene, fresh-process).
+  Quiesce pre/post quiet; no rotation (1119/1149-line windows); no
+  unexpected model swaps (preload fix verified).
+- Reuse mechanism: 7 kept lines per arm; restore ~5-8ms vs prefill
+  ~430-950ms by size; ON≈OFF prefill ranges overlap (same F3.5 path).
+- MTP-off harvest probe: kept 40 of 60 + tail-only prefill (kv_before=40
+  pf=20, 209.9ms vs ~640ms full) + exact continuation.
+- MTP-on harvest (in-RAM, rev225+): kept 41 of 61 + pf==tail + drafted>0
+  (INDIA/JULIET probes); slot-restore harvest via identical-prefix
+  skip-clear (OSCAR probe: mirror kept + kv_before=41 pf=20).
+- MTP-on limit (precise): post-restart mirrors are empty (load clears) so
+  the first post-restore turn full-prefills + rebuilds; steady-state carry
+  thereafter. Cross-restart harvest needs the v3 mirror-blob persistence
+  (proposal pending, NOT implemented). Full prefill is never reclassified
+  as reuse.
+
+Infra notes (all recovered/documented, none hidden)
+- Watcher timeouts, app wedge post-vround (restart recovery), log rotation
+  (content-delimited evidence only), external *.log deleter, duplicate
+  launch race (guard worked), foreign API/bench activity on the shared box
+  (tiny-prompt turns, MTP toggling, foreign termgate with own msix-sha
+  file; quiesce-guarded runs + content-attributed verdicts throughout).
+- Counter/timing numbers are contention-exposed (shared backend/GPU);
+  token-exact results (digests, parity, recall, schedule, numerics) are
+  deterministic and stand. Gains framing stays 24 comparisons (median
+  +4.57% here), never 48 gains; overlap disclosed per report.
+
+Rollback/state
+- Immediate: knob0 + restart + API (pattern tested). Final state: knob
+  absent (default ON), transient bench knobs cleaned, serving validated.
+- Code: rev210 artifact preserved (accepted source; installable over
+  revisions <210 only). Over rev227 a fresh accepted-source rebuild at
+  rev>227 is needed (procedure documented, not pre-built).
+- Baselines preserved: rev209 published (main 3e631f3); rev216 evidence
+  retained. This stage: no push/merge.
+
+Constraints: no push/merge, no reboot/resetGPU, no provider/model change,
+.57 untouched (no SSH there), no credentials, no bulky logs in commits, no
+epsilon/threshold relaxation anywhere.

@@ -1,0 +1,17 @@
+PASS: restart verified (build)
+reference full save: 59605543 bytes
+-- mid-write attempt with kill after 0.35s
+t17.kv EXISTS after kill (59605543 bytes)
+t17.kv.tmp ABSENT after kill
+-- first attempt did not land mid-write; retrying tighter
+PASS: restart verified (retry-up)
+-- mid-write attempt with kill after 0.18s
+t17.kv EXISTS after kill (59605543 bytes)
+t17.kv.tmp ABSENT after kill
+app back after mid-write kill
+store now: {"ok":true,"slots":[{"slot":"t17","tokens":187,"bytes":59605543}]}
+FAIL: slot save t17
+FAIL: save after kill
+FAIL: restore after mid-write kill
+PASS: chat after mid-write kill ok
+store final: {"ok":true,"slots":[]}

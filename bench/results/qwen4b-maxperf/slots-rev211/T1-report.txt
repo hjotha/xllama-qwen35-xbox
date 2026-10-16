@@ -1,0 +1,71 @@
+# T1 rebuild report — v2 mirror rebuild in a new process (rev233 Iteration)
+
+Scope correction (2026-10-10): what follows is valid ONLY for the tested
+cases below, all in the SAME build mode (rev233 Iteration; Iteration TPS
+never compared with Final). Equal text + aggregate counters do NOT prove
+full state equivalence (no per-position token-trace comparison, no
+per-round schedule comparison, no KV bitwise check — the API returns text,
+not token ids; same text + same completion count + same greedy model only
+approximates token-exactness). Carry-only did not fail ON THESE PROMPTS;
+no general-validity claim. v3 numbers are PROJECTIONS from measured
+components, not measurements.
+
+Build: rev233 Iteration (no LTCG, SDK 26100 override, manual test-sign;
+same test cert, now trusted on the device). Sources = rev232 + T1 hook
+(slots-rev211/T1-rebuild-hook.patch; REVERTED after measurement).
+Device: new process per arm (verified restart), MTP on throughout.
+
+## Arms (identical prompts; greedy => identical expected text)
+
+| arm        | restore line | turn (full,kv,pf,prompt) | tail/total prefill | drafted | accept | text |
+| ---------- | ------------ | ------------------------ | ------------------ | ------- | ------ | ---- |
+| control    | 7.9 ms | (1,0,62,62) | 677.0 (62) | 4 | 3 | BRAVO-7 |
+| full       | 474.1 ms (set 7.9 + harvest 418.6 + process 20.6) | (1,42,20,62) | 251.1 (20) | 4 | 3 | BRAVO-7 |
+| carryonly  | 495.4 ms (harvest 457.0 + process 0.0) | (1,42,20,62) | 232.8 (20) | 2 | 2 | BRAVO-7 |
+| full64     | harvest 418.8 + process 20.3 | (1,42,42,84) | 465.5 (42) | 34 | 29 (85%) | 318ch |
+| carryonly64| harvest 440.1 + process 0.0 | (1,42,42,84) | 448.2 (42) | 32 | 28 (88%) | 318ch, TEXT_EQUAL |
+
+T1 log lines (device): `rebuild mode=full n=42 ... OK pending=1 pos=41
+carry_from_n=1` (carryonly identical except process=0.0ms).
+
+## Findings (measured, not reasoned)
+
+1. Full rebuild from v2 contents WORKED IN THE TESTED CASES:
+   kv_before=42, pf=tail, drafted/acceptance identical to control in
+   aggregate (4/3; longgen 29/34), text identical. This shows same greedy
+   outputs + same aggregate draft behavior on these prompts — NOT full
+   state equivalence (see scope note above).
+2. NO latency win IN THE TESTED HARVEST-BASED METHODS: harvest runs at
+   prefill rate (418.6ms/42tok ≈ 10.0ms/tok vs control 677ms/62tok ≈
+   10.9ms/tok). Totals: full 725ms vs control 685ms (short). This does
+   NOT conclude universal impossibility — it covers the harvest family
+   only (both arms hide a forward pass over kept tokens). A harvest-free
+   method (M3 zero-carry) remains untested; see T2/M3.
+3. Bare carry did NOT fail ON THESE PROMPTS (correction of the earlier
+   analysis, still bounded): 88% acceptance ≈ full 85%, text identical
+   on a short + a 64-token completion referencing recent context. This
+   does NOT demonstrate general validity — open: prompts requiring
+   deep-prefix discrimination, longer generations, divergent tails.
+   Cost floor identical here (harvest of the last row still required).
+4. Quantified but NOT adopted (rejected: MTP must stay on): classic
+   first turn after restore (tail prefill only, no harvest) ≈ 258ms vs
+   685ms — 2.6x. Recorded for the v3 prize calculus only.
+5. v3 prize — PROJECTION, not a measurement (from measured components):
+   IF mirror-blob restore costs ≈ blob restore (~8ms + small constant,
+   UNVALIDATED) then restore ~10ms + tail-only prefill with drafting from
+   turn start ≈ 260ms vs 685ms today, i.e. ~425ms per post-restore
+   continuation at this size. Treat as estimate for the authorization
+   decision, not as evidence.
+6. Memory: no new persistent allocation; transient h_rows = n*n_embd*4B
+   (<0.5MB here; 21MB worst case at n_ctx=2048 — must be chunked/freed,
+   as implemented). Scratch KV copy avoided (seq-0 harvest + re-set).
+
+## Structural impediment (reproducible)
+
+- n_seq_max=1 (default; part of the state fingerprint) forbids a scratch
+  sequence — verified in code (session.cpp:434,526,1385), so the harvest
+  must reuse seq 0 (clear -> harvest -> set_data).
+- llama_decode append-only over occupied rows (re-confirmed: the harvest
+  MUST clear first; re-decode over the restored rows is not attempted).
+- Evidence: per-arm JSONs + slice.log under slots-rev211/T1 and
+  slots-rev211/T1-longgen (T1 lines, turn lines, prefill/drafted lines).

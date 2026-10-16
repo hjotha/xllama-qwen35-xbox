@@ -256,9 +256,16 @@ std::string ChatFormat::render_prompt(const std::string& system,
 
     for (const ChatTurn& t : history) {
         p += turn_open + user_tag + role_sep + user_content(t.user) + turn_close;
-        // History assistant headers never carry gen_suffix (suffix only on the
-        // trailing header below), matching the legacy hand-built prompt.
-        p += turn_open + assistant_tag + role_sep + t.assistant + turn_close;
+        // History assistant turns replay the gen_suffix they were generated
+        // with (plan 009): the resident KV holds
+        // [header, gen_suffix, reply...], so omitting the suffix here breaks
+        // the common token prefix at the suffix and forces a full prefill
+        // every turn — on top of the hybrid-cache rewind refusal. With the
+        // suffix replayed, a restored/continued prefix matches byte-exactly
+        // and only the divergent tail prefills. Turns whose model-side
+        // thinking is absent from history still diverge there and fall back
+        // to a full prefill (safe). No-op for formats with empty gen_suffix.
+        p += turn_open + assistant_tag + role_sep + gen_suffix + t.assistant + turn_close;
     }
 
     p += turn_open + user_tag + role_sep + user_content(final_user) + turn_close;

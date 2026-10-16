@@ -166,6 +166,64 @@ class MtpDrafter {
         return m_params;
     }
 
+    // Plan 009 complete-state persistence: the private draft KV is real
+    // state (Qwen3.5 keeps a private draft KV), so a slot file must be able
+    // to carry it or a restore silently degrades the drafter to a partial
+    // mirror (documented hole) with a decoy pending row. Test-only accessors
+    // follow for the aligned-comparison probes.
+    bool get_state(std::vector<uint8_t>& blob) const;
+    bool set_state(const uint8_t* data, size_t size);
+    // Install a REAL pending row (the true hidden state carried from the
+    // save). Fail-closed: no row, no valid pos => false and nothing changes.
+    bool prime_pending(const float* row, llama_pos pos);
+    llama_pos mirror_pos_min() const;
+
+    // Plan 009 S3 probe (test-only accessors): the pending row bytes and the
+    // mirror's position extent, so a diagnostic can compare drafter-boundary
+    // state between arms. Production paths never read these.
+    const float* pending_row_data() const {
+        return m_pending_valid ? m_pending_h.data() : nullptr;
+    }
+    llama_pos mirror_pos_max() const {
+        return m_ctx ? llama_memory_seq_pos_max(llama_get_memory(m_ctx), 0) : -1;
+    }
+
+    // Turn-end observability (plan 009): the pending carry + mirror end that
+    // the NEXT turn's F3.5 can_carry check will see. Log-only support; the
+    // reuse decision never reads these.
+    bool pending_valid() const {
+        return m_pending_valid;
+    }
+    llama_pos pending_pos() const {
+        return m_pending_pos;
+    }
+
+    // Plan 009 committed carry: install the snapshot (last successfully
+    // replayed prefix end) as the pending carry when it describes exactly
+    // |committed_end| and the mirror holds at least through it. Returns
+    // false (leaving everything untouched) otherwise. This is what lets a
+    // turn that ended after speculative draft rounds still carry into the
+    // next turn: draft() clobbers pending with future positions, but the
+    // snapshot survives (only process() success writes it).
+    bool commit_carry(llama_pos committed_end);
+
+    // Plan 009 slot-restore: after the mirror was cleared because a disk
+    // restore replaced the target prefix (new process), the pending row is
+    // gone, so F3.5 would refuse the carry and the next turn would full-
+    // prefill. Priming a ZERO pending row at |pos| (the last restored
+    // token) makes can_carry_from(pos+1) true again so the tail-only turn
+    // keeps MTP drafting. The row is a deliberate DECOY: the draft context
+    // below |pos| stays empty and this row does not describe the target's
+    // hidden state of that token. It is safe by the same contract every
+    // draft already lives under — the target verifies every candidate, so
+    // a wrong draft costs time, never output text, and draft() returning
+    // empty falls back to classic decode (F2.3). Worst case measured on
+    // the rev234 zerocarry arms: acceptance halves, text identical, no
+    // state divergence in the target. Fail-closed: returns false (leaving
+    // the cleared mirror, i.e. full prefill) unless the drafter is ready
+    // and |pos| >= 0.
+    bool prime_zero_carry(llama_pos pos);
+
   private:
     llama_context* m_ctx = nullptr;
     llama_sampler* m_smpl = nullptr;
@@ -176,6 +234,16 @@ class MtpDrafter {
     std::vector<float> m_pending_h;
     llama_pos m_pending_pos = -1;
     bool m_pending_valid = false;
+    // Plan 009 committed carry: snapshot of the last successfully replayed
+    // prefix end (row + position), written only by process() on success.
+    // draft() rounds overwrite m_pending_* with future positions, but never
+    // touch these — so commit_carry() can restore a correct carry at turn
+    // end. Invalidated whenever the mirror prefix dies (align_to rules
+    // below, process() decode failure); never persisted (re-established
+    // every turn from live rows).
+    std::vector<float> m_carry_h;
+    llama_pos m_carry_pos = -1;
+    bool m_carry_valid = false;
     MtpDraftStats m_stats{};
 };
 

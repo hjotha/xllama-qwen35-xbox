@@ -95,3 +95,10 @@ ollama-models-before-vm.txt
 # Downloaded ORT profiling runs (can be tens of MB each)
 bench/results/profiles/*
 !bench/results/profiles/.gitkeep
+*.log
+*.kv
+*.logits
+*.mirror
+bench/results/**/slot-*.bin
+bench/results/**/kv-*
+bench/results/**/*-snap*

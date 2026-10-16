@@ -312,9 +312,14 @@ TEST_CASE("mtp: chunked prefill keeps parity and keeps drafting (opt-in: XLLAMA_
     n_prompt = chunked->count_tokens(prompt);
     REQUIRE(n_prompt > sp.n_batch);
     REQUIRE(n_prompt < 64);
-    INFO("exercised config: n_ctx=" << sp.n_ctx << " n_batch=" << sp.n_batch
-                                    << " n_prompt=" << n_prompt
-                                    << " chunks=" << ((n_prompt + sp.n_batch - 1) / sp.n_batch));
+    // Eager snapshot: doctest INFO re-evaluates its stream expression when a
+    // later assertion fails, and sp.n_batch is reset to 0 below — dividing by
+    // it then would divide by zero inside the reporter's own mutex (SIGFPE
+    // self-deadlock), hanging the runner instead of reporting the failure.
+    const int exercised_n_batch = sp.n_batch;
+    const int exercised_chunks = (n_prompt + exercised_n_batch - 1) / exercised_n_batch;
+    INFO("exercised config: n_ctx=" << sp.n_ctx << " n_batch=" << exercised_n_batch
+                                    << " n_prompt=" << n_prompt << " chunks=" << exercised_chunks);
 
     GenerateParams g;
     g.prompt = prompt;

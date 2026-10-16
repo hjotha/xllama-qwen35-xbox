@@ -1,0 +1,74 @@
+# Receipt — S3 fechado: probe de bytes de logits/tokens (fresh vs restore)
+
+Escopo: apenas a cláusula S3 ("logits + multi-token continuation vs fresh
+prefill, byte/token equality, sem epsilon"). Nada de v3; formato v2, gates,
+modelo, provedor e config 256/64 intactos; sem push/merge; TPS de Iteration
+nunca comparado com Final.
+
+## Artefatos (paths + hashes)
+
+| item | path | sha256 |
+| ---- | ---- | ------ |
+| Patch do probe (flag-gated, 2 arquivos) | `slots-rev211/S3-chatdump-probe.patch` | ver `git show` |
+| Build Iteration 239 (probe v1, capture bugada) | `/tmp/opencode/qwen4b-builds/rev239/xllama-rev239.msix` | 4fedacaff4f1b93ab848eb422908672618563168c4fd293030aceef061aefa57 |
+| Build Iteration 240 (probe corrigido) | `/tmp/opencode/qwen4b-builds/rev240/xllama-rev240.msix` | 689e6753c32fc8f9972c0698b4a61e5d9d12e31ad36b47cd868f0023e325227c |
+| Baseline Final preservada (intocada) | `/tmp/opencode/qwen4b-builds/rev238/xllama-rev238.msix` | 25ed611a54b36697884c0dcb174f7dc49191474670734dc6ce9a78b0f2cb9ad6 |
+| Probe curto (n=42, 4 passos) | `slots-rev211/T6b/` | logits fresh==restore sha `935a68dc2f75c04582cc7440200429d5` (3.973.136 B) |
+| Probe profundo (n=187, 32 passos) | `slots-rev211/T6c/` | tokens fresh==restore sha `5d5b27c78c9b205203775265930f5edd` (183 B) |
+| Controle de determinismo | `slots-rev211/T6d/` | fresh2==fresh (logits `023eb4f3c3ade477…`); restore2≠restore (`1f473ba838…`) |
+| Scripts | `slots-rev211/T6-logits-byteprobe.sh`, `T6c-…-deep.sh`, `T6d-control.sh` | — |
+
+Modo: modelo qwen35-4b-mtp, greedy, max_tokens 4/16/32, batch 256/ubatch 64
+(API defaults), mesmo prompt e modo nos dois braços de cada par;
+`LocalState\chat-dump.flag` (presença arma; default OFF verificado: sem flag
+e sem resíduos, chat normal não gera arquivo — 404 no fetch).
+
+## Resultado (comparação byte a byte, sem epsilon)
+
+| comparação | token ids | texto | logits por passo |
+| ---------- | --------- | ----- | ---------------- |
+| curto n=42: fresh vs restore (processo novo) | **BYTE-IGUAL** (4/4) | igual (sha 55857d7da21611b3) | **BYTE-IGUAL** 3.973.136 B |
+| profundo n=187: fresh vs restore | **BYTE-IGUAL** (32/32) | igual (sha 211b46f48e49db5a) | diferem: 32/32 passos, max_abs 4,49e-02, argmax idêntico 32/32 |
+| profundo: fresh2 vs fresh | igual | — | **BYTE-IGUAL** (0/32 passos diferem) |
+| profundo: restore2 vs restore | **BYTE-IGUAL** (32/32) | — | diferem: 32/32, max_abs 1,87e-02, argmax idêntico 32/32 |
+
+Tempos separados (profundo): restore 8,1–8,4ms (`KV state loaded — 187
+tokens, 56,1 MB`); prefill cauda 258,0ms/43tok (restore) vs 2511,9ms/230tok
+(fresh); drafted/accept 19/18 (restore) vs 20/18 (fresh); WS 3854–3858MB
+(plano, sem delta). Curto: restore 7,7ms; prefill 235,4ms/20tok vs
+684,2ms/62tok; drafted 2/2 vs 4/3.
+
+## Veredito S3
+
+- **G-T (ids amostrados da continuação multítoken): PASSA** — byte-igual em
+  todas as configurações (36 passos comparados, dois tamanhos de prefixo).
+- **G-L (bytes dos logits por passo): PASSA no caso single-ubatch** (curto:
+  byte-igual) e **FALHA byte-igual no caso multi-ubatch** — mas o controle
+  prova que a falha NÃO é do restore nem do blob: `restore vs restore`
+  também não é byte-igual (max_abs 1,87e-02) enquanto `fresh vs fresh` é
+  byte-igual. A variação é do caminho aritmético de reuso (prefill de cauda
+  com largura de lote diferente + kernels GPU naqueles shapes), na classe
+  de arredondamento f32 (logits de magnitude ~10-20; ~1e-3..4e-2 absoluto),
+  com **argmax idêntico em todos os passos** — decisões, ids e texto
+  byte-estáveis. Nenhum epsilon foi aplicado: a Comparação foi byte; onde
+  falha, a falha está caracterizada (passos, magnitude, argmax), não
+  mediada.
+
+## Limites (explícitos)
+
+1. G-L byte-exato só é garantido quando o prefill fresh cabe em um ubatch
+   (≤64 tokens de prompt). Acima disso, os bytes dos logits variam na
+   classe f32 no caminho de reuso — inerente à reutilização, não ao
+   restore; exige critério de decisão (argmax/ids), não de byte.
+2. A variância restore-vs-restore observada (~1,9e-02) sugere
+   não-determinismo de kernel naqueles shapes; não investigado além deste
+   probe (fora do escopo mínimo).
+3. Probe em Iteration 239/240, flag-gated e default OFF (verificado). O
+   baseline Final selado segue rev238 (intocado). Rollback à comportamento
+   exato do rev238: reinstalar o MSIX 238 — bloqueado pela monotonicidade
+   (240 > 238); requer uninstall+install (NÃO feito, sem pedido) ou um
+   Final 241 com as fontes 238. Estado atual do device: rev240 servindo,
+   flag ausente, slots vazios.
+4. Estado interno MTP segue PARCIAL após restore (M3-state-map.md) — este
+   probe mede o caminho do TARGET; a diferença do drafter está fora da S3
+  e já é limitada pelos 50–100% de aceitação medidos.

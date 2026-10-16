@@ -1,0 +1,43 @@
+flag armed
+PASS: restart verified (P)
+prompt files fixed
+P done; slot tokens: 186
+PASS: restart verified (C1)
+== C tail
+turn full=1 kv_before=186 pf=43 prompt=229
+prefill=504.2ms (43 tok) reuse=0
+drafted=17 (mtp=17 lookup=0) spec_accept=17
+PASS: restart verified (R)
+== R tail
+KV state loaded — 186 tokens, 56.1 MB, 8.9 ms
+turn full=1 kv_before=186 pf=43 prompt=229
+prefill=512.8ms (43 tok) reuse=0
+drafted=17 (mtp=17 lookup=0) spec_accept=17
+PASS: restart verified (F)
+== F tail
+turn full=1 kv_before=0 pf=229 prompt=229
+prefill=2542.1ms (229 tok) reuse=0
+drafted=17 (mtp=17 lookup=0) spec_accept=17
+== compare (byte only)
+chat-dump.logits:
+   C=63f5409463dbcb8a8dab R=63f5409463dbcb8a8dab F=63f5409463dbcb8a8dab
+   C_vs_R EQUAL=True  F_vs_C EQUAL=True  F_vs_R EQUAL=True
+chat-dump.tokens:
+   C=5d5b27c78c9b20520377 R=5d5b27c78c9b20520377 F=5d5b27c78c9b20520377
+   C_vs_R EQUAL=True  F_vs_C EQUAL=True  F_vs_R EQUAL=True
+chat-dump.kv:
+   C=a51010c63215187aaab5 R=a51010c63215187aaab5 F=a51010c63215187aaab5
+   C_vs_R EQUAL=True  F_vs_C EQUAL=True  F_vs_R EQUAL=True
+chat-dump.mirror:
+   C=617c5436210edadda4a9 R=617c5436210edadda4a9 F=617c5436210edadda4a9
+   C_vs_R EQUAL=True  F_vs_C EQUAL=True  F_vs_R EQUAL=True
+chat-dump.mtp:
+   C=c8b60779cd2dd3ab6231 R=c8b60779cd2dd3ab6231 F=c8b60779cd2dd3ab6231
+   C_vs_R EQUAL=True  F_vs_C EQUAL=True  F_vs_R EQUAL=True
+C turn-boundary lines: 0
+R turn-boundary lines: 2
+    [xllama] session: KV state loaded — MTP mirror restored from trailer (186 tokens, drafting continues on real state) (#170c)
+    [xllama] session: KV state loaded — 186 tokens, 56.1 MB, 8.9 ms (#170b)
+F turn-boundary lines: 0
+== T10 done
+PASS: strict G-T and G-L and all state cold full-prefill byte equality

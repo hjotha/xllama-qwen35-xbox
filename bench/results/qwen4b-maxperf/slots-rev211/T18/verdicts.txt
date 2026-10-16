@@ -1,0 +1,25 @@
+== baseline: a valid snapshot of t18
+PASS: baseline save t18
+snapshot t18.kv sha=a7518436a94e1788 bytes=54252722
+baseline restore+chat: BRAVO-7
+== F1: tmp path is a directory -> open fails; snapshot must survive
+F1 save: http=400 body={"error":{"message":"slot save failed: cannot open Q:\\Users\\UserMgr1\\AppData\\Local\\Packages\\GianlucaMazza.xllama_pj67f1fcj4n14\\LocalS
+PASS: F1: previous valid snapshot preserved through the failing save (restore+chat ok)
+F1 post-failure t18.kv sha=a7518436a94e1788 (baseline was a7518436a94e1788)
+PASS: F1: snapshot bytes unchanged by the failed save
+slots dir during F1: ['t18.kv', 't18.kv.tmp']
+== F2: target path is a directory -> write completes, rename fails
+F2 save: http=400 body={"error":{"message":"slot save failed: rename failed: The operation completed successfully.","type":"xllama_error"}}
+slots dir after F2: ['t18.kv', 't18.kv.tmp', 't19.kv']
+PASS: F2: no leftover .tmp after the failed rename (temporary cleaned)
+F2 store listing: ['t18']
+F2_VERDICT PASS_no_partial_entry
+== F3: post-restart save/restore reproduction (T17 explanation)
+PASS: restart verified (F3)
+F3 save right after restart: http=400 body={"error":{"message":"no resident session; chat first to load the model","type":"xllama_error"}}
+F3 restore right after restart: http=400 body={"error":{"message":"slot restore failed: state file belongs to a different model or context","type":"xllama_error"}}
+FAIL: slot save t18
+FAIL: F3: save still failing
+== cleanup
+slots dir final: []
+store final: {"ok":true,"slots":[]}

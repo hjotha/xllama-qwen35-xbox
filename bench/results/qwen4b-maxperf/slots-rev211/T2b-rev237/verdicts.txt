@@ -1,0 +1,22 @@
+PASS: restart verified (cancel-fresh)
+PASS: cancel: mid-generation kill observed (death 3x GET fail)
+PASS: cancel: app recovered
+PASS: cancel: fresh chat works after kill
+killed-reply-bytes=1161 after-reply=BRAVO-7
+PASS: cancel: slot save works after kill
+PASS: restart verified (iso-build)
+PASS: restart verified (iso-newproc)
+== ISOLATION A/B
+A: BRAVO-7 (want BRAVO-7)
+B: DELTA-3 (want DELTA-3)
+PASS: isolation A intact
+PASS: isolation B intact
+PASS: concurrency: 4/4 parallel ops ok
+PASS: concurrency: slot n1 intact
+PASS: concurrency: slot n2 intact
+PASS: restart verified (corrupt-newproc)
+PASS: corrupt: missing id refused
+PASS: corrupt: invalid id refused
+PASS: corrupt: truncated refused
+PASS: corrupt: wrong-version refused
+PASS: corrupt: session usable after refusals

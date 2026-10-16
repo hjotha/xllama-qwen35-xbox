@@ -482,7 +482,88 @@ bool MtpDrafter::align_to(llama_pos pos) {
         m_pending_pos = -1;
         std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
     }
+    // Plan 009: the committed carry only describes a live prefix. A clear
+    // drops everything; a trim that removes the carried position drops it too.
+    if (pos <= 0 || (m_carry_valid && m_carry_pos >= pos))
+        m_carry_valid = false;
     return true;
+}
+
+bool MtpDrafter::commit_carry(llama_pos committed_end) {
+    // Install the snapshot as the pending carry iff it describes exactly the
+    // last committed token and the mirror holds at least through it (speculative
+    // rows beyond are trimmed by the next align_to). Anything else leaves
+    // everything untouched for the caller to fall back (fail-closed).
+    if (!m_ctx || !m_carry_valid || m_carry_pos != committed_end)
+        return false;
+    if (llama_memory_seq_pos_max(llama_get_memory(m_ctx), 0) < committed_end)
+        return false;
+    m_pending_h = m_carry_h;
+    m_pending_pos = m_carry_pos;
+    m_pending_valid = true;
+    return true;
+}
+
+// Plan 009 slot-restore prime (contract in mtp_draft.h). Fail-closed: a
+// false return leaves the already-cleared mirror (full prefill).
+bool MtpDrafter::prime_zero_carry(llama_pos pos) {
+    if (!m_ctx || pos < 0)
+        return false;
+    if (m_pending_pos == pos && m_pending_valid)
+        return true; // already primed for exactly this position
+    std::memset(m_pending_h.data(), 0, m_pending_h.size() * sizeof(float));
+    m_pending_pos = pos;
+    m_pending_valid = true;
+    m_carry_valid = false; // a decoy row is not a committed prefix end
+    return true;
+}
+
+// Plan 009 complete-state persistence (contract in mtp_draft.h).
+bool MtpDrafter::get_state(std::vector<uint8_t>& blob) const {
+    if (!m_ctx)
+        return false;
+    try {
+        const size_t need = llama_state_seq_get_size(m_ctx, 0);
+        if (need == 0)
+            return false;
+        blob.resize(need);
+        const size_t got = llama_state_seq_get_data(m_ctx, blob.data(), blob.size(), 0);
+        if (got == 0) {
+            blob.clear();
+            return false;
+        }
+        blob.resize(got);
+        return true;
+    } catch (const std::exception&) {
+        blob.clear();
+        return false;
+    }
+}
+
+bool MtpDrafter::set_state(const uint8_t* data, size_t size) {
+    if (!m_ctx || !data || size == 0)
+        return false;
+    try {
+        return llama_state_seq_set_data(m_ctx, data, size, 0) > 0;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool MtpDrafter::prime_pending(const float* row, llama_pos pos) {
+    if (!m_ctx || !row || pos < 0)
+        return false;
+    std::memcpy(m_pending_h.data(), row, m_pending_h.size() * sizeof(float));
+    m_pending_pos = pos;
+    m_pending_valid = true;
+    m_carry_valid = false; // a restored row is not a committed prefix end
+    return true;
+}
+
+llama_pos MtpDrafter::mirror_pos_min() const {
+    if (!m_ctx)
+        return -1;
+    return llama_memory_seq_pos_min(llama_get_memory(m_ctx), 0);
 }
 
 bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
@@ -568,6 +649,9 @@ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const f
             log_output("[xllama] mtp: catch-up decode failed at off=" + std::to_string(off) +
                        " rc=" + std::to_string(rc) + "\n");
             m_batch.n_tokens = 0;
+            // Plan 009: the mirror may hold partial rows — the committed
+            // snapshot no longer describes a trustworthy prefix.
+            m_carry_valid = false;
             return false;
         }
         m_batch.n_tokens = 0;
@@ -584,6 +668,13 @@ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const f
     std::memcpy(m_pending_h.data(), h_rows + static_cast<size_t>(n - 1) * m_n_embd, row_bytes);
     m_pending_pos = pos0 + static_cast<llama_pos>(n) - 1;
     m_pending_valid = true;
+    // Plan 009 committed carry: same row/position, in state draft() rounds
+    // never touch — so commit_carry() can restore a correct carry at turn
+    // end even after speculative rounds moved pending on. Overwritten by
+    // every successful replay (always the freshest committed end).
+    m_carry_h = m_pending_h;
+    m_carry_pos = m_pending_pos;
+    m_carry_valid = true;
     return true;
 }
 

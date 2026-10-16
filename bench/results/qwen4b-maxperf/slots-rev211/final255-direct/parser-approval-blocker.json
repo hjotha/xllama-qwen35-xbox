@@ -1,0 +1,143 @@
+{
+  "status": "awaiting_explicit_approval",
+  "action": "Bind auxiliary native-state parser expected cell count and recurrent position to API prompt count of same execution, retaining exact byte and per-position checks",
+  "rejection": "Automatic review: edits fixed structural expectations to runtime-derived values, conflicts with no validator changes, risks weakening validation",
+  "not_applied": true,
+  "evidence254": {
+    "api_prompt_tokens": 229,
+    "C_R_F_native_cells": 229,
+    "native_dump_sha256": "a51010c63215187aaab504b8a5d2fca0883c07275c939642ef27363c3b6d592c",
+    "bytes": 60201128
+  },
+  "current_parser_expects": {
+    "cells": 230,
+    "recurrent_position": 229
+  },
+  "unchanged_parser_sha256": "c7709eb8c7903a718e2d720eea8c9b7040d58809b8aacf2d73b9e8c1de21955f",
+  "parser_absolute_path": "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211/final255-direct/parse-native-final.py",
+  "evidence_paths": [
+    "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211/qk254-direct/cold-prefill/F/tail.json",
+    "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211/qk254-direct/cold-prefill/C/chat-dump.kv",
+    "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211/qk254-direct/cold-prefill/R/chat-dump.kv",
+    "/home/hjotha/worktrees/xllama-qwen35-4b-maxperf/bench/results/qwen4b-maxperf/slots-rev211/qk254-direct/cold-prefill/F/chat-dump.kv"
+  ],
+  "current_rules": [
+    "assert streams==2 and cells==230",
+    "assert (empty,ncell,pos,nseq,trans,nlayers)==(0,1,229,0,0,32)"
+  ],
+  "proposed_scope": "Only auxiliary native-state parser: N from same-run F/tail.json usage.prompt_tokens; assert cells==N, retain exact per-position i checks and require recurrent pos=N-1. Retain all stream/type/layer/size/byte equality/full-consumption assertions. No changes to cold-prefill byte equality, check-vround.py, verify-blocks-v3.py, thresholds or baselines.",
+  "parent_instruction": "Await specific AUTH approval; no alternative route or substitution.",
+  "evidence255": {
+    "api_usage": {
+      "prompt_tokens": 229,
+      "completion_tokens": 32,
+      "total_tokens": 261
+    },
+    "native_headers": {
+      "C": [
+        2937339096,
+        0,
+        2,
+        229
+      ],
+      "R": [
+        2937339096,
+        0,
+        2,
+        229
+      ],
+      "F": [
+        2937339096,
+        0,
+        2,
+        229
+      ]
+    }
+  },
+  "final255_strict_cold_comparisons": {
+    "chat-dump.logits": {
+      "sha256": {
+        "C": "63f5409463dbcb8a8dabe7a3a02f7dfddeecd3da799ce1594e95182d8862bc3e",
+        "R": "63f5409463dbcb8a8dabe7a3a02f7dfddeecd3da799ce1594e95182d8862bc3e",
+        "F": "63f5409463dbcb8a8dabe7a3a02f7dfddeecd3da799ce1594e95182d8862bc3e"
+      },
+      "bytes": {
+        "C": 31785088,
+        "R": 31785088,
+        "F": 31785088
+      },
+      "aligned_C_R_equal": true,
+      "cold_F_R_equal": true
+    },
+    "chat-dump.tokens": {
+      "sha256": {
+        "C": "5d5b27c78c9b205203775265930f5edd551228399e4d5b2a89c31bfa1cdbea70",
+        "R": "5d5b27c78c9b205203775265930f5edd551228399e4d5b2a89c31bfa1cdbea70",
+        "F": "5d5b27c78c9b205203775265930f5edd551228399e4d5b2a89c31bfa1cdbea70"
+      },
+      "bytes": {
+        "C": 183,
+        "R": 183,
+        "F": 183
+      },
+      "aligned_C_R_equal": true,
+      "cold_F_R_equal": true
+    },
+    "chat-dump.kv": {
+      "sha256": {
+        "C": "a51010c63215187aaab504b8a5d2fca0883c07275c939642ef27363c3b6d592c",
+        "R": "a51010c63215187aaab504b8a5d2fca0883c07275c939642ef27363c3b6d592c",
+        "F": "a51010c63215187aaab504b8a5d2fca0883c07275c939642ef27363c3b6d592c"
+      },
+      "bytes": {
+        "C": 60201128,
+        "R": 60201128,
+        "F": 60201128
+      },
+      "aligned_C_R_equal": true,
+      "cold_F_R_equal": true
+    },
+    "chat-dump.mirror": {
+      "sha256": {
+        "C": "617c5436210edadda4a9f2fee82b557dceb236218b103317c31cd516196937e5",
+        "R": "617c5436210edadda4a9f2fee82b557dceb236218b103317c31cd516196937e5",
+        "F": "617c5436210edadda4a9f2fee82b557dceb236218b103317c31cd516196937e5"
+      },
+      "bytes": {
+        "C": 943532,
+        "R": 943532,
+        "F": 943532
+      },
+      "aligned_C_R_equal": true,
+      "cold_F_R_equal": true
+    },
+    "chat-dump.mtp": {
+      "sha256": {
+        "C": "c8b60779cd2dd3ab6231962fb9cc280cc4846d1958a5ec6eb2eea9e0e6e8ecbe",
+        "R": "c8b60779cd2dd3ab6231962fb9cc280cc4846d1958a5ec6eb2eea9e0e6e8ecbe",
+        "F": "c8b60779cd2dd3ab6231962fb9cc280cc4846d1958a5ec6eb2eea9e0e6e8ecbe"
+      },
+      "bytes": {
+        "C": 11221,
+        "R": 11221,
+        "F": 11221
+      },
+      "aligned_C_R_equal": true,
+      "cold_F_R_equal": true
+    }
+  },
+  "narrower_proposal_after_Final255_capture": {
+    "scope": "Only final255-direct/parse-native-final.py, two fixed integer literals, not applied",
+    "changes": [
+      {
+        "before": "assert streams==2 and cells==230",
+        "after": "assert streams==2 and cells==229"
+      },
+      {
+        "before": "assert (empty,ncell,pos,nseq,trans,nlayers)==(0,1,229,0,0,32)",
+        "after": "assert (empty,ncell,pos,nseq,trans,nlayers)==(0,1,228,0,0,32)"
+      }
+    ],
+    "reason": "Final255 own API and identical native headers establish229positions; positions are0-based. All other assertions retained. Requires explicit AUTH; not an alternate execution route."
+  }
+}

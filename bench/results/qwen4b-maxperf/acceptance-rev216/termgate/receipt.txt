@@ -1,0 +1,6 @@
+termgate start_utc=2026-10-10T00:03:55Z PFN=GianlucaMazza.xllama_1.6.0.216_x64__pj67f1fcj4n14
+arm=sw0-mtp0 invocation=bench_mtp=0 knob=0 device_arm_column=seq done_utc=2026-10-10T00:04:53Z
+arm=sw0-mtp4 invocation=bench_mtp=4 knob=0 device_arm_column=ref done_utc=2026-10-10T00:05:50Z
+arm=sw1-mtp0 invocation=bench_mtp=0 knob=1 device_arm_column=seq done_utc=2026-10-10T00:06:48Z
+arm=sw1-mtp4 invocation=bench_mtp=4 knob=1 device_arm_column=ref done_utc=2026-10-10T00:07:45Z
+termgate end_utc=2026-10-10T00:07:45Z

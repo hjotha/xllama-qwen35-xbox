@@ -1,0 +1,12 @@
+PASS: restart verified (build)
+reference slot: 59605543 bytes
+PASS: restart verified (att1)
+attempt 1: tmp never observed partial (write too fast for polling); save finished
+PASS: restart verified (att2)
+attempt 2: tmp never observed partial (write too fast for polling); save finished
+PASS: restart verified (att3)
+attempt 3: tmp never observed partial (write too fast for polling); save finished
+store after mid-write: {"ok":true,"slots":[{"slot":"t17","tokens":187,"bytes":59605543},{"slot":"t17ref","tokens":187,"bytes":59605543}]}
+FAIL: MID-WRITE NOT LANDED: write completed before any poll could see a partial tmp
+store final: {"ok":true,"slots":[]}
+landed=0

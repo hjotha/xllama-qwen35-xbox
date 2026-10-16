@@ -1,0 +1,14 @@
+== termgate full-field parity (all fields except arm): failures=0
+   arm column (excluded, reported): mine vs legacy per pair:
+     term-sw0-mtp0.csv: arm mine=seq legacy=seq
+     term-sw0-mtp4.csv: arm mine=ref legacy=cand
+     term-sw0-mtp4.csv: arm mine=ref legacy=cand
+     term-sw1-mtp0.csv: arm mine=seq legacy=seq
+     term-sw1-mtp4.csv: arm mine=ref legacy=cand
+     term-sw1-mtp4.csv: arm mine=ref legacy=cand
+   activity counters (gated; scene,arm,active,drafted,rounds,lookup,ews):
+   term-sw0-mtp0.csv: [('cancel@6', 'seq', '0', '0', '0', '0'), ('cancel@13', 'seq', '0', '0', '0', '0'), ('stop@probe', 'seq', '0', '0', '0', '0'), ('stop@run', 'seq', '0', '0', '0', '0'), ('eog@0', 'seq', '0', '0', '0', '0'), ('eog@1', 'seq', '0', '0', '0', '0'), ('eog@2', 'seq', '0', '0', '0', '0'), ('eog@3', 'seq', '0', '0', '0', '0')]
+   term-sw0-mtp4.csv: [('cancel@6', 'ref', '1', '8', '2', '0'), ('cancel@13', 'ref', '1', '14', '4', '0'), ('stop@probe', 'ref', '1', '8', '2', '0'), ('stop@run', 'ref', '1', '8', '2', '0'), ('eog@0', 'ref', '1', '51', '18', '0'), ('eog@1', 'ref', '1', '24', '14', '0'), ('eog@2', 'ref', '1', '37', '24', '0'), ('eog@3', 'ref', '1', '8', '2', '0')]
+   note: legacy ref/cand were one identical bench_mtp=4 invocation;
+   device arm column encodes twocol/repack scope, not the invocation.
+TERMGATE_DONE

@@ -1,0 +1,35 @@
+== battery knob=off start=2026-10-13T11:46:20Z effective=FFN SWIGLU D3D12=off verified_at_log_line=792145
+knob_verify: mode=FFN SWIGLU D3D12=off bind_on_mtp1=0
+session_config_expected: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34
+PASS: quiesce pre: device quiet
+PASS: B1 preflight: slots endpoint ok, store empty
+s1 tokens=42 bytes=54252828
+PASS: B2 seed+save s1 (tokens>0, bytes>0)
+PASS: restart verified (B3 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B3 reuse==fresh prefill (BRAVO-7...)
+PASS: B4 fresh-process reuse (restart between save and restore, B3 equality holds)
+PASS: B4b restore-after-restart matches fresh
+PASS: B6 rollback to s1 matches
+PASS: B8 slot isolation (s1/s2/s1copy independent)
+[('s1', 42), ('s1copy', 89), ('s2', 89)]
+PASS: B9 garbage refused
+PASS: B9 truncated refused
+v9 header written
+PASS: B9 wrong-version refused
+PASS: B9 session usable after refusals
+PASS: B7 EOS save/restore/continue sane
+PASS: restart verified (B5 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B5 divergent continuation == fresh prefill
+PASS: B5 divergent content correct
+PASS: B11 stale .tmp does not poison save/restore
+PASS: collection integrity: exactly 15 turns, expected (full,kv,pf,prompt) each, markers ok, no rotation
+PASS: log chain + prefix preserved + JSON-log cross per turn (response<->log bound, not counts)
+PASS: turn response IDs: 15/15 match expected content
+PASS: request identity + log continuity: order, binding, markers, no rotation
+PASS: no unexpected model swaps in window
+PASS: quiesce post: quiet
+== battery knob=off end=2026-10-13T11:48:13Z failures=0
+end_mode=FFN SWIGLU D3D12=off end_bind=0
+FFN_DISPATCHES=none-in-window (counters flush on clean unload only; api-recall is the counter gate)
+session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34
+session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34

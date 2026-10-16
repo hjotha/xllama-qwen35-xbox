@@ -1,0 +1,11 @@
+[  7%] Built target ggml-base
+[ 19%] Built target ggml-cpu
+[ 19%] Linking CXX shared library ../../../bin/libggml.so
+[ 19%] Built target ggml
+[ 19%] Linking CXX shared library ../../bin/libllama.so
+[ 54%] Built target llama
+[ 54%] Building CXX object CMakeFiles/xllama.dir/src/bridge/session.cpp.o
+[ 54%] Linking CXX static library libxllama.a
+[ 73%] Built target xllama
+[ 76%] Linking CXX executable xllama-tests
+[100%] Built target xllama-tests

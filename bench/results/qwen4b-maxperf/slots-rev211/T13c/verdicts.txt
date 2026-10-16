@@ -1,0 +1,16 @@
+flag armed
+PASS: restart verified (build)
+slot: 115 tokens 56947591 bytes
+PASS: restart verified (C)
+[C] turn full=1 kv_before=115 pf=27 prompt=142
+[C] prefill=302.3ms (27 tok) reuse=0
+[C] drafted=14 (mtp=14 lookup=0) spec_accept=14
+[C] MTP_STATS rounds=9 decodes=28 discarded=4 catchup_tok=24 draft_ms=66.9 sample_ms=8.7 topprob_ms=22.2 catchup_ms=22.5 verify_ms=551.9
+[C] kv_dump=57348224 mirror_dump=585092
+PASS: restart verified (R)
+[R] restore_api_ms=73
+[R] turn full=1 kv_before=115 pf=27 prompt=142
+[R] prefill=322.2ms (27 tok) reuse=0
+[R] drafted=14 (mtp=14 lookup=0) spec_accept=14
+[R] MTP_STATS rounds=9 decodes=28 discarded=4 catchup_tok=24 draft_ms=65.7 sample_ms=9.2 topprob_ms=22.1 catchup_ms=29.5 verify_ms=578.2
+[R] kv_dump=57348224 mirror_dump=585092

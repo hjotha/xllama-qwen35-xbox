@@ -1,0 +1,65 @@
+# Receipt — auditoria final #170c (2026-10-12): correções e lacuna de atomicidade
+
+## 1. Contradições corrigidas (evidência real, sem mascarar)
+
+**rev244-closure-receipt.txt** e **plans/009** agora dizem o mesmo, e certo:
+- **5 cenários com as CINCO classes medidas** (logits, tokens, **KV/GDN**,
+  espelho, pending): **T13c, T14 code, T14 std512, T14 divergent, T15
+  (Final)**.
+- **5 cenários com QUATRO classes medidas** (logits, tokens, espelho,
+  pending): **T13a t4, T13a t5, T13b curto, T13b médio, T13b longo** — o
+  KV/GDN **não foi coletado** nesses (receipt rev243 já marcava "não
+  coletado"); a igualdade do target neles repousa em logits/tokens
+  byte-idênticos mais os 5 cenários com KV.
+- Removida a frase remanescente "em 9 cenários" (T15) e corrigida a
+  contagem "4 cenários" que enumerava cinco itens. O "9 cenários" que
+  resta no plano é apenas a citação da afirmação retratada no audit.
+
+## 2. Fingerprint — documentação precisa (subgate coberto, sem rerun)
+
+`slot-battery.sh:198` altera **`hdr[3]`**, o campo **fingerprint** do
+header v2 de um slot válido; `load_state` (session.cpp) compara esse campo
+contra `state_fingerprint()` e recusa com "state file belongs to a
+different model or context" **antes** de qualquer leitura do trailer. O
+rótulo **"wrong-version"** no veredito da bateria **não** é um teste
+separado de versão do trailer — o teste de versão do trailer é o
+**T13a `version`** (rev243), e a recusa de prefix-proof é o T13a
+`prefix proof mismatch`. Evidência: slots-on/verdicts.txt (rev244),
+slot-battery.sh:198, session.cpp `state_fingerprint()`.
+
+## 3. Atomicidade — lacuna EXATA registrada (subgate NÃO declarado fechado)
+
+O que foi demonstrado:
+- **T16**: dois saves rejeitados ANTES da escrita (id inválido; sem KV
+  residente) → http 400, store inalterado, nenhum arquivo e nenhum `.tmp`.
+- **Bateria B11** (rev244): `.tmp` stale não envenena save/restore.
+- **Código**: save escreve em `<id>.kv.tmp`, remove em falha e só então
+  renancia para `<id>.kv`; `load_state` abre apenas o arquivo final.
+
+O que **não** foi demonstrado (lacuna exata):
+- **Falha de I/O DURANTE a escrita** (ex.: disco cheio no meio do blob)
+  produzir nenhum arquivo parcial. Tentativas seguras, todas evidenciadas:
+  - kill por tempo em 0,35s e 0,18s: o save já estava **completo** após o
+    rename (t17.kv = 59.605.543 B inteiros) — T17.
+  - kill adaptativo consultando o listing do portal (3 tentativas, parser
+    corrigido para `Items`/`Name`/`FileSize` — o parser anterior olhava
+    `Files`/`files` e nunca via nada): o `.tmp` **nunca** foi observado em
+    tamanho parcial — T17b.
+  - medição do piso: **60 polls durante um save de 55,5 MB, tmp observado
+    0 vezes** — a janela tmp→rename é menor que um listing do portal
+    (~dezenas de ms) neste dispositivo/storage.
+- Consequência: com a instrumentação disponível (sem encher disco, sem
+  alterar permissões/produção, sem mudar código) **não é possível** observar
+  a escrita em curso. A garantia tmp+rename permanece **verificado por
+  construção + B11 + T16**, mas o subgate "falha no meio da gravação" fica
+  **ABERTO**, registrado, sem fechamento declarado.
+
+## 4. Distinção preservada
+Igualdade byte vale no controle alinhado; prefill integral vs restore
+segue diferindo por segmentação com decisões idênticas (T10/T11b) — sem
+equivalência global.
+
+## 5. Estado final do Xbox
+rev244 Final servindo (default ON), slots vazios (`[]`), flags ausentes;
+slots de teste (t17/t17ref/floortest/floorref/schema) e `.tmp` removidos.
+Baselines e rollback (rev238/rev243) preservados. Sem push/merge.

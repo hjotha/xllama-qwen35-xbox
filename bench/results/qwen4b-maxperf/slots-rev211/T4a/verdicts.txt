@@ -1,0 +1,144 @@
+PASS: restart verified (A-seed)
+seed_tokens=prompt_tok=40 completion_tok=2
+PASS: restart verified (A-fresh)
+== A FRESH
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=645.8ms (62 tok) reuse=0
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+CTOK=62/4 sha=55857d7da216
+PASS: restart verified (A-control-newproc)
+== A control (flag=none)
+WS A-control-pre: 3858 MB (raw=4046012416)
+WS A-control-pre: 3858 MB (raw=4046012416)
+turn full=1 kv_before=0 pf=62 prompt=62
+prefill=672.8ms (62 tok) reuse=0
+KV state loaded — 42 tokens, 51.6 MB, 7.7 ms
+KV prefix reuse — kept 42 of 62 tokens
+T1_LINE_ABSENT
+drafted=4 (mtp=4 lookup=0) spec_accept=3
+rounds=2 decodes=6 discarded=0 catchup_tok=4
+CTOK=62/4 sha=55857d7da216
+WS A-control-post: 3858 MB (raw=4046012416)
+WS A-control-post: 3858 MB (raw=4046012416)
+PASS: restart verified (A-zero-newproc)
+== A zero (flag=zerocarry)
+WS A-zero-pre: 3857 MB (raw=4045082624)
+WS A-zero-pre: 3857 MB (raw=4045082624)
+turn full=1 kv_before=42 pf=20 prompt=62
+prefill=271.2ms (20 tok) reuse=0
+KV state loaded — 42 tokens, 51.6 MB, 7.9 ms
+KV prefix reuse — kept 42 of 62 tokens
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+drafted=2 (mtp=2 lookup=0) spec_accept=2
+rounds=1 decodes=5 discarded=1 catchup_tok=4
+CTOK=20/4 sha=55857d7da216
+WS A-zero-post: 3857 MB (raw=4045082624)
+WS A-zero-post: 3857 MB (raw=4045082624)
+PASS: restart verified (B-seed)
+seed_tokens=prompt_tok=301 completion_tok=8
+PASS: restart verified (B-fresh)
+== B FRESH
+turn full=1 kv_before=0 pf=343 prompt=343
+prefill=3690.8ms (343 tok) reuse=0
+drafted=41 (mtp=41 lookup=0) spec_accept=38
+CTOK=343/64 sha=68c2d258c07d
+PASS: restart verified (B-control-newproc)
+== B control (flag=none)
+WS B-control-pre: 3856 MB (raw=4043960320)
+WS B-control-pre: 3856 MB (raw=4043960320)
+turn full=1 kv_before=0 pf=343 prompt=343
+prefill=3721.9ms (343 tok) reuse=0
+KV state loaded — 309 tokens, 59.9 MB, 9.3 ms
+KV prefix reuse — kept 309 of 343 tokens
+T1_LINE_ABSENT
+drafted=41 (mtp=41 lookup=0) spec_accept=38
+rounds=22 decodes=74 discarded=7 catchup_tok=64
+CTOK=343/64 sha=68c2d258c07d
+WS B-control-post: 3856 MB (raw=4043960320)
+WS B-control-post: 3856 MB (raw=4043960320)
+PASS: restart verified (B-zero-newproc)
+== B zero (flag=zerocarry)
+WS B-zero-pre: 3858 MB (raw=4045524992)
+WS B-zero-pre: 3858 MB (raw=4045524992)
+turn full=1 kv_before=309 pf=34 prompt=343
+prefill=418.5ms (34 tok) reuse=0
+KV state loaded — 309 tokens, 59.9 MB, 9.9 ms
+KV prefix reuse — kept 309 of 343 tokens
+T1: rebuild mode=zerocarry n=309 harvest=0.0ms process=0.0ms OK pending=1 pos=308 carry_from_n=1
+drafted=42 (mtp=42 lookup=0) spec_accept=34
+rounds=24 decodes=81 discarded=11 catchup_tok=62
+CTOK=34/64 sha=68c2d258c07d
+WS B-zero-post: 3858 MB (raw=4045524992)
+WS B-zero-post: 3858 MB (raw=4045524992)
+PASS: restart verified (C-seed)
+seed_tokens=prompt_tok=276 completion_tok=8
+PASS: restart verified (C-fresh)
+== C FRESH
+turn full=1 kv_before=0 pf=309 prompt=309
+prefill=3320.6ms (309 tok) reuse=0
+drafted=17 (mtp=17 lookup=0) spec_accept=15
+CTOK=309/25 sha=63628bea61dd
+PASS: restart verified (C-control-newproc)
+== C control (flag=none)
+WS C-control-pre: 3858 MB (raw=4046340096)
+WS C-control-pre: 3858 MB (raw=4046340096)
+turn full=1 kv_before=0 pf=309 prompt=309
+prefill=3332.6ms (309 tok) reuse=0
+KV state loaded — 284 tokens, 59.1 MB, 9.4 ms
+KV prefix reuse — kept 284 of 309 tokens
+T1_LINE_ABSENT
+drafted=17 (mtp=17 lookup=0) spec_accept=15
+rounds=10 decodes=32 discarded=4 catchup_tok=25
+CTOK=309/25 sha=63628bea61dd
+WS C-control-post: 3858 MB (raw=4046340096)
+WS C-control-post: 3858 MB (raw=4046340096)
+PASS: restart verified (C-zero-newproc)
+== C zero (flag=zerocarry)
+WS C-zero-pre: 3857 MB (raw=4045201408)
+WS C-zero-pre: 3857 MB (raw=4045201408)
+turn full=1 kv_before=284 pf=25 prompt=309
+prefill=315.4ms (25 tok) reuse=0
+KV state loaded — 284 tokens, 59.1 MB, 9.7 ms
+KV prefix reuse — kept 284 of 309 tokens
+T1: rebuild mode=zerocarry n=284 harvest=0.0ms process=0.0ms OK pending=1 pos=283 carry_from_n=1
+drafted=18 (mtp=18 lookup=0) spec_accept=13
+rounds=11 decodes=36 discarded=6 catchup_tok=24
+CTOK=25/25 sha=63628bea61dd
+WS C-zero-post: 3857 MB (raw=4045201408)
+WS C-zero-post: 3857 MB (raw=4045201408)
+PASS: restart verified (F-seed)
+seed_tokens=prompt_tok=40 completion_tok=2
+PASS: restart verified (F-fresh)
+== F FRESH
+turn full=1 kv_before=0 pf=58 prompt=58
+prefill=622.1ms (58 tok) reuse=0
+drafted=1 (mtp=1 lookup=0) spec_accept=0
+CTOK=58/4 sha=e22d3e23aecf
+PASS: restart verified (F-control-newproc)
+== F control (flag=none)
+WS F-control-pre: 3857 MB (raw=4044713984)
+WS F-control-pre: 3857 MB (raw=4044713984)
+turn full=1 kv_before=0 pf=58 prompt=58
+prefill=606.8ms (58 tok) reuse=0
+KV state loaded — 42 tokens, 51.6 MB, 13.6 ms
+KV prefix reuse — kept 42 of 58 tokens
+T1_LINE_ABSENT
+drafted=1 (mtp=1 lookup=0) spec_accept=0
+rounds=1 decodes=6 discarded=2 catchup_tok=3
+CTOK=58/4 sha=e22d3e23aecf
+WS F-control-post: 3857 MB (raw=4044713984)
+WS F-control-post: 3857 MB (raw=4044713984)
+PASS: restart verified (F-zero-newproc)
+== F zero (flag=zerocarry)
+WS F-zero-pre: 3857 MB (raw=4045365248)
+WS F-zero-pre: 3857 MB (raw=4045365248)
+turn full=1 kv_before=42 pf=16 prompt=58
+prefill=188.5ms (16 tok) reuse=0
+KV state loaded — 42 tokens, 51.6 MB, 9.6 ms
+KV prefix reuse — kept 42 of 58 tokens
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+drafted=2 (mtp=2 lookup=0) spec_accept=1
+rounds=1 decodes=4 discarded=0 catchup_tok=3
+CTOK=16/4 sha=e22d3e23aecf
+WS F-zero-post: 3857 MB (raw=4045398016)
+WS F-zero-post: 3857 MB (raw=4045398016)

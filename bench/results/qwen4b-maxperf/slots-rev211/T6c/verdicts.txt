@@ -1,0 +1,24 @@
+flag armed
+PASS: restart verified (deep-build)
+seed saved: prompt_tok=24 completion_tok=48
+PASS: restart verified (fresh-new)
+WS fresh-pre: 95 MB (raw=100597760)
+== fresh
+no-restore
+no-prime
+turn full=1 kv_before=0 pf=230 prompt=230
+prefill=2511.9ms (230 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+CTOK=230/32 sha=211b46f48e49db5a
+WS fresh-post: 3858 MB (raw=4045918208)
+PASS: restart verified (restore-new)
+WS restore-pre: 3854 MB (raw=4041338880)
+== restore
+KV state loaded — 187 tokens, 56.1 MB, 8.4 ms
+mtp: post-restore carry primed at pos=186
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=498.1ms (43 tok) reuse=0
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+CTOK=43/32 sha=211b46f48e49db5a
+WS restore-post: 3857 MB (raw=4045340672)
+== compare

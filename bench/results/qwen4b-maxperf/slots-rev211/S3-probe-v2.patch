@@ -1,0 +1,88 @@
+diff --git a/src/bridge/session.cpp b/src/bridge/session.cpp
+index 305b8e4..3e54fd1 100644
+--- a/src/bridge/session.cpp
++++ b/src/bridge/session.cpp
+@@ -990,17 +990,41 @@ class LlamaSession final : public Session {
+             FILE* kf = open_state_file(resolve_local_path("chat-dump.flag"), "rb");
+             if (kf) {
+                 std::fclose(kf);
+-                const size_t need = llama_state_seq_get_data(m_ctx.get(), nullptr, 0, 0);
+-                if (need > 0) {
+-                    std::vector<uint8_t> kbuf(need);
+-                    const size_t got =
+-                        llama_state_seq_get_data(m_ctx.get(), kbuf.data(), kbuf.size(), 0);
+-                    if (FILE* out = open_state_file(resolve_local_path("chat-dump.kv"), "wb")) {
+-                        const size_t w = std::fwrite(kbuf.data(), 1, got, out);
+-                        std::fclose(out);
+-                        if (w != got)
+-                            log_output("[xllama] WARN: S3 kv dump short write\n");
++                // Size the buffer with the fork's own query (get_data(nullptr,0)
++                // returns 0 here — do NOT use it), then dump the target seq-0
++                // state and the MTP mirror state, both post-prefill/pre-decode.
++                size_t kv_bytes = 0, mirror_bytes = 0;
++                try {
++                    const size_t need = llama_state_seq_get_size(m_ctx.get(), 0);
++                    if (need > 0) {
++                        std::vector<uint8_t> kbuf(need);
++                        kv_bytes = llama_state_seq_get_data(m_ctx.get(), kbuf.data(),
++                                                            kbuf.size(), 0);
++                        if (FILE* out = open_state_file(resolve_local_path("chat-dump.kv"), "wb")) {
++                            const size_t w = std::fwrite(kbuf.data(), 1, kv_bytes, out);
++                            std::fclose(out);
++                            if (w != kv_bytes)
++                                log_output("[xllama] WARN: S3 kv dump short write\n");
++                        }
++                    }
++                    if (m_mtp_drafter && m_mtp_drafter->ready()) {
++                        llama_context* dctx = m_mtp_drafter->ctx();
++                        const size_t mneed = llama_state_seq_get_size(dctx, 0);
++                        if (mneed > 0) {
++                            std::vector<uint8_t> mbuf(mneed);
++                            mirror_bytes = llama_state_seq_get_data(dctx, mbuf.data(),
++                                                                    mbuf.size(), 0);
++                            if (FILE* out =
++                                    open_state_file(resolve_local_path("chat-dump.mirror"), "wb")) {
++                                const size_t w = std::fwrite(mbuf.data(), 1, mirror_bytes, out);
++                                std::fclose(out);
++                                if (w != mirror_bytes)
++                                    log_output("[xllama] WARN: S3 mirror dump short write\n");
++                            }
++                        }
+                     }
++                } catch (const std::exception& e) {
++                    log_output(std::string("[xllama] WARN: S3 state dump failed: ") + e.what() + "\n");
+                 }
+                 llama_pos mirror_max = -1;
+                 const float* pend = nullptr;
+@@ -1011,20 +1035,25 @@ class LlamaSession final : public Session {
+                     pend_n = llama_model_n_embd_out(m_model.get());
+                 }
+                 if (FILE* out = open_state_file(resolve_local_path("chat-dump.mtp"), "wb")) {
+-                    char meta[192];
++                    char meta[224];
+                     const int mn = std::snprintf(
+-                        meta, sizeof(meta), "mirror_pos_max=%d pending_valid=%d n_embd=%d\n",
+-                        static_cast<int>(mirror_max), pend ? 1 : 0, pend_n);
++                        meta, sizeof(meta),
++                        "kv_tokens=%zu mirror_pos_max=%d pending_valid=%d n_embd=%d\n",
++                        m_kv_tokens.size(), static_cast<int>(mirror_max), pend ? 1 : 0, pend_n);
+                     std::fwrite(meta, 1, static_cast<size_t>(mn), out);
+                     if (pend && pend_n > 0)
+                         std::fwrite(pend, sizeof(float), static_cast<size_t>(pend_n), out);
++                    const uint32_t ntok = static_cast<uint32_t>(m_kv_tokens.size());
++                    std::fwrite(&ntok, sizeof(ntok), 1, out);
++                    if (ntok)
++                        std::fwrite(m_kv_tokens.data(), sizeof(llama_token), ntok, out);
+                     std::fclose(out);
+                 }
+                 char lb[256];
+                 std::snprintf(lb, sizeof(lb),
+-                              "[xllama] S3: state dumped — kv_bytes=%zu mirror_pos=%d "
+-                              "pending=%d kv_tokens=%zu\n",
+-                              need, static_cast<int>(mirror_max), pend ? 1 : 0,
++                              "[xllama] S3: state dumped — kv_bytes=%zu mirror_bytes=%zu "
++                              "mirror_pos=%d pending=%d kv_tokens=%zu\n",
++                              kv_bytes, mirror_bytes, static_cast<int>(mirror_max), pend ? 1 : 0,
+                               m_kv_tokens.size());
+                 log_output(lb);
+             }

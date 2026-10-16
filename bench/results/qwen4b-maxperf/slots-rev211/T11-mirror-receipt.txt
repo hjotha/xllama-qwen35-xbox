@@ -1,0 +1,91 @@
+# Receipt — investigação do espelho MTP (T11/T11b, rev242)
+
+Artefato: rev242 Iteration — identidade completa: MSIX sha256
+89c9b5c97b70492f411c11d3fac50d60e2f3cf5cf0c3ab8ee2a703d445a74f13,
+22.047.094 B, AppxManifest Version="1.6.0.242", origem
+.193 `uwp/AppPackages/xllama/xllama_1.6.0.242_x64_Test/` (mtime
+2026-10-11T16:42:24Z; cópia local byte-idêntica). Modo ITERATION
+corroborado por três artefatos independentes: (1) o binário linkado saiu
+de `uwp/x64/Release-iteration/xllama.exe` (mtime 16:41:01Z, casando com o
+MSIX; o último Final linkou 10/10 17:29Z em `Release`); (2) a build
+imprimiu a linha exclusiva de Iteration ("Iteration: reusing installed
+NuGet packages"); (3) o MSIX foi assinado manualmente com o cert dev
+(CN=xllama-dev) — Iteration nasce sem assinatura de MSBuild. Sem rebuild.
+
+## 1. Regiões válidas do espelho — provadas pelo próprio blob
+
+O header do dump do espelho (52 B, u32 x13) expõe `cells` e `pos_min`:
+- C (trajetória fresca): **230 células a partir da posição 0** (t4),
+  295 @0 (t5), 368 @0 (t6) — espelho completo, crescente.
+- R (restore em processo novo): **43 células a partir da posição 187**
+  (t4), 108 @187 (t5), 181 @187 (t6).
+- O buraco [0,187) = 187 células ausentes **nunca são reconstruídas**
+  (pos_min=187 em todos os turnos). O restore não reconstrói o espelho
+  do prefixo profundo; ele o entrega vazio abaixo do kv_keep.
+
+## 2. Bytes alinhados no mesmo ponto (por posição absoluta)
+
+| turno | posições compartilhadas | posições divergentes | posições idênticas |
+| ----- | ----------------------- | -------------------- | ------------------ |
+| t4 | 43 ([187,229]) | **[187,209]** (23 linhas) | [210,229] |
+| t5 | 108 ([187,294]) | **[187,241]** (55) | [242,294] |
+| t6 | 181 ([187,367]) | **[187,278]** (92) | [279,367] |
+
+A divergência começa sempre na costura (187 — a linha semeada pelo
+decoy zero) e propaga para frente em cone; a ponta recente convergence
+a byte-idêntico. Por linha: 488–4105 de 4120 bytes diferem nas linhas
+divergentes. Não há presunção de benignidade: o estado do drafter
+**difere** do fresco, de forma limitada, medida e crescente.
+
+## 3. Continuidade multitoken + aceitação/rejeição/rollback (C vs R, 3 turnos)
+
+| turno | C drafted/accept | R drafted/accept | C discarded | R discarded | target logits/KV/pending |
+| ----- | ---------------- | ---------------- | ----------- | ----------- | ------------------------ |
+| t4 | 20/18 (90%) | 19/18 (95%) | 5 | 7 | **byte-idênticos** |
+| t5 | 27/23 (85%) | 25/21 (84%) | 13 | 17 | **byte-idênticos** |
+| t6 | 11/9 (82%) | 13/10 (77%) | 4 | 3 | **byte-idênticos** |
+
+Rejeição e rollback ocorrem nos dois braços (discarded>0; zero recusas de
+`seq_rm`/aborts mid-round). Tokens aceitos e texto byte-idênticos em
+todos os turnos; o espelho parcial custa eficiência de draft (nunca
+correção). Determinismo cross-run: C_t4 (T11) == C_t4 (T10) byte a byte.
+
+## 4. O que a próxima geração lê (evidência + contrato)
+
+- `draft()` lê: células do espelho (com o buraco [0,187) em R), a
+  pending row e as hidden rows do target via
+  `llama_get_embeddings_nextn_ith` — cujo último valor (pending
+  pós-catch-up) é byte-idêntico em C e R, provando que as hidden rows do
+  target coincidem; a diferença do espelho vem só do input da primeira
+  linha de replay (decoy) propagando pelo batch causal do draft.
+- O caminho do target não lê estado do drafter: C e R têm logits, KV,
+  pending, ids e posições byte-idênticos com espelhos diferentes.
+- Ownership/lifetime: um restore dentro de um processo que JÁ tinha
+  prefilled um turno completo produz, após a mesma cauda, KV
+  byte-idêntico ao do controle (`73cab0ee…`) — `set_data` substitui
+  integralmente o estado do target; nada do estado anterior vaza.
+
+## 5. Fronteiras de turno vs segmentação (T11b)
+
+H2 (processo fresco: 1 turno de 187 tok + cauda como turno 2, sem
+restore) vs C (4 turnos: 40+20+80+43) vs F (1 turno de 230):
+- H2 != C e H2 != F (bytes de KV e logits), tokens iguais; reply do
+  turno 1 de H2 == r3 do produtor (conteúdo idêntico, só geometria
+  diferente).
+- Conclusão: as fronteiras de turno **importam** — não é só
+  resident+tail; cada geometria de prefill (fronteiras E larguras de
+  ubatch, com n_ubatch=64 fixo) determina os bytes das linhas
+  compartilhadas. A explicação comum é a geometria do prefill
+  (interpretação do efeito; o que está provado é que geometrias
+  diferentes ⇒ bytes diferentes, decisões idênticas).
+
+## Limites
+
+- Investigação em um único produtor/slot e uma família de prompts
+  (cipher/merge/RoPE), 3 turnos pós-cauda; genes longas (256+) e outras
+  famílias seguiriam o mesmo protocolo.
+- O crescimento do cone divergente ([187,209] → [187,278]) sugere
+  divergência acumulativa do drafter; o efeito medido no target é zero
+  em todos os turnos testados, mas o arrasto continue em aberto para
+  conversas muito longas.
+- Modo Iteration; TPS de Iteration nunca comparado com Final.

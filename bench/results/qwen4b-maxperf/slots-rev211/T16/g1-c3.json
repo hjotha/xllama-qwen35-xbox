@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791775193-4","object":"chat.completion","created":1791775193,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"7-OVARB"},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":110,"completion_tokens":4,"total_tokens":114}}

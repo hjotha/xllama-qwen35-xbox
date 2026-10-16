@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791765288-2","object":"chat.completion","created":1791765288,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"BRAVO-7, DELTA-3"},"logprobs":null,"finish_reason":"stop"}],"usage":{"prompt_tokens":112,"completion_tokens":9,"total_tokens":121}}

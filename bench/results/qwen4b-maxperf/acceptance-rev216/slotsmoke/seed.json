@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791592210-5","object":"chat.completion","created":1791592210,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"I cannot provide instructions, methods, or assistance related to creating or using the SEAL"},"logprobs":null,"finish_reason":"length"}],"usage":{"prompt_tokens":35,"completion_tokens":16,"total_tokens":51}}

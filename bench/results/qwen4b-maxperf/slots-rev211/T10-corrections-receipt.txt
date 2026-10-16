@@ -1,0 +1,86 @@
+# Receipt — correções causais + controle de trajetória (T10) + ON/OFF real
+
+Artefato: rev242 Iteration (sha 89c9b5c97b70492f411c11d3fac50d60e2f3cf5cf0c3ab8ee2a703d445a74f13,
+probe v2: dump de KV/espelho/ids no mesmo `chat-dump.flag`, buffer dimensionado
+por `llama_state_seq_get_size` — `get_data(nullptr,0)` NÃO usado). Sem
+push/merge; modelo/n_batch=256/n_ubatch=64/baselines preservados; sem epsilon.
+
+## 1. Correções às alegações causais (T8/T9 eram insuficientes)
+
+- T8 (corrigido): comparou slots de 187 vs 140 tokens com fronteiras de
+  turno DIFERENTES — correlaciona geometria, NÃO isola ordem de acumulação
+  f32. A frase "mecanismo comprovado" está retirada.
+- T9 (corrigido): kv_before=0/reuse=0 nos dois braços — prova somente que
+  re-prefill integral (mesma geometria) dá logits byte-idênticos através
+  do restore. Não isola reuso.
+
+## 2. T10 — controle com a MESMA trajetória e comparação no MESMO ponto
+
+P (produtor): T1→T2→T3, slot S (187 tok). C: processo fresco REPLICANDO
+T1→T2→T3 (mesmos prompts/segmentação) + a MESMA cauda P4. R: processo
+novo, preload, restore S + a MESMA cauda P4. F: processo fresco, UM turno
+com o prompt integral (P3+r3+P4). Comparação no ponto pós-prefill/
+PRÉ-DECODE da cauda (dump do probe), byte a byte:
+
+| artefo (mesmo ponto) | C vs R | F vs C | F vs R |
+| -------------------- | ------ | ------ | ------ |
+| logits por passo | **BYTE-IGUAL** `69bcc029…` | diferem | diferem |
+| token ids amostrados | byte-igual | byte-igual | byte-igual |
+| KV do target (bytes) | **BYTE-IGUAL** `73cab0ee…` | diferem `f13b24ec…` | diferem |
+| pending row + posições + ids | **BYTE-IGUAL** `5b21e71c…` | diferem | diferem |
+| KV do espelho MTP (bytes) | **diferem** `e1095b2d…`/`bf9e3152…` | diferem | diferem |
+
+Tempos (cauda): restore 8,4ms; prefill 476/469ms (43 tok, C/R) vs
+2521,8ms (230 tok, F); drafted/accept 20/18 (C), 19/18 (R), 20/18 (F).
+
+Leitura (efeitos separados, sem epsilon):
+1. **Serialização/restore: efeito ZERO** — C==R em KV, pending, posições,
+   ids, logits e tokens. O restauro é byte-transparente para o caminho do
+   target, e o estado ao vivo de uma réplica da trajetória (C) é
+   byte-idêntico ao do blob (P): determinismo entre processos + roundtrip
+   fiel, agora no MESMO ponto de comparação.
+2. **Pending row (verdadeira vs zero-decoy): efeito ZERO no target** —
+   C (carry verdadeiro) e R (prime zero) têm logits do target
+   byte-idênticos. O decoy afeta apenas o espelho.
+3. **Espelho MTP: difere (C vs R)** — o documento M3-state-map
+   (espelho parcial: C tem [0,230); R tem o buraco [0,187) + cauda).
+   Diferença de estado INTERNO do drafter, fora do caminho do target — e,
+   como C e R têm logits/idênticos com espelhos diferentes, o espelho
+   provadamente não alimenta as decisões do target neste cenário.
+4. **Segmentação: é a única fonte da divergência F vs R** — F vs C isola
+   o efeito (mesmo conteúdo, mesma trajetória de tokens, geometria de
+   prefill diferente: 230 em 4 ubatches vs montagem multi-turno + cauda
+   de 43). A interpretação ordem-de-acumulação-f32 permanece
+   interpretação do efeito de segmentação, sustentada por: mesmos tokens
+   → bytes de KV diferentes (F vs C) e bytes idênticos quando a geometria
+   coincide (T9, T6b, T10 C vs R).
+
+## 3. ON/OFF real (defeito do harness corrigido)
+
+Defeito encontrado: `KNOB` no slot-battery.sh só rotulava diretórios —
+ambos os braços rodavam FFN ON (default desde 2026-10-09). Correção: o
+KNOB agora carrega `d3d12swiglu.txt` ("1"/"0"), reinicia o app (o modo é
+vinculado no startup) e VERIFICA a linha de modo do próprio device.
+
+| braço | modo efetivo (verificado) | bind | dispatches | bateria |
+| ----- | ------------------------- | ---- | ---------- | ------- |
+| ON  | `FFN SWIGLU D3D12=all` (linha 649098+) | 3 | — (flush só em unload limpo) | failures=0 |
+| OFF | `FFN SWIGLU D3D12=off` (linha 650256+) | 0 | **ffn_disp=0** (api-recall, knob OFF) | failures=0 |
+
+Configuração efetiva registrada em ambos:
+`model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256
+n_ubatch=64 gpu=34 kv_q8=0`. Com knob OFF: recall exato (RECALL-5),
+gdn=120, MTP ativo (drafted>0). `BIND_FAIL` do api-recall é o
+pressuposto ON do script, não falha de produto.
+
+## Situação de G-L (sem relaxar)
+
+- G-T (tokens): byte-igual em todos os cenários.
+- G-L (logits): byte-igual quando a geometria de prefill das linhas
+  compartilhadas coincide (fresh/fresh, restore/restore mesmo slot,
+  re-prefill integral, reuso single-ubatch, e — novo — mesma trajetória
+  C vs R). No reuso multi-ubatch, os bytes diferem e a única fonte,
+  isolada por controle, é a SEGMENTAÇÃO do prefill (T10 F vs C); o
+  restore em si tem efeito zero (T10 C vs R). Atribuição por isolamento
+  controlado — a explicação f32/nível de kernel segue interpretação.
+- Gate não relaxado; limite registrado.

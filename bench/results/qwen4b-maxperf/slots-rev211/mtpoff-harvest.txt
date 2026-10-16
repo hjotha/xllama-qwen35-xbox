@@ -1,0 +1,15 @@
+MTP-off harvest probe (rev215 iteration, llama.ini mtp=0 temporarily, restored after)
+Proves the template fix delivers end-to-end prefill reuse; isolates the
+remaining MTP-on blocker to the F3.5 mirror-carry (pending stale at turn
+boundaries — no target rows for mirror rebuild without target prefill).
+- ini mtp=0 -> MTP explicitly OFF; bind on (mtp_capable=0)
+- seed (39tok) full prefill 450.2ms -> 'ack'; save nomtp 40tok/51.5MB
+- restore 40tok in 5.0ms
+- continue (60tok): reuse-diag common=40 resident=40 (full match incl.
+  replayed suffix+ack) -> "KV prefix reuse — kept 40 of 60 tokens" ->
+  turn kv_before=40 pf=20 -> generate n=5 prefill=209.9ms (20 TAIL tokens
+  only, vs ~640ms for full 60) -> reply 'NOMTP-1' exact.
+- Same path with MTP-on: kept 40 of 60 established, then F3.5 clears the
+  target (mirror cannot carry: pending stale) -> full prefill. Same work
+  as before the template fix; MTP stays active throughout.
+- llama.ini restored to mtp=2 afterwards (verified), app restarted+serving.

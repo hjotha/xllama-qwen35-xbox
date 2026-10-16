@@ -1,0 +1,26 @@
+{
+  "removed": [
+    "Rejected experimental uniform-tiled policy2",
+    "Rejected F32 PV accumulator policy3",
+    "Experimental tiled GEMM tile_rows changes"
+  ],
+  "retained": [
+    "Native policy0",
+    "Legacy scalar control1",
+    "Accepted-Iteration254 QK policy4 with original F16 PV/softmax",
+    "Query-policy fingerprint and exact refusal tests"
+  ],
+  "host_sources": {
+    "patches/0008-flash-attn-query-consistency.patch": "24119cf4c01bf3c22a1d044c980e962db39442109f5a92da3b71eb436e98b59a",
+    "src/bridge/session.cpp": "f2cc1f3f4573d71f8779dd44ccaa80e08460cd1572fae78c69dd3142726b3fce",
+    "uwp/inference-bridge.cpp": "d0db25697eccf1fa691ba520bc4b68a36f9e58e63c2b08493528d58baa98345b",
+    "llama.cpp/ggml/src/ggml-cpu/ops.cpp": "1fe61934c5343c69b5f5815d37025bd087166be69bde669e793d2049c7f2bc1b"
+  },
+  "controls": [
+    "Supported widths1/2/4/40/64 exact same hash as254",
+    "Unsupported F32 and Q8_0 types policy4 equal native",
+    "Empty environment equal native",
+    "Fullhostctest and identity55asserts passed"
+  ],
+  "unaccepted_until": "Final255 actual device gates complete"
+}

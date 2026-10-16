@@ -1,0 +1,8 @@
+Internal ctest changing into directory: /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/build/linux-test
+Test project /home/hjotha/worktrees/xllama-qwen35-4b-maxperf/build/linux-test
+    Start 1: xllama-tests
+1/1 Test #1: xllama-tests .....................   Passed   60.54 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =  60.54 sec

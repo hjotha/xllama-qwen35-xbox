@@ -1,0 +1,5 @@
+PASS magic
+PASS version
+PASS hash
+PASS truncated
+PASS absent

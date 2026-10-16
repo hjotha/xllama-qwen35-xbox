@@ -1,0 +1,14 @@
+start_stage=vround utc=2026-10-10T00:09:00Z
+STAGE numeric SKIP (before start_stage=vround)
+STAGE block-b1 SKIP (before start_stage=vround)
+STAGE block-b2 SKIP (before start_stage=vround)
+STAGE termgate SKIP (before start_stage=vround)
+STAGE vround start=2026-10-10T00:09:00Z
+STAGE vround OK end=2026-10-10T00:12:35Z
+STAGE api start=2026-10-10T00:12:35Z
+STAGE api FAIL rc=28 end=2026-10-10T00:14:50Z
+STAGE termgate RE-RUN OK (arm-column fix; behavior parity arm-excluded 6/6)
+STAGE vround OK (see status)
+STAGE api OK-manual (recall PASS, bind on, FFN 193/GDN 120 via swap-flush; app wedge post-vround recovered by restart; chat-arg + messages-array bugs fixed in script)
+STAGE slotsmoke OK-manual (restore-continue==fresh, refusal ok, store empty)
+ALL_CLOSING_DONE 2026-10-10T00:31:09Z

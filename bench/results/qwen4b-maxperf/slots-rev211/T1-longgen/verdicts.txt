@@ -1,0 +1,16 @@
+PASS: restart verified (full64-fresh)
+PASS: restart verified (full64-newproc)
+== arm full64 (flag=full)
+T1: rebuild mode=full n=42 harvest=418.8ms process=20.3ms OK pending=1 pos=41 carry_from_n=1
+turn full=1 kv_before=42 pf=42 prompt=84
+prefill=465.5ms (42 tok) reuse=0
+drafted=34 (mtp=34 lookup=0) spec_accept=29
+gen_chars=318 prompt_tok=42 completion_tok=64
+PASS: restart verified (carryonly64-fresh)
+PASS: restart verified (carryonly64-newproc)
+== arm carryonly64 (flag=carryonly)
+T1: rebuild mode=carryonly n=42 harvest=440.1ms process=0.0ms OK pending=1 pos=41 carry_from_n=1
+turn full=1 kv_before=42 pf=42 prompt=84
+prefill=448.2ms (42 tok) reuse=0
+drafted=32 (mtp=32 lookup=0) spec_accept=28
+gen_chars=318 prompt_tok=42 completion_tok=64

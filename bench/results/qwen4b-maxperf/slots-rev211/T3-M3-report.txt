@@ -1,0 +1,60 @@
+# M3 zero-carry report — harvest-free v2 rebuild (rev234 Iteration)
+
+Scope: tested cases only, all in the SAME build mode (rev234 Iteration;
+Iteration TPS never compared with Final). Equal text + aggregate counters
+do NOT prove full state equivalence (same bounds as T1-report). No
+general-validity claim. Method family: zero-carry + tail catch-up, MTP ON
+throughout (drafting engages the same turn — this is NOT classic-mode B).
+
+## Arms (new process per arm, verified restarts)
+
+| arm | restore | turn | prefill | drafted | accept | text |
+| --- | ------- | ---- | ------- | ------- | ------ | ---- |
+| control | 7.9ms class | (1,0,62,62) | ~677 (62) | 4 | 3 | BRAVO-7 |
+| full (harvest 437.5 + process 20.5) | 495.9ms | (1,42,42,84) | 450.2 (42) | 34 | 29 (85%) | refusal-64 |
+| zerocarry (harvest 0.0 + process 0.0) | 8.1ms | (1,42,20,62) | 235.4 (20) | 2 | 2 | = control |
+| zerocarry64 | 8.1ms | (1,42,42,84) | 454.8 (42) | 32 | 28 (88%) | = full64 |
+| DIV-ZERO (divergent 78tok) | 8.1ms class | (1,42,36,78) | 391.2 (36) | 7 | 5 (71%) | = T2a DIV arms |
+| LONG-ZERO (n=151) | ~8ms | (1,151,22,173) | 300.1 (22) | 21 | 17 (81%) | = T2a LONG-FULL |
+
+T1 device lines: `rebuild mode=zerocarry n=.. harvest=0.0ms process=0.0ms
+OK pending=1 pos=.. carry_from_n=1`. WS flat 3856–3858MB all arms
+(no measurable memory delta; zero buffer 10KB transient).
+
+## Findings (bounded to tested prompts)
+
+1. Harvest-free rebuild WORKS: zero carry + tail catch-up replays enough
+   mirror for drafting to engage the same turn (drafted>0 every arm).
+2. Acceptance ≈ full-harvest method: 88% vs 85% (64tok), 81% vs 81%
+   (151tok), rounds/decodes/discarded nearly identical (20/88/23 vs
+   21/89/21). Carry row AND draft history both dispensable HERE.
+3. Efficiency (the item-2 question): LONG-ZERO total ≈ 308ms vs
+   LONG-FULL ≈ 1885ms vs LONG-FRESH 1866.6ms — ~6x faster than fresh
+   WITH drafting active, in v2, no format change. Per-size totals:
+   short ≈ 244ms vs 685ms control; divergent 391ms tail-only vs full-78.
+4. Cross-build determinism: LONG-ZERO text (rev234) byte-identical to
+   LONG-FULL text (rev233); T1-longgen text identical across rev233 builds.
+5. Divergent tails survive zero-carry: (1,42,36,78) partial reuse, 5/7
+   accepts — slightly below same-prefix rates; needs broader validation.
+
+## What this changes (and does not)
+
+- The harvest cost floor applied to the HARVEST FAMILY only. M3 shows a
+  harvest-free v2 path with ~zero rebuild cost on tested prompts.
+- v3 necessity REVISED: v3 (mirror blob) is no longer the only way — it
+  is now the FALLBACK if M3 fails to generalize. M3-first.
+- NOT proven: general validity (prompt families, longer generations,
+  deep-prefix discrimination, code prompts); productization needs the
+  flag removed + a principled load path + acceptance-watch fallback +
+  full Final gates. M3 productization is PRESENTED as the minimal
+  alternative — NOT implemented, awaits authorization like v3.
+- Evidence: slots-rev211/T3-M3 + T3b-M3x (JSONs + slice.log per arm).
+
+## rev235 baseline (separate; see receipt-rev235.txt)
+
+Sources verified identical to rev232 (sha recorded pre-build); Final
+LTCG rev235 installed by upgrade (no uninstall, LocalState preserved).
+Targeted revalidation: vround canon PASS (93/87 identical), slotsmoke
+PASS, api-recall PASS (RECALL-5, bind 1, 184/120). Heavy rev232 evidence
+carries via source-identity + these binding gates (rationale recorded,
+not hidden).

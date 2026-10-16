@@ -1,0 +1,4 @@
+[ 37%] Built target ggml-base
+[ 37%] Building CXX object llama.cpp/ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/ops.cpp.o
+[ 37%] Linking CXX shared library ../../../bin/libggml-cpu.so
+[100%] Built target ggml-cpu

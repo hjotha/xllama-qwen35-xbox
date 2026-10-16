@@ -1,0 +1,24 @@
+PASS: restart verified (mcontrol-build)
+PASS: restart verified (mcontrol-newproc)
+== mcontrol MULTI-TURN (post-restore t1..t3 same process)
+KV state loaded — 42 tokens
+T1_LINE_ABSENT
+  t1: kv_before=0 pf=62/62 prefill=672.3ms(62tok) drafted=4 accept=3
+  t2: kv_before=66 pf=22/88 prefill=269.8ms(22tok) drafted=4 accept=2
+  t3: kv_before=94 pf=27/121 prefill=309.1ms(27tok) drafted=2 accept=1
+  t1 response: 'BRAVO-7'
+  t2 response: '7-O-R-A-V-B'
+  t3 response: '7'
+WS mcontrol-post: 3857 MB (raw=4045254656)
+PASS: restart verified (mzero-build)
+PASS: restart verified (mzero-newproc)
+== mzero MULTI-TURN (post-restore t1..t3 same process)
+KV state loaded — 42 tokens
+T1: rebuild mode=zerocarry n=42 harvest=0.0ms process=0.0ms OK
+  t1: kv_before=42 pf=20/62 prefill=259.0ms(20tok) drafted=2 accept=2
+  t2: kv_before=66 pf=22/88 prefill=255.5ms(22tok) drafted=4 accept=2
+  t3: kv_before=94 pf=27/121 prefill=311.8ms(27tok) drafted=2 accept=1
+  t1 response: 'BRAVO-7'
+  t2 response: '7-O-R-A-V-B'
+  t3 response: '7'
+WS mzero-post: 3855 MB (raw=4042559488)

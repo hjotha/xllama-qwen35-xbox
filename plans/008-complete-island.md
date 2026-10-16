@@ -302,6 +302,7 @@ The DELIVERED section above says "API multi-turn/session-reuse ... 3 turns,
 t2 exact recall, single bind". Precise classification after the final audit
 of `enabled-rev209/api/session-segment.log` (full map in
 `enabled-rev209/api/CORRECTION-multiturn-v1.md`):
+
 - The first API run had a session teardown + re-creation BETWEEN T1 and T2
   (backend_free L268-274, session config L277; T2 full prefill kv_before=0),
   caused by background catalogue-default (lfm25-350m) preload interference
@@ -320,3 +321,44 @@ of `enabled-rev209/api/session-segment.log` (full map in
   (common-prefix rewind degrades), never reclassified as KV reuse.
 - Preserved by identity (not re-run): 96 rev209 measurements, 24/24 decode
   comparisons, 50/50 numerics, VROUND 93/87.
+
+- Slots/KV em plans/009 (fora do escopo island, 2026-10-10): rev232 Final
+  validada; restore-em-processo-novo com MTP = full prefill (pendência
+  central). T1 (rev233 Iteration, hook revertido) provou rebuild v2
+  funcional a custo >= prefill integral — v3 (blob do espelho) segue como
+  única via íntegra, NÃO implementada, aguarda autorização. Objetivo 009
+  NÃO declarado completo.
+
+- Slots/KV em plans/009 (2ª atualização, 2026-10-10): T2 expandido verde;
+  M3 zero-carry medido e eficiente nos prompts testados (rev234
+  Iteration); baseline rev235 Final instalada (fontes232, revalidação
+  vround/slotsmoke/api-recall PASS). Proposta mínima M3 apresentada, NÃO
+  implementada; v3 fallback. Objetivo 009 NÃO completo.
+
+- Slots/KV em plans/009 (3ª atualização, 2026-10-10): M3 selado no
+  rev238 Final (prime zero-carry fail-closed); restore em processo novo
+  reutiliza com MTP ligado (bateria ON/OFF 0 falhas, T4 multi-turn).
+  Sem v3/push/merge; limites em plans/009.
+
+- Slots/KV em plans/009 (fechamento 2026-10-10): lacunas documentadas
+  fechadas por medida no rev238 (T5, termgate, numerics); harness bugs
+  isolados do produto; estado MTP persistido continua sendo proposta v3
+  (não autorizada). Sem push/merge/formatos alterados.
+
+## 2026-10-13 validation status
+
+The current slot/reuse workstream and its exact evidence are recorded in
+[Plan 009](009-kv-slot-persist.md#current-validation-status--2026-10-13).
+Final251 exposed a real 94-versus-93 chat scheduling regression. Iteration254
+resolved the isolated QK precision issue while preserving the exact 93/87
+canonical schedules and all eight token files; strict cold/control/restored
+comparison also passes for all five artifacts, without epsilon. Rejected
+252/253 experiments and Final251 evidence remain preserved.
+
+The minimized Final255/LTCG package is signed, installed and running its
+own device campaign; no final acceptance is claimed yet. An auxiliary
+native-state parser still fixes the older run's 230 positions, whereas the
+254 API and dumps have 229. Automatic review blocked adapting that parser;
+it remains unchanged pending specific authorization. The independent
+byte-equality and historical VROUND acceptance gates remain unchanged.
+The rev209 main baseline and prior measurements remain preserved.

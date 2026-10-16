@@ -1,0 +1,42 @@
+flag armed
+PASS: restart verified (P)
+P done
+PASS: restart verified (C)
+S3: state dumped — kv_bytes=60233920 mirror_bytes=947652 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+rounds=11 decodes=39 discarded=5 catchup_tok=32
+0
+S3: state dumped — kv_bytes=62365400 mirror_bytes=1215452 mirror_pos=294 pending=1 kv_tokens=295
+turn full=1 kv_before=262 pf=33 prompt=295
+drafted=27 (mtp=27 lookup=0) spec_accept=23
+rounds=16 decodes=63 discarded=13 catchup_tok=46
+0
+S3: state dumped — kv_bytes=64759216 mirror_bytes=1516212 mirror_pos=367 pending=1 kv_tokens=368
+turn full=1 kv_before=343 pf=25 prompt=368
+drafted=11 (mtp=11 lookup=0) spec_accept=9
+rounds=6 decodes=24 discarded=4 catchup_tok=18
+0
+PASS: restart verified (R)
+S3: state dumped — kv_bytes=60233920 mirror_bytes=177212 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+rounds=12 decodes=40 discarded=7 catchup_tok=32
+0
+S3: state dumped — kv_bytes=62365400 mirror_bytes=445012 mirror_pos=294 pending=1 kv_tokens=295
+turn full=1 kv_before=262 pf=33 prompt=295
+drafted=25 (mtp=25 lookup=0) spec_accept=21
+rounds=16 decodes=68 discarded=17 catchup_tok=47
+0
+S3: state dumped — kv_bytes=64759216 mirror_bytes=745772 mirror_pos=367 pending=1 kv_tokens=368
+turn full=1 kv_before=343 pf=25 prompt=368
+drafted=13 (mtp=13 lookup=0) spec_accept=10
+rounds=7 decodes=25 discarded=3 catchup_tok=18
+0
+PASS: restart verified (H)
+S3: state dumped — kv_bytes=60233920 mirror_bytes=177212 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+rounds=12 decodes=40 discarded=7 catchup_tok=32
+0
+== compare

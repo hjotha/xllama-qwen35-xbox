@@ -1,0 +1,114 @@
+# Receipt — pacote de evidências rev241 (gates pendentes + G-L fechado)
+
+Artefato: rev241 Iteration, identidade validada ANTES do uso
+(sha256 CA52C9A39DF2673E81DDB577CE26CB6F473B06C45D9937192797A4E6E7FB17D6,
+22.044.218 B, Version=1.6.0.241, origem .193 `build/xllama-q5k/`),
+instalado por upgrade; NENHUM build/download repetido. PFN:
+GianlucaMazza.xllama_1.6.0.241_x64__pj67f1fcj4n14. Modelo, 256/64, formato
+v2, gates, baselines e limiares preservados; sem epsilon novo; sem
+push/merge/promoção. probe get_data(nullptr,0) NÃO repetido (inválido no
+fork); dumps de estado via slots (zero build).
+
+## A. Gates pendentes com evidência própria NA rev241
+
+| gate | suite | resultado | evidência |
+| ---- | ----- | --------- | --------- |
+| isolamento A/B + concorrência 4/4 + corrupt (missing/invalid/truncated/wrong-version) + sessão íntegra + **cancel** (kill mid-generation + recovery + save pós-kill) | T2b-rev241 | **18/18 PASS** | slots-rev211/T2b-rev241/verdicts.txt |
+| atomicidade (tmp+rename; stale .tmp não envenena; save falho não deixa parcial) + stop/EOS + rollback (#7) + divergente + 15 turnos + identidade/chain/prefixo | bateria ON | **24/0** | slots-rev211/slots-on/ |
+| controle OFF-equivalente | bateria OFF | **24/0** | slots-rev211/slots-off/ |
+
+Tempos separados (T7, mesmo prompt/modo): restore 8,3–8,4ms
+(`KV state loaded — 187 tokens, 56,1 MB`); prefill 480,4ms/43tok (reuse)
+vs 2358,0ms/230tok (fresh) — 4,9x; decode: drafted/accept 19/18 vs 20/18;
+T9: prefill 3539,9ms (fresh) vs 3285,7ms (restore+full re-prefill).
+Memória: WS 3854–3858MB plano em todos os braços; estabilidade: app
+serviu durante toda a bateria (24+24 gates, ~40 restarts verificados),
+sem wedge; quiesce quiet pré/pós.
+
+## B. G-L — hipótese testada, causa COMPROVADA (T8 + T9)
+
+Hipótese: a divergência byte de logits fresh/restore vem da ORDEM DE
+ACUMULAÇÃO f32 do prefill (geometria de batch), não de perda de estado.
+
+- T8 (comparação controlada, mesmo conteúdo de tokens): S1 = histórico
+  montado em 3 turnos (prefills de 40/20/80 tok); S2/S3 = o MESMO prompt
+  de 187→140 tokens em UM prefill. S2==S3 **byte-idêntico** (caminho
+  determinístico). S1 vs S2: **98,5% da região das células K difere**,
+  primeira diferença no offset 12 — a célula K da LINHA 0. Mesmo token,
+  mesma posição, mesmos pesos: só a largura do batch diferiu ⇒ os bytes
+  do KV diferem. **Mecanismo comprovado, não hipótese.**
+- T7b: roundtrip restore→save **byte-idêntico** (58.824.767 B, 0 diffs) —
+  o restauro é fiel ao blob; não há perda de estado.
+- T7: F1==F2 e R1==R2 (mesmo slot × 2) — nenhum não-determinismo de
+  execução; F1≠R1 deterministicamente, 1ª divergência no PASSO 0.
+- T9 (o que seria necessário): prompt de 327 tokens (6 ubatches), fresh
+  vs restore-de-slot-inrelacionado + **re-prefill integral** nos dois
+  braços ⇒ logits **BYTE-IDÊNTICOS** (`edef9e5c…`) e tokens idênticos.
+
+Conclusão G-L: a igualdade byte dos logits entre fresh e restore
+**vale** quando os dois braços computam as linhas compartilhadas com a
+MESMA geometria de prefill (fresh/fresh; restore/restore mesmo slot;
+re-prefill integral pós-restore mesmo multi-ubatch — T9; reuso
+single-ubatch — T6b). **Não vale** no reuso multi-ubatch (T7) porque os
+próprios bytes do KV diferem por ordem de acumulação (T8, comprovado) —
+limite estrutural do reuso, não do restore, e inatingível sem re-prefill
+(que custa o prefill inteiro, medido). Tokens e texto byte-iguais em
+todas as geometrias; argmax idêntico em todos os passos.
+
+## Situação do gate
+
+- G-T (tokens): byte-igual em todos os cenários — FECHADO.
+- G-L (logits): byte-igual em todas as geometrias EXCETO reuso
+  multi-ubatch, onde a causa é comprovada (acumulação f32 por largura de
+  batch) e a alternativa (re-prefill) é medida e funciona. Gate
+  documentado sem relaxamento; a decisão de produto (reuso rápido com
+  identidade de decisão vs re-prefill com identidade de bytes) permanece
+  explícita.
+
+## Estado do dispositivo / preservação
+
+rev241 servindo, slots vazios, flag ausente (default OFF). rev238 Final
+intacto (25ed611a…); rev209/rollback210 e baselines 188/192 preservados;
+Iteration usada só na investigação. Sem push/merge.
+
+## ERRATA 2026-10-11 (apenso ao receipt histórico rev241; corpo original preservado como evidência bruta)
+
+E1. **ON/OFF da bateria neste receipt NÃO era ON/OFF de FFN.** O `KNOB`
+do slot-battery.sh apenas rotulava o diretório de saída
+(`D="$BASE/slots-$KNOB"`) e as linhas de log; nenhum arquivo
+`d3d12swiglu.txt` era carregado. Como o default do FFN SWIGLU é ON desde
+2026-10-09, **ambos** os braços deste receipt rodaram com FFN ON — os
+"24/0 ON, 24/0 OFF" são duas rodadas repetidas da MESMA configuração,
+não um controle ON/OFF. Evidência bruta preservada acima; a afirmação
+incorreta foi retirada do plano 009.
+Correção executada na rev242: o KNOB agora carrega `d3d12swiglu.txt`
+("1"/"0"), reinicia o app (o modo é vinculado no startup e a linha de
+modo é lida do próprio device): ON = `FFN SWIGLU D3D12=all`, bind=3,
+bateria failures=0; OFF = `FFN SWIGLU D3D12=off`, bind=0, **ffn_disp=0**
+(api-recall), bateria failures=0; config efetiva
+qwen35-4b-mtp/mtp=1/n_batch=256/n_ubatch=64/gpu=34 registrada nos dois.
+Evidência: slots-rev211/slots-on|slots-off (rev242) e
+acceptance-rev242/api/receipt.txt.
+
+E2. **Falso `FFN_MODE_LINE_NOT_FOUND` nos resumos da bateria.** Causa
+raiz reproduzida de forma controlada: `grep -m1` encerra no primeiro
+match e fecha o pipe; `tail` recebe SIGPIPE (141) e, sob
+`set -o pipefail`, o pipeline falha mesmo COM o match impresso — o
+`|| echo "FFN_MODE_LINE_NOT_FOUND"` disparando ao lado da linha
+encontrada. Reprodução mínima:
+`set -euo pipefail; seq 1 200000 | grep -m1 -oE '^42$' || echo NOTFOUND_FALSE`
+imprime `42` E `NOTFOUND_FALSE`; a forma corrigida
+`OUT=$(... | grep -m1 ... || true)` captura `42` sem eco falso. Isso
+também explica falhas anteriores de harness (T4b/T5) com a mesma classe.
+Correção aplicada ao bloco final do slot-battery.sh (captura em $() com
+`|| true` interno).
+
+E3. **AssertionError anterior — identificado sem especulação.** Veio dos
+patches em python planos/009: `assert s.count(old) == 1` sobre âncoras de
+texto que haviam driftado (ocorrências: a tabela de tuplas da bateria com
+indentação diferente na 2ª cópia; e o parágrafo T8 do plano, cujo texto
+real diferia do âncorado). Evidência: a saída do comando
+(`AssertionError ... <stdin>, line 20`) e a leitura posterior do arquivo
+com o texto real, que permitiu o patch correto — ambos registrados no
+git (commits `3c6ccbb` e `ffcbce2`). Nenhum teste ou gate foi afetado:
+eram patches de documentação.

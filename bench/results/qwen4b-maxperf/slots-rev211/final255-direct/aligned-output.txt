@@ -1,0 +1,17 @@
+flag armed
+PASS: restart verified (build)
+slot: 115 tokens 56947697 bytes
+PASS: restart verified (R)
+R: restore_api_ms=70 turn full=1 kv_before=115 pf=27 prompt=142 prefill=328.8ms (27 tok) drafted=16 (mtp=16 lookup=0) spec_accept=14 MTP_STATS rounds=9 decodes=28 discarded=2
+PASS: restart verified (C)
+C: turn full=1 kv_before=115 pf=27 prompt=142 prefill=323.4ms (27 tok) drafted=16 (mtp=16 lookup=0) spec_accept=14 MTP_STATS rounds=9 decodes=28 discarded=2
+chat-dump.logits: C=319f2a7eaf7b3bada60a R=319f2a7eaf7b3bada60a BYTE_EQUAL=True
+chat-dump.tokens: C=ca5d2350f6dd891865e5 R=ca5d2350f6dd891865e5 BYTE_EQUAL=True
+chat-dump.kv: C=fb7bd0c9bcf8645e90ab R=fb7bd0c9bcf8645e90ab BYTE_EQUAL=True
+chat-dump.mirror: C=ee4584c7b84134c636f6 R=ee4584c7b84134c636f6 BYTE_EQUAL=True
+chat-dump.mtp: C=1af1151fde1ece97bf85 R=1af1151fde1ece97bf85 BYTE_EQUAL=True
+mirror C: cells=142 pos_min=0
+mirror R: cells=142 pos_min=0
+tail text equal: True
+PASS: five full files byte-identical and continuation text identical
+== rev255 Final/LTCG aligned-state gate done 

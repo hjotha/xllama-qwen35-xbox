@@ -1,0 +1,6 @@
+numeric_selftest_rev216 utc=2026-10-09T22:46:59Z mode=final sha=C09B6ECD
+csv=d3d12be-rev216.csv rows=50 result=50/50 ok D2a=PASS slow=0
+silu_avx2_fused=ok=1 ord=0 edge=0 nf=0 ulp=0 abs=0 (bit-exact)
+swiglu: see csv row (same gate)
+note=device selftest completed; local watcher timed out (as on rev209); results fetched immediately after; an older ok=0/ord=6 silu line elsewhere in the rotated-away history belongs to a pre-fix experimental build, not this run (this CSV: ok=1)
+note2=device log rotates: all slicing by content, never by offsets

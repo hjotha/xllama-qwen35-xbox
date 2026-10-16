@@ -1,0 +1,20 @@
+flag armed
+PASS: restart verified (short-build)
+[short] slot tokens=42
+PASS: restart verified (short-R)
+[short] R: restore_api=73ms turn full=1 kv_before=0 pf=67 prompt=67 prefill=692.8ms (67 tok) drafted=11 (mtp=11 lookup=0) spec_accept=9
+PASS: restart verified (short-C)
+[short] C: turn full=1 kv_before=0 pf=67 prompt=67 prefill=756.3ms (67 tok) drafted=11 (mtp=11 lookup=0) spec_accept=9
+PASS: restart verified (medium-build)
+[medium] slot tokens=115
+PASS: restart verified (medium-R)
+[medium] R: restore_api=83ms turn full=1 kv_before=0 pf=94 prompt=94 prefill=1024.8ms (94 tok) drafted=14 (mtp=14 lookup=0) spec_accept=14
+PASS: restart verified (medium-C)
+[medium] C: turn full=1 kv_before=0 pf=94 prompt=94 prefill=935.1ms (94 tok) drafted=14 (mtp=14 lookup=0) spec_accept=14
+PASS: restart verified (long-build)
+[long] slot tokens=187
+PASS: restart verified (long-R)
+[long] R: restore_api=76ms turn full=1 kv_before=187 pf=27 prompt=214 prefill=331.8ms (27 tok) drafted=13 (mtp=13 lookup=0) spec_accept=13
+PASS: restart verified (long-C)
+[long] C: turn full=1 kv_before=187 pf=27 prompt=214 prefill=334.2ms (27 tok) drafted=13 (mtp=13 lookup=0) spec_accept=13
+== compare

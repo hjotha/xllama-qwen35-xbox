@@ -1,0 +1,18 @@
+flag armed
+PASS: restart verified (slot-build)
+PASS: restart verified (freshA)
+== freshA
+no-restore
+no-reuse-line (kv_keep=0)
+turn full=1 kv_before=0 pf=327 prompt=327
+prefill=3539.9ms (327 tok) reuse=0
+drafted=23 (mtp=23 lookup=0) spec_accept=19
+CTOK 327 32
+PASS: restart verified (restoreB)
+== restoreB
+KV state loaded — 42 tokens
+no-reuse-line (kv_keep=0)
+turn full=1 kv_before=0 pf=327 prompt=327
+prefill=3285.7ms (327 tok) reuse=0
+drafted=23 (mtp=23 lookup=0) spec_accept=19
+CTOK 327 32

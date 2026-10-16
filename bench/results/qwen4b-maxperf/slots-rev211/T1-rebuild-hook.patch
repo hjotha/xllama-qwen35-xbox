@@ -1,0 +1,202 @@
+diff --git a/include/xllama/mtp_draft.h b/include/xllama/mtp_draft.h
+index 9701081..32b6f22 100644
+--- a/include/xllama/mtp_draft.h
++++ b/include/xllama/mtp_draft.h
+@@ -185,6 +185,13 @@ class MtpDrafter {
+     // snapshot survives (only process() success writes it).
+     bool commit_carry(llama_pos committed_end);
+ 
++    // TEST-ONLY T1b negative control (plan 009, Iteration builds): install a
++    // bare pending carry without any draft-KV history. can_carry_from() will
++    // report true while the draft context attends to empty history, proving
++    // (by measured ~0 acceptance) that the pending row alone does not carry.
++    // Reverted after the T1 measurement.
++    bool install_test_carry(const float* h, llama_pos pos, int n_embd);
++
+   private:
+     llama_context* m_ctx = nullptr;
+     llama_sampler* m_smpl = nullptr;
+diff --git a/src/bridge/mtp_draft.cpp b/src/bridge/mtp_draft.cpp
+index 5b31e55..690fb8e 100644
+--- a/src/bridge/mtp_draft.cpp
++++ b/src/bridge/mtp_draft.cpp
+@@ -504,6 +504,18 @@ bool MtpDrafter::commit_carry(llama_pos committed_end) {
+     return true;
+ }
+ 
++// TEST-ONLY T1b negative control (plan 009, Iteration builds). Reverted
++// after the T1 measurement.
++bool MtpDrafter::install_test_carry(const float* h, llama_pos pos, int n_embd) {
++    if (!m_ctx || !h || pos < 0 || n_embd != m_n_embd)
++        return false;
++    std::memcpy(m_pending_h.data(), h, static_cast<size_t>(n_embd) * sizeof(float));
++    m_pending_pos = pos;
++    m_pending_valid = true;
++    m_carry_valid = false; // a bare carry is not a committed prefix end
++    return true;
++}
++
+ bool MtpDrafter::process(const llama_token* tokens, const float* h_rows, const float* h_pending,
+                          int n, llama_pos pos0, bool profile) {
+     if (!m_ctx || !tokens || n <= 0)
+diff --git a/src/bridge/session.cpp b/src/bridge/session.cpp
+index bc81569..2456f17 100644
+--- a/src/bridge/session.cpp
++++ b/src/bridge/session.cpp
+@@ -1456,6 +1456,144 @@ class LlamaSession final : public Session {
+         return true;
+     }
+ 
++    // TEST-ONLY T1 (plan 009, Iteration builds): rebuild the draft mirror
++    // from `tokens` (just restored into the target) when the sibling flag
++    // file "mtp-rebuild-test.flag" exists in LocalState. Flag body selects
++    // the mode: "full" harvests target hidden rows with a harvest prefill
++    // and replays the whole prefix via process(); "carryonly" is the
++    // negative control (bare carry install, no draft history); "zerocarry"
++    // (M3) installs a zero carry with NO harvest at all — the harvest-free
++    // method: if drafting engages and accepts from zero-carry + tail
++    // history, even the carry row is dispensable. Fail-closed:
++    // any failure re-applies set_data + align_to(0) (exact status quo) and
++    // returns false; load_state still succeeds. No format change. Reverted
++    // after the T1 measurement.
++    bool rebuild_mirror_for_test(const std::vector<llama_token>& tokens,
++                                 const std::vector<uint8_t>& blob) {
++        FILE* ff = open_state_file(resolve_local_path("mtp-rebuild-test.flag"), "rb");
++        if (!ff)
++            return false; // no flag: status quo, silent
++        char mode_raw[32] = {};
++        size_t mr = std::fread(mode_raw, 1, sizeof(mode_raw) - 1, ff);
++        std::fclose(ff);
++        std::string mode(mode_raw, mr);
++        while (!mode.empty() && (mode.back() == '\n' || mode.back() == '\r' || mode.back() == ' '))
++            mode.pop_back();
++        const bool full = (mode == "full");
++        const bool carryonly = (mode == "carryonly");
++        const bool zerocarry = (mode == "zerocarry");
++        if (!full && !carryonly && !zerocarry) {
++            log_output("[xllama] T1: mtp-rebuild-test.flag has unknown mode; ignoring\n");
++            return false;
++        }
++        const size_t n = tokens.size();
++        const int n_embd = m_model ? llama_model_n_embd(m_model.get()) : 0;
++        if (n == 0 || n_embd <= 0 || !m_mtp_drafter || !m_mtp_drafter->ready()) {
++            log_output("[xllama] T1: rebuild preconditions unmet; status quo\n");
++            return false;
++        }
++        if (zerocarry) {
++            // M3 harvest-free path: disturb nothing (target stays exactly as
++            // restored); install a zero carry. Cost ~0 by construction.
++            std::vector<float> z(static_cast<size_t>(n_embd), 0.0f);
++            const bool ok = m_mtp_drafter->install_test_carry(
++                z.data(), static_cast<llama_pos>(n) - 1, n_embd);
++            char lb[256];
++            snprintf(lb, sizeof(lb),
++                     "[xllama] T1: rebuild mode=zerocarry n=%zu harvest=0.0ms process=0.0ms %s "
++                     "pending=%d pos=%d carry_from_n=%d\n",
++                     n, ok ? "OK" : "FAIL", m_mtp_drafter->pending_valid() ? 1 : 0,
++                     static_cast<int>(m_mtp_drafter->pending_pos()),
++                     m_mtp_drafter->can_carry_from(static_cast<llama_pos>(n)) ? 1 : 0);
++            log_output(lb);
++            return ok;
++        }
++        const int n_b = m_ctx ? static_cast<int>(llama_n_batch(m_ctx.get())) : 0;
++        if (n_b <= 0) {
++            log_output("[xllama] T1: rebuild preconditions unmet; status quo\n");
++            return false;
++        }
++        auto fail_closed = [&]() {
++            (void)llama_state_seq_set_data(m_ctx.get(), blob.data(), blob.size(), 0);
++            (void)m_mtp_drafter->align_to(0);
++            log_output("[xllama] T1: rebuild FAILED, restored status quo "
++                       "(target blob + empty mirror)\n");
++        };
++        llama_memory_t mem = llama_get_memory(m_ctx.get());
++        llama_memory_clear(mem, true);
++        std::vector<float> h_rows(n * static_cast<size_t>(n_embd), 0.0f);
++        const auto t_h0 = std::chrono::steady_clock::now();
++        bool hok = true;
++        for (size_t off = 0; off < n && hok; off += static_cast<size_t>(n_b)) {
++            const size_t chunk = std::min(static_cast<size_t>(n_b), n - off);
++            llama_batch batch = llama_batch_init(static_cast<int32_t>(chunk), 0, 1);
++            for (size_t i = 0; i < chunk; ++i) {
++                batch.token[i] = tokens[off + i];
++                batch.pos[i] = static_cast<llama_pos>(off + i);
++                batch.n_seq_id[i] = 1;
++                batch.seq_id[i][0] = 0;
++                batch.logits[i] = 0;
++            }
++            batch.n_tokens = static_cast<int32_t>(chunk);
++            if (llama_decode(m_ctx.get(), batch) != 0) {
++                hok = false;
++            } else {
++                for (size_t i = 0; i < chunk; ++i) {
++                    const float* hr =
++                        llama_get_embeddings_nextn_ith(m_ctx.get(), static_cast<int32_t>(i));
++                    if (!hr) {
++                        hok = false;
++                        break;
++                    }
++                    std::memcpy(h_rows.data() + (off + i) * static_cast<size_t>(n_embd), hr,
++                                static_cast<size_t>(n_embd) * sizeof(float));
++                }
++            }
++            llama_batch_free(batch);
++        }
++        const double harvest_ms =
++            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_h0)
++                .count();
++        if (!hok) {
++            fail_closed();
++            return false;
++        }
++        // Re-apply the blob over the harvest cache (same bytes; set_data is a
++        // restore, legal over occupied rows) so the target ends exactly as a
++        // plain restore leaves it.
++        if (llama_state_seq_set_data(m_ctx.get(), blob.data(), blob.size(), 0) == 0) {
++            fail_closed();
++            return false;
++        }
++        const auto t_p0 = std::chrono::steady_clock::now();
++        bool pok = false;
++        if (full) {
++            pok = m_mtp_drafter->process(tokens.data(), h_rows.data(), nullptr,
++                                         static_cast<int>(n), 0);
++        } else {
++            pok = m_mtp_drafter->install_test_carry(
++                h_rows.data() + (n - 1) * static_cast<size_t>(n_embd),
++                static_cast<llama_pos>(n) - 1, n_embd);
++        }
++        const double process_ms =
++            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_p0)
++                .count();
++        char lb[256];
++        snprintf(lb, sizeof(lb),
++                 "[xllama] T1: rebuild mode=%s n=%zu harvest=%.1fms process=%.1fms %s "
++                 "pending=%d pos=%d carry_from_n=%d\n",
++                 full ? "full" : "carryonly", n, harvest_ms, process_ms, pok ? "OK" : "FAIL",
++                 m_mtp_drafter->pending_valid() ? 1 : 0,
++                 static_cast<int>(m_mtp_drafter->pending_pos()),
++                 m_mtp_drafter->can_carry_from(static_cast<llama_pos>(n)) ? 1 : 0);
++        log_output(lb);
++        if (!pok) {
++            fail_closed();
++            return false;
++        }
++        return true;
++    }
++
+     bool load_state(const std::string& path, std::string* err) override {
+         if (!ensure_ctx(err))
+             return false;
+@@ -1581,6 +1719,11 @@ class LlamaSession final : public Session {
+                 *err = "MTP draft mirror refused the post-restore clear";
+             return false;
+         }
++        // TEST-ONLY T1 (plan 009, Iteration builds): flag-gated mirror
++        // rebuild from the restored tokens. No flag => zero behavior change.
++        // Fail-closed inside: any failure keeps the align_to(0) state above.
++        if (!same_prefix && m_mtp_drafter && m_mtp_drafter->ready())
++            rebuild_mirror_for_test(m_kv_tokens, blob);
+         const double load_ms =
+             std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_load0)
+                 .count();

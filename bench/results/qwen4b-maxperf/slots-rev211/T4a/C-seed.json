@@ -1,0 +1,1 @@
+{"id":"chatcmpl-xllama-1791649034-1","object":"chat.completion","created":1791649034,"model":"qwen35-4b-mtp","choices":[{"index":0,"message":{"role":"assistant","content":"Based on the technical overview you provided,"},"logprobs":null,"finish_reason":"length"}],"usage":{"prompt_tokens":276,"completion_tokens":8,"total_tokens":284}}

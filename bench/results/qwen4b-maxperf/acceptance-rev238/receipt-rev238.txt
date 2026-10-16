@@ -1,0 +1,103 @@
+# Receipt — candidato Final rev238 (M3 zero-carry selado, MTP-on)
+
+Artefato: GianlucaMazza.xllama_1.6.0.238, sha256 msix
+25ed611a54b36697884c0dcb174f7dc49191474670734dc6ce9a78b0f2cb9ad6
+(Final LTCG, 917s, SDK 26100 override; mesmo cert 89F82DB7…; assinatura
+automática do fluxo Final; AppxSignature.p7x presente).
+Fontes: rev232 + patch mínimo `slots-rev211/M3-zerocarry-sealed.patch`
+(49 linhas, 3 arquivos) — sha256 verificados no mirror antes do build:
+- src/bridge/session.cpp     4D968419EA60D98685EBE67E433DDA6D9D43706C9E09E6C71A77A949A1F84E01
+- src/bridge/mtp_draft.cpp   6115BF2D98A8C508CAD237DB386E11C9959E3F3CA78D8B4612BB1682A2C575FB
+- include/xllama/mtp_draft.h FC13B5A35924F7A638351EC26BA41D1C6113F3B58E247A4BE6970E7F13C9F8ED
+Mudança: após `align_to(0)` num restore de prefixo diferente (processo
+novo), `load_state` chama `MtpDrafter::prime_zero_carry(pos=tokens-1)` —
+fail-closed (prime falho => espelho limpo = full prefill, caminho
+pré-009). Invariantes explícitas no header (mtp_draft.h): decoy row =
+1 linha de input do espelho; drafts continuam ADVISORY (target
+verifica); MTP NUNCA é desligado. Instalado por upgrade 237→238
+(monotônica; LocalState/modelos preservados). PFN instalado:
+GianlucaMazza.xllama_1.6.0.238_x64__pj67f1fcj4n14.
+
+## Gates executados NA rev238 (candidato final)
+
+| gate | resultado | evidência |
+| ---- | --------- | --------- |
+| Bateria slots ON (15 turnos, tabela repina #5/#7/#9 como reuse MTP, chain+prefixo+cross, identidade) | failures=0 | slots-rev211/slots-on/ |
+| Bateria slots OFF | failures=0 | slots-rev211/slots-off/ |
+| Slotsmoke (restore-continue==fresh, refusal, list) | PASS exit=0 | acceptance-rev238/slotsmoke/ |
+| api-recall v3: RECALL-5, bind único on, contadores 184/120 | PASS | acceptance-rev238/api/receipt.txt |
+| VROUND canon: 93 linhas cf2b67cc… + 87 b11d233f…; 8/8 sidecars = baselines históricas; SW0=SW1 | PASS | acceptance-rev238/vround/ |
+
+## Mudança de comportamento e sua prova de protocolo
+
+Restores em processo novo com prefixo idêntico ao prompt agora reusam
+com MTP ligado — derivação (não relaxamento): slot s1 = 42 tokens
+(40 prompt + 2 gerados); turno #5 reconstrói o prompt com histórico
+incluído ⇒ prefixo comum 42 ⇒ pf = 62−42 = 20; invariante kv+pf==prompt
+verificada 15/15 pelo gate; classe idêntica ao cont-after-seed #2/#4
+(protocol-provado desde rev226). Turnos #8 (prefixo comum 40 < 42) e
+#13 (divergente) continuam full prefill — F3.5 recusa carry não-casado,
+como esperado. Tabela/bateria atualizadas ANTES do gate (medição rev237),
+não depois — a falha da tabela antiga foi a própria prova da mudança.
+
+## Reuso real entre requests (comprovação)
+
+kv_before>0 em todos os restores novos + pf=cauda + drafted>0/accept>0
+no mesmo turno + linhas "KV prefix reuse — kept N of M". Turnos após o
+primeiro convergem ao comportamento in-process (#6 adv 66/19, #12 64/21
+idênticos ao pré-M3).
+
+## Bounds conhecidos (não escondidos)
+
+- Evidência T4 limitada a 5 famílias de prompt + 1 divergente + multi-turn
+  3 turnos; gerações longas (256+) e discriminação deep-prefix de resposta
+  LONGA não medidas.
+- Custo de acceptance em algumas famílias (F mínimo: 50%) — MTP continua
+  ligado e positivo; texto sempre idêntico.
+- Iteration 236/237 medidas TPS nunca comparadas com Final.
+
+Baselines preservadas: 188/192/209/210/216/232/235 + 238. Modelo,
+formato v2 intacto, 256/64. Sem v3, push/merge, reboot/reset, novas
+permissões. Objetivo 009: pendência central resolvida NESTE artefato
+com bounds nomeados; plano ainda não declarado completo.
+
+## Fechamento 2026-10-10 ~19:3x–21:5x UTC (sem build novo; artefato selado)
+
+Medidas adicionais no próprio rev238 (nada de Iteration — nada a depurar):
+
+| pendente documentado | medida | resultado |
+| -------------------- | ------ | --------- |
+| Lacuna 1: geração longa + deep-prefix com resposta longa (T5) | fresh vs restore, 188 tok gerados, história ~187 tok, resposta referencia o cipher do início | restore PRIMED (pos=186), (1,187,56,243), prefill 635ms vs 2618ms fresh, drafted=100/accept=78 (78%) vs 99/84 (85%), WS 3854–3855MB, **texto idêntico (sha b66495492af4)** |
+| Lacuna 4: binding direto no artefato (termgate) | full-field vs legado | failures=0 (termgate-rev238/) |
+| Lacuna 4: numerics | D2a + shapecost | 50/50 D2a=PASS, colunas de correção bit-idênticas à rev227; 282/282 shapes ok (fetch pós-timeout do watcher — padrão documentado) |
+
+Harness vs defeito do produto (diferenciação exigida):
+TODAS as falhas de T4b-multiturn/T4c-1ª/T5-foram do HARNESS, nunca do
+produto: (1) `grep \| head` sem match sob `set -o pipefail` → SIGPIPE
+(141) mata o script (T4b/T5); (2) `local x=... $x` auto-referência sob
+`set -u` (T1/T5); (3) outfile não passado ao python (T5). Cada uma
+diagnosticada e corrigida; o produto re-executado depois green:
+T4c (2/2 braços, 3 turnos cada, textos iguais), T5 (2/2 braços).
+Conclusões de gate NUNCA tiradas só de texto igual — sempre com
+kv_before/pf, drafted/acceptance, rounds, WS e linhas de log.
+
+Revisão do contrato decoy (lacuna 3) — conclusão:
+mantido. Base: 12 cenários restore→continue (5 famílias + divergente +
+multi-turn 3 turnos + deep 187tok + long 188tok) com aceitação 50–100%
+e ZERO divergência de texto; falha estrutural degrada para decode
+clássico (target verifica); F3.5 recusa carry não-casado (#8/#13).
+Nenhum threshold inventado (nada relaxado).
+
+Estado KV/GDN/MTP em disco (pendente "completo"):
+- KV do target: COMPLETO no blob (incl. células recorrentes/GDN — sem
+  estado separado; counters GDN ativos pós-restore: api-recall gdn=120,
+  turnos restaurados decodificam com dispatch GDN).
+- MTP: RECONSTRUÍDO, não persistido (formato v2 inalterado, como
+  exigido). Rebuild completo (harvest) medido em 1884+104ms p/ n=187 —
+  pior que o fresh (1866ms), por isso não selado; via selada = prime
+  (zero decoy, ~8–14ms) + catch-up da cauda. Persistência completa do
+  espelho = proposta v3 (documentada, NÃO autorizada, não implementada).
+
+Transportado sem rerun (com rationale explícito): blocos 24-comparisons
+OFF/ON (mede ganho FFN, ortogonal ao load_state; caminho afetado coberto
+pela bateria + T5). Demais: medidos direto neste receipt.

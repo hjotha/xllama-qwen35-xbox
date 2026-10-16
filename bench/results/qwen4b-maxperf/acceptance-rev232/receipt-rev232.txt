@@ -1,0 +1,64 @@
+# Receipt — validação do artefato rev232 (Final)
+
+Artefato: GianlucaMazza.xllama_1.6.0.232, sha256 msix
+EDCC7C4E8594740F312F4DFBF958F76DB0DAEDEF0DC81870D6AAA9CB6A874452
+(build -Final, 896.0s). Fontes = branch feat/kv-slot-persist @ 29665e2
+(src/bridge idêntico às rev228/230; última mudança de src = dc394fb,
+remoção do replay corretivo). Configuração: n_batch=256 n_ubatch=64,
+mtp=2 pmin=50, gpu=34, modelo qwen35-4b-mtp. Knobs transitórios ausentes
+(FFN default ON). Dispositivo servindo, slots vazios.
+
+## Rodado NA rev232 (2026-10-10)
+
+| gate                                   | resultado | evidência                                        |
+| -------------------------------------- | --------- | ------------------------------------------------ |
+| Termgate full-field (todos os campos exceto `arm`) vs legado rev192 | failures=0 | termgate-rev232/termgate/ + receipt |
+| Bateria slots ON (B1–B11, restarts verificados, 15 turnos exatos, conteúdo, identidade de request, chain+prefixo+cross) | failures=0 | slots-rev211/slots-on/verdicts.txt (prefixo sha a1ca6b77…, 4 links kv, coerência 15/15, cross JSON↔log 15/15) |
+| Bateria slots OFF (idem)               | failures=0 | slots-rev211/slots-off/verdicts.txt (prefixo sha f39ed755…, mesmos links) |
+| Slotsmoke (restore-continue==fresh, refusal, list) | PASS       | acceptance-rev232/slotsmoke/                     |
+| Numérico D2a (selftest d3d12be, 50 linhas) — colunas rel_err/ok bit-idênticas à baseline rev227; fused silu/swiglu ok=1 ord=0 | PASS       | acceptance-rev232/d3d12be-rev227.csv (nomes preservados pelo script) + numeric-receipt.txt |
+| Shape-cost (d3d12sc, 282 casos) — TIMEOUT do watcher host aos 600s (fetch não coletado na rodada); device completou sozinho (log: "282/282 cases ok" + "headless d3d12be: done"); CSV + .done recuperados via fetch-file do LocalState (mesmo padrão do receipt rev227: "local watcher timed out; fetched after") — 282/282 ok, sem re-run e sem novo build | PASS | acceptance-rev232/d3d12sc-rev227.csv (283 linhas: header + 282) |
+| TPS B' células invertidas (code, depois chat; rev232) | coletado  | ab-216-vs-corrected/tps-corrected-rev232-inverted/ |
+| VROUND pós-dc394fb (chat256-mtp/code256-mtp sw0/sw1, runs 1+2): 8/8 sidecars byte-idênticos à rev227 (= baselines históricas f78ce837…/c7d84255…); paridade sw0==sw1 ok — greedy inalterado pela remoção do replay corretivo | PASS | acceptance-rev232/vround/ + vround-canon-rev232.txt |
+| VROUND232 vs cânones 209/216 (schedule-canon extraído, extract-segments.py): chat256-mtp 93 linhas sha cf2b67ccb0bae8ad IDÊNTICO 209=216=232, SW0=SW1; code256-mtp 87 linhas sha b11d233f60627421 IDÊNTICO 209=216=232, SW0=SW1; tokens run1/run2 idênticos | PASS | acceptance-rev232/vround/*.schedule-canon.txt + segment logs |
+| api-recall v3 pós-dc394fb: recall exato (RECALL-5), bind único on (mtp_capable=1), contadores qwen idênticos à rev227 (ffn_disp=184 gdn=120); drafting ativo todo turno | PASS | acceptance-rev232/api/receipt.txt |
+| Blocos b1+b2 pós-dc394fb (12 células × 2 braços, runs 2+3): validador v3 estrito failures=0/bloco; baselines exatas incl. células MTP (MTP não muda o greedy); paridade sw0==sw1 | PASS | acceptance-rev232/blocks/b1, b2 (verify-blocks-v3.py copiado verbatim) |
+| 24 comparações OFF/ON (médias run2+3, b1+b2): 24/24 positivas, 0 overlaps; mediana +4.44% (rev227: +4.57%) | coletado | acceptance-rev232/report-24comparisons-rev232.txt |
+
+Gates novos de identidade/continuidade da bateria (nesta rodada):
+`created`+sufixo estritamente crescente na ordem dos turnos; id embute o
+mesmo epoch; modelo fixo; `usage.prompt_tokens` == fatia prefilled
+esperada (coluna pf — bind request↔turno↔comportamento de reuse);
+ids únicos; janela com exatamente 15 turn-full e 7 linhas de reuse;
+cap de rotação; marcadores início/fim.
+
+## Cobertura pós-mudança decode_loop (dc394fb) — EXECUTADA na rev232
+
+VROUND, api-recall e blocos b1+b2 + 24 comparações OFF/ON foram
+re-executados nesta rodada (tabela acima): nenhuma divergência de
+tokens, contadores ou baselines vs a evidência rev227. A mudança
+limitou-se à atividade de drafting (51 vs 4, já coberta pelo termgate
+full-field com paridade integral).
+
+## NÃO rodado na rev232
+
+- Suites históricas (crdiv/island): não aplicáveis a este artefato.
+
+## Estado do dispositivo ao fim (2026-10-10, sessão 157)
+
+Investigação T1 exigiu build Iteration: rev233 (sem LTCG, SDK 26100
+override, test-sign manual; MSIX sha
+23260736b2cef84efab3c5a7b3bf0c4499a2756d00cc3aa12d12621c22e58a9d;
+fontes = rev232 + hook T1 REVERTIDO no src) INSTALADA e servindo; flag
+ausente (404), slots vazios. Sem flag o hook é inerte — braço control
+T1 idêntico à rev232. TPS de Iteration nunca comparado com Final.
+Artefato VALIDADO segue rev232 Final (MSIX preservado em
+/tmp/opencode/qwen4b-builds/rev232/): REINSTALAR rev232 (uninstall +
+re-provision de modelos) antes de quaisquer gates finais. UWP
+monotônica: 233 > 232; nenhuma Final nova cunhada para teste.
+Evidência T1: slots-rev211/T1*/ + T1-report.txt.
+
+Pendência real restante (inalterada): restore de disco em processo novo
+com MTP = full prefill. T1 mediu rebuild v2 funcional sem ganho (detalhe
+em plans/009, seção T1); única via íntegra = v3, NADA implementado,
+aguarda autorização. Objetivo do plano 009 NÃO declarado completo.

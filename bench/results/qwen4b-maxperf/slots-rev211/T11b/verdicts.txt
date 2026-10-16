@@ -1,0 +1,7 @@
+flag armed
+PASS: restart verified (H2)
+H2 turn1 reply == producer r3: YES
+== H2 tail (turn 2)
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=509.7ms (43 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18

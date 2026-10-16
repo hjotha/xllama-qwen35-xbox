@@ -1,0 +1,13 @@
+start_stage=vround utc=2026-10-10T06:03:23Z
+STAGE numeric SKIP (before start_stage=vround)
+STAGE block-b1 SKIP (before start_stage=vround)
+STAGE block-b2 SKIP (before start_stage=vround)
+STAGE termgate SKIP (before start_stage=vround)
+STAGE vround start=2026-10-10T06:03:23Z
+STAGE termgate VERDICT-GATE PASS-manual (6/6 behavior columns vs legacy; activity drift documented; rerun not needed, deterministic CSVs)
+STAGE vround OK end=2026-10-10T06:07:38Z
+STAGE api start=2026-10-10T06:07:38Z
+STAGE api OK end=2026-10-10T06:08:00Z
+STAGE slotsmoke start=2026-10-10T06:08:00Z
+STAGE slotsmoke OK end=2026-10-10T06:08:16Z
+ALL_CLOSING_DONE 2026-10-10T06:08:16Z

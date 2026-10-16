@@ -1,0 +1,20 @@
+flag armed
+PASS: restart verified (code-build)
+[code] slot: 376 tokens 66582667 bytes
+PASS: restart verified (code-R)
+[code] R: restore_api_ms=83 turn full=1 kv_before=0 pf=352 prompt=352 prefill=3649.5ms (352 tok) drafted=32 (mtp=32 lookup=0) spec_accept=32
+PASS: restart verified (code-C)
+[code] C: turn full=1 kv_before=0 pf=352 prompt=352 prefill=3740.1ms (352 tok) drafted=32 (mtp=32 lookup=0) spec_accept=32
+PASS: restart verified (std512-build)
+[std512] slot: 316 tokens 64367707 bytes
+PASS: restart verified (std512-R)
+[std512] R: restore_api_ms=107 turn full=1 kv_before=0 pf=322 prompt=322 prefill=3508.4ms (322 tok) drafted=28 (mtp=28 lookup=0) spec_accept=24
+PASS: restart verified (std512-C)
+[std512] C: turn full=1 kv_before=0 pf=322 prompt=322 prefill=3336.6ms (322 tok) drafted=28 (mtp=28 lookup=0) spec_accept=24
+PASS: restart verified (divergent-build)
+[divergent] slot: 95 tokens 56209270 bytes
+PASS: restart verified (divergent-R)
+[divergent] R: restore_api_ms=73 turn full=1 kv_before=0 pf=112 prompt=112 prefill=1146.3ms (112 tok) drafted=6 (mtp=6 lookup=0) spec_accept=6
+PASS: restart verified (divergent-C)
+[divergent] C: turn full=1 kv_before=0 pf=112 prompt=112 prefill=1169.0ms (112 tok) drafted=6 (mtp=6 lookup=0) spec_accept=6
+== compare (aligned control vs trailer restore)

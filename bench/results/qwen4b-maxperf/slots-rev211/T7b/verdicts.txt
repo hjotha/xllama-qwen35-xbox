@@ -1,0 +1,8 @@
+PASS: restart verified (hist)
+source slot fetched: 187 58824767
+PASS: restart verified (rt)
+rt done
+PASS: restart verified (freshcont)
+freshcont done: prompt_tok=230 completion_tok=32
+PASS: restart verified (restorecont)
+restorecont done: prompt_tok=43 completion_tok=32

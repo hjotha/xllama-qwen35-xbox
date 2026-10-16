@@ -1,0 +1,11 @@
+f32-kv policy4-vs-unset width=40 K=f32 V=f32 exact=yes lhs=71776710883944e4 rhs=71776710883944e4
+empty-env-vs-unset width=40 K=f32 V=f32 exact=yes lhs=71776710883944e4 rhs=71776710883944e4
+f32-k-f16-v policy4-vs-unset width=40 K=f32 V=f16 exact=yes lhs=a0db69e5ba3b7b04 rhs=a0db69e5ba3b7b04
+f16-k-f32-v policy4-vs-unset width=40 K=f16 V=f32 exact=yes lhs=06f798c5a259d18c rhs=06f798c5a259d18c
+q8-k-f16-v policy4-vs-unset width=40 K=q8_0 V=f16 exact=yes lhs=ca2207aefaf0782b rhs=ca2207aefaf0782b
+f32-kv policy4-vs-unset width=64 K=f32 V=f32 exact=yes lhs=b3f12e0cf870b32b rhs=b3f12e0cf870b32b
+empty-env-vs-unset width=64 K=f32 V=f32 exact=yes lhs=b3f12e0cf870b32b rhs=b3f12e0cf870b32b
+f32-k-f16-v policy4-vs-unset width=64 K=f32 V=f16 exact=yes lhs=5149c5b2bdab5277 rhs=5149c5b2bdab5277
+f16-k-f32-v policy4-vs-unset width=64 K=f16 V=f32 exact=yes lhs=6c0f59aa7dde0664 rhs=6c0f59aa7dde0664
+q8-k-f16-v policy4-vs-unset width=64 K=q8_0 V=f16 exact=yes lhs=c8713782f582c0c1 rhs=c8713782f582c0c1
+controls: CPU-only; D=128 Qheads=16 KVheads=4 keys=256; Q=F32; causal_base=0; threads=2; split-KV disabled; env policy4 exact guard/fallback comparisons; equality is bitwise.

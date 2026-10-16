@@ -1,0 +1,7 @@
+flag armed
+PASS: restart verified (build)
+slot: 115 tokens 56947591 bytes
+PASS: restart verified (R)
+R: restore_api_ms=70 turn full=1 kv_before=115 pf=27 prompt=142 prefill=337.2ms (27 tok) drafted=14 (mtp=14 lookup=0) spec_accept=14 MTP_STATS rounds=9 decodes=28 discarded=4
+PASS: restart verified (C)
+C: turn full=1 kv_before=115 pf=27 prompt=142 prefill=309.1ms (27 tok) drafted=14 (mtp=14 lookup=0) spec_accept=14 MTP_STATS rounds=9 decodes=28 discarded=4

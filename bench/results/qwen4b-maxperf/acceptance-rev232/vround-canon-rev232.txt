@@ -1,0 +1,10 @@
+VROUND canon check rev232 (post-dc394fb) vs rev227 evidence
+chat256-mtp sw0/sw1 run1/run2: f78ce8372ccc7281 == rev227 (== historical B_CHAT256 baseline)
+code256-mtp sw0/sw1 run1/run2: c7d84255e08e2077 == rev227 (== historical B_CODE256 baseline)
+8/8 sidecars byte-identical to rev227; sw0==sw1 parity ok per cell per run.
+Greedy token outputs unchanged by the decode_loop corrective-replay removal.
+Evidence: acceptance-rev232/vround/*.run{1,2}.tokens + *.csv
+Schedule canon (extract-segments.py, 2026-10-10):
+chat256-mtp 93 lines sha cf2b67ccb0bae8ad IDENTICAL 209=216=232, SW0=SW1 each rev
+code256-mtp 87 lines sha b11d233f60627421 IDENTICAL 209=216=232, SW0=SW1 each rev
+Evidence: acceptance-rev232/vround/*.schedule-canon.txt + *.segment.log + run logs

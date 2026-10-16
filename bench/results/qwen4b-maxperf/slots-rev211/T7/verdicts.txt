@@ -1,0 +1,48 @@
+flag armed
+PASS: restart verified (hist-build)
+slot saved once: prompt_tok=24 completion_tok=48
+PASS: restart verified (fresh1)
+WS fresh1-pre: 94 MB (raw=99512320)
+== fresh1
+no-restore
+S3: state dumped — kv_bytes=0 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=0 pf=230 prompt=230
+prefill=2358.0ms (230 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+CTOK=230/32 sha=211b46f48e49db5a
+MISSING chat-dump.kv
+WS fresh1-post: 3858 MB (raw=4045926400)
+PASS: restart verified (fresh2)
+WS fresh2-pre: 95 MB (raw=100413440)
+== fresh2
+no-restore
+S3: state dumped — kv_bytes=0 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=0 pf=230 prompt=230
+prefill=2495.5ms (230 tok) reuse=0
+drafted=20 (mtp=20 lookup=0) spec_accept=18
+CTOK=230/32 sha=211b46f48e49db5a
+MISSING chat-dump.kv
+WS fresh2-post: 3858 MB (raw=4046069760)
+PASS: restart verified (restore1)
+WS restore1-pre: 3854 MB (raw=4041596928)
+== restore1
+KV state loaded — 187 tokens, 56.1 MB, 8.3 ms
+S3: state dumped — kv_bytes=0 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=480.4ms (43 tok) reuse=0
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+CTOK=43/32 sha=211b46f48e49db5a
+MISSING chat-dump.kv
+WS restore1-post: 3858 MB (raw=4045561856)
+PASS: restart verified (restore2)
+WS restore2-pre: 3854 MB (raw=4041629696)
+== restore2
+KV state loaded — 187 tokens, 56.1 MB, 8.4 ms
+S3: state dumped — kv_bytes=0 mirror_pos=229 pending=1 kv_tokens=230
+turn full=1 kv_before=187 pf=43 prompt=230
+prefill=504.7ms (43 tok) reuse=0
+drafted=19 (mtp=19 lookup=0) spec_accept=18
+CTOK=43/32 sha=211b46f48e49db5a
+MISSING chat-dump.kv
+WS restore2-post: 3858 MB (raw=4045602816)
+== compare

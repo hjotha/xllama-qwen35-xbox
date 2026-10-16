@@ -291,14 +291,18 @@ TEST_CASE("chatml render is byte-exact with the legacy hand-built prompt") {
     CHECK(f.render_prompt(sys, hist, final_user) == legacy);
 }
 
-TEST_CASE("chatml render appends qwen suffix only to the trailing header") {
+TEST_CASE("chatml render replays qwen suffix in history assistant turns (plan 009)") {
     const ChatFormat f = chat_format_for("qwen35-0.8b");
     const std::string p = f.render_prompt("sys", {{"u1", "a1"}}, "u2");
     // Trailing header carries the suffix...
     CHECK(p.substr(p.size() - f.gen_suffix.size()) == f.gen_suffix);
-    // ...but the completed history assistant turn does not.
-    const std::string hist_hdr = "<|im_start|>assistant\na1<|im_end|>\n";
-    CHECK(p.find(hist_hdr) != std::string::npos);
+    // ...and so does the completed history assistant turn, byte-exactly as it
+    // was generated (header + suffix + content + close). Without this replay
+    // the resident KV prefix (which holds the suffix) can never match the
+    // history rendering, and every multi-turn continuation full-prefills even
+    // when the tokens are identical.
+    const std::string hist_turn = "<|im_start|>assistant\n" + f.gen_suffix + "a1<|im_end|>\n";
+    CHECK(p.find(hist_turn) != std::string::npos);
 }
 
 TEST_CASE("gemma render merges system into the first user turn, no bos/system") {

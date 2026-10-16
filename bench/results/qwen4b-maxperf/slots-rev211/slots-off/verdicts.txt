@@ -1,0 +1,57 @@
+== battery knob=off start=2026-10-12T00:55:51Z effective=FFN SWIGLU D3D12=off verified_at_log_line=683085
+knob_verify: mode=FFN SWIGLU D3D12=off bind_on_mtp1=0
+session_config_expected: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34
+PASS: quiesce pre: device quiet
+PASS: B1 preflight: slots endpoint ok, store empty
+PASS: B2 seed+save s1 (tokens>0, bytes>0)
+PASS: restart verified (B3 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B3 reuse==fresh prefill (BRAVO-7...)
+PASS: B4 fresh-process reuse (restart between save and restore, B3 equality holds)
+PASS: B4b restore-after-restart matches fresh
+PASS: B6 rollback to s1 matches
+PASS: B8 slot isolation (s1/s2/s1copy independent)
+PASS: B9 garbage refused
+PASS: B9 truncated refused
+PASS: B9 wrong-version refused
+PASS: B9 session usable after refusals
+PASS: B7 EOS save/restore/continue sane
+PASS: restart verified (B5 fresh arm): death (3x GET fail) + rebirth observed
+PASS: B5 divergent continuation == fresh prefill
+PASS: B5 divergent content correct
+PASS: B11 stale .tmp does not poison save/restore
+-- turns: 15/15 expected
+PASS: collection integrity: exactly 15 turns, expected (full,kv,pf,prompt) each, markers ok, no rotation
+-- prefix: log-end[1..683143] byte-identical to quiesce-b (sha=bc179146d8338bc2); slice is a pure continuation
+-- chain: 15 turn lines, 15 turn-end lines
+   link #2 cont-restore: kv_before=42 == prev turn-end kv_tokens (log lines 683375 -> 683384)
+   link #4 cont-fresh: kv_before=42 == prev turn-end kv_tokens (log lines 683666 -> 683675)
+   link #6 adv: kv_before=66 == prev turn-end kv_tokens (log lines 683714 -> 683722)
+   link #12 cont-eos: kv_before=64 == prev turn-end kv_tokens (log lines 683869 -> 683880)
+   coherence: prompt==kv+pf 15/15, pos==mirror 15/15, kv==pos+1 15/15, json<->log pf 15/15
+PASS: log chain + prefix preserved + JSON-log cross per turn (response<->log bound, not counts)
+-- turn IDs: 15 checked, failures=0
+PASS: turn response IDs: 15/15 match expected content
+-- request identity: 15 turns, (created,suffix) monotonic, ids bound, prompt_tokens match; log continuity: turns=15 kept=7 slice=1133
+PASS: request identity + log continuity: order, binding, markers, no rotation
+-- window swaps (session config lines): 4
+   slice-L2: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+   slice-L293: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+   slice-L820: [xllama] session config: model=lfm25-350m mtp=0 depth=4 pmin=0.75 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+   slice-L850: [xllama] session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34 kv_q8=0
+-- unexpected lfm swaps outside startup: 0
+-- kept lines: 7
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 66 of 85 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 42 of 62 tokens (#170)
+   [xllama] session: KV prefix reuse — kept 64 of 85 tokens (#170)
+-- turns: 15 (pf,prompt) sequence: ['40', '20', '40', '20', '20', '19', '20', '85', '20', '62', '62', '21', '63', '25', '63']
+PASS: no unexpected model swaps in window
+PASS: quiesce post: quiet
+== battery knob=off end=2026-10-12T00:57:44Z failures=0
+end_mode=FFN SWIGLU D3D12=off end_bind=0
+FFN_DISPATCHES=none-in-window (counters flush on clean unload only; api-recall is the counter gate)
+session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34
+session config: model=qwen35-4b-mtp mtp=1 depth=2 pmin=0.50 n_ctx=2048 n_batch=256 n_ubatch=64 gpu=34

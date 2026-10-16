@@ -1,0 +1,126 @@
+# Receipt — T18 probe preflight: exact nonce/slot isolation on host (plan 009)
+
+Worktree: /home/hjotha/worktrees/xllama-qwen35-4b-maxperf (feat/kv-slot-persist)
+Scope: authorization 1414 (+1421 monitoring), host only. Implementation files
+unchanged since the review fixes: include/xllama/session.h,
+include/xllama/api_policy.h, src/bridge/session.cpp, uwp/api-server.cpp,
+tests/test_session.cpp. Probe OFF by default; uwp/ does not compile on host.
+No .57, no push, no merge, no orphan cleanup, no snapshot touched.
+
+## 1. Isolation matrix (tests/test_session.cpp, stories15M fixture)
+
+Parser TEST_CASE ("api_policy: X-Test-Nonce slice is exact (T18)"): 14/14 —
+zero/one/multiple spaces, absent header, divergent value, 64-byte cap,
+exact slice at p+13.
+
+Probe TEST_CASE ("Session: fault probe binds exact nonce and slot before
+claiming (T18)"): 117/117 assertions x3 consecutive runs —
+absent/divergent nonce and wrong slot save normally (no .claimed, knob
+untouched); 9 malformed/overflow arms leave the knob byte-identical with no
+.claimed; one-shot fire aborts the save mid-blob and the restored session is
+bit-identical; 3 cross-slot concurrency rounds; foreign pre-existing knob
+fails the test without being touched. 4 fire markers
+"fault probe — abort save after N bytes (test-only)" per run.
+T18 mid-write TEST_CASE: 33/33, unchanged.
+Knob residue after runs: none (build/linux-test/tests/slot-fault.target.txt*
+absent). All negatives preserved; no test excluded; no numeric limit relaxed.
+
+## 2. Blocker found during the full-suite regression (cause)
+
+Symptom: full suite with XLLAMA_TEST_MODEL set never finished (timeout 600,
+then timeout 420, EXIT=124); the tail stopped after an mtp generate (n=8,
+37 tok) plus MTP_STATS, with 0 fault-probe markers.
+
+Localization (single-test focal + temporary cooperative stderr markers,
+reverted afterwards): stall inside tests/test_sampling.cpp
+"mtp: chunked prefill keeps parity and keeps drafting", at
+CHECK(r_whole.mtp_active) — markers stop after the post-generate REQUIRE,
+and the reporter's "logged:" line never prints.
+
+Root cause: the INFO declared before the first generate re-evaluates its
+stream expression lazily when a LATER assertion fails, including
+((n_prompt + sp.n_batch - 1) / sp.n_batch); the test sets sp.n_batch = 0
+before the whole-prefill leg, so failure reporting divides by zero. The
+SIGFPE fires inside doctest's ConsoleReporter while it already holds its
+own non-recursive mutex (log_assert), and reportFatal's test_case_exception
+re-locks the same mutex: self-deadlock. Observed state: every thread parked
+in futex_do_wait with frozen utime; the process stays alive until killed.
+Reproduced in isolation with a pure-doctest case (temporary, reverted).
+
+Not the probe: the chunked test never calls save_state (0 probe markers in
+every hung log). The fixture stories15M-q4_0.gguf carries no MTP head (the
+tests require it), so mtp_active=false is a legitimate failure — the defect
+was only the lazy division turning the failure report into a hang.
+
+Fix (tests/test_sampling.cpp only): eager snapshot of n_batch and the chunks
+quotient at INFO declaration; INFO text, every CHECK/REQUIRE, and every
+numeric limit unchanged.
+clang-format 22.1.5 --dry-run --Werror on the file: FORMAT_OK.
+
+## 3. Regression after the fix (real command output)
+
+Focal chunked leg (stories15M):
+    XLLAMA_TEST_MODEL=/tmp/opencode/models/stories15M-q4_0.gguf timeout 120 \
+      stdbuf -oL ./build/linux-test/tests/xllama-tests \
+      -tc='*mtp: chunked prefill*'
+    -> EXIT=1, test cases: 1 | 0 passed | 1 failed | 351 skipped,
+       assertions: 13 | 9 passed | 4 failed.
+       The 4 failures are exactly mtp_active/n_drafted (no MTP head in this
+       fixture); every "logged:" line prints with the eager snapshot
+       (n_batch=16 chunks=3); no hang. (log /tmp/opencode/focal-fixed.log)
+
+Suite without the model env (opt-in cases self-skip by their own gates):
+    ctest --test-dir build/linux-test --output-on-failure
+    -> EXIT=0, 1/1 Passed, 73.61 sec, 100% tests passed.
+       (log /tmp/opencode/ctest-noenv.log)
+
+Full binary with the stories15M env:
+    XLLAMA_TEST_MODEL=/tmp/opencode/models/stories15M-q4_0.gguf timeout 590 \
+      ./build/linux-test/tests/xllama-tests
+    -> COMPLETES, EXIT=1,
+       test cases: 352 | 340 passed | 12 failed | 0 skipped,
+       assertions: 12625 | 12604 passed | 21 failed.
+       (log /tmp/opencode/full-env-fixed.log)
+       The 12 failing cases are exclusively fixture-capability mismatches of
+       stories15M: 11 cases requiring the MTP head (mtp_active/n_drafted
+       CHECKs and REQUIREs in test_sampling/test_decode_loop/
+       test_profile_policy) + 1 golden-size REQUIRE in test_logit_parity.
+       Zero ERRORs in test_session.cpp; 4 fault-probe fire markers; no knob
+       residue. Left failing as-is: not relaxed, not excluded.
+
+## 4. Preflight verdict
+
+Host isolation of the request_nonce -> save_state linkage: EXACT and proven
+(matrix in §1, all negatives preserved). The runner deadlock is fixed at its
+proven root; the suite completes in both modes.
+
+Gap (out of scope, not a defect of this change): no MTP-head model is
+available locally (/tmp/opencode/models holds only stories15M-q4_0.gguf),
+so the 11 MTP cases + 1 golden case fail with this fixture; unrelated to T18.
+
+Xbox injection NOT performed in this turn (prove first, per instruction).
+Next, under authorization 1414: sync to .193, Iteration build rev245, deploy,
+pre-arm HTTP header-variant smoke (absent/0/1/N spaces, divergent nonce ->
+all normal 200), then arm + proposal §4 fire steps; afterwards update the
+proposal §5 and the plans/009 matrix.
+
+## 5. Device gate (2026-10-12 — rev245 instalado, sem launch; turno só-leitura)
+
+- Instalado `GianlucaMazza.xllama_1.6.0.245` (pfn); registro íntegro
+  (PackageOrigin 5, 2 usuários, sem side-by-side).
+- Launch: `0x8027025B` persistente (2× start-app + diagnose-startup + nova
+  tentativa neste turno), zero dumps (morte pré-main, nada do handler).
+- Certificados (thumbprints públicos): fresco T18 `4A6B7E2` == signer rev245;
+  preexistente `89F82DB7` == signer rev244; chaves distintas. `verify /pa`
+  do rev245: exit 1 (raiz não confiável). Causa trust-vs-conteúdo
+  indeterminável sem reinstall/trust-change (ambos vedados neste turno).
+- Baselines intactos: `llama.ini` sha256 `7ac4211e` (256/64 preservados),
+  `slots/` vazio, sem `slot-fault.target.txt`/`.claimed`, demais dados
+  intocados. Nenhum save/slot T18 criado.
+- Gates 005/008: nenhum ABERTO. 009: 2 ABERTO (morte mid-write; handler
+  Xbox) — bloqueados atrás de "app precisa executar".
+- Rollback rev244: artefato + sha256 `638EE54D` verificados, intocado;
+  reinstalação NÃO autorizada/não executada.
+- Smoke/isolamento/falha T18 no device: NÃO executados (sem handler
+  lançável). Desbloqueio requer app lançável (trust ou rebuild+reinstall
+  autorizados) — fora deste turno.
