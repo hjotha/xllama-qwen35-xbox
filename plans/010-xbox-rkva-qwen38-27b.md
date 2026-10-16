@@ -1,7 +1,8 @@
 # Plan 010: Xbox Series X RKVA Remote Attention for Qwen3.8-27B Production Expansion (`.57` ↔ `.26`)
 
 - **Date:** 2026-10-16
-- **Status:** PLANNED
+- **Status:** IMPLEMENTED / VALIDATED
+- **Validation Run:** Revision 256 on Xbox (`192.168.1.26:50054`), `beellama.cpp` on `.57` (`feat/rkva-xbox-client`). 450 RPC requests completed at `status=0`, GPU decode compute latency 150–230 µs/layer.
 - **Target Repositories & Hosts:**
   - **Xbox UWP Server (`192.168.1.26`):** `hjotha/xllama-qwen35-xbox` (local checkout `/home/hjotha/worktrees/xllama-qwen35-4b`, build host `.193` `C:\Users\hjotha\worktrees\xllama-final247`, reference prototype at `.193` `C:\Users\hjotha\worktrees\xllama-dflash-xbox`)
   - **Host Inference Engine (`192.168.1.57` — GOKAYA):** `/home/hjotha/beellama.cpp` + `/home/hjotha/router-production.ini`
