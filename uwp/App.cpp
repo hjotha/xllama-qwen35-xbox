@@ -35,6 +35,8 @@ using namespace winrt::Windows::ApplicationModel::Activation;
 using namespace winrt::Windows::UI::Xaml;
 using namespace winrt::Windows::Storage;
 
+void serve_remote_attn(const std::string& local_folder);
+
 namespace winrt::xllama::implementation {
 
 // ---------------------------------------------------------------------------
@@ -291,6 +293,18 @@ void App::OnLaunched(LaunchActivatedEventArgs const&) {
                 if (controller)
                     controller->StartAutopilotIfRequested();
             }).detach();
+
+            try {
+                auto local_folder_w = winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path();
+                std::string local_folder(local_folder_w.begin(), local_folder_w.end());
+                std::thread([local_folder] {
+                    winrt::init_apartment();
+                    serve_remote_attn(local_folder);
+                }).detach();
+                log_write("[xllama] RKVA Remote Attention listener started on TCP :50054\n");
+            } catch (...) {
+                log_write("[xllama] failed to launch RKVA Remote Attention listener\n");
+            }
         } else if (m_controller) {
             m_controller->StartAutopilotIfRequested();
         }

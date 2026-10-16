@@ -1566,8 +1566,16 @@ void handle_connection(StreamSocket const& socket, uint64_t generation) {
         }
 
         // Health probe (also the spike gate: curl http://<ip>:<port>/ -> 200).
-        if (req.method == "GET" && (req.path == "/" || req.path == "/health")) {
-            write_response(socket, "200 OK", "{\"status\":\"ok\",\"service\":\"xllama\"}");
+        if (req.method == "GET" && (req.path == "/" || req.path == "/health" || req.path == "/v1/health")) {
+            write_response(socket, "200 OK", "{\"status\":\"ok\",\"service\":\"xllama\",\"rkva_port\":50054}");
+            return;
+        }
+
+        // RPC mode toggle / local model eviction endpoint
+        if (req.method == "POST" && req.path == "/v1/rpc/mode") {
+            std::lock_guard<std::mutex> lk(session_hub().mtx);
+            session_hub().reset_locked();
+            write_response(socket, "200 OK", "{\"status\":\"ok\",\"mode\":\"rpc\",\"message\":\"local model evicted for rkva\"}");
             return;
         }
 
