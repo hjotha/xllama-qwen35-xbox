@@ -45,6 +45,42 @@ void evict_local_session() {
 
 using clock_type = std::chrono::steady_clock;
 
+static inline float f16_to_f32(uint16_t h) {
+    __m128i in = _mm_cvtsi32_si128(static_cast<int>(h));
+    __m128 out = _mm_cvtph_ps(in);
+    return _mm_cvtss_f32(out);
+}
+
+static inline uint16_t f32_to_f16(float f) {
+    __m128 in = _mm_set_ss(f);
+    __m128i out = _mm_cvtps_ph(in, 0);
+    return static_cast<uint16_t>(_mm_cvtsi128_si32(out));
+}
+
+static inline void convert_f16_to_f32(const uint16_t* src, float* dst, size_t count) {
+    size_t i = 0;
+    for (; i + 8 <= count; i += 8) {
+        __m128i in = _mm_loadu_si128(reinterpret_cast<const __m128i*>(src + i));
+        __m256 out = _mm256_cvtph_ps(in);
+        _mm256_storeu_ps(dst + i, out);
+    }
+    for (; i < count; ++i) {
+        dst[i] = f16_to_f32(src[i]);
+    }
+}
+
+static inline void convert_f32_to_f16(const float* src, uint16_t* dst, size_t count) {
+    size_t i = 0;
+    for (; i + 8 <= count; i += 8) {
+        __m256 in = _mm256_loadu_ps(src + i);
+        __m128i out = _mm256_cvtps_ph(in, 0);
+        _mm_storeu_si128(reinterpret_cast<__m128i*>(dst + i), out);
+    }
+    for (; i < count; ++i) {
+        dst[i] = f32_to_f16(src[i]);
+    }
+}
+
 uint64_t elapsed_us(clock_type::time_point start) {
     return (uint64_t) std::chrono::duration_cast<std::chrono::microseconds>(
         clock_type::now() - start).count();
@@ -340,13 +376,9 @@ int handle_request(remote_state& state, const rkva_request& req,
                 k_f32.resize(kv_elems);
                 v_f32.resize(kv_elems);
 
-                for (size_t i = 0; i < q_elems; ++i) {
-                    q_f32[i] = _cvtsh_ss(q_f16[i]);
-                }
-                for (size_t i = 0; i < kv_elems; ++i) {
-                    k_f32[i] = _cvtsh_ss(k_f16[i]);
-                    v_f32[i] = _cvtsh_ss(v_f16[i]);
-                }
+                convert_f16_to_f32(q_f16, q_f32.data(), q_elems);
+                convert_f16_to_f32(k_f16, k_f32.data(), kv_elems);
+                convert_f16_to_f32(v_f16, v_f32.data(), kv_elems);
                 q_ptr = q_f32.data();
                 k_ptr = k_f32.data();
                 v_ptr = v_f32.data();
@@ -386,9 +418,7 @@ int handle_request(remote_state& state, const rkva_request& req,
             if (is_f16) {
                 output.resize(q_elems * 2);
                 uint16_t* out_f16 = reinterpret_cast<uint16_t*>(output.data());
-                for (size_t i = 0; i < q_elems; ++i) {
-                    out_f16[i] = _cvtss_sh(out_target[i], 0);
-                }
+                convert_f32_to_f16(out_target, out_f16, q_elems);
             }
             prepare_us = elapsed_us(t0);
             return RKVA_OK;
