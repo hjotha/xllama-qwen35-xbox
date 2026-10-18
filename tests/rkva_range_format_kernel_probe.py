@@ -10,8 +10,7 @@ Formats: f16, q8_0, q4_0 and native Bee kvarn4 (descriptor v1, genuine Bee
 records from --bee-fixtures mixed with synthetic signed records, rotated F16
 stage, optional original-domain F16 precision tail). Per format and checkpoint
 every mode 0..3 (op 20 field q4_kernel_mode: legacy name, storage-qualified
-optimized kernel per the engine report's optimized_kernels) runs the same nq=1
-queries; results are compared with a float64 oracle on the exact stored data
+optimized kernel per the engine report's optimized_kernels) runs the same query-indexed verification batches (nq1..9, nq10 fallback); results are compared with a float64 oracle on the exact stored data
 (KVarN4 body rows mapped to the original domain with the explicit H256/16
 matrix) and with mode 0. Then a one-layer decode loop (append one row +
 attend) runs per mode with profiling enabled+reset and the engine report is
@@ -320,27 +319,38 @@ def run_format(np, client, fmt, data, rng, args, report):
     checkpoints = sorted({c for c in args.checkpoints if 0 < c <= args.capacity - args.decode_steps})
     for checkpoint in checkpoints:
         data.upload_to(client, checkpoint)
-        positions = [ORIGIN + checkpoint - 1, ORIGIN + checkpoint // 2, ORIGIN - 1]
-        for position in positions:
-            q = rng.standard_normal((H, D)).astype(np.float32)
-            limit = max(0, min(data.live, position - ORIGIN + 1))
-            keys, values = data.kv(limit)
-            want = oracle(np, q.astype(np.float64), keys, values, limit, scale)
+        # Distinct positions in one batch exercise query-specific causal masks,
+        # including a fully masked query and future poisoned/random live rows.
+        # nq10 deliberately exceeds the bounded optimized tier (N=8 => nq9).
+        for nq in args.queries:
+            positions = [ORIGIN + checkpoint - 1 - i for i in range(nq)]
+            if nq > 1:
+                positions[-1] = ORIGIN - 1
+            q = rng.standard_normal((nq, H, D)).astype(np.float32)
+            wants, limits = [], []
+            for qi, position in enumerate(positions):
+                limit = max(0, min(data.live, position - ORIGIN + 1))
+                keys, values = data.kv(limit)
+                wants.append(oracle(np, q[qi].astype(np.float64), keys, values, limit, scale))
+                limits.append(limit)
+            want = (np.stack([w[0] for w in wants]), np.stack([w[1] for w in wants]))
             baseline = None
             for mode in MODES:
-                # Counters only advance while profiling is enabled.
                 profile(client, PROFILE_ENABLE | PROFILE_RESET, mode)
-                out, lse = client.attention(q.ravel().tolist(), [position])
-                got = (np.array(out, np.float64).reshape(H, D), np.array(lse, np.float64))
-                item = dict(rows=checkpoint, position=position, causal_rows=limit, mode=mode,
+                out, lse = client.attention(q.ravel().tolist(), positions)
+                got = (np.array(out, np.float64).reshape(nq, H, D),
+                       np.array(lse, np.float64).reshape(nq, H))
+                item = dict(rows=checkpoint, nq=nq, positions=positions,
+                            causal_rows=limits, mode=mode,
                             vs_oracle=compare(np, *got, *want))
                 engine = engine_of(profile(client, PROFILE_REPORT_ONLY, 0))
                 counts = engine.get('optimized_kernels', {}).get(fmt, {})
                 item['optimized_calls'] = counts.get('optimized_calls')
                 item['reference_calls'] = counts.get('reference_calls')
-                # Mode 0 must stay reference; modes 1..3 must be optimized exactly
-                # when the engine reports the storage's kernel available.
-                want_opt = 1 if (mode and opt_ok) else 0
+                # A legacy report without fast_nq_max promises only nq1.
+                fast_nq_max = int(counts.get('fast_nq_max', 1 if opt_ok else 0))
+                item['fast_nq_max'] = fast_nq_max
+                want_opt = 1 if (mode and opt_ok and nq <= fast_nq_max) else 0
                 item['kernel_selection_ok'] = counts.get('optimized_calls') == want_opt and \
                     counts.get('reference_calls') == 1 - want_opt
                 if baseline is None:
@@ -374,7 +384,7 @@ def execute(args):
     from rkva_range_probe import Client
     rng = np.random.default_rng(args.seed)
     report = dict(success=False, host=args.host, port=args.port, capacity=args.capacity,
-                  checkpoints=args.checkpoints, decode_steps=args.decode_steps,
+                  checkpoints=args.checkpoints, queries=args.queries, decode_steps=args.decode_steps,
                   precision_tail=args.precision_tail, formats=[],
                   note='synthetic one-layer kernel timing, not model TPS')
     client = Client(args.host, args.port)
@@ -568,6 +578,8 @@ def main():
     parser.add_argument('--capacity', type=int, default=28672)
     parser.add_argument('--checkpoints', type=int, nargs='*',
                         default=[1, 64, 127, 128, 129, 257, 1000, 4133, 16384, 28000])
+    parser.add_argument('--queries', type=int, nargs='+', default=[1, 2, 3, 4, 7, 8, 9, 10],
+                        help='query counts; 9 covers draft N=8, 10 checks reference fallback')
     parser.add_argument('--precision-tail', type=int, choices=(0, 128), default=128,
                         help='KVarN4 precision_tail_tokens')
     parser.add_argument('--bee-fixtures', type=Path, default=DEFAULT_BEE)
@@ -580,6 +592,8 @@ def main():
     parser.add_argument('--self-test', action='store_true',
                         help='offline: replay KVarN4 payloads into a fake engine image + oracles')
     args = parser.parse_args()
+    if any(nq < 1 or nq > 256 for nq in args.queries):
+        parser.error('--queries must be in [1,256]')
     if args.self_test:
         return self_test(args)
     if args.summarize:
@@ -596,11 +610,11 @@ def main():
     if not args.execute:
         plan = dict(execute=False, note='offline plan only; pass --execute --host H to run',
                     formats=args.formats, modes=list(MODES), capacity=args.capacity,
-                    checkpoints=args.checkpoints, decode_steps=args.decode_steps,
+                    checkpoints=args.checkpoints, queries=args.queries, decode_steps=args.decode_steps,
                     warmup=args.warmup, precision_tail=args.precision_tail,
                     kernels={f: [kernel_name(f, m) for m in MODES] for f in args.formats},
                     ops=['hello', 'session(2)', 'range_config(12 f16/q4_0/q8_0 | 15 kvarn4)',
-                         'range_upload(13 wire0/2/3 | 16 kvarn4)', 'range_attention(14,nq1)',
+                         'range_upload(13 wire0/2/3 | 16 kvarn4)', 'range_attention(14,query-indexed batch)',
                          'range_profile(20)', 'close(3)'])
         print(json.dumps(plan, indent=2))
         return 0

@@ -30,7 +30,9 @@ enum : uint32_t {
 constexpr uint32_t kOptHeadDim = 256;
 constexpr uint32_t kOptGqa = 6; // Q heads per KV head
 constexpr uint32_t kOptMaxSplits = 256;
-constexpr uint32_t kOptMaxQueries = 1; // decode only for now
+// Eight proposed MTP tokens plus the verification anchor. Each query gets
+// independent workgroups; larger prefill batches retain the reference path.
+constexpr uint32_t kOptMaxQueries = 9;
 constexpr uint32_t kOptMinWaveLanes = 32;
 constexpr uint32_t kOptMaxWaveLanes = 128;
 constexpr uint32_t kReferenceMaxSplits = 32;
@@ -392,13 +394,13 @@ class Recorder {
              "otherwise reference\"";
         o += ",\"optimized_kernels\":{";
         for (uint32_t st = 0; st < kStorageCount; ++st) {
-            std::snprintf(buf, sizeof(buf),
-                          "%s\"%s\":{\"available\":%s,\"status\":\"%s\","
-                          "\"optimized_calls\":%llu,\"reference_calls\":%llu}",
-                          st ? "," : "", storage_name(st),
-                          h.optimized_available[st] ? "true" : "false",
-                          json_escape(h.optimized_status[st]).c_str(),
-                          ull(c.optimized_by_storage[st]), ull(c.reference_by_storage[st]));
+            std::snprintf(
+                buf, sizeof(buf),
+                "%s\"%s\":{\"available\":%s,\"status\":\"%s\","
+                "\"optimized_calls\":%llu,\"reference_calls\":%llu,\"fast_nq_max\":%u}",
+                st ? "," : "", storage_name(st), h.optimized_available[st] ? "true" : "false",
+                json_escape(h.optimized_status[st]).c_str(), ull(c.optimized_by_storage[st]),
+                ull(c.reference_by_storage[st]), h.optimized_available[st] ? kOptMaxQueries : 0u);
             o += buf;
         }
         o += '}';

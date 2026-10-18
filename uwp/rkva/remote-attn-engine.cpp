@@ -1758,7 +1758,9 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                            rp::optimized_q4_supported(q4_kernel_mode_, s->range_storage, n_tokens,
                                                       geo_.n_head, geo_.n_head_kv, geo_.head_dim);
     if (optimized) {
-        // GQA-shared decode kernel; split_k == 1 writes OUT/LSE directly.
+        // GQA-shared decode/verification: independent query workgroups.
+        // The bounded workspace covers kOptMaxQueries, including the anchor.
+        // split_k == 1 writes OUT/LSE directly.
         const uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
         const bool direct = split_k == 1;
         Buffer& kv = s->layer_kv[layer];
@@ -1819,7 +1821,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                                out_bytes);
         return finish(direct ? 1u : 2u);
     }
-    // F16 / Q8_0 / native KVarN4 optimized decode kernels: same dispatch shape and
+    // F16 / Q8_0 / native KVarN4 optimized decode/verification kernels: same dispatch shape and
     // OUT/LSE/partials contract as the Q4 branch, storage-specific PSO. KVarN4
     // reads its descriptor-v1 records/stage/tail in place (no materialization).
     const uint32_t storage = s->range_storage;

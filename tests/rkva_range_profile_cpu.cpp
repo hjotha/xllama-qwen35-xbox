@@ -44,7 +44,15 @@ int main() {
     assert(!optimized_q4_supported(1, 0, 1, 24, 4, 256)); // F16
     assert(!optimized_q4_supported(1, 2, 1, 24, 4, 256)); // Q8
     assert(!optimized_q4_supported(1, 3, 1, 24, 4, 256)); // KVarN4
-    assert(!optimized_q4_supported(1, 1, 2, 24, 4, 256)); // multi-query
+    // N proposed tokens require N+1 queries. Cover every bounded verification
+    // shape, plus the first unsupported prefill batch.
+    for (uint32_t nq = 1; nq <= 9; ++nq) {
+        assert(optimized_q4_supported(1, 1, nq, 24, 4, 256));
+        assert(optimized_format_supported(1, 0, nq, 24, 4, 256));
+        assert(optimized_format_supported(1, 2, nq, 24, 4, 256));
+        assert(optimized_kvarn4_supported(1, 3, nq, 24, 4, 256, 102400, 128));
+    }
+    assert(!optimized_q4_supported(1, 1, 10, 24, 4, 256));
     assert(!optimized_q4_supported(1, 1, 0, 24, 4, 256));
     assert(!optimized_q4_supported(1, 1, 1, 32, 4, 256)); // GQA 8
     assert(!optimized_q4_supported(1, 1, 1, 24, 4, 128)); // head_dim 128
@@ -72,7 +80,7 @@ int main() {
     assert(!optimized_format_supported(4, 2, 1, 24, 4, 256));
     assert(!optimized_format_supported(1, 1, 1, 24, 4, 256)); // Q4 has its own gate
     assert(!optimized_format_supported(1, 3, 1, 24, 4, 256)); // KVarN4 has its own gate
-    assert(!optimized_format_supported(1, 0, 2, 24, 4, 256));
+    assert(!optimized_format_supported(1, 0, 10, 24, 4, 256));
     assert(!optimized_format_supported(1, 2, 1, 32, 4, 256));
     assert(!optimized_format_supported(1, 2, 1, 24, 4, 128));
 
@@ -84,7 +92,7 @@ int main() {
     assert(!optimized_kvarn4_supported(1, 1, 1, 24, 4, 256, 102400, 128));
     assert(!optimized_kvarn4_supported(1, 3, 1, 24, 4, 256, 102464, 128)); // unaligned origin
     assert(!optimized_kvarn4_supported(1, 3, 1, 24, 4, 256, 102400, 64));  // other tail
-    assert(!optimized_kvarn4_supported(1, 3, 2, 24, 4, 256, 102400, 128));
+    assert(!optimized_kvarn4_supported(1, 3, 10, 24, 4, 256, 102400, 128));
     assert(!optimized_kvarn4_supported(1, 3, 1, 24, 4, 128, 102400, 128));
     for (uint32_t m = 1; m < kModeCount; ++m) {
         for (uint32_t a : {0u, 1u, 7u, 8u, 9u, 127u, 128u, 129u, 1000u, 4133u, 28672u, 131072u}) {
@@ -168,14 +176,17 @@ int main() {
     assert(json.find("upload/q4_0/nq1/r257-1k/warm") != std::string::npos);
     assert(json.find("attention/q4_0/reference/nq1/r257-1k/warm") != std::string::npos);
     assert(json.find("\"readback_copy\"") != std::string::npos);
+    assert(json.find("\"fast_nq_max\":9") != std::string::npos);
     assert(json.find("\"kernel_mode_scope\":\"legacy name q4_kernel_mode") != std::string::npos);
     assert(json.find("\"q4_0\":{\"available\":true,\"status\":\"ready\",\"optimized_calls\":0") !=
            std::string::npos);
-    assert(json.find("\"kvarn4\":{\"available\":false,\"status\":\"kvarn4 optimized pipeline "
-                     "state: 0x80070057\",\"optimized_calls\":5,\"reference_calls\":0}") !=
-           std::string::npos);
+    assert(
+        json.find(
+            "\"kvarn4\":{\"available\":false,\"status\":\"kvarn4 optimized pipeline "
+            "state: 0x80070057\",\"optimized_calls\":5,\"reference_calls\":0,\"fast_nq_max\":0}") !=
+        std::string::npos);
     assert(json.find("\"f16\":{\"available\":false,\"status\":\"\",\"optimized_calls\":0,"
-                     "\"reference_calls\":2}") != std::string::npos);
+                     "\"reference_calls\":2,\"fast_nq_max\":0}") != std::string::npos);
     assert(json.find("\\\"quoted\\\"\\u000a") != std::string::npos);
     std::printf("%s\n", json.c_str());
 

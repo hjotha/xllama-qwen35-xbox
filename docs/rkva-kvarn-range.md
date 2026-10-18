@@ -107,3 +107,23 @@ OPENBLAS_NUM_THREADS=1 python3 tests/rkva_kvarn_range_probe.py \
 ```
 
 Without `--execute`, the probe performs no network access. The future gate exercises positions before/at/after the overflow origin, eager commit boundaries, stage/tail ring wrap, batched appends, split-K OUT/LSE, and full resynchronization after trim/reset. Follow it with full model correctness and TPS measurements before using or deploying the feature. This staged work does not qualify speculative decoding, multiple sequences, noncausal attention, or arbitrary tail lengths.
+
+## Bounded verification (264, raw GPU qualified)
+
+The engine candidate also selects existing optimized kernels for query batches
+of one through nine rows (eight MTP drafts plus their verification anchor).
+Independent query workgroups already read their own causal position and write
+separate OUT/LSE and split partials; no HLSL or generated DXIL change is required.
+Larger batches retain reference attention. Op20 reports `fast_nq_max` for every
+available optimized storage kernel; older reports without the field promise
+only nq1. The shared bounded optimized partial workspace reserves about 54.4 MiB
+for H24/D256 at nine queries and 256 splits. Package 1.6.0.264 passed raw GPU OUT/LSE and causal query-index validation.
+Full-model MTP correctness and throughput are measured separately.
+
+The raw format probe covers nq1/2/3/4/7/8/9 and nq10 fallback, with distinct
+per-query positions, fully masked queries, independent OUT/LSE oracles and
+mode0 comparisons. Native KVarN4 MTP remains unsupported in Bee until its live
+native owner can roll back and restore correctly; raw multiquery kernel support
+does not establish that state contract.
+
+Package264 SHA256 `9902eb3ca173866242fbf2fd497262b0c8ce8d589fe8155ba0d869e858a051df` was built on Windows193 with SDK26100/MSVC14.44 and deployed in place. The float64 oracle probe passed 192 cases per format (F16, Q8_0, Q4_0 and native KVarN4) with precision-tail128, plus 192 native KVarN4 cases with tail0: 960 cases total, all four kernel modes, nq1/2/3/4/7/8/9 and nq10 reference fallback, checkpoints1/127/128/129/257/28672. These are kernel/protocol results, not model TPS or native-KVarN4-MTP qualification. Artifacts: `/home/hjotha/build/rkva-q4-optimization-20261018/console264`.
