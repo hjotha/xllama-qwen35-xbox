@@ -325,3 +325,5 @@ curl -s http://<ip-xbox>:11434/v1/chat/completions \
   -H 'Content-Type: application/json' \
   -d '{"model":"<catalogue-id>","messages":[{"role":"user","content":"Say hi"}]}'
 ```
+
+Native KVarN4 positional overflow is staged separately; see [the descriptor and qualification requirements](rkva-kvarn-range.md). It is not console-qualified.
