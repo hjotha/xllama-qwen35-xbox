@@ -175,12 +175,15 @@ struct remote_state {
 
 std::string rpc_profile_json(const remote_state& state) {
     std::string text = "{\"enabled\":" + std::string(state.profile_enabled ? "true" : "false") +
-                       ",\"trace_requests\":" + (state.trace_requests ? "true" : "false") + ",\"ops\":[";
+                       ",\"trace_requests\":" + (state.trace_requests ? "true" : "false") +
+                       ",\"ops\":[";
     bool first = true;
     for (uint32_t op = 0; op < 32; ++op) {
         const auto& c = state.rpc_profile[op];
-        if (!c.calls) continue;
-        if (!first) text += ",";
+        if (!c.calls)
+            continue;
+        if (!first)
+            text += ",";
         first = false;
         text += "{\"op\":" + std::to_string(op) + ",\"calls\":" + std::to_string(c.calls) +
                 ",\"request_bytes\":" + std::to_string(c.request_bytes) +
@@ -232,11 +235,13 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         }
         state.sessions.clear();
         state.profile_enabled = state.trace_requests = false;
-        for (auto& counter : state.rpc_profile) counter = {};
+        for (auto& counter : state.rpc_profile)
+            counter = {};
         state.geo = hello;
         state.hello_done = true;
         state.native_rewind_v2_client = (hello.proto_flags & RKVA_PROTO_NATIVE_REWIND_V2) != 0;
-        state.native_serial_prefix_v3_client = state.native_rewind_v2_client &&
+        state.native_serial_prefix_v3_client =
+            state.native_rewind_v2_client &&
             (hello.proto_flags & RKVA_PROTO_NATIVE_SERIAL_PREFIX_V3) != 0;
 
         evict_local_session();
@@ -290,7 +295,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                               RKVA_CAP_RANGE_PROFILE;
             if (state.native_rewind_v2_client)
                 ack.reserved[0] |= RKVA_CAP_KVARN_REWIND;
-            if (state.native_serial_prefix_v3_client && state.engine->native_serial_prefix_available())
+            if (state.native_serial_prefix_v3_client &&
+                state.engine->native_serial_prefix_available())
                 ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX;
         }
         if (!state.native_rewind_v2_client)
@@ -700,8 +706,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
             return RKVA_ERR_BAD_PAYLOAD;
         rkva_range_profile control{};
         std::memcpy(&control, input.data(), sizeof(control));
-        constexpr uint32_t allowed = RKVA_PROFILE_ENABLE | RKVA_PROFILE_RESET |
-                                     RKVA_PROFILE_TRACE | RKVA_PROFILE_REPORT_ONLY;
+        constexpr uint32_t allowed = RKVA_PROFILE_ENABLE | RKVA_PROFILE_RESET | RKVA_PROFILE_TRACE |
+                                     RKVA_PROFILE_REPORT_ONLY;
         if (control.reserved || (control.flags & ~allowed) || control.q4_kernel_mode > 3 ||
             ((control.flags & RKVA_PROFILE_REPORT_ONLY) &&
              (control.flags != RKVA_PROFILE_REPORT_ONLY || control.q4_kernel_mode)))
@@ -709,25 +715,29 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         if (!(control.flags & RKVA_PROFILE_REPORT_ONLY)) {
             std::string error;
             if (!state.engine->set_range_profiling((control.flags & RKVA_PROFILE_ENABLE) != 0,
-                    (control.flags & RKVA_PROFILE_RESET) != 0, control.q4_kernel_mode, error)) {
+                                                   (control.flags & RKVA_PROFILE_RESET) != 0,
+                                                   control.q4_kernel_mode, error)) {
                 event_engine_error(error);
                 return RKVA_ERR_STATE;
             }
             state.profile_enabled = (control.flags & RKVA_PROFILE_ENABLE) != 0;
             state.trace_requests = (control.flags & RKVA_PROFILE_TRACE) != 0;
             if (control.flags & RKVA_PROFILE_RESET)
-                for (auto& counter : state.rpc_profile) counter = {};
+                for (auto& counter : state.rpc_profile)
+                    counter = {};
         }
         const std::string engine = state.engine->get_range_profile_json();
         const std::string report = "{\"engine\":" + (engine.empty() ? "{}" : engine) +
                                    ",\"transport\":" + rpc_profile_json(state) + "}";
-        if (report.size() > (1u << 20)) return RKVA_ERR_MEMORY;
+        if (report.size() > (1u << 20))
+            return RKVA_ERR_MEMORY;
         output.assign(report.begin(), report.end());
         prepare_us = elapsed_us(t0);
         return RKVA_OK;
     }
     case RKVA_RANGE_UPLOAD_ATTN: {
-        if (input.size() < sizeof(rkva_range_upload_attn)) return RKVA_ERR_BAD_PAYLOAD;
+        if (input.size() < sizeof(rkva_range_upload_attn))
+            return RKVA_ERR_BAD_PAYLOAD;
         auto it = state.sessions.find(req.session_id);
         if (it == state.sessions.end() || !it->second.range_configured || !state.engine ||
             !it->second.valid || it->second.range_storage == RKVA_RANGE_STORAGE_KVARN4)
@@ -736,17 +746,19 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         std::memcpy(&combined, input.data(), sizeof(combined));
         const auto& upload = combined.upload;
         const auto& attn = combined.attention;
-        const uint32_t wire = it->second.range_storage == RKVA_RANGE_STORAGE_Q8_0 ? RKVA_WIRE_Q8_0 :
-                              it->second.range_storage == RKVA_RANGE_STORAGE_Q4_0 ? RKVA_WIRE_Q4_0 : RKVA_WIRE_F16;
+        const uint32_t wire = it->second.range_storage == RKVA_RANGE_STORAGE_Q8_0   ? RKVA_WIRE_Q8_0
+                              : it->second.range_storage == RKVA_RANGE_STORAGE_Q4_0 ? RKVA_WIRE_Q4_0
+                                                                                    : RKVA_WIRE_F16;
         if (upload.wire != wire || upload.reserved || !upload.n_rows ||
             upload.start_row > it->second.capacity ||
-            upload.n_rows > it->second.capacity - upload.start_row ||
-            attn.wire != RKVA_WIRE_F32 || attn.flags || attn.reserved[0] || attn.reserved[1] ||
-            !req.n_tokens || req.n_tokens > 1024 || req.layer_id >= state.geo.n_layer_remote)
+            upload.n_rows > it->second.capacity - upload.start_row || attn.wire != RKVA_WIRE_F32 ||
+            attn.flags || attn.reserved[0] || attn.reserved[1] || !req.n_tokens ||
+            req.n_tokens > 1024 || req.layer_id >= state.geo.n_layer_remote)
             return RKVA_ERR_BAD_PAYLOAD;
         const uint64_t row_bytes = uint64_t(state.geo.n_head_kv) *
-            (wire == RKVA_WIRE_F16 ? uint64_t(state.geo.head_dim) * 2 :
-             uint64_t(state.geo.head_dim / 32) * (wire == RKVA_WIRE_Q4_0 ? 18 : 34));
+                                   (wire == RKVA_WIRE_F16 ? uint64_t(state.geo.head_dim) * 2
+                                                          : uint64_t(state.geo.head_dim / 32) *
+                                                                (wire == RKVA_WIRE_Q4_0 ? 18 : 34));
         const uint64_t plane_bytes = uint64_t(upload.n_rows) * row_bytes;
         const uint64_t q_heads = uint64_t(req.n_tokens) * state.geo.n_head;
         const uint64_t q_bytes = q_heads * state.geo.head_dim * sizeof(float);
@@ -763,7 +775,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 (t && int64_t(positions[t]) != int64_t(positions[t - 1]) + 1))
                 return RKVA_ERR_BAD_POSITION;
         }
-        if (uint64_t(positions[req.n_tokens - 1]) + 1 != end) return RKVA_ERR_BAD_POSITION;
+        if (uint64_t(positions[req.n_tokens - 1]) + 1 != end)
+            return RKVA_ERR_BAD_POSITION;
         output.resize(q_bytes + q_heads * sizeof(float));
         auto* out = reinterpret_cast<float*>(output.data());
         auto* lse = reinterpret_cast<float*>(output.data() + q_bytes);
@@ -771,13 +784,15 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         const auto start = clock_type::now();
         // First isolate network batching: retain the qualified upload/attention
         // engine calls. Queue/fence coalescing is measured as a separate change.
-        if (!state.engine->upload_range(req.session_id, req.layer_id, upload.start_row, upload.n_rows,
-                reinterpret_cast<const uint16_t*>(k), reinterpret_cast<const uint16_t*>(v), &error) ||
+        if (!state.engine->upload_range(req.session_id, req.layer_id, upload.start_row,
+                                        upload.n_rows, reinterpret_cast<const uint16_t*>(k),
+                                        reinterpret_cast<const uint16_t*>(v), &error) ||
             !state.engine->attend_range(req.session_id, req.layer_id, req.n_tokens, positions, q,
-                                       out, lse, &error)) {
+                                        out, lse, &error)) {
             output.clear();
             event_engine_error(error);
-            return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU : RKVA_ERR_BAD_POSITION;
+            return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
+                                                                 : RKVA_ERR_BAD_POSITION;
         }
         compute_us = elapsed_us(start);
         prepare_us = elapsed_us(t0);
@@ -874,17 +889,20 @@ void client_loop(SOCKET sock, remote_state& state, const std::string& log_path) 
             counter.handle_us += handle_us;
             counter.send_enqueue_us += previous_response_us;
         }
-        if (state.trace_requests) event(log_path,
-              "{\"phase\":\"request\",\"cycleId\":" + std::to_string(req.cycle_id) + ",\"op\":" +
-                  std::to_string(req.op) + ",\"session\":" + std::to_string(req.session_id) +
-                  ",\"layer\":" + std::to_string(req.layer_id) +
-                  ",\"nTokens\":" + std::to_string(req.n_tokens) +
-                  ",\"payloadBytes\":" + std::to_string(req.payload_bytes) +
-                  ",\"responseBytes\":" + std::to_string(output.size()) +
-                  ",\"status\":" + std::to_string(rc) + ",\"idleUs\":" + std::to_string(idle_us) +
-                  ",\"prepareUs\":" + std::to_string(prepare_us) + ",\"computeUs\":" +
-                  std::to_string(compute_us) + ",\"handleUs\":" + std::to_string(handle_us) +
-                  ",\"responseUs\":" + std::to_string(previous_response_us) + "}");
+        if (state.trace_requests)
+            event(log_path, "{\"phase\":\"request\",\"cycleId\":" + std::to_string(req.cycle_id) +
+                                ",\"op\":" + std::to_string(req.op) +
+                                ",\"session\":" + std::to_string(req.session_id) +
+                                ",\"layer\":" + std::to_string(req.layer_id) +
+                                ",\"nTokens\":" + std::to_string(req.n_tokens) +
+                                ",\"payloadBytes\":" + std::to_string(req.payload_bytes) +
+                                ",\"responseBytes\":" + std::to_string(output.size()) +
+                                ",\"status\":" + std::to_string(rc) +
+                                ",\"idleUs\":" + std::to_string(idle_us) +
+                                ",\"prepareUs\":" + std::to_string(prepare_us) +
+                                ",\"computeUs\":" + std::to_string(compute_us) +
+                                ",\"handleUs\":" + std::to_string(handle_us) +
+                                ",\"responseUs\":" + std::to_string(previous_response_us) + "}");
     }
 }
 
