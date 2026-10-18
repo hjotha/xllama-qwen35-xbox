@@ -107,6 +107,57 @@ int main() {
     assert(kvarn4_split(1000, 1).split_rows == 128); // 125 -> 128 rows, 8 splits
     assert(kvarn4_split(1000, 1).split_k == 8);
 
+    // Q4_0 multi-query tile selector: nq 2..9 only, mode 1 -> 4, mode 2 -> 2,
+    // mode 3 and nq1 keep the per-query kernel (and its split policy).
+    for (uint32_t m = 0; m < kModeCount + 1; ++m) {
+        assert(q4_mq_tile(m, 0) == 0 && q4_mq_tile(m, 1) == 0 && q4_mq_tile(m, 10) == 0);
+        for (uint32_t nq = 2; nq <= kOptMaxQueries; ++nq) {
+            const uint32_t want = m == kModeOptBalanced ? 4u : m == kModeOptFine ? 2u : 0u;
+            assert(q4_mq_tile(m, nq) == want);
+            assert(want <= kQ4MqTileMax);
+        }
+    }
+    assert(std::strcmp(q4_mq_kernel_name(4), "q4_mq4_balanced") == 0);
+    assert(std::strcmp(q4_mq_kernel_name(2), "q4_mq2_fine") == 0);
+    assert(std::strcmp(q4_mq_kernel_name(3), "invalid") == 0);
+    for (uint32_t m = 1; m < kModeCount; ++m) {
+        for (uint32_t a : {0u, 1u, 63u, 64u, 65u, 455u, 4096u, 28672u, 58128u, 58368u, 131072u}) {
+            const Q4MqSplit mq = q4_mq_split(a, m);
+            assert(mq.split_k >= 1 && mq.split_k <= kOptMaxSplits);
+            assert(mq.split_k <= optimized_split_k(a, m)); // fits the bounded partials
+            assert(mq.split_rows % kQ4MqRows == 0);
+            assert(uint64_t(mq.split_rows) * mq.split_k >= a);
+            assert(a == 0 || uint64_t(mq.split_rows) * (mq.split_k - 1) < a);
+        }
+    }
+    assert(q4_mq_split(1, kModeOptBalanced).split_k == 1); // direct output
+    assert(q4_mq_split(58128, kModeOptBalanced).split_rows == 512);
+    assert(q4_mq_split(58128, kModeOptBalanced).split_k == 114);
+    assert(q4_mq_split(58128, kModeOptFine).split_rows == 256);
+    assert(q4_mq_split(58128, kModeOptFine).split_k == 228);
+
+    // F16 / Q8_0 multi-query tiles (267): same legacy mode map as Q4_0, only for
+    // F16/Q8_0 storage; Q4_0 keeps its own selector and KVarN4 never tiles.
+    for (uint32_t m = 0; m < kModeCount + 1; ++m) {
+        for (uint32_t nq = 0; nq <= kOptMaxQueries + 1; ++nq) {
+            assert(format_mq_tile(m, kStorageF16, nq) == q4_mq_tile(m, nq));
+            assert(format_mq_tile(m, kStorageQ8, nq) == q4_mq_tile(m, nq));
+            assert(format_mq_tile(m, kStorageQ4, nq) == 0);
+            assert(format_mq_tile(m, kStorageKvarn4, nq) == 0);
+            assert(format_mq_tile(m, kStorageCount, nq) == 0);
+        }
+    }
+    assert(format_mq_tile(kModeOptCoarse, kStorageQ8, 3) == 0); // per-query baseline
+    assert(std::strcmp(format_mq_kernel_name(kStorageF16, 4), "f16_mq4_balanced") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageF16, 2), "f16_mq2_fine") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageQ8, 4), "q8_mq4_balanced") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageQ8, 2), "q8_mq2_fine") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageQ8, 3), "invalid") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageQ4, 4), "invalid") == 0);
+    assert(std::strcmp(format_mq_kernel_name(kStorageKvarn4, 2), "invalid") == 0);
+    assert(std::strcmp(mq_kernel_name(kStorageQ4, 4), "q4_mq4_balanced") == 0);
+    assert(std::strcmp(mq_kernel_name(kStorageQ8, 2), "q8_mq2_fine") == 0);
+
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;
     s.kind = kAttention;
@@ -126,6 +177,38 @@ int main() {
     assert(bucket_key(s) == "attention/kvarn4/optimized-kvarn4_gqa_balanced/nq1/r16k-32k/warm");
     s.storage = 2;
     assert(bucket_key(s) == "attention/q8_0/optimized-q8_gqa_balanced/nq1/r16k-32k/warm");
+    // Revision-3 serial-prefix calls never share a bucket with resident-image ones.
+    s.storage = 3;
+    s.serial_prefix = 1;
+    s.n_tokens = 3;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_gqa_balanced/nq2-16/r16k-32k/warm");
+    s.optimized = 0;
+    assert(bucket_key(s) == "attention/kvarn4-prefix/reference/nq2-16/r16k-32k/warm");
+    // Multi-query tile calls get their own Q4 kernel bucket.
+    s.storage = 1;
+    s.serial_prefix = 0;
+    s.optimized = 1;
+    s.q_tile = 4;
+    assert(bucket_key(s) == "attention/q4_0/optimized-q4_mq4_balanced/nq2-16/r16k-32k/warm");
+    s.mode = 2;
+    s.q_tile = 2;
+    assert(bucket_key(s) == "attention/q4_0/optimized-q4_mq2_fine/nq2-16/r16k-32k/warm");
+    s.mode = 3;
+    s.q_tile = 0;
+    assert(bucket_key(s) == "attention/q4_0/optimized-q4_gqa_coarse/nq2-16/r16k-32k/warm");
+    // F16/Q8_0 multi-query buckets are storage-qualified (never q4_mq*).
+    s.storage = kStorageQ8;
+    s.mode = 1;
+    s.q_tile = 4;
+    assert(bucket_key(s) == "attention/q8_0/optimized-q8_mq4_balanced/nq2-16/r16k-32k/warm");
+    s.storage = kStorageF16;
+    s.mode = 2;
+    s.q_tile = 2;
+    assert(bucket_key(s) == "attention/f16/optimized-f16_mq2_fine/nq2-16/r16k-32k/warm");
+    s.mode = 3;
+    s.q_tile = 0;
+    assert(bucket_key(s) == "attention/f16/optimized-f16_gqa_coarse/nq2-16/r16k-32k/warm");
 
     // Ring: fixed capacity, overwrites oldest, counts everything.
     Recorder r;
@@ -170,7 +253,40 @@ int main() {
     r.counters.reference_by_storage[kStorageF16] = 2;
     h.wave_lane_min = 32;
     h.wave_lane_max = 64;
+    h.kvarn4_prefix_available[0] = true;
+    h.kvarn4_prefix_status[0] = "ready";
+    h.kvarn4_prefix_status[1] = "kvarn4 optimized serial-prefix pipeline state: 0x80070057";
+    h.q4_mq_available[1] = true;
+    h.q4_mq_status[0] = "q4 multi-query pipeline state: 0x80070057";
+    h.q4_mq_status[1] = "ready";
+    r.counters.q4_mq_calls[1] = 7;
+    h.fmt_mq_available[kStorageF16][0] = true;
+    h.fmt_mq_available[kStorageF16][1] = true;
+    h.fmt_mq_status[kStorageF16][0] = "ready";
+    h.fmt_mq_status[kStorageF16][1] = "ready";
+    h.fmt_mq_available[kStorageQ8][1] = true;
+    h.fmt_mq_status[kStorageQ8][0] = "q8 multi-query pipeline state: 0x80070057";
+    h.fmt_mq_status[kStorageQ8][1] = "ready";
+    r.counters.fmt_mq_calls[kStorageF16][0] = 3;
+    r.counters.fmt_mq_calls[kStorageQ8][1] = 11;
     const std::string json = r.json(h);
+    assert(json.find("\"format_multi_query\":{\"nq_min\":2,\"nq_max\":9,\"tile_rows\":64,"
+                     "\"mode_map\":\"1:<fmt>_mq4_balanced 2:<fmt>_mq2_fine 3:per-query "
+                     "<fmt>_gqa_coarse\",\"f16\":{\"mq2\":{\"available\":true,\"status\":"
+                     "\"ready\",\"calls\":3},\"mq4\":{\"available\":true,\"status\":\"ready\","
+                     "\"calls\":0}},\"q8_0\":{\"mq2\":{\"available\":false,\"status\":\"q8 "
+                     "multi-query pipeline state: 0x80070057\",\"calls\":0},\"mq4\":{"
+                     "\"available\":true,\"status\":\"ready\",\"calls\":11}}}") !=
+           std::string::npos);
+    assert(json.find("\"q4_multi_query\":{\"nq_min\":2,\"nq_max\":9,\"tile_rows\":64,"
+                     "\"mode_map\":\"1:q4_mq4_balanced 2:q4_mq2_fine 3:per-query "
+                     "q4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"q4 "
+                     "multi-query pipeline state: 0x80070057\",\"calls\":0},\"mq4\":{"
+                     "\"available\":true,\"status\":\"ready\",\"calls\":7}}") != std::string::npos);
+    assert(json.find("\"kvarn4_serial_prefix\":{\"reference\":{\"available\":true,\"status\":"
+                     "\"ready\"},\"optimized\":{\"available\":false,\"status\":\"kvarn4 "
+                     "optimized serial-prefix pipeline state: 0x80070057\"}}") !=
+           std::string::npos);
     assert(json.find("\"schema\":\"rkva-range-profile-v1\"") != std::string::npos);
     assert(json.find("\"samples_overwritten\":2") != std::string::npos);
     assert(json.find("upload/q4_0/nq1/r257-1k/warm") != std::string::npos);

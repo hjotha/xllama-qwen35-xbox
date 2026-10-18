@@ -11,17 +11,26 @@
 #include "remote-attn-engine.h"
 
 #include "rkva-kvarn-range.h"
+#include "rkva-kvarn-rewind.h"
 #include "rkva-range-profile.h"
 #include "rkva_flash_attn_dxil.h"
 #include "rkva_flash_attn_kvarn4_dxil.h"
 #include "rkva_flash_attn_split_k_reduce_dxil.h"
 #include "rkva_range_attn_dxil.h"
+#include "rkva_range_attn_f16_mq2_dxil.h"
+#include "rkva_range_attn_f16_mq4_dxil.h"
 #include "rkva_range_attn_f16_opt_dxil.h"
 #include "rkva_range_attn_kvarn4_dxil.h"
 #include "rkva_range_attn_kvarn4_opt_dxil.h"
+#include "rkva_range_attn_kvarn4_opt_prefix_dxil.h"
+#include "rkva_range_attn_kvarn4_prefix_dxil.h"
 #include "rkva_range_attn_q4_dxil.h"
+#include "rkva_range_attn_q4_mq2_dxil.h"
+#include "rkva_range_attn_q4_mq4_dxil.h"
 #include "rkva_range_attn_q4_opt_dxil.h"
 #include "rkva_range_attn_q8_dxil.h"
+#include "rkva_range_attn_q8_mq2_dxil.h"
+#include "rkva_range_attn_q8_mq4_dxil.h"
 #include "rkva_range_attn_q8_opt_dxil.h"
 #include "rkva_range_reduce_dxil.h"
 #include "rkva_range_reduce_opt_dxil.h"
@@ -147,6 +156,9 @@ struct RemoteAttnEngine::Session {
     uint32_t precision_tail_tokens = 0;
     std::vector<uint32_t> range_record_groups;
     std::vector<bool> range_ready;
+    // Revision-3 per-layer tail ring / stage coverage, published after the fence.
+    std::vector<rkva_kvarn_range::prefix_coverage> prefix_coverage;
+    uint64_t native_generation = 0;
     std::vector<uint32_t> range_counts; // per layer; never share a high-water mark
 
     std::vector<Buffer> layer_kv; // 1 committed buffer per layer slot
@@ -506,6 +518,18 @@ bool RemoteAttnEngine::create_pipelines(std::string* error) {
             return fail(error, "CreateComputePipelineState range attention", hr);
         }
     }
+    // Revision-3 serial-prefix reference kernel: optional, never fatal for the engine.
+    pso.CS = {g_rkva_range_attn_kvarn4_prefix_dxil, sizeof(g_rkva_range_attn_kvarn4_prefix_dxil)};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_attn_kvarn4_prefix_pso_));
+    if (FAILED(hr)) {
+        char text[96];
+        std::snprintf(text, sizeof(text), "kvarn4 serial-prefix pipeline state: 0x%08X",
+                      unsigned(hr));
+        kvarn4_prefix_status_ = text;
+        range_attn_kvarn4_prefix_pso_.Reset();
+    } else {
+        kvarn4_prefix_status_ = "ready";
+    }
     pso.pRootSignature = range_reduce_root_.Get();
     pso.CS = {g_rkva_range_reduce_dxil, sizeof(g_rkva_range_reduce_dxil)};
     hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_reduce_pso_));
@@ -590,6 +614,23 @@ void RemoteAttnEngine::create_q4_opt_pipelines() {
         return;
     }
     q4_opt_status_ = "ready";
+    // Multi-query tile kernels share the per-query root signature and reducer.
+    const D3D12_SHADER_BYTECODE mq_cs[2] = {
+        {g_rkva_range_attn_q4_mq2_dxil, sizeof(g_rkva_range_attn_q4_mq2_dxil)},
+        {g_rkva_range_attn_q4_mq4_dxil, sizeof(g_rkva_range_attn_q4_mq4_dxil)}};
+    for (uint32_t i = 0; i < 2; ++i) {
+        pso.pRootSignature = range_attn_q4_opt_root_.Get();
+        pso.CS = mq_cs[i];
+        hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_attn_q4_mq_pso_[i]));
+        if (FAILED(hr)) {
+            std::snprintf(text, sizeof(text), "q4 multi-query pipeline state: 0x%08X",
+                          unsigned(hr));
+            q4_mq_status_[i] = text;
+            range_attn_q4_mq_pso_[i].Reset();
+        } else {
+            q4_mq_status_[i] = "ready";
+        }
+    }
 }
 
 // Optional optimized F16 / Q8_0 / native KVarN4 decode pipelines. They share the
@@ -602,6 +643,11 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
         fmt_opt_status_[rp::kStorageF16] = why;
         fmt_opt_status_[rp::kStorageQ8] = why;
         fmt_opt_status_[rp::kStorageKvarn4] = why;
+        kvarn4_opt_prefix_status_ = why;
+        for (uint32_t i = 0; i < 2; ++i) {
+            fmt_mq_status_[rp::kStorageF16][i] = why;
+            fmt_mq_status_[rp::kStorageQ8][i] = why;
+        }
         return;
     }
     auto serialize = xllama::d3d12_dyn::SerializeRootSignature();
@@ -640,6 +686,11 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
         fmt_opt_status_[rp::kStorageF16] = text;
         fmt_opt_status_[rp::kStorageQ8] = text;
         fmt_opt_status_[rp::kStorageKvarn4] = text;
+        kvarn4_opt_prefix_status_ = text;
+        for (uint32_t i = 0; i < 2; ++i) {
+            fmt_mq_status_[rp::kStorageF16][i] = text;
+            fmt_mq_status_[rp::kStorageQ8][i] = text;
+        }
         return;
     }
     struct Kernel {
@@ -666,6 +717,49 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
             fmt_opt_status_[k.storage] = text;
         } else {
             fmt_opt_status_[k.storage] = "ready";
+        }
+    }
+    D3D12_COMPUTE_PIPELINE_STATE_DESC prefix = {};
+    prefix.pRootSignature = range_attn_fmt_opt_root_.Get();
+    prefix.CS = {g_rkva_range_attn_kvarn4_opt_prefix_dxil,
+                 sizeof(g_rkva_range_attn_kvarn4_opt_prefix_dxil)};
+    hr = device_->CreateComputePipelineState(&prefix,
+                                             IID_PPV_ARGS(&range_attn_kvarn4_opt_prefix_pso_));
+    if (FAILED(hr)) {
+        std::snprintf(text, sizeof(text), "kvarn4 serial-prefix optimized pipeline state: 0x%08X",
+                      unsigned(hr));
+        range_attn_kvarn4_opt_prefix_pso_.Reset();
+        kvarn4_opt_prefix_status_ = text;
+    } else {
+        kvarn4_opt_prefix_status_ = "ready";
+    }
+    // F16 / Q8_0 multi-query tiles: same root signature, one PSO per (storage, tile).
+    const struct {
+        uint32_t storage;
+        uint32_t index; // q_tile / 4
+        const void* bytecode;
+        size_t size;
+    } mq_kernels[] = {
+        {rp::kStorageF16, 0, g_rkva_range_attn_f16_mq2_dxil,
+         sizeof(g_rkva_range_attn_f16_mq2_dxil)},
+        {rp::kStorageF16, 1, g_rkva_range_attn_f16_mq4_dxil,
+         sizeof(g_rkva_range_attn_f16_mq4_dxil)},
+        {rp::kStorageQ8, 0, g_rkva_range_attn_q8_mq2_dxil, sizeof(g_rkva_range_attn_q8_mq2_dxil)},
+        {rp::kStorageQ8, 1, g_rkva_range_attn_q8_mq4_dxil, sizeof(g_rkva_range_attn_q8_mq4_dxil)},
+    };
+    for (const auto& k : mq_kernels) {
+        D3D12_COMPUTE_PIPELINE_STATE_DESC pso = {};
+        pso.pRootSignature = range_attn_fmt_opt_root_.Get();
+        pso.CS = {k.bytecode, k.size};
+        ComPtr<ID3D12PipelineState>& slot = range_attn_fmt_mq_pso_[k.storage][k.index];
+        hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&slot));
+        if (FAILED(hr)) {
+            std::snprintf(text, sizeof(text), "%s multi-query pipeline state: 0x%08X",
+                          rp::storage_name(k.storage), unsigned(hr));
+            slot.Reset();
+            fmt_mq_status_[k.storage][k.index] = text;
+        } else {
+            fmt_mq_status_[k.storage][k.index] = "ready";
         }
     }
 }
@@ -774,6 +868,12 @@ void RemoteAttnEngine::finish_profile_sample(rp::Sample& sample, bool timestamps
             ++c.optimized_by_storage[sample.storage];
             if (sample.storage == rp::kStorageQ4) {
                 ++c.optimized_calls;
+                if (sample.q_tile == 2 || sample.q_tile == 4) {
+                    ++c.q4_mq_calls[sample.q_tile / 4];
+                }
+            } else if ((sample.storage == rp::kStorageF16 || sample.storage == rp::kStorageQ8) &&
+                       (sample.q_tile == 2 || sample.q_tile == 4)) {
+                ++c.fmt_mq_calls[sample.storage][sample.q_tile / 4];
             }
         } else {
             ++c.reference_by_storage[sample.storage];
@@ -861,6 +961,28 @@ std::string RemoteAttnEngine::get_range_profile_json() {
     }
     header.wave_lane_min = wave_lane_min_;
     header.wave_lane_max = wave_lane_max_;
+    header.kvarn4_prefix_available[0] = bool(range_attn_kvarn4_prefix_pso_);
+    header.kvarn4_prefix_status[0] = kvarn4_prefix_status_;
+    header.kvarn4_prefix_available[1] =
+        range_attn_fmt_opt_root_ && range_attn_kvarn4_opt_prefix_pso_ && range_reduce_opt_pso_;
+    header.kvarn4_prefix_status[1] = kvarn4_opt_prefix_status_;
+    for (uint32_t i = 0; i < 2; ++i) {
+        header.q4_mq_available[i] = header.q4_optimized_available && range_attn_q4_mq_pso_[i];
+        header.q4_mq_status[i] = header.q4_optimized_available
+                                     ? q4_mq_status_[i]
+                                     : "requires the q4 optimized pipelines: " + q4_opt_status_;
+    }
+    for (uint32_t st : {uint32_t(rp::kStorageF16), uint32_t(rp::kStorageQ8)}) {
+        for (uint32_t i = 0; i < 2; ++i) {
+            header.fmt_mq_available[st][i] =
+                header.optimized_available[st] && range_attn_fmt_mq_pso_[st][i];
+            header.fmt_mq_status[st][i] = header.optimized_available[st]
+                                              ? fmt_mq_status_[st][i]
+                                              : std::string("requires the ") +
+                                                    rp::storage_name(st) +
+                                                    " optimized pipeline: " + fmt_opt_status_[st];
+        }
+    }
     if (!profile_) {
         return rp::Recorder().json(header);
     }
@@ -952,6 +1074,7 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
     session->range_counts.resize(n_layers, 0);
     session->range_record_groups.resize(n_layers, 0);
     session->range_ready.resize(n_layers, false);
+    session->prefix_coverage.resize(n_layers);
     session->layer_kv.resize(n_layers);
     for (uint32_t l = 0; !defer_allocation && l < n_layers; ++l) {
         if (!create_buffer(session->layer_stride, D3D12_HEAP_TYPE_DEFAULT,
@@ -992,10 +1115,17 @@ bool RemoteAttnEngine::reset_session(uint32_t session_id, std::string* error) {
     if (!s) {
         return fail(error, "reset: no session");
     }
+    if (s->range_storage == 3 && !rkva_kvarn_generation_mutable(s->native_generation))
+        return fail(error, "native generation exhausted");
+    if (s->range_storage == 3) {
+        ++s->native_generation;
+    }
     s->high_water = -1;
     std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
     std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
     std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    std::fill(s->prefix_coverage.begin(), s->prefix_coverage.end(),
+              rkva_kvarn_range::prefix_coverage{});
     s->valid = true;
     return true;
 }
@@ -1009,11 +1139,16 @@ bool RemoteAttnEngine::trim_session(uint32_t session_id, int32_t pos0, std::stri
         return fail(error, "trim: negative position");
     }
     if (s->range_configured && s->range_storage == 3) {
+        if (!rkva_kvarn_generation_mutable(s->native_generation))
+            return fail(error, "native generation exhausted");
+        ++s->native_generation;
         // Stage slots and the exact-tail overlay cannot be reconstructed after a rewind.
         // Invalidate every layer; require a complete host snapshot before any attention.
         std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
         std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
         std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+        std::fill(s->prefix_coverage.begin(), s->prefix_coverage.end(),
+                  rkva_kvarn_range::prefix_coverage{});
     } else if (s->range_configured) {
         const uint32_t keep = uint32_t(pos0) <= s->range_origin
                                   ? 0
@@ -1415,11 +1550,20 @@ bool RemoteAttnEngine::configure_kvarn_range(uint32_t id, const rkva_kvarn_range
         !rkva_kvarn_range::valid_descriptor(c, geo_.head_dim)) {
         return ::fail(error, "KVarN range: unsupported descriptor/session");
     }
+    // Revision 3 fails closed without its own kernel: the revision 1/2 PSOs read
+    // the resident image and a 128-row ring, never the serial prefix.
+    if (rkva_kvarn_range::serial_prefix(c) && !range_attn_kvarn4_prefix_pso_)
+        return ::fail(error, "KVarN range: revision 3 serial-prefix pipeline unavailable");
+    const uint64_t generation = rkva_kvarn_new_generation_seed();
+    if (!generation)
+        return fail(error, "native configuration epochs exhausted");
     const uint64_t heads = uint64_t(geo_.n_head_kv) * 2;
     const uint64_t groups = (uint64_t(c.capacity) + 127) / 128;
     const uint64_t records = groups * heads * 8960;
     const uint64_t stage = 384 * heads * 128 * 2;
-    const uint64_t tail = uint64_t(c.precision_tail_tokens) * geo_.n_head_kv * 256 * 2;
+    // Revision 3 keeps a 256-row physical ring for the logical 128-row tail.
+    const uint64_t tail =
+        uint64_t(rkva_kvarn_range::physical_tail_rows(c)) * geo_.n_head_kv * 256 * 2;
     const uint64_t half = records + stage + tail;
     const uint64_t bytes = 2 * half * s->layer_kv.size();
     constexpr uint64_t budget = 4ull * 1024 * 1024 * 1024;
@@ -1446,6 +1590,7 @@ bool RemoteAttnEngine::configure_kvarn_range(uint32_t id, const rkva_kvarn_range
     s->records_bytes = records;
     s->stage_bytes = stage;
     s->range_descriptor = c;
+    s->native_generation = generation;
     s->precision_tail_tokens = c.precision_tail_tokens;
     s->kv_bytes = bytes;
     allocated_bytes_ += bytes;
@@ -1456,7 +1601,96 @@ bool RemoteAttnEngine::configure_kvarn_range(uint32_t id, const rkva_kvarn_range
     std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
     std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
     std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    std::fill(s->prefix_coverage.begin(), s->prefix_coverage.end(),
+              rkva_kvarn_range::prefix_coverage{});
     s->valid = true;
+    return true;
+}
+
+uint64_t RemoteAttnEngine::native_range_generation(uint32_t id) const {
+    const Session* s = find_session(id);
+    return s && s->range_configured && s->range_storage == 3 ? s->native_generation : 0;
+}
+
+// Atomic all-layer bounded rewind. Two stage ping-pong groups retain every
+// prefix row needed after <=128 removals; removed suffix rows are masked by
+// range_counts and overwritten before a group is sealed again. Only the
+// ORIGINAL-domain precision-tail ring needs GPU repair.
+bool RemoteAttnEngine::rewind_kvarn_range(uint32_t id, const rkva_kvarn_range_rewind& request,
+                                          const uint8_t* data, size_t bytes, std::string* error) {
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured || s->range_storage != 3 ||
+        request.reserved || request.pos0 > uint32_t(INT32_MAX) ||
+        request.n_layers != s->range_counts.size() ||
+        request.tail_tokens != s->precision_tail_tokens || !data)
+        return fail(error, "native rewind: invalid session/descriptor");
+    rkva_kvarn_rewind_plan plan;
+    if (!rkva_kvarn_plan_rewind(request, s->range_origin, s->capacity, geo_.n_head_kv,
+                                s->precision_tail_tokens, s->native_generation, s->range_counts,
+                                s->range_ready, data, bytes, plan))
+        return fail(error, "native rewind: malformed payload or stale coverage");
+    const auto& layers = plan.layers;
+    const auto& offsets = plan.tail_offsets;
+    const uint64_t row_bytes = uint64_t(geo_.n_head_kv) * 256 * 2;
+    const bool prefix = rkva_kvarn_range::serial_prefix(s->range_descriptor);
+    // Validate every layer before the first mutation. One command list and
+    // fence cover every repaired ring; no per-layer RTT or partial ACK.
+    if (bytes && range_upload_.bytes < bytes &&
+        !create_buffer(bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                       D3D12_RESOURCE_STATE_GENERIC_READ, &range_upload_, error))
+        return false;
+    void* mapped = nullptr;
+    const HRESULT hr = range_upload_.resource->Map(0, nullptr, &mapped);
+    if (FAILED(hr))
+        return fail(error, "Map native rewind upload", hr);
+    std::memcpy(mapped, data, bytes);
+    range_upload_.resource->Unmap(0, nullptr);
+    if (!begin(error))
+        return false;
+    for (uint32_t il = 0; il < request.n_layers; ++il) {
+        const auto span = rkva_kvarn_rewind_tail(layers[il].expected_live, layers[il].new_live,
+                                                 request.tail_tokens);
+        const uint32_t tail_rows = span.rows;
+        if (!tail_rows)
+            continue;
+        auto& dst = s->layer_kv[il];
+        transition(dst, D3D12_RESOURCE_STATE_COPY_DEST);
+        for (uint32_t kind = 0; kind < 2; ++kind) {
+            const uint64_t source = offsets[il] + uint64_t(kind) * tail_rows * row_bytes;
+            auto copy = [&](uint32_t row, uint32_t target, uint32_t count) {
+                cmd_->CopyBufferRegion(dst.resource.Get(),
+                                       uint64_t(kind) * s->half_stride + s->records_bytes +
+                                           s->stage_bytes + uint64_t(target) * row_bytes,
+                                       range_upload_.resource.Get(),
+                                       source + uint64_t(row) * row_bytes,
+                                       uint64_t(count) * row_bytes);
+            };
+            if (prefix)
+                rkva_kvarn_range::tail_ring_chunks(span.begin, tail_rows,
+                                                   rkva_kvarn_range::kPrefixTailRing, copy);
+            else
+                rkva_kvarn_range::tail_chunks(span.begin, tail_rows, copy);
+        }
+        transition(dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    }
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+    ++s->native_generation;
+    for (uint32_t il = 0; il < request.n_layers; ++il) {
+        if (prefix) {
+            const auto span = rkva_kvarn_rewind_tail(layers[il].expected_live, layers[il].new_live,
+                                                     request.tail_tokens);
+            s->prefix_coverage[il] = rkva_kvarn_range::coverage_after_rewind(
+                s->prefix_coverage[il], layers[il].new_live, span.begin, span.rows);
+        }
+        s->range_counts[il] = layers[il].new_live;
+        s->range_record_groups[il] = layers[il].new_live / 128;
+        s->range_ready[il] = layers[il].new_live != 0;
+    }
+    if (s->high_water >= int32_t(request.pos0))
+        s->high_water = int32_t(request.pos0) - 1;
     return true;
 }
 
@@ -1469,8 +1703,8 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     timer.start(prof, sample.cpu_ns);
     FailedCallGuard guard{prof ? &profile_->recorder.counters.failed_calls : nullptr};
     Session* s = find_session(id);
-    if (!ready_ || !s || !s->valid || !s->range_configured || s->range_storage != 3 ||
-        layer >= s->layer_kv.size() || !data ||
+    if (!ready_ || !s || !rkva_kvarn_generation_mutable(s->native_generation) || !s->valid ||
+        !s->range_configured || s->range_storage != 3 || layer >= s->layer_kv.size() || !data ||
         !rkva_kvarn_range::valid_upload(u, s->capacity, s->range_counts[layer],
                                         s->range_record_groups[layer], s->range_ready[layer])) {
         return ::fail(error, "KVarN range upload: invalid descriptor/coverage/snapshot");
@@ -1478,6 +1712,7 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     const uint64_t record_group_bytes = uint64_t(geo_.n_head_kv) * 2 * 8960;
     const uint64_t rec_bytes = uint64_t(u.record_groups) * record_group_bytes;
     const bool reset = (u.flags & 1) != 0;
+    const bool prefix = rkva_kvarn_range::serial_prefix(s->range_descriptor);
     const uint64_t row_bytes = uint64_t(geo_.n_head_kv) * 256 * 2;
     const uint32_t stage_rows = reset ? 384 : u.append_rows;
     const uint32_t tail_rows =
@@ -1534,15 +1769,18 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
         }
         const uint64_t tail_source = 2 * (rec_bytes + stage_payload) + kind * tail_payload;
         const uint32_t tail_begin = reset ? u.live_count - tail_rows : u.append_begin;
-        // A prefill may upload >128 new rows: only its newest 128 are live in the overlay.
-        rkva_kvarn_range::tail_chunks(
-            tail_begin, tail_rows, [&](uint32_t source, uint32_t target, uint32_t rows) {
-                cmd_->CopyBufferRegion(dst.resource.Get(),
-                                       plane + s->records_bytes + s->stage_bytes +
-                                           target * row_bytes,
-                                       range_upload_.resource.Get(),
-                                       tail_source + source * row_bytes, rows * row_bytes);
-            });
+        auto copy_tail = [&](uint32_t source, uint32_t target, uint32_t rows) {
+            cmd_->CopyBufferRegion(
+                dst.resource.Get(), plane + s->records_bytes + s->stage_bytes + target * row_bytes,
+                range_upload_.resource.Get(), tail_source + source * row_bytes, rows * row_bytes);
+        };
+        // A prefill may upload >128 new rows: only its newest 128 (revision 3:
+        // 256, the physical ring) stay in the overlay.
+        if (prefix)
+            rkva_kvarn_range::tail_ring_chunks(tail_begin, tail_rows,
+                                               rkva_kvarn_range::kPrefixTailRing, copy_tail);
+        else
+            rkva_kvarn_range::tail_chunks(tail_begin, tail_rows, copy_tail);
     }
     transition(dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
     if (ts) {
@@ -1558,11 +1796,18 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     s->range_record_groups[layer] =
         (u.flags & 1) ? u.record_groups
                       : std::max(s->range_record_groups[layer], u.record_begin + u.record_groups);
+    ++s->native_generation;
+    if (prefix)
+        s->prefix_coverage[layer] =
+            reset ? rkva_kvarn_range::coverage_after_reset(u.live_count, s->precision_tail_tokens)
+                  : rkva_kvarn_range::coverage_after_append(s->prefix_coverage[layer], u.live_count,
+                                                            s->precision_tail_tokens);
     s->range_counts[layer] = u.live_count;
     s->range_ready[layer] = true;
     if (prof) {
         sample.kind = rp::kUpload;
         sample.storage = 3;
+        sample.serial_prefix = prefix;
         sample.mode = uint8_t(q4_kernel_mode_);
         sample.alloc_grew = grow;
         sample.n_tokens = u.append_rows;
@@ -1692,6 +1937,17 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             return ::fail(error, "range attention: negative query position");
         }
     }
+    // Revision 3: each query reads its own serial prefix. Only a contiguous
+    // batch ending at the newest row whose every prefix is still held by the
+    // stage slots / 256-row tail ring is accepted; nothing is mutated otherwise.
+    const bool prefix =
+        s->range_storage == 3 && rkva_kvarn_range::serial_prefix(s->range_descriptor);
+    if (prefix && (!range_attn_kvarn4_prefix_pso_ ||
+                   !rkva_kvarn_range::valid_prefix_queries(
+                       positions, n_tokens, s->range_origin, s->range_counts[layer],
+                       s->prefix_coverage[layer], s->precision_tail_tokens))) {
+        return ::fail(error, "range attention: serial-prefix batch not contiguous/covered");
+    }
     timer.mark(rp::kCpuValidate);
     const bool grow = range_scratch_tokens_ < n_tokens;
     if (!ensure_range_scratch(n_tokens, error)) {
@@ -1743,6 +1999,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         if (prof) {
             sample.kind = rp::kAttention;
             sample.storage = uint8_t(s->range_storage);
+            sample.serial_prefix = prefix;
             sample.mode = uint8_t(q4_kernel_mode_);
             sample.alloc_grew = grow;
             sample.n_tokens = n_tokens;
@@ -1758,10 +2015,26 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                            rp::optimized_q4_supported(q4_kernel_mode_, s->range_storage, n_tokens,
                                                       geo_.n_head, geo_.n_head_kv, geo_.head_dim);
     if (optimized) {
-        // GQA-shared decode/verification: independent query workgroups.
+        // GQA-shared decode/verification. nq1 (and mode 3, or a missing tile PSO):
+        // independent per-query workgroups. nq 2..9 in modes 1/2: one workgroup
+        // per query tile shares each K/V dequantization across the tile.
         // The bounded workspace covers kOptMaxQueries, including the anchor.
         // split_k == 1 writes OUT/LSE directly.
-        const uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
+        uint32_t q_tile = rp::q4_mq_tile(q4_kernel_mode_, n_tokens);
+        ID3D12PipelineState* attn_pso = range_attn_q4_opt_pso_.Get();
+        if (q_tile && range_attn_q4_mq_pso_[q_tile / 4]) {
+            attn_pso = range_attn_q4_mq_pso_[q_tile / 4].Get();
+        } else {
+            q_tile = 0;
+        }
+        uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
+        uint32_t rows_per_split = rp::split_rows(active_count, split_k);
+        if (q_tile) {
+            const rp::Q4MqSplit mq = rp::q4_mq_split(active_count, q4_kernel_mode_);
+            split_k = mq.split_k;
+            rows_per_split = mq.split_rows;
+        }
+        const uint32_t query_groups = q_tile ? (n_tokens + q_tile - 1) / q_tile : n_tokens;
         const bool direct = split_k == 1;
         Buffer& kv = s->layer_kv[layer];
         transition(kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1771,13 +2044,11 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         const uint64_t kv_addr = kv.resource->GetGPUVirtualAddress();
         uint32_t scale;
         std::memcpy(&scale, &geo_.kq_scale, sizeof(scale));
-        const uint32_t params[] = {
-            n_tokens,        active_count,  geo_.n_head,
-            geo_.n_head_kv,  geo_.head_dim, scale,
-            s->range_origin, split_k,       rp::split_rows(active_count, split_k),
-            direct ? 1u : 0u};
+        const uint32_t params[] = {n_tokens,       active_count,    geo_.n_head,     geo_.n_head_kv,
+                                   geo_.head_dim,  scale,           s->range_origin, split_k,
+                                   rows_per_split, direct ? 1u : 0u};
         cmd_->SetComputeRootSignature(range_attn_q4_opt_root_.Get());
-        cmd_->SetPipelineState(range_attn_q4_opt_pso_.Get());
+        cmd_->SetPipelineState(attn_pso);
         cmd_->SetComputeRoot32BitConstants(0, 10, params, 0);
         cmd_->SetComputeRootShaderResourceView(1, q_addr);
         cmd_->SetComputeRootShaderResourceView(2, kv_addr);
@@ -1786,7 +2057,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         cmd_->SetComputeRootUnorderedAccessView(
             5, range_opt_partials_.resource->GetGPUVirtualAddress());
         cmd_->SetComputeRootUnorderedAccessView(6, range_output_.resource->GetGPUVirtualAddress());
-        cmd_->Dispatch(geo_.n_head_kv, n_tokens, split_k);
+        cmd_->Dispatch(geo_.n_head_kv, query_groups, split_k);
         if (!direct) {
             uav_barrier(range_opt_partials_);
             transition(range_opt_partials_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1815,7 +2086,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             sample.optimized = 1;
             sample.direct_output = direct;
             sample.split_k = split_k;
-            sample.groups = geo_.n_head_kv * n_tokens * split_k;
+            sample.groups = geo_.n_head_kv * query_groups * split_k;
+            sample.q_tile = uint8_t(q_tile);
         }
         cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
                                out_bytes);
@@ -1824,24 +2096,43 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
     // F16 / Q8_0 / native KVarN4 optimized decode/verification kernels: same dispatch shape and
     // OUT/LSE/partials contract as the Q4 branch, storage-specific PSO. KVarN4
     // reads its descriptor-v1 records/stage/tail in place (no materialization).
+    // F16/Q8_0 nq 2..9 in modes 1/2 use the multi-query tile PSO when present
+    // (same mapping and 64-row split as Q4_0); nq1, mode 3 and KVarN4 keep the
+    // per-query kernel.
     const uint32_t storage = s->range_storage;
     const bool kvarn = storage == rp::kStorageKvarn4;
+    // Revision 3 only ever uses its own serial-prefix PSOs.
+    ID3D12PipelineState* fmt_pso = storage >= rp::kStorageCount ? nullptr
+                                   : prefix ? range_attn_kvarn4_opt_prefix_pso_.Get()
+                                            : range_attn_fmt_opt_pso_[storage].Get();
     const bool fmt_optimized =
-        storage < rp::kStorageCount && range_attn_fmt_opt_root_ &&
-        range_attn_fmt_opt_pso_[storage] && range_reduce_opt_pso_ && range_opt_partials_.resource &&
+        fmt_pso && range_attn_fmt_opt_root_ && range_reduce_opt_pso_ &&
+        range_opt_partials_.resource &&
         (kvarn ? rp::optimized_kvarn4_supported(q4_kernel_mode_, storage, n_tokens, geo_.n_head,
                                                 geo_.n_head_kv, geo_.head_dim, s->range_origin,
                                                 s->precision_tail_tokens)
                : rp::optimized_format_supported(q4_kernel_mode_, storage, n_tokens, geo_.n_head,
                                                 geo_.n_head_kv, geo_.head_dim));
     if (fmt_optimized) {
+        uint32_t q_tile =
+            kvarn || prefix ? 0u : rp::format_mq_tile(q4_kernel_mode_, storage, n_tokens);
+        if (q_tile && range_attn_fmt_mq_pso_[storage][q_tile / 4]) {
+            fmt_pso = range_attn_fmt_mq_pso_[storage][q_tile / 4].Get();
+        } else {
+            q_tile = 0;
+        }
         uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
         uint32_t rows = rp::split_rows(active_count, split_k);
         if (kvarn) {
             const rp::KvarnSplit ks = rp::kvarn4_split(active_count, q4_kernel_mode_);
             split_k = ks.split_k;
             rows = ks.split_rows;
+        } else if (q_tile) {
+            const rp::Q4MqSplit mq = rp::q4_mq_split(active_count, q4_kernel_mode_);
+            split_k = mq.split_k;
+            rows = mq.split_rows;
         }
+        const uint32_t query_groups = q_tile ? (n_tokens + q_tile - 1) / q_tile : n_tokens;
         const bool direct = split_k == 1;
         Buffer& kv = s->layer_kv[layer];
         transition(kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1864,7 +2155,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                                    kvarn ? uint32_t(s->records_bytes) : 0u,
                                    kvarn ? s->precision_tail_tokens : 0u};
         cmd_->SetComputeRootSignature(range_attn_fmt_opt_root_.Get());
-        cmd_->SetPipelineState(range_attn_fmt_opt_pso_[storage].Get());
+        cmd_->SetPipelineState(fmt_pso);
         cmd_->SetComputeRoot32BitConstants(0, 12, params, 0);
         cmd_->SetComputeRootShaderResourceView(1, q_addr);
         cmd_->SetComputeRootShaderResourceView(2, kv_addr);
@@ -1873,7 +2164,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         cmd_->SetComputeRootUnorderedAccessView(
             5, range_opt_partials_.resource->GetGPUVirtualAddress());
         cmd_->SetComputeRootUnorderedAccessView(6, range_output_.resource->GetGPUVirtualAddress());
-        cmd_->Dispatch(geo_.n_head_kv, n_tokens, split_k);
+        cmd_->Dispatch(geo_.n_head_kv, query_groups, split_k);
         if (!direct) {
             uav_barrier(range_opt_partials_);
             transition(range_opt_partials_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -1902,7 +2193,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             sample.optimized = 1;
             sample.direct_output = direct;
             sample.split_k = split_k;
-            sample.groups = geo_.n_head_kv * n_tokens * split_k;
+            sample.groups = geo_.n_head_kv * query_groups * split_k;
+            sample.q_tile = uint8_t(q_tile);
         }
         cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
                                out_bytes);
@@ -1929,7 +2221,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                                uint32_t(s->records_bytes),
                                s->precision_tail_tokens};
     cmd_->SetComputeRootSignature(range_attn_root_.Get());
-    cmd_->SetPipelineState(range_attn_pso_[s->range_storage].Get());
+    cmd_->SetPipelineState(prefix ? range_attn_kvarn4_prefix_pso_.Get()
+                                  : range_attn_pso_[s->range_storage].Get());
     cmd_->SetComputeRoot32BitConstants(0, 11, params, 0);
     cmd_->SetComputeRootShaderResourceView(1, q_addr);
     cmd_->SetComputeRootShaderResourceView(2, kv_addr);

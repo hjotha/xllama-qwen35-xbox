@@ -137,6 +137,12 @@ bool RemoteAttnEngine::disk_snapshot(uint32_t id, const std::string& local_folde
                                      rkva_snapshot_ack* ack, std::string* error) {
     namespace snap = rkva_snapshot;
     Session* s = find_session(id);
+    // The native codec stores the revision 1/2 128-row tail ring. Revision 3
+    // (256-row ring + per-layer prefix coverage) has no disk codec yet: refuse
+    // save and restore before any mutation instead of reusing the old layout.
+    if (s && s->range_configured && s->range_storage == 3 &&
+        rkva_kvarn_range::serial_prefix(s->range_descriptor))
+        return ::fail(error, "snapshot: native descriptor revision 3 has no disk codec");
     if (!ready_ || !s || !s->valid || !s->range_configured || local_folder.empty() || !ack ||
         !request.live_rows || request.live_rows > s->capacity || request.revision != 1 ||
         request.flags || request.reserved || s->range_storage > 3 ||

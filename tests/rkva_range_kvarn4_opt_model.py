@@ -71,12 +71,16 @@ def reference_split(active):
 
 
 class Layout:
-    def __init__(self, origin, capacity, ptt):
-        assert origin % 128 == 0 and ptt in (0, 128)
-        self.origin, self.capacity, self.ptt = origin, capacity, ptt
+    """ring: physical ORIGINAL-F16 tail rows (128 for revisions 1/2, 256 for the
+    revision-3 serial-prefix descriptor); the logical window stays ptt."""
+
+    def __init__(self, origin, capacity, ptt, ring=128):
+        assert origin % 128 == 0 and ptt in (0, 128) and ring in (128, 256)
+        self.origin, self.capacity, self.ptt, self.ring = origin, capacity, ptt, ring
         self.groups = (capacity + 127) // 128
         self.records_bytes = self.groups * PHYS * RECORD
-        self.half = self.records_bytes + STAGE_BYTES + ptt * ROW_BYTES
+        self.tail_rows = ring if ptt else 0
+        self.half = self.records_bytes + STAGE_BYTES + self.tail_rows * ROW_BYTES
 
 
 # ------------------------------------------------------------------ buffers ---
@@ -114,7 +118,7 @@ def build_plane(rng, lay, active, bee_record=None):
     if lay.ptt:
         for row in range(active - min(active, lay.ptt), active):
             data = rng.normal(0, 0.5, N_HEAD_KV * 256).astype("<f2").tobytes()
-            off = lay.records_bytes + STAGE_BYTES + (row & 127) * ROW_BYTES
+            off = lay.records_bytes + STAGE_BYTES + (row % lay.ring) * ROW_BYTES
             buf[off : off + ROW_BYTES] = data
     return bytes(buf)
 
@@ -154,14 +158,14 @@ def oracle_sources(lay, plane, active, value):
     tail = None
     if lay.ptt:
         t0 = lay.records_bytes + STAGE_BYTES
-        tail = np.frombuffer(plane[t0 : t0 + 128 * ROW_BYTES], "<f2").astype(np.float32)
-        tail = tail.reshape(128, N_HEAD_KV, 256)
+        tail = np.frombuffer(plane[t0 : t0 + lay.ring * ROW_BYTES], "<f2").astype(np.float32)
+        tail = tail.reshape(lay.ring, N_HEAD_KV, 256)
     decoded = {}
     for row in range(active):
         group, pos = divmod(row, 128)
         gg = lay.origin // 128 + group
         if row >= tail_begin:
-            out[row] = tail[row & 127]
+            out[row] = tail[row % lay.ring]
         elif gg == 0 or (group == live_group and active % 128):
             slot = 0 if gg == 0 else 1 + ((gg - 1) % 2)
             out[row] = stage[slot * 128 + pos]
@@ -231,17 +235,21 @@ def decode_math(quant, scale, zero, other):
 
 
 class Plane:
-    """Dword reads with region bounds: ('rec', group, head) / ('stage', slot) / ('tail',)."""
+    """Dword reads with region bounds: ('rec', group, head) / ('stage', slot) / ('tail',).
+
+    window: the image the kernel is allowed to see (active_count for revisions
+    1/2, the query's own prefix q_count for revision 3); a record of a group
+    sealed after the window is an out-of-image read."""
 
     def __init__(self, buf, lay, active):
         self.w = np.frombuffer(buf, "<u4")
-        self.lay, self.active = lay, active
+        self.lay, self.active, self.window = lay, active, active
         self.reads = 0
 
     def region(self, kind, a=0, b=0):
         lay = self.lay
         if kind == "rec":
-            assert a < self.active // 128, "record group not covered by the descriptor"
+            assert a < self.window // 128, "record group not covered by the image"
             lo = (a * PHYS + b) * RECORD
             return lo, lo + RECORD
         if kind == "stage":
@@ -249,7 +257,7 @@ class Plane:
             return lo, lo + 128 * ROW_BYTES
         lo = lay.records_bytes + STAGE_BYTES
         assert lay.ptt, "tail read without a precision tail"
-        return lo, lo + 128 * ROW_BYTES
+        return lo, lo + lay.ring * ROW_BYTES
 
     def load(self, addr, lo, hi):
         addr = np.asarray(addr, np.int64)
@@ -298,7 +306,7 @@ def ref_row(P, value, row, kv, active):
 def ref_tail(P, row, kv):
     lay = P.lay
     lo, hi = P.region("tail")
-    element = ((row & 127) * N_HEAD_KV + kv) * 256 + np.arange(256)
+    element = ((row % lay.ring) * N_HEAD_KV + kv) * 256 + np.arange(256)
     return P.half_at(lay.records_bytes + STAGE_BYTES + element * 2, lo, hi)
 
 
@@ -311,7 +319,7 @@ def halves_from(words):
 
 def opt_tail4(P, row, kv):
     lo, hi = P.region("tail")
-    element = ((row & 127) * N_HEAD_KV + kv) * 256 + U * 4
+    element = ((row % P.lay.ring) * N_HEAD_KV + kv) * 256 + U * 4
     a = P.lay.records_bytes + STAGE_BYTES + element * 2
     words = np.stack([P.load(a, lo, hi), P.load(a + 4, lo, hi)], -1)
     return halves_from(words).reshape(256)
@@ -333,7 +341,7 @@ def opt_body4(P, value, row, kv, active):
     base = (group * PHYS + ph) * RECORD
     lo = base
     hi = base + RECORD
-    assert group < P.active // 128
+    assert group < P.window // 128
     out = np.zeros((64, 4), np.float32)
     if value:
         index = pos * 128 + dim
@@ -360,7 +368,7 @@ def opt_body4(P, value, row, kv, active):
 def opt_tile(P, value, t0, kv):
     """[8, 256] K or V of the aligned record tile t0..t0+7 (tile_scores / tile_value)."""
     group, pos0 = t0 // 128, t0 & 127
-    assert pos0 % 8 == 0 and group < P.active // 128
+    assert pos0 % 8 == 0 and group < P.window // 128
     dim = (U & 31) * 4
     base = (group * PHYS + kv * 2 + (U >> 5)) * RECORD
     lo, hi = base, base + RECORD
@@ -402,12 +410,17 @@ def causal_limit(lay, active, pos):
     return min(active, causal)
 
 
-def run_reference(Kp, Vp, q, active, pos, scale, k_src, v_src):
-    """rkva_range_attn_kvarn4.hlsl + rkva_range_reduce.hlsl."""
+def run_reference(Kp, Vp, q, active, pos, scale, k_src, v_src, prefix=False):
+    """rkva_range_attn_kvarn4.hlsl + rkva_range_reduce.hlsl.
+
+    prefix=True emulates RKVA_SERIAL_PREFIX=1: window = q_count = limit (split
+    policy still follows active_count)."""
     lay = Kp.lay
     limit = causal_limit(lay, active, pos)
     split_k, rows = reference_split(active)
-    tail_begin = active - min(active, lay.ptt)
+    window = limit if prefix else active
+    Kp.window = Vp.window = window
+    tail_begin = window - min(window, lay.ptt)
     qrot = butterfly_wht(q)
     kh = np.repeat(np.arange(N_HEAD_KV), GQA)
     partials = []
@@ -423,8 +436,8 @@ def run_reference(Kp, Vp, q, active, pos, scale, k_src, v_src):
                 k = np.stack([ref_tail(Kp, r, kv) for kv in range(N_HEAD_KV)])
                 v = np.stack([ref_tail(Vp, r, kv) for kv in range(N_HEAD_KV)])
             else:
-                k = np.stack([ref_row(Kp, False, r, kv, active) for kv in range(N_HEAD_KV)])
-                v = np.stack([ref_row(Vp, True, r, kv, active) for kv in range(N_HEAD_KV)])
+                k = np.stack([ref_row(Kp, False, r, kv, window) for kv in range(N_HEAD_KV)])
+                v = np.stack([ref_row(Vp, True, r, kv, window) for kv in range(N_HEAD_KV)])
             assert np.array_equal(k.view(np.uint32), k_src[r].view(np.uint32)), ("ref K", r)
             assert np.array_equal(v.view(np.uint32), v_src[r].view(np.uint32)), ("ref V", r)
             qq = q if exact else qrot
@@ -445,17 +458,18 @@ def run_reference(Kp, Vp, q, active, pos, scale, k_src, v_src):
     return split_k, out, lse
 
 
-def run_optimized(Kp, Vp, q, active, pos, scale, mode, wave, k_src, v_src):
+def run_optimized(Kp, Vp, q, active, pos, scale, mode, wave, k_src, v_src, prefix=False):
+    """prefix=True emulates RKVA_SERIAL_PREFIX=1 (see run_reference)."""
     lay = Kp.lay
     limit = causal_limit(lay, active, pos)
     split_k, rows = kvarn4_split(active, mode)
     assert split_k <= 256 and rows % 8 == 0 and rows * split_k >= active
     n_waves = 128 // wave
-    live_group = (active - 1) // 128 if active else 0
-    tail_begin = active - min(active, lay.ptt)
+    window = limit if prefix else active
+    Kp.window = Vp.window = window
+    tail_begin = window - min(window, lay.ptt)
     record_lo = 128 if lay.origin == 0 else 0
-    record_hi = active & ~127
-    del live_group
+    record_hi = window & ~127
     tiles = 0
     partials = []
     for split in range(split_k):
@@ -484,8 +498,8 @@ def run_optimized(Kp, Vp, q, active, pos, scale, mode, wave, k_src, v_src):
                         if exact:
                             k, x, qa = opt_tail4(Kp, r, kv), opt_tail4(Vp, r, kv), qo
                         else:
-                            k = opt_body4(Kp, False, r, kv, active)
-                            x = opt_body4(Vp, True, r, kv, active)
+                            k = opt_body4(Kp, False, r, kv, window)
+                            x = opt_body4(Vp, True, r, kv, window)
                             qa = qr
                         assert np.array_equal(k.view(np.uint32), k_src[r, kv].view(np.uint32))
                         assert np.array_equal(x.view(np.uint32), v_src[r, kv].view(np.uint32))

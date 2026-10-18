@@ -1,6 +1,24 @@
 // Native Bee KVarN4 descriptor v1: host-packed records and rotated F16 stage.
 // Exact precision-tail overlay is original-domain F16. Q and OUT stay original.
 // This shader never converts KVarN records to a persistent alternative cache.
+//
+// RKVA_SERIAL_PREFIX=1 (descriptor revision 3, separate PSO): every query reads
+// the image of its own causal prefix q_count = limit instead of the resident
+// image of active_count. The live staged group, the record/stage split and the
+// exact-tail window [q_count - precision_tail_tokens, q_count) follow q_count,
+// and the ORIGINAL-F16 tail is a 256-row physical ring (row & 255). Without
+// the define the legacy revision 1/2 source is unchanged token for token.
+#ifndef RKVA_SERIAL_PREFIX
+#define RKVA_SERIAL_PREFIX 0
+#endif
+#if RKVA_SERIAL_PREFIX
+static uint rkva_window; // per-thread q_count, set once in the entry point
+#define RKVA_WINDOW rkva_window
+#define RKVA_TAIL_MASK 255u
+#else
+#define RKVA_WINDOW active_count
+#define RKVA_TAIL_MASK 127u
+#endif
 cbuffer Params : register(b0) {
     uint n_query, active_count, n_head, n_head_kv, head_dim;
     float kq_scale;
@@ -45,7 +63,7 @@ float load_native(ByteAddressBuffer buffer, bool value, uint token, uint head,
     uint physical_head = head * 2 + slice;
     uint global_group = origin / 128 + group;
     bool staged = global_group == 0 ||
-                  (group == live_group && (active_count & 127u) != 0);
+                  (group == live_group && (RKVA_WINDOW & 127u) != 0);
     if (staged) {
         uint slot = global_group == 0 ? 0 : 1 + ((global_group - 1) & 1);
         uint element = ((slot * 128 + pos) * physical_heads + physical_head) * 128 + dim;
@@ -64,7 +82,7 @@ float load_native(ByteAddressBuffer buffer, bool value, uint token, uint head,
 }
 float load_tail(ByteAddressBuffer buffer, uint token, uint head, uint dim, uint tail_begin) {
     uint stage_bytes = 384 * n_head_kv * 256 * 2;
-    uint element = ((token & 127u) * n_head_kv + head) * 256 + dim;
+    uint element = ((token & RKVA_TAIL_MASK) * n_head_kv + head) * 256 + dim;
     return half_at(buffer, records_bytes + stage_bytes + element * 2);
 }
 [numthreads(128, 1, 1)]
@@ -75,6 +93,9 @@ void CSRangeAttn(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     int query_pos = asint(positions.Load(qi * 4));
     uint causal_count = query_pos < int(origin) ? 0 : uint(query_pos) - origin + 1;
     uint limit = min(active_count, causal_count);
+#if RKVA_SERIAL_PREFIX
+    rkva_window = limit;
+#endif
     uint split_rows = (active_count + split_k - 1) / split_k;
     uint begin = min(limit, split * split_rows), end = min(limit, (split + 1) * split_rows);
     float original_q0 = asfloat(queries.Load((qh * 256 + lane) * 4));
@@ -84,8 +105,8 @@ void CSRangeAttn(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     float body0 = 0, body1 = 0, tail0 = 0, tail1 = 0;
     float denom = 0, maximum = -3.402823466e38f;
     uint wave_size = WaveGetLaneCount();
-    uint live_group = active_count ? (active_count - 1) / 128 : 0;
-    uint tail_begin = active_count - min(active_count, precision_tail_tokens);
+    uint live_group = RKVA_WINDOW ? (RKVA_WINDOW - 1) / 128 : 0;
+    uint tail_begin = RKVA_WINDOW - min(RKVA_WINDOW, precision_tail_tokens);
     [loop] for (uint row = begin; row < end; ++row) {
         bool exact = row >= tail_begin;
         float k0 = exact ? load_tail(keys, row, kv_head, lane, tail_begin) :

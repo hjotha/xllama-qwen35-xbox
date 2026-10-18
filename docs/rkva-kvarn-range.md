@@ -127,3 +127,79 @@ native owner can roll back and restore correctly; raw multiquery kernel support
 does not establish that state contract.
 
 Package264 SHA256 `9902eb3ca173866242fbf2fd497262b0c8ce8d589fe8155ba0d869e858a051df` was built on Windows193 with SDK26100/MSVC14.44 and deployed in place. The float64 oracle probe passed 192 cases per format (F16, Q8_0, Q4_0 and native KVarN4) with precision-tail128, plus 192 native KVarN4 cases with tail0: 960 cases total, all four kernel modes, nq1/2/3/4/7/8/9 and nq10 reference fallback, checkpoints1/127/128/129/257/28672. These are kernel/protocol results, not model TPS or native-KVarN4-MTP qualification. Artifacts: `/home/hjotha/build/rkva-q4-optimization-20261018/console264`.
+
+## Bounded resident rollback candidate (not console qualified)
+
+Capability bit 6 (`RKVA_CAP_KVARN_REWIND`) and operation 21 (`RKVA_KVARN_RANGE_REWIND`) jointly negotiate native resident rollback. Both are required, together with client HELLO flag bit16 (`RKVA_PROTO_NATIVE_REWIND_V2`); native record support alone continues to mean append-only operation. Older clients do not receive the new capability or opcode advertisement, and keep their empty CONFIG/op16 ACKs. New clients retain descriptor-v1 append-only compatibility with older servers and reject active MTP there. This capability does not enable native FULL snapshots, disk persistence, arbitrary edits, or importing a Q4/Q8 overflow checkpoint.
+
+The host retains the latest 256 original F32 rows per layer and permits removal of at most 128 rows. Bee limits draft-MTP depth to 127 because checkpoint fallback can restore before the verification anchor (N+1 rows); the 128-row direct-RS boundary is not promoted separately. It rebuilds the affected incomplete group with the canonical original-F32 native store and restores the original-domain precision tail from those retained inputs. Completed records below the retained prefix are unchanged. A removed completed group becomes an incomplete stage group; future rows remain masked until overwritten and resealed. Two global stage ping-pong slots retain the needed prefix at this rewind bound. No Q4 decoding or dequantize/requantize path participates.
+
+The operation carries a 24-byte `expected_generation/pos0/n_layers/tail_tokens/reserved` header, followed by an 8-byte `expected_live/new_live` header and chronological K/V original-domain F16 tail rows for each layer. Only overwritten ring rows in `[max(0,new_live-tail_tokens), min(new_live,max(0,expected_live-tail_tokens)))` are carried; overlapping prefix rows stay resident. A depth-one rejection normally repairs one row per layer. Descriptor tail lengths are 0 or 128. Bee selects Xbox precision tail independently with `GGML_RKVA_NATIVE_TAIL_TOKENS=0|128` (default 128), recorded as `native_precision_tail_tokens` in host stats. Tail 0 omits both upload and rewind tail planes; original-F32 retention and native canonical resealing remain enabled. All layer counts, distances, readiness, mutation generation, payload sizes and reserved fields are validated before any writes. Descriptor version 2 retains the same native record layout and returns an 8-byte generation seed in CONFIG ACK; version 1 keeps its empty ACK. Process-lifetime atomic configuration epochs reserve nonoverlapping 32-bit mutation-counter ranges, including engine/HELLO/session recreation and reconfiguration. Exhaustion fails closed. Uploads, RESET, legacy TRIM/REWIND and operation 21 advance the session generation; overflow fails closed. Old operation 21 payloads are refused after same-count rewind/reappend (ABA). One command list repairs all tail rings, one fence precedes count publication, and one ACK publishes the transaction. A failed or malformed ACK poisons the host connection; GPU submission failure invalidates the server session.
+
+Native PARTIAL checkpoints use the existing owner-bound hybrid attention envelope, cell identity and dirty-prefix lineage, plus a live native-prefix/retained-input coverage preflight before CPU/recurrent mutation or staged restore. A second rewind can be refused even within 128 tokens if its older originals have already fallen outside retention. A prefix anchor before a rejected suffix remains valid; a checkpoint containing rewritten rows does not become valid merely because token IDs and cell IDs match again. Remote epoch invalidation cannot be repaired by Q4 bookkeeping. Full clear uses RESET and releases the host native owners after ACK. Legacy TRIM/REWIND operations retain their full native invalidation semantics; only negotiated operation 21 provides the bounded resident contract.
+
+Qualification requires the focused CPU native producer, wire parser, TCP ACK/failure and real hybrid-memory tests, followed by a Windows build, live native rollback OUT/LSE probes at 127/128/129 and tail0/128, and full-model MTP token parity and complete-cycle throughput. Source and CPU results alone do not establish Xbox or MTP performance qualification.
+
+## Serial-prefix descriptor revision 3 (266 candidate, not GPU qualified)
+
+Revisions 1 and 2 compute every query of a batch over the **resident image**. Their shaders select the staged partial group, the sealed-record bound and the 128-row precision-tail window from `active_count`, and the tail ring holds 128 rows. A batched MTP verification (nq 2..9) does not match serial decoding in two cases:
+
+- A batch crosses a 128-token seal. An earlier query can then read the newly sealed record instead of its own staged partial group.
+- The 128-row ring overwrote the first `nq-1` exact rows that an earlier query still needs.
+
+Revisions 1 and 2 keep these exact semantics. Their PSOs, DXIL and codecs are unchanged. Descriptor `layout_version` 3 uses the same 72-byte structure and record format and implies **query-prefix attention**:
+
+- Each query uses `q_count = min(active_count, position - origin + 1)`.
+- Sealed records cover groups `< floor(q_count / 128)`.
+- The current partial group `(q_count - 1) / 128` comes from its stage slot when `q_count % 128 != 0`.
+- The exact tail is `[max(0, q_count - precision_tail_tokens), q_count)`.
+- Split-K policy still follows `active_count`, so OUT can differ from nq1 by reduction-order rounding. The qualified OUT/LSE tolerances apply, not bitwise equality.
+
+The shaders implement this with `RKVA_SERIAL_PREFIX=1` variants (`rkva_range_attn_kvarn4_prefix_dxil.h`, `rkva_range_attn_kvarn4_opt_prefix_dxil.h`). Both bound the record region by the query window before any sealed-record load. The legacy variants compile from the same source with the macro at 0, and their DXIL is byte-identical to 264.
+
+With precision tail 128, revision 3 stores a **physical 256-row ORIGINAL-F16 ring** behind the logical 128-row window. That adds 8 MiB across 16 layers for HKV4/D256. With tail 0 it stores no ring. Op16 already carries the original F16 for every appended row, so the wire format is unchanged and no bytes are added per normal append. The tail is never reconstructed by dequantizing records or inverting the stage WHT.
+
+### Coverage
+
+The engine tracks per layer the oldest row whose original tail (`tail_begin`) and stage slot (`stage_begin`) are still resident:
+
+- **RESET** provides only the newest `min(live, 128)` tail rows, even though the ring holds 256. It sets `stage_begin = (live_group - 1) * 128`, since the 384-row stage image holds the sink plus both newest ping-pong groups.
+- **Append** extends the ring modulo 256 and advances both bounds.
+- **Op21 rewind** (at most 128 rows) lowers `tail_begin` to `keep`. When its ORIGINAL-F16 repair rows are contiguous with the resident ring, it extends `tail_begin` down to the repair start. Coverage is published only after the fence succeeds, together with counts and generation. Rewind never rewrites stage slots.
+
+Attention on a revision-3 session validates the batch before allocation or Map. Query positions must be contiguous, end at `origin + active_count - 1` and hold at most 128 queries. Leading queries below the origin are masked and skipped.
+
+The engine refuses the batch when a needed row is not resident. For tail 128 the check is `tail_begin <= max(0, first_q_count - 128)`. For tail 0, every query with a partial group needs `stage_begin <= its group start`. A refusal returns an error and does not invalidate the session. For example, nq3 straight after a deep RESET is refused; its newest nq1 query is accepted.
+
+Generation, stale-epoch, count, ACK and failure-poison guards are unchanged.
+
+### PSO policy
+
+A revision-3 session never uses a legacy PSO:
+
+- **CONFIG** fails closed when the reference prefix PSO is missing.
+- **Mode 0** uses the reference prefix PSO.
+- **Modes 1..3, nq <= 9** use the optimized prefix PSO when it is available. Otherwise they use the reference prefix PSO; the result is still correct.
+
+Op20 reports `kvarn4_serial_prefix.{reference,optimized}.{available,status}`. Its attention buckets use the storage key `kvarn4-prefix`.
+
+### Disk snapshots
+
+The revision-1 disk codec assumes a 128-row ring. SAVE and RESTORE on a revision-3 session fail with `snapshot: native descriptor revision 3 has no disk codec`, and nothing is written or mutated. Native FULL snapshots remain unsupported.
+
+### Root wiring (proposed, root-owned)
+
+- Advertise capability bit 7 `RKVA_CAP_KVARN_SERIAL_PREFIX` only to clients whose HELLO sets proto flag bit 17. Refuse op15 `layout_version == 3` without bit 17.
+- Return the 8-byte generation seed for `layout_version >= 2`.
+- Op21 already requires bit 16.
+- Op14 currently maps every engine refusal to `RKVA_ERR_GPU`. A coverage refusal does not invalidate the engine session. Root may report it as `RKVA_ERR_BAD_PAYLOAD` when `session_invalid()` is false, as op21 already does, so that the client can fall back to nq1 instead of poisoning the connection.
+- The engine API is unchanged.
+
+### Verification
+
+- `tests/rkva_kvarn_range_cpu.cpp` checks ring placement, coverage and query gates against a versioned-row residency simulator. That includes an exhaustive decode to 520 rows with rollbacks.
+- `tests/rkva_kvarn_serial_prefix_model.py` encodes native records from a canonical ORIGINAL-F32 store and builds a separate FP64 serial image per query prefix. It checks the emulated revision-3 reference and optimized kernels, run over the engine-layout buffer, at lives 127/128/129/255/256/257, nq 1/2/3/5/9, tail 0/128, origin 72704 and capacity 58368. It also covers rollback and re-append across the seal and ring wrap, masked queries and refused batches.
+- The legacy resident-image oracle (`rkva_range_kvarn4_opt_model.oracle_sources`) is a separate contract. It is shown to disagree with serial semantics.
+- `tests/rkva_kvarn_serial_prefix_probe.py` is the future raw GPU gate. It is offline unless `--execute --host` is given, and `--self-test` replays its real payloads into an offline engine transliteration.
+
+No GPU, console or model result exists for revision 3.

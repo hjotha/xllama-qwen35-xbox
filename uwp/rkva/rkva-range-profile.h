@@ -109,6 +109,42 @@ inline uint32_t split_rows(uint32_t active_count, uint32_t split_k) {
     return split_k ? (active_count + split_k - 1) / split_k : 0;
 }
 
+// Q4_0 multi-query tile kernel (rkva_range_attn_q4_mq.hlsl) for MTP verification
+// batches: one group shares each K/V row dequantization across kQ4MqTile...
+// queries x 6 GQA heads. Only optimized Q4_0 calls with nq 2..kOptMaxQueries use
+// it; nq1 keeps the per-query kernel and its split policy. Legacy mode mapping:
+//   mode 1 (balanced) -> 4-query tile, balanced split rounded to 64-row tiles
+//   mode 2 (fine)     -> 2-query tile, fine split rounded to 64-row tiles
+//   mode 3 (coarse)   -> per-query kernel (unchanged 264 behavior, A/B baseline)
+constexpr uint32_t kQ4MqRows = 64; // rows per tile = threads per group
+constexpr uint32_t kQ4MqTileMax = 4;
+
+inline uint32_t q4_mq_tile(uint32_t mode, uint32_t n_tokens) {
+    if (n_tokens < 2 || n_tokens > kOptMaxQueries) {
+        return 0;
+    }
+    return mode == kModeOptBalanced ? 4u : mode == kModeOptFine ? 2u : 0u;
+}
+
+inline const char* q4_mq_kernel_name(uint32_t q_tile) {
+    return q_tile == 4 ? "q4_mq4_balanced" : q_tile == 2 ? "q4_mq2_fine" : "invalid";
+}
+
+struct Q4MqSplit {
+    uint32_t split_k;
+    uint32_t split_rows; // multiple of kQ4MqRows (0 when active_count == 0)
+};
+
+// Mode split policy with split rows rounded up to whole 64-row tiles, then the
+// split count recomputed so every split is non-empty (never above the mode's).
+inline Q4MqSplit q4_mq_split(uint32_t active_count, uint32_t mode) {
+    const uint32_t k0 = optimized_split_k(active_count, mode);
+    uint32_t rows = split_rows(active_count, k0);
+    rows = (rows + kQ4MqRows - 1) / kQ4MqRows * kQ4MqRows;
+    const uint32_t k = rows ? (active_count + rows - 1) / rows : 1;
+    return {std::max(1u, k), rows};
+}
+
 // Per-call gate. Every unsupported call keeps the reference kernel.
 inline bool optimized_q4_supported(uint32_t mode, uint32_t storage, uint32_t n_tokens,
                                    uint32_t n_head, uint32_t n_head_kv, uint32_t head_dim) {
@@ -130,6 +166,34 @@ inline bool optimized_format_supported(uint32_t mode, uint32_t storage, uint32_t
                                        uint32_t n_head, uint32_t n_head_kv, uint32_t head_dim) {
     return (storage == kStorageF16 || storage == kStorageQ8) &&
            optimized_shape_supported(mode, n_tokens, n_head, n_head_kv, head_dim);
+}
+
+// F16 / Q8_0 multi-query tile kernel (rkva_range_attn_fmt_mq.hlsl, 267): the
+// Q4_0 multi-query algorithm with the storage's own K/V decode. Same legacy
+// mode mapping and split as Q4_0 (mode 1 -> 4-query tile, mode 2 -> 2-query
+// tile, mode 3 -> per-query optimized kernel as the in-build baseline), only for
+// optimized F16/Q8_0 calls with nq 2..kOptMaxQueries; nq1 is unchanged.
+inline uint32_t format_mq_tile(uint32_t mode, uint32_t storage, uint32_t n_tokens) {
+    return storage == kStorageF16 || storage == kStorageQ8 ? q4_mq_tile(mode, n_tokens) : 0u;
+}
+
+inline const char* format_mq_kernel_name(uint32_t storage, uint32_t q_tile) {
+    if (q_tile != 2 && q_tile != 4) {
+        return "invalid";
+    }
+    if (storage == kStorageF16) {
+        return q_tile == 4 ? "f16_mq4_balanced" : "f16_mq2_fine";
+    }
+    if (storage == kStorageQ8) {
+        return q_tile == 4 ? "q8_mq4_balanced" : "q8_mq2_fine";
+    }
+    return "invalid";
+}
+
+// Storage-qualified multi-query kernel name (Q4_0 keeps its 266 names).
+inline const char* mq_kernel_name(uint32_t storage, uint32_t q_tile) {
+    return storage == kStorageQ4 ? q4_mq_kernel_name(q_tile)
+                                 : format_mq_kernel_name(storage, q_tile);
 }
 
 // Native KVarN4 descriptor v1 shapes the optimized kernel reads directly:
@@ -187,6 +251,8 @@ struct Sample {
     uint8_t direct_output = 0;
     uint8_t fence_blocked = 0;
     uint8_t alloc_grew = 0;
+    uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
+    uint8_t q_tile = 0;        // Q4_0/F16/Q8_0 multi-query tile (2 or 4); 0 = per-query
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -201,6 +267,9 @@ struct Counters {
     uint64_t calls[kKindCount] = {};
     uint64_t optimized_calls = 0; // optimized Q4_0 attention calls (261 meaning)
     uint64_t reference_q4_calls = 0;
+    uint64_t q4_mq_calls[2] = {}; // subset of optimized_calls: [0] 2-query, [1] 4-query tile
+    // F16/Q8_0 multi-query tile calls (subset of optimized_by_storage), [storage][tile/4].
+    uint64_t fmt_mq_calls[kStorageCount][2] = {};
     uint64_t optimized_by_storage[kStorageCount] = {};
     uint64_t reference_by_storage[kStorageCount] = {};
     uint64_t failed_calls = 0;
@@ -228,6 +297,15 @@ struct Header {
     std::string optimized_status[kStorageCount];
     uint32_t wave_lane_min = 0;
     uint32_t wave_lane_max = 0;
+    // Native KVarN4 revision-3 (serial prefix) pipelines: [0] reference, [1] optimized.
+    bool kvarn4_prefix_available[2] = {};
+    std::string kvarn4_prefix_status[2];
+    // Q4_0 multi-query tile pipelines: [0] 2-query, [1] 4-query tile.
+    bool q4_mq_available[2] = {};
+    std::string q4_mq_status[2];
+    // F16 / Q8_0 multi-query tile pipelines, [storage][0] 2-query, [storage][1] 4-query.
+    bool fmt_mq_available[kStorageCount][2] = {};
+    std::string fmt_mq_status[kStorageCount][2];
 };
 
 inline const char* storage_name(uint32_t storage) {
@@ -269,10 +347,13 @@ inline const char* rows_band(uint32_t rows) {
 inline std::string bucket_key(const Sample& s) {
     std::string key = s.kind == kUpload ? "upload/" : "attention/";
     key += storage_name(s.storage);
+    if (s.serial_prefix) {
+        key += "-prefix";
+    }
     if (s.kind == kAttention) {
         key += s.optimized ? "/optimized-" : "/reference";
         if (s.optimized) {
-            key += kernel_name(s.storage, s.mode);
+            key += s.q_tile ? mq_kernel_name(s.storage, s.q_tile) : kernel_name(s.storage, s.mode);
         }
     }
     key += '/';
@@ -391,7 +472,9 @@ class Recorder {
         o += buf;
         o += ",\"kernel_mode_scope\":\"legacy name q4_kernel_mode; modes 1..3 select the "
              "optimized kernel of each storage listed available in optimized_kernels, "
-             "otherwise reference\"";
+             "otherwise reference; Q4_0 nq 2..9 in modes 1/2 use the q4_multi_query tile "
+             "kernel when available; F16/Q8_0 nq 2..9 in modes 1/2 use the "
+             "format_multi_query tile kernel when available\"";
         o += ",\"optimized_kernels\":{";
         for (uint32_t st = 0; st < kStorageCount; ++st) {
             std::snprintf(
@@ -401,6 +484,47 @@ class Recorder {
                 st ? "," : "", storage_name(st), h.optimized_available[st] ? "true" : "false",
                 json_escape(h.optimized_status[st]).c_str(), ull(c.optimized_by_storage[st]),
                 ull(c.reference_by_storage[st]), h.optimized_available[st] ? kOptMaxQueries : 0u);
+            o += buf;
+        }
+        o += '}';
+        std::snprintf(
+            buf, sizeof(buf),
+            ",\"kvarn4_serial_prefix\":{\"reference\":{\"available\":%s,\"status\":\"%s\"},"
+            "\"optimized\":{\"available\":%s,\"status\":\"%s\"}}",
+            h.kvarn4_prefix_available[0] ? "true" : "false",
+            json_escape(h.kvarn4_prefix_status[0]).c_str(),
+            h.kvarn4_prefix_available[1] ? "true" : "false",
+            json_escape(h.kvarn4_prefix_status[1]).c_str());
+        o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      ",\"q4_multi_query\":{\"nq_min\":2,\"nq_max\":%u,\"tile_rows\":%u,"
+                      "\"mode_map\":\"1:q4_mq4_balanced 2:q4_mq2_fine 3:per-query q4_gqa_coarse\","
+                      "\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu},",
+                      kOptMaxQueries, kQ4MqRows, h.q4_mq_available[0] ? "true" : "false",
+                      json_escape(h.q4_mq_status[0]).c_str(), ull(c.q4_mq_calls[0]));
+        o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      "\"mq4\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
+                      h.q4_mq_available[1] ? "true" : "false",
+                      json_escape(h.q4_mq_status[1]).c_str(), ull(c.q4_mq_calls[1]));
+        o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      ",\"format_multi_query\":{\"nq_min\":2,\"nq_max\":%u,\"tile_rows\":%u,"
+                      "\"mode_map\":\"1:<fmt>_mq4_balanced 2:<fmt>_mq2_fine "
+                      "3:per-query <fmt>_gqa_coarse\"",
+                      kOptMaxQueries, kQ4MqRows);
+        o += buf;
+        for (uint32_t st :
+             {static_cast<uint32_t>(kStorageF16), static_cast<uint32_t>(kStorageQ8)}) {
+            std::snprintf(buf, sizeof(buf),
+                          ",\"%s\":{\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu},",
+                          storage_name(st), h.fmt_mq_available[st][0] ? "true" : "false",
+                          json_escape(h.fmt_mq_status[st][0]).c_str(), ull(c.fmt_mq_calls[st][0]));
+            o += buf;
+            std::snprintf(buf, sizeof(buf),
+                          "\"mq4\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
+                          h.fmt_mq_available[st][1] ? "true" : "false",
+                          json_escape(h.fmt_mq_status[st][1]).c_str(), ull(c.fmt_mq_calls[st][1]));
             o += buf;
         }
         o += '}';

@@ -68,7 +68,7 @@ The host routes a call to the optimized path only when all of these hold:
 
 - the mode is ≥1;
 - storage is Q4_0;
-- `n_tokens == 1`;
+- `1 <= n_tokens <= 9` (nq 2..9 use the multi-query tiles below in modes 1 and 2);
 - `head_dim == 256`;
 - `n_head == 6 * n_head_kv`;
 - the device reports wave ops with 32–128 lanes.
@@ -78,6 +78,154 @@ OUT/LSE layout are unchanged. Results can differ from the
 reference only in FP32 summation order. The numpy model
 `tests/rkva_range_q4_opt_model.py` checks the lane mapping, the load equivalence and the
 split math against a float64 oracle.
+
+## Q4 multi-query tiles (266, MTP verify)
+
+An MTP verify call attends `nq = N + 1` contiguous causal queries in one layer (N2 →
+nq3, N4 → nq5). The per-query kernel above dispatches every query as its own group
+(`Dispatch.y = n_tokens`), so it reloads and re-dequantizes every K/V row per query and
+does a per-row `WaveActiveSum` for each query and head. The 266 source adds
+`shaders/rkva/rkva_range_attn_q4_mq.hlsl` (entry `CSRangeAttnQ4Mq`), which is compiled
+twice with `RKVA_MQ_QT` = 2 and 4 to `rkva_range_attn_q4_mq2_dxil.h` and
+`rkva_range_attn_q4_mq4_dxil.h`.
+
+- **Dispatch** `(n_head_kv, ceil(nq / QT), split_k)` with 64-thread groups. One group
+  serves 6 GQA heads × QT queries of one KV head and split.
+- **Score phase.** Rows are walked in 64-row tiles, and thread `i` owns row `tile + i`.
+  Each thread loads and dequantizes its K row **once** and dots it with all 6·QT query
+  vectors, with no cross-lane reduction per row. The per-block f16 scale is factored out
+  of each 32-element block sum. The values are exact and only the summation order
+  changes.
+- **Online softmax per (query, head)** keeps one tile max (wave max plus a cross-wave
+  merge in LDS) and one rescale per tile, not per row. Each query masks its own causal
+  limit `min(active, position − origin + 1)`, so a tile shared by queries with different
+  limits stays exact.
+- **V phase.** Thread `i` owns 4 output dims of the 256. Each V row is loaded and
+  dequantized once per group and accumulated into all 6·QT outputs from the LDS
+  probabilities.
+- **Output** is the same `[nq][n_head][256]` OUT and `[nq][n_head]` LSE. When
+  `split_k == 1` the kernel writes them directly; otherwise it writes the per-query
+  partials that the unchanged `rkva_range_reduce_opt.hlsl` merges. LSE is
+  `max + log(denominator)`, or −inf for an empty prefix.
+- **Splits.** `q4_mq_split` takes the mode's split policy and rounds the rows up to whole
+  64-row tiles, so its `split_k` is never above the per-query one and fits the bounded
+  partials. At 58128 live rows mode 1 gives 114 × 512 and mode 2 gives 228 × 256.
+
+The selection keeps the wire field name `q4_kernel_mode`:
+
+| Mode | nq1 (unchanged)             | nq 2..9                                  |
+| ---- | --------------------------- | ---------------------------------------- |
+| 0    | `reference`                 | `reference`                              |
+| 1    | per-query `q4_gqa_balanced` | **`q4_mq4_balanced`** (4-query tile)     |
+| 2    | per-query `q4_gqa_fine`     | **`q4_mq2_fine`** (2-query tile)         |
+| 3    | per-query `q4_gqa_coarse`   | per-query `q4_gqa_coarse` (A/B baseline) |
+
+A mode-1/2 call whose tile PSO failed to build takes the per-query kernel, which is also
+correct. The per-query DXIL, the nq1 path, mode 0, and every F16/Q8_0/KVarN4 path are
+unchanged. The report adds a `q4_multi_query` object with the mode map, availability,
+status and call count of each tile PSO. Bucket names use the kernel that actually ran,
+for example `attention/q4_0/optimized-q4_mq4_balanced/nq2-16/r32k+/warm`.
+
+**Resources** (DXC `cs_6_0`, validation on, no allocas): LDS 3168 B (QT2) and 6336 B
+(QT4); DXIL 39432 and 72184 bytes. Estimated VGPRs, not measured because no AMD ISA dump
+is available, are about 90 (QT2) and about 150 (QT4). Most of that is the 6·QT float4
+accumulators. QT4 may halve occupancy relative to QT2, which is why both tiles are built.
+Two group barriers per 64-row tile.
+
+**Checks.** `tests/rkva_range_q4_mq_model.py` checks the following against an
+independent per-query float64 oracle:
+
+- the load equivalence with signed f16 scales;
+- row and dim ownership at wave 32/64/128;
+- the partials layout;
+- the split invariants;
+- an FP32 tile emulation with nq 1/2/3/5/9, causal, masked, future, unsorted and
+  partial-tile cases, up to 58368 live rows.
+
+`--self-test` proves that each injected bug is detected. The gated live probe is
+`tests/rkva_range_q4_mq_probe.py`; without `--execute` it prints its plan only.
+
+These are one-layer kernel checks. The emulation is not GPU timing, and no performance
+claim is made until root measures model tokens/s on the console.
+
+## F16 / Q8_0 multi-query tiles (267, GPU qualification pending)
+
+The 267 source ports the Q4 tile algorithm above to the F16 and Q8_0 storages.
+`shaders/rkva/rkva_range_attn_fmt_mq.hlsl` (entry `CSRangeAttnFmtMq`) is compiled with
+`RKVA_OPT_STORAGE` = 0 (F16, 512-byte rows) or 2 (Q8_0, 272-byte rows) and `RKVA_MQ_QT`
+= 2 or 4, giving four headers:
+
+- `rkva_range_attn_f16_mq2_dxil.h`
+- `rkva_range_attn_f16_mq4_dxil.h`
+- `rkva_range_attn_q8_mq2_dxil.h`
+- `rkva_range_attn_q8_mq4_dxil.h`
+
+Dispatch, 64-row tiles, row ownership in the score phase, the online softmax per
+(query, head) with each query's own causal limit, the V phase, the OUT/LSE layout, the
+partials for `rkva_range_reduce_opt.hlsl` and `q4_mq_split` are all the Q4 tile kernel's.
+Only the decode differs:
+
+- **F16 score.** Each thread reads its K row as 16-byte loads and converts each half
+  with `f16tof32` once for all 6·QT dots.
+- **Q8_0 score.** One 68-byte pair of blocks is read as five aligned loads, because
+  blocks are 34 bytes and only 2-byte aligned. The int8 values are sign-extended. The
+  signed f16 block scale is factored out of each 32-element block sum. `int8 × f16` is
+  exact in FP32, so only the summation order changes.
+- **V phase.** Each thread uses the per-query `load_unit` of `rkva_range_attn_gqa_opt.hlsl`
+  for its 4 dims, once per row for all 6·QT outputs.
+
+The engine creates these PSOs on the format-optimized root signature after the
+per-query F16/Q8_0 PSOs. A failure is non-fatal and records
+`<fmt> multi-query pipeline state: 0x…`. A tile PSO is available only when the per-query
+kernel of its storage is also available.
+
+| Mode | F16 / Q8_0 nq1 (unchanged) | F16 / Q8_0 nq 2..9                          |
+| ---- | -------------------------- | ------------------------------------------- |
+| 0    | `reference`                | `reference`                                 |
+| 1    | `<fmt>_gqa_balanced`       | **`<fmt>_mq4_balanced`** (4-query tile)     |
+| 2    | `<fmt>_gqa_fine`           | **`<fmt>_mq2_fine`** (2-query tile)         |
+| 3    | `<fmt>_gqa_coarse`         | per-query `<fmt>_gqa_coarse` (in-build A/B) |
+
+`<fmt>` is `f16` or `q8`. A missing tile PSO falls back to the per-query kernel. The
+Q4 tile kernels, Q4 mode map, nq1 paths, mode 0, the per-query DXIL and every KVarN4
+path, including descriptor 3, are unchanged. All existing DXIL headers regenerate
+byte-identically.
+
+The report adds `format_multi_query` with `nq_min`, `nq_max`, `tile_rows`, `mode_map`, and
+for `f16` and `q8_0` the `mq2`/`mq4` `available`, `status` and `calls` fields. Bucket
+names use the kernel that actually ran, for example
+`attention/q8_0/optimized-q8_mq4_balanced/nq2-16/r32k+/warm`. The sample's `pass1_groups`
+counts `n_head_kv × ceil(nq / QT) × split_k`.
+
+**Resources** (DXC `cs_6_0`, validation on, no allocas): LDS 3168 B (QT2) and 6336 B
+(QT4). DXIL sizes are F16 31216/56340 and Q8_0 39144/71888 bytes (QT2/QT4). VGPR use is
+not measured because no AMD ISA dump is available. QT4 holds 24 float4 accumulators plus
+a decoded 32-value block, so it may spill or lose occupancy; QT2 exists for that reason.
+
+**Checks.** `tests/rkva_range_fmt_mq_model.py` replays the shader loads on the real F16
+and Q8_0 bytes and checks them against the reference decode, including bounds and
+unaligned Q8_0 scales. It also checks row and dim ownership at wave 32/64/128 and the
+split and partials layout. Its FP32 tile emulation runs against a per-query float64
+oracle with signed scales, outliers, nq 1/2/3/5/9, causal, masked, future, unsorted and
+partial-tile cases, live 1 to 58368. `--self-test` injects load bugs (misaligned Q8_0
+scale, swapped scales, swapped halves) and kernel bugs (union limit, off-by-one, missing
+rescale) and requires every one to be detected. The gated live probe is
+`tests/rkva_range_fmt_mq_probe.py --storage f16|q8`; without `--execute` it prints its
+plan only.
+
+**Host integration.** The generic Bee `GGML_RKVA_RANGE_KERNEL` opt-in already
+selects storage-specific optimized kernels after positive availability validation.
+The historical `GGML_RKVA_Q4_KERNEL` setting remains Q4-only. These new tiles
+need independent GPU and model qualification; the FP32 emulation is not a timing
+result. No protocol or client extension is needed.
+
+**Native KVarN4 descriptor 3.** No tile kernel is added. Near a 128-row seal, a row
+can be a sealed record for one query and a stage or precision-tail row for an earlier
+query. A shared tile may therefore only reuse rows read as records by every query in
+the tile, and must read every other row with each query's own serial-prefix rules.
+`tests/rkva_kvarn4_mq_partition_model.py` checks that partition. The handoff
+`HANDOFF-FORMATS-MQ267.md` holds the plan. The descriptor-3 optimized prefix route is
+unchanged.
 
 ## Per-storage kernels (future 263)
 
@@ -111,17 +259,17 @@ policy are byte-for-byte those of 261/262.
   `split_rows` as a multiple of 8 (`kvarn4_split`), and the gate also requires
   `origin % 128 == 0` and `precision_tail_tokens` 0 or 128.
 
-Shared gate: mode ≥1, `n_tokens == 1`, `head_dim == 256`, `n_head == 6 * n_head_kv`,
+Shared gate: mode ≥1, `1 <= n_tokens <= 9`, `head_dim == 256`, `n_head == 6 * n_head_kv`,
 wave size 32–128, and the storage's PSO plus the optimized reducer and partials buffer
 are present. Otherwise the call takes the correct reference kernel. A PSO that fails to
 build marks only its own storage unavailable, with the HRESULT in `optimized_kernels.<storage>.status`.
 `set_range_profiling` still rejects modes ≥1 when the Q4 optimized pipelines are
 missing, as in 261.
 
-**Scope: raw probes only.** The Bee host keeps its Q4-only opt-in gate, so model runs
-never select the F16, Q8_0 or KVarN4 kernels. Only a raw RKVA client that sends op 20
-with a nonzero mode (the probe below) reaches them. Exposing them to model runs needs
-a per-storage opt-in field that root owns in the protocol and the Bee client.
+**Host integration.** `GGML_RKVA_RANGE_KERNEL` selects these storage-specific
+optimized paths after positive capability validation. The historical
+`GGML_RKVA_Q4_KERNEL` alias is restricted to Q4. No additional protocol field
+is needed. GPU kernel and model measurements remain separate qualification.
 
 ## Timing semantics
 
@@ -170,6 +318,9 @@ The header fields are:
 - `kernel_mode_scope` (text describing the legacy mode naming) and
   `optimized_kernels.{f16,q4_0,q8_0,kvarn4}` with `available`, `status`,
   `optimized_calls` and `reference_calls` (attention calls per storage, while profiling)
+- `kvarn4_serial_prefix.{reference,optimized}` with `available` and `status` for the
+  native KVarN4 descriptor revision 3 (serial-prefix) PSOs; see
+  [rkva-kvarn-range.md](rkva-kvarn-range.md)
 
 `counters` are engine-wide. They also count legacy and snapshot submits:
 
@@ -182,6 +333,8 @@ The header fields are:
 
 `buckets` keys follow `kind/storage/[kernel/]nq-band/rows-band/warm|cold`:
 
+- `storage` is `kvarn4-prefix` for revision-3 native sessions, so serial-prefix
+  calls never mix with legacy resident-image buckets.
 - `kernel` appears on attention keys only: `reference` or `optimized-<kernel name>`,
   for example `optimized-q4_gqa_balanced` or `optimized-kvarn4_gqa_fine`.
 - nq bands: `nq1`, `nq2-16`, `nq17-128`, `nq129+`.

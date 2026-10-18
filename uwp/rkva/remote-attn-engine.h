@@ -67,6 +67,9 @@ class RemoteAttnEngine {
     bool ready() const {
         return ready_;
     }
+    bool native_serial_prefix_available() const {
+        return ready_ && range_attn_kvarn4_prefix_pso_.Get() != nullptr;
+    }
     const Geometry& geometry() const {
         return geo_;
     }
@@ -102,6 +105,9 @@ class RemoteAttnEngine {
                          std::string* error, uint32_t storage = 0);
     bool upload_range(uint32_t session_id, uint32_t layer, uint32_t start_row, uint32_t n_rows,
                       const uint16_t* k, const uint16_t* v, std::string* error);
+    uint64_t native_range_generation(uint32_t id) const;
+    bool rewind_kvarn_range(uint32_t id, const rkva_kvarn_range_rewind& request,
+                            const uint8_t* data, size_t bytes, std::string* error);
     bool configure_kvarn_range(uint32_t id, const rkva_kvarn_range_config& config,
                                std::string* error);
     bool upload_kvarn_range(uint32_t id, uint32_t layer, const rkva_kvarn_range_upload& upload,
@@ -219,6 +225,10 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_q4_opt_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_reduce_opt_pso_;
     std::string q4_opt_status_ = "not initialized";
+    // Q4_0 multi-query tile kernels ([0] 2-query, [1] 4-query) for nq 2..9 in
+    // modes 1/2; optional, a missing PSO keeps the per-query optimized kernel.
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_q4_mq_pso_[2];
+    std::string q4_mq_status_[2] = {"not initialized", "not initialized"};
     uint32_t wave_lane_min_ = 0;
     uint32_t wave_lane_max_ = 0;
     uint32_t q4_kernel_mode_ = 0;
@@ -229,6 +239,23 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_fmt_opt_pso_[4];
     std::string fmt_opt_status_[4] = {"not initialized", "q4 uses the q4 pipeline",
                                       "not initialized", "not initialized"};
+    // F16 / Q8_0 multi-query tile kernels [storage][0] 2-query, [storage][1]
+    // 4-query (267) for nq 2..9 in modes 1/2; same root signature, optional: a
+    // missing PSO keeps that storage's per-query optimized kernel. Q4_0 uses
+    // range_attn_q4_mq_pso_; KVarN4 has no multi-query tile.
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_fmt_mq_pso_[4][2];
+    std::string fmt_mq_status_[4][2] = {{"not initialized", "not initialized"},
+                                        {"q4 uses q4_multi_query", "q4 uses q4_multi_query"},
+                                        {"not initialized", "not initialized"},
+                                        {"not supported", "not supported"}};
+    // Native KVarN4 descriptor revision 3 (serial query prefix, 256-row tail ring).
+    // Separate PSOs from the same sources; a revision-3 session never uses the
+    // revision 1/2 PSOs. Missing reference PSO: revision 3 configure fails closed.
+    // Missing optimized PSO: modes 1..3 keep the revision-3 reference kernel.
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_prefix_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_opt_prefix_pso_;
+    std::string kvarn4_prefix_status_ = "not initialized";
+    std::string kvarn4_opt_prefix_status_ = "not initialized";
 
     // Profiling (default off). Timestamp slots are fixed per stage so a future
     // fused upload+attention command list cannot alias them.

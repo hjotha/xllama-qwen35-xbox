@@ -3,10 +3,19 @@
 #include <algorithm>
 #include <cstdint>
 
+// Native Bee KVarN4 descriptor helpers. Revision 1/2 keep the resident-image
+// semantics (every query reads the image of active_count; 128-row ORIGINAL-F16
+// tail ring). Revision 3 (serial query prefix, negotiated by root with
+// RKVA_CAP_KVARN_SERIAL_PREFIX) makes every query read the image of its own
+// prefix q_count = position - origin + 1 and doubles the physical tail ring to
+// 256 rows; the wire struct, the upload payload and the rewind payload are
+// unchanged.
+
 namespace rkva_kvarn_range {
 inline bool valid_descriptor(const rkva_kvarn_range_config& c, uint32_t dimension) {
-    return c.storage == RKVA_RANGE_STORAGE_KVARN4 && c.layout_version == 1 && c.origin % 128 == 0 &&
-           c.capacity > 0 && c.capacity <= uint32_t(INT32_MAX) &&
+    return c.storage == RKVA_RANGE_STORAGE_KVARN4 &&
+           (c.layout_version == 1 || c.layout_version == 2 || c.layout_version == 3) &&
+           c.origin % 128 == 0 && c.capacity > 0 && c.capacity <= uint32_t(INT32_MAX) &&
            c.origin <= uint32_t(INT32_MAX) - c.capacity && dimension == 256 &&
            c.token_group == 128 && c.record_dim == 128 && c.head_dim == 256 && c.head_slices == 2 &&
            c.key_bits == 4 && c.value_bits == 4 && c.record_bytes == 8960 && c.stage_groups == 3 &&
@@ -55,5 +64,93 @@ template <typename Copy> void tail_chunks(uint32_t begin, uint32_t rows, Copy co
         copy(row, token % 128, chunk);
         row += chunk;
     }
+}
+
+// ---- Revision 3: serial query prefix ----
+inline bool serial_prefix(const rkva_kvarn_range_config& c) {
+    return c.layout_version == 3;
+}
+constexpr uint32_t kPrefixTailRing = 256;
+constexpr uint32_t kPrefixMaxQueries = 128;
+// Physical ORIGINAL-F16 tail rows per kind; the logical window stays
+// precision_tail_tokens (0 or 128).
+inline uint32_t physical_tail_rows(const rkva_kvarn_range_config& c) {
+    return serial_prefix(c) && c.precision_tail_tokens ? kPrefixTailRing : c.precision_tail_tokens;
+}
+// Newest min(rows, ring) rows of [begin, begin + rows) at ring slot token % ring.
+template <typename Copy>
+void tail_ring_chunks(uint32_t begin, uint32_t rows, uint32_t ring, Copy copy) {
+    for (uint32_t row = rows > ring ? rows - ring : 0; row < rows;) {
+        const uint32_t token = begin + row;
+        const uint32_t chunk = std::min(rows - row, ring - token % ring);
+        copy(row, token % ring, chunk);
+        row += chunk;
+    }
+}
+
+// Per-layer revision-3 coverage: rows [tail_begin, live) are held by the
+// ORIGINAL-F16 tail ring and every stage row of a group starting at or after
+// stage_begin is held by its stage slot. Published only after the GPU copy that
+// establishes it has been fenced.
+struct prefix_coverage {
+    uint32_t tail_begin = 0;
+    uint32_t stage_begin = 0;
+};
+// RESET carries min(live, tail_tokens) tail rows and the full 384-row stage
+// image (sink slot + both ping-pong groups, the stage_groups=3/tail_groups=2
+// contract the revision-2 rewind already relies on).
+inline prefix_coverage coverage_after_reset(uint32_t live, uint32_t tail_tokens) {
+    const uint32_t live_group = live ? (live - 1) / 128 : 0;
+    return {live - std::min(live, tail_tokens), live_group ? (live_group - 1) * 128 : 0};
+}
+// Append [previous, live): the ring keeps the newest 256 rows; a new stage group
+// overwrites the slot of the group two before it.
+inline prefix_coverage coverage_after_append(prefix_coverage c, uint32_t live,
+                                             uint32_t tail_tokens) {
+    const uint32_t live_group = live ? (live - 1) / 128 : 0;
+    if (tail_tokens)
+        c.tail_begin = std::max(c.tail_begin, live > kPrefixTailRing ? live - kPrefixTailRing : 0);
+    c.stage_begin = std::max(c.stage_begin, live_group ? (live_group - 1) * 128 : 0);
+    return c;
+}
+// Rewind to keep rows; the original-F16 repair span [repair_begin,
+// repair_begin + repair_rows) (rkva_kvarn_rewind_tail) extends tail coverage
+// downwards only when it is contiguous with the surviving rows. Rewind never
+// rewrites stage slots, so stage coverage is unchanged (a <=128-row rollback
+// keeps the live group's slot intact).
+inline prefix_coverage coverage_after_rewind(prefix_coverage c, uint32_t keep,
+                                             uint32_t repair_begin, uint32_t repair_rows) {
+    c.tail_begin = std::min(c.tail_begin, keep);
+    if (repair_rows && repair_begin < c.tail_begin && repair_begin + repair_rows >= c.tail_begin)
+        c.tail_begin = repair_begin;
+    return c;
+}
+// Revision-3 query batch: 1..128 contiguous positions ending at origin + live -
+// 1 (leading positions below origin give empty results), every non-empty
+// prefix covered by the stage slots (tail 0) or by the ORIGINAL-F16 ring
+// (tail 128). False rejects the call before any mutation.
+inline bool valid_prefix_queries(const int32_t* positions, uint32_t n, uint32_t origin,
+                                 uint32_t live, prefix_coverage c, uint32_t tail_tokens) {
+    if (!positions || !n || n > kPrefixMaxQueries || !live)
+        return false;
+    for (uint32_t i = 1; i < n; ++i) {
+        if (int64_t(positions[i]) != int64_t(positions[i - 1]) + 1)
+            return false;
+    }
+    if (int64_t(positions[n - 1]) != int64_t(origin) + live - 1)
+        return false;
+    for (uint32_t i = 0; i < n; ++i) {
+        const int64_t q_count = int64_t(live) - (n - 1 - i);
+        if (q_count <= 0)
+            continue;
+        const uint32_t count = uint32_t(q_count);
+        if (tail_tokens) {
+            // Rows [count - tail_tokens, live) for the first and therefore every query.
+            return c.tail_begin <= (count > tail_tokens ? count - tail_tokens : 0);
+        }
+        if (count % 128 && c.stage_begin > count / 128 * 128)
+            return false;
+    }
+    return true;
 }
 } // namespace rkva_kvarn_range

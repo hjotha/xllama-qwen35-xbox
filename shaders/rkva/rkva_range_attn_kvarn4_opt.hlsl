@@ -26,6 +26,24 @@
 // per-row path. Supported shape (host-gated): head_dim 256, n_head ==
 // RKVA_GQA * n_head_kv, wave size 32..128, 128-thread groups, one query,
 // origin % 128 == 0, precision_tail_tokens 0 or 128.
+//
+// RKVA_SERIAL_PREFIX=1 (descriptor revision 3, separate PSO): every query reads
+// the image of its own causal prefix q_count = limit: live staged group, record
+// bound (record_hi / fast_hi never reach a group sealed after q_count) and the
+// exact-tail window follow q_count, and the ORIGINAL-F16 tail is a 256-row
+// physical ring (row & 255). Without the define the legacy revision 1/2 source
+// is unchanged token for token.
+#ifndef RKVA_SERIAL_PREFIX
+#define RKVA_SERIAL_PREFIX 0
+#endif
+#if RKVA_SERIAL_PREFIX
+static uint rkva_window; // per-thread q_count, set once in the entry point
+#define RKVA_WINDOW rkva_window
+#define RKVA_TAIL_MASK 255u
+#else
+#define RKVA_WINDOW active_count
+#define RKVA_TAIL_MASK 127u
+#endif
 #define RKVA_GQA 6
 #define RKVA_DIM 256
 #define RKVA_THREADS 128
@@ -122,7 +140,7 @@ void wht256x6(inout float v[RKVA_ELEMS], uint tid) {
 // Original-domain tail halves for dims 4u..4u+3 of (row, kv_head).
 float4 load_tail4(ByteAddressBuffer buffer, uint row, uint kv_head, uint u) {
     uint stage_bytes = 384 * n_head_kv * 256 * 2;
-    uint element = ((row & 127u) * n_head_kv + kv_head) * 256 + u * 4;
+    uint element = ((row & RKVA_TAIL_MASK) * n_head_kv + kv_head) * 256 + u * 4;
     return halves4(buffer.Load2(records_bytes + stage_bytes + element * 2));
 }
 
@@ -131,7 +149,7 @@ float4 load_body4(ByteAddressBuffer buffer, bool value, uint row, uint kv_head, 
                   uint live_group) {
     uint group = row / 128, pos = row & 127;
     uint global_group = origin / 128 + group;
-    bool staged = global_group == 0 || (group == live_group && (active_count & 127u) != 0);
+    bool staged = global_group == 0 || (group == live_group && (RKVA_WINDOW & 127u) != 0);
     if (staged) {
         uint slot = global_group == 0 ? 0 : 1 + ((global_group - 1) & 1);
         // ((slot*128 + pos) * physical_heads + kv*2 + slice) * 128 + dim
@@ -250,13 +268,16 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     int query_pos = asint(positions.Load(qi * 4));
     uint causal_count = query_pos < int(origin) ? 0 : uint(query_pos) - origin + 1;
     uint limit = min(active_count, causal_count);
+#if RKVA_SERIAL_PREFIX
+    rkva_window = limit;
+#endif
     uint begin = min(limit, split * split_rows);
     uint end = min(limit, (split + 1) * split_rows);
-    uint live_group = active_count ? (active_count - 1) / 128 : 0;
-    uint tail_begin = active_count - min(active_count, precision_tail_tokens);
+    uint live_group = RKVA_WINDOW ? (RKVA_WINDOW - 1) / 128 : 0;
+    uint tail_begin = RKVA_WINDOW - min(RKVA_WINDOW, precision_tail_tokens);
     // Record-backed body rows: complete groups, excluding the origin-0 sink group.
     uint record_lo = origin == 0 ? 128 : 0;
-    uint record_hi = active_count & ~127u;
+    uint record_hi = RKVA_WINDOW & ~127u;
     uint fast_lo = (max(begin, record_lo) + RKVA_TILE - 1) & ~(RKVA_TILE - 1);
     uint fast_hi = min(min(end, record_hi), tail_begin) & ~(RKVA_TILE - 1);
     if (fast_hi <= fast_lo) {

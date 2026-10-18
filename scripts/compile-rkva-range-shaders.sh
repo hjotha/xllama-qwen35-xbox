@@ -7,7 +7,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DXC="${DXC:-dxc}"
 ALL_TARGETS=(attn attn_q4 attn_q8 attn_kvarn4 reduce attn_q4_opt reduce_opt
-    attn_f16_opt attn_q8_opt attn_kvarn4_opt)
+    attn_f16_opt attn_q8_opt attn_kvarn4_opt attn_kvarn4_prefix attn_kvarn4_opt_prefix
+    attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4)
 if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
@@ -56,6 +57,31 @@ for target in "${TARGETS[@]}"; do
         entry=CSRangeAttnKvarn4Opt
         source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_opt.hlsl"
         defines=()
+    fi
+    # Descriptor revision 3 (serial query prefix, 256-row ORIGINAL-F16 tail ring):
+    # same sources, separate PSOs; the legacy targets above stay byte-identical.
+    if [[ "$target" == attn_kvarn4_prefix ]]; then
+        source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4.hlsl"
+        defines=(-D RKVA_SERIAL_PREFIX=1)
+    fi
+    if [[ "$target" == attn_kvarn4_opt_prefix ]]; then
+        entry=CSRangeAttnKvarn4Opt
+        source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_opt.hlsl"
+        defines=(-D RKVA_SERIAL_PREFIX=1)
+    fi
+    # Q4_0 multi-query tile (nq 2..9): RKVA_MQ_QT queries share each K/V dequantization.
+    if [[ "$target" == attn_q4_mq2 || "$target" == attn_q4_mq4 ]]; then
+        entry=CSRangeAttnQ4Mq
+        source="$ROOT/shaders/rkva/rkva_range_attn_q4_mq.hlsl"
+        defines=(-D RKVA_MQ_QT="${target#attn_q4_mq}")
+    fi
+    # F16 / Q8_0 multi-query tile (nq 2..9): same algorithm, storage-specific K/V decode.
+    if [[ "$target" =~ ^attn_(f16|q8)_mq([24])$ ]]; then
+        entry=CSRangeAttnFmtMq
+        source="$ROOT/shaders/rkva/rkva_range_attn_fmt_mq.hlsl"
+        storage=0
+        if [[ "${BASH_REMATCH[1]}" == q8 ]]; then storage=2; fi
+        defines=(-D RKVA_OPT_STORAGE="$storage" -D RKVA_MQ_QT="${BASH_REMATCH[2]}")
     fi
     out="$ROOT/shaders/generated/rkva_range_${target}_dxil.h"
     tmp="$(mktemp)"
