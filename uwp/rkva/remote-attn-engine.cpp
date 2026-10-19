@@ -10,6 +10,7 @@
 
 #include "remote-attn-engine.h"
 
+#include "rkva-kvarn-bulk.h"
 #include "rkva-kvarn-range.h"
 #include "rkva-kvarn-rewind.h"
 #include "rkva-range-profile.h"
@@ -263,6 +264,8 @@ void RemoteAttnEngine::uav_barrier(Buffer& buffer) {
 }
 
 bool RemoteAttnEngine::begin(std::string* error) {
+    if (bulk_recording_)
+        return true;
     if (terminal_failure_ || unconfirmed_submission_) {
         return fail(error, "engine terminal after unconfirmed submission");
     }
@@ -278,6 +281,8 @@ bool RemoteAttnEngine::begin(std::string* error) {
 }
 
 bool RemoteAttnEngine::submit(std::string* error) {
+    if (bulk_recording_)
+        return true;
     if (terminal_failure_ || unconfirmed_submission_) {
         return fail(error, "engine terminal after unconfirmed submission");
     }
@@ -1782,7 +1787,7 @@ bool RemoteAttnEngine::rewind_kvarn_range(uint32_t id, const rkva_kvarn_range_re
 bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
                                           const rkva_kvarn_range_upload& u, const uint8_t* data,
                                           size_t bytes, std::string* error) {
-    const bool prof = profiling_ && profile_;
+    const bool prof = profiling_ && profile_ && !bulk_recording_;
     rp::Sample sample;
     SpanTimer timer;
     timer.start(prof, sample.cpu_ns);
@@ -2003,10 +2008,106 @@ bool RemoteAttnEngine::ensure_range_scratch(uint32_t n_tokens, std::string* erro
     return true;
 }
 
+bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                         const uint8_t* data, size_t bytes, float* out, float* lse,
+                                         std::string* error) {
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured || s->range_storage != 3 ||
+        layer >= s->layer_kv.size() || !out || !lse || !range_attn_kvarn4_prefix_pso_ ||
+        bulk_recording_)
+        return ::fail(error, "native bulk: invalid session/arguments");
+    std::vector<rkva_kvarn_bulk::Segment> segments;
+    if (!rkva_kvarn_bulk::validate(data, bytes, n_tokens, s->range_descriptor, geo_.n_head,
+                                   geo_.n_head_kv, s->range_counts[layer],
+                                   s->range_record_groups[layer], s->range_ready[layer],
+                                   s->prefix_coverage[layer], s->native_generation, segments))
+        return ::fail(error, "native bulk: invalid envelope/coverage/query");
+    // Admission and all grow-only allocation precede the first native mutation.
+    uint32_t max_queries = 0;
+    for (const auto& segment : segments)
+        max_queries = std::max(max_queries, segment.n_queries);
+    if (!ensure_range_scratch(max_queries, error))
+        return false;
+    if (bulk_transfers_.size() < segments.size())
+        bulk_transfers_.resize(segments.size());
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const auto& segment = segments[i];
+        auto& transfer = bulk_transfers_[i];
+        const uint64_t q_bytes = uint64_t(segment.n_queries) * geo_.n_head * 256 * 4;
+        const uint64_t query_bytes = q_bytes + segment.n_queries * 4;
+        const uint64_t output_bytes = q_bytes + uint64_t(segment.n_queries) * geo_.n_head * 4;
+        if ((transfer.upload.bytes < segment.data_bytes &&
+             !create_buffer(segment.data_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                            D3D12_RESOURCE_STATE_GENERIC_READ, &transfer.upload, error)) ||
+            (transfer.query.bytes < query_bytes &&
+             !create_buffer(query_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                            D3D12_RESOURCE_STATE_GENERIC_READ, &transfer.query, error)) ||
+            (transfer.readback.bytes < output_bytes &&
+             !create_buffer(output_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
+                            D3D12_RESOURCE_STATE_COPY_DEST, &transfer.readback, error)))
+            return false;
+    }
+    if (!begin(error))
+        return false;
+    bulk_recording_ = true;
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const auto& segment = segments[i];
+        auto& transfer = bulk_transfers_[i];
+        // Each recorded copy/dispatch references immutable transfer memory. The
+        // attention output/partials are shared in strict command-list order.
+        std::swap(range_upload_, transfer.upload);
+        std::swap(range_query_, transfer.query);
+        std::swap(range_readback_, transfer.readback);
+        const bool ok =
+            upload_kvarn_range(id, layer, segment.upload, data + segment.data_offset,
+                               segment.data_bytes, error) &&
+            attend_range(id, layer, segment.n_queries,
+                         reinterpret_cast<const int32_t*>(data + segment.positions_offset),
+                         reinterpret_cast<const float*>(data + segment.query_offset), out, lse,
+                         error);
+        std::swap(range_upload_, transfer.upload);
+        std::swap(range_query_, transfer.query);
+        std::swap(range_readback_, transfer.readback);
+        if (!ok) {
+            bulk_recording_ = false;
+            s->valid = false;
+            // Recorded resource transitions were not executed; do not reuse
+            // their host-side state tracking in any other session.
+            terminal_failure_ = true;
+            return false;
+        }
+    }
+    bulk_recording_ = false;
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+    size_t row = 0;
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const uint64_t heads = uint64_t(segments[i].n_queries) * geo_.n_head;
+        const uint64_t q_bytes = heads * 256 * 4;
+        const uint64_t output_bytes = q_bytes + heads * 4;
+        void* mapped = nullptr;
+        D3D12_RANGE range{0, static_cast<SIZE_T>(output_bytes)};
+        const HRESULT hr = bulk_transfers_[i].readback.resource->Map(0, &range, &mapped);
+        if (FAILED(hr)) {
+            s->valid = false;
+            return fail(error, "Map native bulk readback", hr);
+        }
+        std::memcpy(out + row * geo_.n_head * 256, mapped, q_bytes);
+        std::memcpy(lse + row * geo_.n_head, static_cast<const uint8_t*>(mapped) + q_bytes,
+                    heads * 4);
+        D3D12_RANGE empty{0, 0};
+        bulk_transfers_[i].readback.resource->Unmap(0, &empty);
+        row += segments[i].n_queries;
+    }
+    return true;
+}
+
 bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_tokens,
                                     const int32_t* positions, const float* q, float* out,
                                     float* lse, std::string* error) {
-    const bool prof = profiling_ && profile_;
+    const bool prof = profiling_ && profile_ && !bulk_recording_;
     rp::Sample sample;
     SpanTimer timer;
     timer.start(prof, sample.cpu_ns);
@@ -2066,6 +2167,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             resolve_timestamps(kTsAttnBegin, 4);
         }
         timer.mark(rp::kCpuRecord);
+        if (bulk_recording_)
+            return true; // final outer submit/readback owns publication
         if (!submit(error)) {
             s->valid = false;
             return false;

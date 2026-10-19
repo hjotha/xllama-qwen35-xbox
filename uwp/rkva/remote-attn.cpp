@@ -207,7 +207,7 @@ constexpr uint32_t supported_ops_mask() {
            (1u << RKVA_KVARN_RANGE_CONFIG) | (1u << RKVA_KVARN_RANGE_UPLOAD) |
            (1u << RKVA_SNAPSHOT_SAVE) | (1u << RKVA_SNAPSHOT_RESTORE) |
            (1u << RKVA_RANGE_UPLOAD_ATTN) | (1u << RKVA_RANGE_PROFILE) |
-           (1u << RKVA_KVARN_RANGE_REWIND);
+           (1u << RKVA_KVARN_RANGE_BULK_ATTN) | (1u << RKVA_KVARN_RANGE_REWIND);
 }
 
 int handle_request(remote_state& state, const rkva_request& req, const std::vector<uint8_t>& input,
@@ -279,11 +279,12 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         ack.supported_ops = supported_ops_mask();
         if (req.version == RKVA_VERSION_LEGACY || !state.engine_f16 ||
             hello.domain != RKVA_DOMAIN_AUTO) {
-            ack.supported_ops &= ~((1u << RKVA_RANGE_CONFIG) | (1u << RKVA_RANGE_UPLOAD) |
-                                   (1u << RKVA_RANGE_ATTN) | (1u << RKVA_KVARN_RANGE_CONFIG) |
-                                   (1u << RKVA_KVARN_RANGE_UPLOAD) | (1u << RKVA_SNAPSHOT_SAVE) |
-                                   (1u << RKVA_SNAPSHOT_RESTORE) | (1u << RKVA_RANGE_UPLOAD_ATTN) |
-                                   (1u << RKVA_RANGE_PROFILE) | (1u << RKVA_KVARN_RANGE_REWIND));
+            ack.supported_ops &=
+                ~((1u << RKVA_RANGE_CONFIG) | (1u << RKVA_RANGE_UPLOAD) | (1u << RKVA_RANGE_ATTN) |
+                  (1u << RKVA_KVARN_RANGE_CONFIG) | (1u << RKVA_KVARN_RANGE_UPLOAD) |
+                  (1u << RKVA_SNAPSHOT_SAVE) | (1u << RKVA_SNAPSHOT_RESTORE) |
+                  (1u << RKVA_RANGE_UPLOAD_ATTN) | (1u << RKVA_RANGE_PROFILE) |
+                  (1u << RKVA_KVARN_RANGE_REWIND) | (1u << RKVA_KVARN_RANGE_BULK_ATTN));
         }
         // Choose wire format: if host supports F16 wire (proto_flags bit 0), negotiate F16 for 2x
         // bandwidth savings
@@ -297,12 +298,12 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 ack.reserved[0] |= RKVA_CAP_KVARN_REWIND;
             if (state.native_serial_prefix_v3_client &&
                 state.engine->native_serial_prefix_available())
-                ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX;
+                ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX | RKVA_CAP_KVARN_BULK_ATTN;
         }
         if (!state.native_rewind_v2_client)
             ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_REWIND);
         ack.max_sessions = 64;
-        ack.server_version = 269; // bumped with the UWP package
+        ack.server_version = 270; // bumped with the UWP package
         // ~5 GiB game heap; leave headroom for the D3D12 runtime + buffers.
         ack.mem_budget_bytes = 4ull * 1024 * 1024 * 1024;
         output.resize(sizeof(ack));
@@ -635,6 +636,33 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         if (!state.engine->upload_kvarn_range(req.session_id, req.layer_id, u,
                                               input.data() + sizeof(u), input.size() - sizeof(u),
                                               &error)) {
+            event_engine_error(error);
+            return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
+                                                                 : RKVA_ERR_BAD_PAYLOAD;
+        }
+        compute_us = elapsed_us(start);
+        prepare_us = elapsed_us(t0);
+        return RKVA_OK;
+    }
+    case RKVA_KVARN_RANGE_BULK_ATTN: {
+        if (req.version != RKVA_VERSION || !state.native_serial_prefix_v3_client || !req.n_tokens ||
+            req.n_tokens > 256 || req.layer_id >= state.geo.n_layer_remote)
+            return RKVA_ERR_BAD_PAYLOAD;
+        auto it = state.sessions.find(req.session_id);
+        if (it == state.sessions.end() || !it->second.range_configured ||
+            it->second.range_storage != RKVA_RANGE_STORAGE_KVARN4 || !state.engine ||
+            !state.engine_f16 || !it->second.valid)
+            return RKVA_ERR_BAD_SESSION;
+        const uint64_t heads = uint64_t(req.n_tokens) * state.geo.n_head;
+        const uint64_t q_bytes = heads * state.geo.head_dim * 4;
+        output.resize(q_bytes + heads * 4);
+        std::string error;
+        const auto start = clock_type::now();
+        if (!state.engine->attend_kvarn_bulk(
+                req.session_id, req.layer_id, req.n_tokens, input.data(), input.size(),
+                reinterpret_cast<float*>(output.data()),
+                reinterpret_cast<float*>(output.data() + q_bytes), &error)) {
+            output.clear();
             event_engine_error(error);
             return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
                                                                  : RKVA_ERR_BAD_PAYLOAD;

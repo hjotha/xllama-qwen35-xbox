@@ -112,6 +112,8 @@ class RemoteAttnEngine {
                                std::string* error);
     bool upload_kvarn_range(uint32_t id, uint32_t layer, const rkva_kvarn_range_upload& upload,
                             const uint8_t* data, size_t bytes, std::string* error);
+    bool attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
+                           size_t bytes, float* out, float* lse, std::string* error);
     bool attend_range(uint32_t session_id, uint32_t layer, uint32_t n_tokens,
                       const int32_t* positions, const float* q, float* out, float* lse,
                       std::string* error);
@@ -276,6 +278,13 @@ class RemoteAttnEngine {
     // Keep transfer resources alive after an unconfirmed GPU submission.
     Buffer snapshot_upload_;
     Buffer snapshot_readback_;
+    // Native bulk: distinct transfer regions survive the single final fence.
+    // Grow-only bounded pool (32 segments), also retained on unconfirmed submit.
+    struct BulkTransfer {
+        Buffer upload, query, readback;
+    };
+    std::vector<BulkTransfer> bulk_transfers_;
+    bool bulk_recording_ = false;
     Buffer range_upload_;
     Buffer range_query_;
     Buffer range_partials_;

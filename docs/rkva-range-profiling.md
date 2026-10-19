@@ -437,3 +437,46 @@ These fields describe current usage, not a sampled high-water mark, and must
 not be summed together. A `memory_before_destroy` log event samples the same
 values before releasing a session's buffers, outside measured attention calls.
 The diagnostic query holds no adapter references beyond the call.
+
+## Native KVarN4 bulk RPC (candidate 270)
+
+`RKVA_CAP_KVARN_BULK_ATTN` (bit 8) negotiates op 22,
+`RKVA_KVARN_RANGE_BULK_ATTN`, for descriptor revision 3. The host opts in with
+`GGML_RKVA_NATIVE_BULK=1`; requesting it from a peer without the capability or
+operation fails configuration. The default (`0`) keeps separate op 16/op 14
+transactions, including compatibility with candidate 269. Q and OUT stay F32.
+
+The version-1 envelope contains at most 32 ordered segments and 256 total
+queries. Each segment holds the complete existing native upload payload and
+its query payload; prefill uses eight queries per segment. Admission validates
+the entire envelope, native record coverage, stage/tail residency, positions,
+finite queries, sizes and generation capacity before any GPU write. The engine
+records the same upload/attention pairs into one command list, with independent
+grow-only upload, query and readback resources per segment and shared ordered
+attention scratch. One queue submission and fence precede all readbacks.
+This preserves the image of each segment, including seals and tail wrap; it
+does not upload the entire batch before querying its earlier prefixes.
+
+A post-admission recording, GPU or readback failure invalidates the session;
+there is no success response exposing partially applied history. An
+unconfirmed submission retains transfer resources. The host publishes its
+resident-row count and generation only after the complete response.
+
+Transport op-22 counters and the existing submission/fence counters account for
+the whole batch. Per-segment timestamp buckets are disabled inside a bulk
+command list; their fixed timestamp slots cannot represent 32 simultaneous
+segments. Use separate op 16/op 14 with profiling to inspect individual kernels.
+
+Pure admission gate (no GPU):
+
+```bash
+c++ -std=c++17 -O1 -Wall -Wextra -Werror tests/rkva_kvarn_bulk_cpu.cpp -o /tmp/rkva-bulk-cpu
+/tmp/rkva-bulk-cpu
+```
+
+The gated `tests/rkva_kvarn_bulk_probe.py --execute` requires exclusive ownership
+of the console listener. It compares every OUT/LSE byte against the unchanged
+serial transaction path for both tail policies, maximum batches, record seals,
+ring wrap, rollback and new-content reappend. A corrupt final segment must be
+rejected before the first mutation; retrying the valid envelope then matches
+the serial session. This gate is not a model tokens/s benchmark.
