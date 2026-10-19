@@ -8,7 +8,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DXC="${DXC:-dxc}"
 ALL_TARGETS=(attn attn_q4 attn_q8 attn_kvarn4 reduce attn_q4_opt reduce_opt
     attn_f16_opt attn_q8_opt attn_kvarn4_opt attn_kvarn4_prefix attn_kvarn4_opt_prefix
-    attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4)
+    attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4
+    attn_kvarn4_mq2)
 if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
@@ -82,6 +83,13 @@ for target in "${TARGETS[@]}"; do
         storage=0
         if [[ "${BASH_REMATCH[1]}" == q8 ]]; then storage=2; fi
         defines=(-D RKVA_OPT_STORAGE="$storage" -D RKVA_MQ_QT="${BASH_REMATCH[2]}")
+    fi
+    # Native KVarN4 descriptor-3 multi-query tile (nq 2..9, 268): 2 queries share
+    # each record/stage/tail K/V decode; every query keeps its own serial prefix.
+    if [[ "$target" == attn_kvarn4_mq2 ]]; then
+        entry=CSRangeAttnKvarn4Mq
+        source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_mq.hlsl"
+        defines=(-D RKVA_MQ_QT=2)
     fi
     out="$ROOT/shaders/generated/rkva_range_${target}_dxil.h"
     tmp="$(mktemp)"

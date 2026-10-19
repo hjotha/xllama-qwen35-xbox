@@ -190,8 +190,30 @@ inline const char* format_mq_kernel_name(uint32_t storage, uint32_t q_tile) {
     return "invalid";
 }
 
+// Native KVarN4 descriptor revision-3 (serial prefix) multi-query tile kernel
+// (rkva_range_attn_kvarn4_mq.hlsl, 268): two queries x 6 GQA heads share the
+// K/V record/stage/tail loads and decode of rows every query reads with the
+// same representation; each query keeps its own serial-prefix windows. Only
+// mode 2 (fine split) with nq 2..kOptMaxQueries selects it; modes 1/3, nq1,
+// mode 0 and descriptor revisions 1/2 are unchanged.
+constexpr uint32_t kKvarn4MqTile = 2;
+constexpr uint32_t kKvarn4MqWaveLanes = 64; // one 4-dim unit per lane
+
+// Zero exact tails retain the qualified per-query arithmetic. The shared tile
+// is qualified with a 128-token original-F16 tail; raw FP64 parity alone does
+// not establish the same speculative cache trajectory without that tail.
+inline uint32_t kvarn4_mq_tile(uint32_t mode, uint32_t n_tokens, uint32_t precision_tail_tokens) {
+    return precision_tail_tokens == 128 && mode == kModeOptFine && n_tokens >= 2 &&
+                   n_tokens <= kOptMaxQueries
+               ? kKvarn4MqTile
+               : 0u;
+}
+
 // Storage-qualified multi-query kernel name (Q4_0 keeps its 266 names).
 inline const char* mq_kernel_name(uint32_t storage, uint32_t q_tile) {
+    if (storage == kStorageKvarn4) {
+        return q_tile == kKvarn4MqTile ? "kvarn4_mq2_fine" : "invalid";
+    }
     return storage == kStorageQ4 ? q4_mq_kernel_name(q_tile)
                                  : format_mq_kernel_name(storage, q_tile);
 }
@@ -252,7 +274,7 @@ struct Sample {
     uint8_t fence_blocked = 0;
     uint8_t alloc_grew = 0;
     uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
-    uint8_t q_tile = 0;        // Q4_0/F16/Q8_0 multi-query tile (2 or 4); 0 = per-query
+    uint8_t q_tile = 0;        // multi-query tile (Q4_0/F16/Q8_0 2 or 4, KVarN4 2); 0 = per-query
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -270,6 +292,8 @@ struct Counters {
     uint64_t q4_mq_calls[2] = {}; // subset of optimized_calls: [0] 2-query, [1] 4-query tile
     // F16/Q8_0 multi-query tile calls (subset of optimized_by_storage), [storage][tile/4].
     uint64_t fmt_mq_calls[kStorageCount][2] = {};
+    // Native KVarN4 revision-3 2-query tile calls (subset of optimized_by_storage[kvarn4]).
+    uint64_t kvarn4_mq_calls = 0;
     uint64_t optimized_by_storage[kStorageCount] = {};
     uint64_t reference_by_storage[kStorageCount] = {};
     uint64_t failed_calls = 0;
@@ -284,7 +308,35 @@ struct Counters {
     uint64_t timestamp_map_failures = 0;
 };
 
+struct MemoryInfo {
+    uint64_t timestamp_unix_ms = 0;
+    bool app_available = false;
+    uint64_t app_usage_bytes = 0;
+    uint64_t app_limit_bytes = 0;
+    bool gpu_local_available = false;
+    uint64_t gpu_local_usage_bytes = 0;
+    uint64_t gpu_local_budget_bytes = 0;
+};
+
+inline std::string memory_json(const MemoryInfo& m) {
+    char text[512];
+    std::snprintf(text, sizeof(text),
+                  "{\"timestamp_unix_ms\":%llu,\"app_available\":%s,"
+                  "\"app_usage_bytes\":%llu,\"app_limit_bytes\":%llu,"
+                  "\"gpu_local_available\":%s,\"gpu_local_usage_bytes\":%llu,"
+                  "\"gpu_local_budget_bytes\":%llu}",
+                  static_cast<unsigned long long>(m.timestamp_unix_ms),
+                  m.app_available ? "true" : "false",
+                  static_cast<unsigned long long>(m.app_usage_bytes),
+                  static_cast<unsigned long long>(m.app_limit_bytes),
+                  m.gpu_local_available ? "true" : "false",
+                  static_cast<unsigned long long>(m.gpu_local_usage_bytes),
+                  static_cast<unsigned long long>(m.gpu_local_budget_bytes));
+    return text;
+}
+
 struct Header {
+    MemoryInfo memory;
     bool profiling = false;
     uint32_t q4_kernel_mode = 0;
     bool gpu_timestamps = false;
@@ -306,6 +358,9 @@ struct Header {
     // F16 / Q8_0 multi-query tile pipelines, [storage][0] 2-query, [storage][1] 4-query.
     bool fmt_mq_available[kStorageCount][2] = {};
     std::string fmt_mq_status[kStorageCount][2];
+    // Native KVarN4 revision-3 2-query tile pipeline (requires the optimized prefix PSO).
+    bool kvarn4_mq_available = false;
+    std::string kvarn4_mq_status;
 };
 
 inline const char* storage_name(uint32_t storage) {
@@ -470,11 +525,15 @@ class Recorder {
                       ull(c.buffer_creates), ull(c.buffer_create_bytes), ull(c.timestamp_resolves),
                       ull(c.timestamp_map_failures));
         o += buf;
+        o += ",\"memory\":" + memory_json(h.memory);
+        o += ",\"kvarn4_mq_qualified_precision_tail_tokens\":[128]";
         o += ",\"kernel_mode_scope\":\"legacy name q4_kernel_mode; modes 1..3 select the "
              "optimized kernel of each storage listed available in optimized_kernels, "
              "otherwise reference; Q4_0 nq 2..9 in modes 1/2 use the q4_multi_query tile "
              "kernel when available; F16/Q8_0 nq 2..9 in modes 1/2 use the "
-             "format_multi_query tile kernel when available\"";
+             "format_multi_query tile kernel when available; native KVarN4 descriptor "
+             "revision 3 nq 2..9 in mode 2 uses the kvarn4_multi_query tile kernel when "
+             "available\"";
         o += ",\"optimized_kernels\":{";
         for (uint32_t st = 0; st < kStorageCount; ++st) {
             std::snprintf(
@@ -528,6 +587,15 @@ class Recorder {
             o += buf;
         }
         o += '}';
+        std::snprintf(buf, sizeof(buf),
+                      ",\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":%u,"
+                      "\"descriptor_revision\":3,\"required_wave_lanes\":%u,"
+                      "\"mode_map\":\"1:per-query kvarn4_gqa_balanced 2:kvarn4_mq2_fine "
+                      "3:per-query kvarn4_gqa_coarse\","
+                      "\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
+                      kOptMaxQueries, kKvarn4MqWaveLanes, h.kvarn4_mq_available ? "true" : "false",
+                      json_escape(h.kvarn4_mq_status).c_str(), ull(c.kvarn4_mq_calls));
+        o += buf;
 
         std::map<std::string, std::vector<const Sample*>> buckets;
         for (size_t i = 0; i < stored_; ++i) {

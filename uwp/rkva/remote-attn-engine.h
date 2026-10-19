@@ -133,6 +133,7 @@ class RemoteAttnEngine {
     // path of its storage. See docs/rkva-range-profiling.md.
     bool set_range_profiling(bool enabled, bool reset, uint32_t q4_kernel_mode, std::string& error);
     std::string get_range_profile_json();
+    std::string get_memory_profile_json();
     uint32_t q4_kernel_mode() const {
         return q4_kernel_mode_;
     }
@@ -242,7 +243,7 @@ class RemoteAttnEngine {
     // F16 / Q8_0 multi-query tile kernels [storage][0] 2-query, [storage][1]
     // 4-query (267) for nq 2..9 in modes 1/2; same root signature, optional: a
     // missing PSO keeps that storage's per-query optimized kernel. Q4_0 uses
-    // range_attn_q4_mq_pso_; KVarN4 has no multi-query tile.
+    // range_attn_q4_mq_pso_; KVarN4 uses range_attn_kvarn4_mq_pso_.
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_fmt_mq_pso_[4][2];
     std::string fmt_mq_status_[4][2] = {{"not initialized", "not initialized"},
                                         {"q4 uses q4_multi_query", "q4 uses q4_multi_query"},
@@ -255,6 +256,10 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_prefix_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_opt_prefix_pso_;
     std::string kvarn4_prefix_status_ = "not initialized";
+    // Native KVarN4 revision-3 2-query tile (268), selected only in mode 2 for nq
+    // 2..9 with the optimized prefix PSO; otherwise the per-query prefix kernel runs.
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_mq_pso_;
+    std::string kvarn4_mq_status_ = "not initialized";
     std::string kvarn4_opt_prefix_status_ = "not initialized";
 
     // Profiling (default off). Timestamp slots are fixed per stage so a future

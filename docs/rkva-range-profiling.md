@@ -407,3 +407,35 @@ python3 tests/rkva_range_kvarn4_opt_model.py [--quick]
 Package 1.6.0.263 (SHA256 `d14f0732ab1bd034dd84dce220bd99849eddd50751e77caa6d75d2fa0438188e`) passed 108 independent OUT/LSE/selection cases per format (F16, Q8_0, KVarN4, Q4_0), capacity 28672, all four modes and precision tail 128. Native KVarN4 tail 0 also passed. Combined upload-attention probes passed for Q4/Q8/F16, including nq256 and rejected-frame no-mutation checks.
 
 Raw artifacts and exact invocation/provenance are kept in `/home/hjotha/build/rkva-q4-optimization-20261018/console263/`; host models and shader compilation are separate evidence. These one-layer probes are not model TPS and do not qualify model quality or native snapshot replay. Default mode 0 remains reference; optimized modes require opt-in.
+
+
+## Native KVarN4 serial-prefix multi-query tile (268)
+
+Mode 2 with descriptor revision 3 and 2..9 queries can use a two-query tile
+when the GPU reports at least 64 wave lanes and the optional pipeline exists.
+The tile shares record decoding only where every query sees the same sealed
+record. Stage and original-F16 tail rows retain each query's serial-prefix
+representation, including a seal or ring wrap within the batch. Mode 0, mode 1,
+mode 3, single-query decode, and older descriptors keep their existing paths.
+The Q4, Q8 and F16 shader inputs and generated binaries are unchanged.
+
+CPU partition and profile tests plus DXC compilation are separate from GPU
+qualification and model TPS. A successful build alone makes no speed claim.
+
+
+## Native MQ tail qualification and memory observations (269)
+
+The native two-query tile is qualified with a 128-token original-F16 precision
+tail. Requests with a zero precision tail use the existing per-query kernel,
+including in fine mode: isolated FP64 parity does not establish an identical
+speculative cache trajectory when both position ranges omit their exact tail.
+The profile advertises this restriction in
+`kvarn4_mq_qualified_precision_tail_tokens`. Q4, Q8 and F16 kernels are unchanged.
+
+The additive `memory` object reports the app's usage and limit from
+`Windows.System.MemoryManager`, separately from DXGI LOCAL usage and budget
+for the engine device's adapter LUID. Each counter has an availability flag.
+These fields describe current usage, not a sampled high-water mark, and must
+not be summed together. A `memory_before_destroy` log event samples the same
+values before releasing a session's buffers, outside measured attention calls.
+The diagnostic query holds no adapter references beyond the call.

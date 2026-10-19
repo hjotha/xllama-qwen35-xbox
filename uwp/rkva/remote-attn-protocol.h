@@ -123,8 +123,7 @@ enum rkva_status : int32_t {
 // HELLO request payload: the host proposes the model/cache geometry taken
 // from the live llama_hparams/cparams and the --cache-type/--kv-tail flags.
 struct rkva_hello {
-    uint32_t
-        proto_flags; // bit0: F16, bit1: F32, bit16: native rewind v2, bit17: serial query prefix v3
+    uint32_t proto_flags; // bit0: F16, bit1: F32, bit16: native rewind v2, bit17: serial query prefix v3
     uint32_t n_layer_remote; // full-attention layers owned by the server
     uint32_t n_head;         // Q heads (24)
     uint32_t n_head_kv;      // KV heads (4)
@@ -224,6 +223,7 @@ struct rkva_range_profile {
     uint32_t q4_kernel_mode; // 0 reference, 1 balanced, 2 fine, 3 coarse optimized
     uint64_t reserved;
 };
+
 
 // Native KVarN4 revision 1: exact host-packed records, not a Q4_0 alias.
 // All integers little endian. Descriptor validation is mandatory before allocation.

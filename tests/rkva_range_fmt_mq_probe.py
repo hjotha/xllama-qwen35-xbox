@@ -5,9 +5,9 @@ Offline by default: without --execute it prints the plan and opens no socket.
 --self-test runs the offline oracle/decoder/filter checks only (no socket).
 With --execute it talks to an already running dedicated RKVA listener (no model,
 no credentials). The console must be leased to the caller; this script never
-deploys, restarts, or changes anything outside its own RKVA session. The Bee host exposes these storages through its storage-qualified
-GGML_RKVA_RANGE_KERNEL selector. The legacy GGML_RKVA_Q4_KERNEL option
-retains its Q4-only meaning.
+deploys, restarts, or changes anything outside its own RKVA session. These
+storages are reachable only through raw probes like this one: the Bee host's
+optimized-kernel opt-in stays Q4_0-only.
 
 Kernel selection under the legacy q4_kernel_mode field (op 20), per storage:
   mode 0  reference (default)                         every nq

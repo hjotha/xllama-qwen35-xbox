@@ -302,7 +302,7 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         if (!state.native_rewind_v2_client)
             ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_REWIND);
         ack.max_sessions = 64;
-        ack.server_version = 267; // bumped with the UWP package
+        ack.server_version = 269; // bumped with the UWP package
         // ~5 GiB game heap; leave headroom for the D3D12 runtime + buffers.
         ack.mem_budget_bytes = 4ull * 1024 * 1024 * 1024;
         output.resize(sizeof(ack));
@@ -343,6 +343,14 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         return RKVA_OK;
     }
     case RKVA_DESTROY_SESSION: {
+        if (state.engine && state.sessions.count(req.session_id)) {
+            try {
+                event(g_log_path, "{\"event\":\"memory_before_destroy\",\"session\":" +
+                                      std::to_string(req.session_id) + ",\"memory\":" +
+                                      state.engine->get_memory_profile_json() + "}");
+            } catch (...) { /* Observation must never block session release. */
+            }
+        }
         state.sessions.erase(req.session_id);
         if (state.engine) {
             state.engine->destroy_session(req.session_id);
