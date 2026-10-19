@@ -408,7 +408,6 @@ Package 1.6.0.263 (SHA256 `d14f0732ab1bd034dd84dce220bd99849eddd50751e77caa6d75d
 
 Raw artifacts and exact invocation/provenance are kept in `/home/hjotha/build/rkva-q4-optimization-20261018/console263/`; host models and shader compilation are separate evidence. These one-layer probes are not model TPS and do not qualify model quality or native snapshot replay. Default mode 0 remains reference; optimized modes require opt-in.
 
-
 ## Native KVarN4 serial-prefix multi-query tile (268)
 
 Mode 2 with descriptor revision 3 and 2..9 queries can use a two-query tile
@@ -421,7 +420,6 @@ The Q4, Q8 and F16 shader inputs and generated binaries are unchanged.
 
 CPU partition and profile tests plus DXC compilation are separate from GPU
 qualification and model TPS. A successful build alone makes no speed claim.
-
 
 ## Native MQ tail qualification and memory observations (269)
 
