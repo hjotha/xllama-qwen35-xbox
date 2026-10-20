@@ -3,6 +3,7 @@
 //   g++ -std=c++17 -Wall -Wextra -Werror tests/rkva_range_profile_cpu.cpp -o /tmp/rkva_profile
 //   /tmp/rkva_profile > /tmp/rkva_profile.json && python3 -m json.tool /tmp/rkva_profile.json
 #include "../uwp/rkva/rkva-range-profile.h"
+#undef NDEBUG
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -219,6 +220,74 @@ int main() {
     assert(kvarn4_decode_split(34816, kModeOptBalanced).split_rows == 1152);
     assert(kvarn4_decode_split(34816, kModeOptFine).split_k == 55);
     assert(kvarn4_decode_split(34816, kModeOptFine).split_rows == 640);
+
+    // Exhaust the supported context ladder, including both cap transitions.
+    for (uint32_t mode : {kModeOptBalanced, kModeOptFine}) {
+        for (uint32_t tile : {2u, 4u}) {
+            for (uint32_t n = 0; n <= 131072; ++n) {
+                const KvarnSplit ks = kvarn4_mq_split(n, mode, tile);
+                assert(ks.split_k >= 1 && ks.split_k <= (mode == kModeOptFine ? 64u : 32u));
+                assert(ks.split_rows % kKvarnTile == 0);
+                if (!n) {
+                    assert(ks.split_k == 1 && ks.split_rows == 0);
+                    continue;
+                }
+                assert(uint64_t(ks.split_rows) * ks.split_k >= n);
+                assert(uint64_t(ks.split_rows) * (ks.split_k - 1) < n);
+                assert(ks.split_k == 1 || n > 256);
+            }
+        }
+    }
+    assert(kvarn4_mq_split(257, kModeOptBalanced, 4).split_k == 2);
+    assert(kvarn4_mq_split(257, kModeOptBalanced, 4).split_rows == 136);
+    assert(kvarn4_mq_split(8193, kModeOptBalanced, 4).split_rows == 264);
+    assert(kvarn4_mq_split(16385, kModeOptFine, 2).split_k == 63);
+    assert(kvarn4_mq_split(16385, kModeOptFine, 2).split_rows == 264);
+
+    // Multi-query split policy tests (kvarn4_mq_split)
+    assert(kvarn4_mq_split(0, kModeOptBalanced, 4).split_k == 1);
+    assert(kvarn4_mq_split(0, kModeOptBalanced, 4).split_rows == 0);
+    assert(kvarn4_mq_split(0, kModeOptFine, 2).split_k == 1);
+    assert(kvarn4_mq_split(0, kModeOptFine, 2).split_rows == 0);
+
+    for (uint32_t q_tile : {2u, 4u}) {
+        for (uint32_t m = 1; m < kModeCount; ++m) {
+            for (uint32_t a :
+                 {0u, 1u, 127u, 128u, 129u, 1000u, 6144u, 16384u, 24576u, 34816u, 131072u}) {
+                const KvarnSplit ks = kvarn4_mq_split(a, m, q_tile);
+                assert(ks.split_k >= 1 && ks.split_k <= kOptMaxSplits);
+                assert(ks.split_rows % kKvarnTile == 0);
+                assert(uint64_t(ks.split_rows) * ks.split_k >= a);
+                assert(a == 0 || uint64_t(ks.split_rows) * (ks.split_k - 1) < a);
+            }
+        }
+        // Remote context multi-query split counts:
+        // 6k (6144): target_rows=256 -> 24 splits of 256 tokens for both modes
+        assert(kvarn4_mq_split(6144, kModeOptBalanced, q_tile).split_k == 24);
+        assert(kvarn4_mq_split(6144, kModeOptBalanced, q_tile).split_rows == 256);
+        assert(kvarn4_mq_split(6144, kModeOptFine, q_tile).split_k == 24);
+        assert(kvarn4_mq_split(6144, kModeOptFine, q_tile).split_rows == 256);
+
+        // 16k (16384 - 112k context point):
+        // Balanced (max 32 splits): 32 splits of 512 tokens
+        assert(kvarn4_mq_split(16384, kModeOptBalanced, q_tile).split_k == 32);
+        assert(kvarn4_mq_split(16384, kModeOptBalanced, q_tile).split_rows == 512);
+        // Fine (max 64 splits): 64 splits of 256 tokens, down from legacy fine 256 splits
+        assert(kvarn4_mq_split(16384, kModeOptFine, q_tile).split_k == 64);
+        assert(kvarn4_mq_split(16384, kModeOptFine, q_tile).split_rows == 256);
+
+        // 35k (34816):
+        assert(kvarn4_mq_split(34816, kModeOptBalanced, q_tile).split_k == 32);
+        assert(kvarn4_mq_split(34816, kModeOptBalanced, q_tile).split_rows == 1088);
+        assert(kvarn4_mq_split(34816, kModeOptFine, q_tile).split_k == 64);
+        assert(kvarn4_mq_split(34816, kModeOptFine, q_tile).split_rows == 544);
+    }
+
+    // Invalid q_tile or coarse mode falls back to kvarn4_split
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 0).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 1).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 3).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptCoarse, 4).split_k == kvarn4_split(16384, kModeOptCoarse).split_k);
 
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;

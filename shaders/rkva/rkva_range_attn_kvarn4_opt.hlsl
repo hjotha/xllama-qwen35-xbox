@@ -546,15 +546,14 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
             }
         }
     }
-    GroupMemoryBarrierWithGroupSync();
-    wht256x6(body, tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
-
-    uint total = n_query * n_head;
-    [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
-        uint g = k / 2, d = tid + (k & 1) * 128;
-        uint qh = head0 + g;
-        float numerator = body[k] + tail[k];
-        if (direct_output != 0) {
+    if (direct_output != 0) {
+        GroupMemoryBarrierWithGroupSync();
+        wht256x6(body, tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
+        uint total = n_query * n_head;
+        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+            uint g = k / 2, d = tid + (k & 1) * 128;
+            uint qh = head0 + g;
+            float numerator = body[k] + tail[k];
             float inv = merged_den[g] > 0 ? 1 / merged_den[g] : 0;
             output.Store((qh * RKVA_DIM + d) * 4, asuint(numerator * inv));
             if (d == 0) {
@@ -562,7 +561,17 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
                                               : asfloat(0xff800000);
                 output.Store((total * RKVA_DIM + qh) * 4, asuint(lse));
             }
-        } else {
+        }
+    } else {
+        if (has_tail) {
+            GroupMemoryBarrierWithGroupSync();
+            wht256x6(tail, tid);
+        }
+        uint total = n_query * n_head;
+        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+            uint g = k / 2, d = tid + (k & 1) * 128;
+            uint qh = head0 + g;
+            float numerator = has_tail ? (body[k] + tail[k]) : body[k];
             uint dst = ((split * total + qh) * (RKVA_DIM + 2)) * 4;
             partials.Store(dst + d * 4, asuint(numerator));
             if (d == 0) {
@@ -814,17 +823,16 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
     }
     GroupMemoryBarrierWithGroupSync();
 
-    bool has_body = begin < min(end, tail_begin);
-    if (has_body) {
-        wht256x6_decode(merged_body, tid);
-    }
-
-    uint total = n_query * n_head;
-    [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
-        uint g = k / 2, d = tid + (k & 1) * 128;
-        uint qh = head0 + g;
-        float numerator = merged_body[k] + merged_tail[k];
-        if (direct_output != 0) {
+    if (direct_output != 0) {
+        bool has_body = begin < min(end, tail_begin);
+        if (has_body) {
+            wht256x6_decode(merged_body, tid);
+        }
+        uint total = n_query * n_head;
+        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+            uint g = k / 2, d = tid + (k & 1) * 128;
+            uint qh = head0 + g;
+            float numerator = merged_body[k] + merged_tail[k];
             float inv = merged_den[g] > 0 ? 1 / merged_den[g] : 0;
             output.Store((qh * RKVA_DIM + d) * 4, asuint(numerator * inv));
             if (d == 0) {
@@ -832,7 +840,16 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
                                               : asfloat(0xff800000);
                 output.Store((total * RKVA_DIM + qh) * 4, asuint(lse));
             }
-        } else {
+        }
+    } else {
+        if (has_tail) {
+            wht256x6_decode(merged_tail, tid);
+        }
+        uint total = n_query * n_head;
+        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+            uint g = k / 2, d = tid + (k & 1) * 128;
+            uint qh = head0 + g;
+            float numerator = has_tail ? (merged_body[k] + merged_tail[k]) : merged_body[k];
             uint dst = ((split * total + qh) * (RKVA_DIM + 2)) * 4;
             partials.Store(dst + d * 4, asuint(numerator));
             if (d == 0) {

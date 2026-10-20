@@ -17,6 +17,10 @@ groupshared float gs_split_den[RKVA_REDUCE_MAX_SPLITS];
 groupshared float gs_split_weight[RKVA_REDUCE_MAX_SPLITS];
 groupshared float gs_inv;
 
+#if RKVA_REDUCE_WHT
+groupshared float gs_wht[256];
+#endif
+
 [numthreads(128, 1, 1)]
 void CSRangeReduceOpt(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     uint qh = group.y * n_head + group.x;
@@ -48,6 +52,39 @@ void CSRangeReduceOpt(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     }
     GroupMemoryBarrierWithGroupSync();
     float inv = gs_inv;
+#if RKVA_REDUCE_WHT
+    float acc0 = 0;
+    float acc1 = 0;
+    for (uint s = 0; s < splits; ++s) {
+        if (gs_split_den[s] > 0) {
+            float w = gs_split_weight[s];
+            uint base = (s * total + qh) * stride;
+            acc0 += asfloat(partials.Load((base + lane) * 4)) * w;
+            acc1 += asfloat(partials.Load((base + lane + 128) * 4)) * w;
+        }
+    }
+    gs_wht[lane] = acc0 * inv;
+    gs_wht[lane + 128] = acc1 * inv;
+    GroupMemoryBarrierWithGroupSync();
+
+    [unroll] for (uint stride_wht = 1; stride_wht < 128; stride_wht *= 2) {
+        float own0 = gs_wht[lane];
+        float other0 = gs_wht[lane ^ stride_wht];
+        float own1 = gs_wht[lane + 128];
+        float other1 = gs_wht[(lane ^ stride_wht) + 128];
+        GroupMemoryBarrierWithGroupSync();
+        gs_wht[lane] = (lane & stride_wht) ? other0 - own0 : own0 + other0;
+        gs_wht[lane + 128] = (lane & stride_wht) ? other1 - own1 : own1 + other1;
+        GroupMemoryBarrierWithGroupSync();
+    }
+    float x = gs_wht[lane] * 0.08838834764831845f;
+    float y = gs_wht[lane + 128] * 0.08838834764831845f;
+    float out0 = (x + y) * 0.7071067811865475f;
+    float out1 = (x - y) * 0.7071067811865475f;
+
+    output.Store((qh * head_dim + lane) * 4, asuint(out0));
+    output.Store((qh * head_dim + lane + 128) * 4, asuint(out1));
+#else
     for (uint d = lane; d < head_dim; d += 128) {
         float acc = 0;
         for (uint s = 0; s < splits; ++s) {
@@ -56,4 +93,5 @@ void CSRangeReduceOpt(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
         }
         output.Store((qh * head_dim + d) * 4, asuint(acc * inv));
     }
+#endif
 }

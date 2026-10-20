@@ -48,6 +48,7 @@
 #include "rkva_range_attn_q8_opt_dxil.h"
 #include "rkva_range_reduce_dxil.h"
 #include "rkva_range_reduce_opt_dxil.h"
+#include "rkva_range_reduce_kvarn4_dxil.h"
 #include "rkva_store_f16_dxil.h"
 #include "rkva_store_kvarn4_dxil.h"
 #include "rkva_wht_dxil.h"
@@ -674,11 +675,17 @@ void RemoteAttnEngine::create_q4_opt_pipelines() {
         pso.CS = {g_rkva_range_reduce_opt_dxil, sizeof(g_rkva_range_reduce_opt_dxil)};
         hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_reduce_opt_pso_));
     }
+    if (SUCCEEDED(hr)) {
+        pso.pRootSignature = range_reduce_root_.Get();
+        pso.CS = {g_rkva_range_reduce_kvarn4_dxil, sizeof(g_rkva_range_reduce_kvarn4_dxil)};
+        hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_reduce_kvarn4_pso_));
+    }
     if (FAILED(hr)) {
         std::snprintf(text, sizeof(text), "q4 optimized pipeline state: 0x%08X", unsigned(hr));
         q4_opt_status_ = text;
         range_attn_q4_opt_pso_.Reset();
         range_reduce_opt_pso_.Reset();
+        range_reduce_kvarn4_pso_.Reset();
         return;
     }
     q4_opt_status_ = "ready";
@@ -1158,7 +1165,7 @@ std::string RemoteAttnEngine::get_range_profile_json() {
     header.kvarn4_prefix_available[0] = bool(range_attn_kvarn4_prefix_pso_);
     header.kvarn4_prefix_status[0] = kvarn4_prefix_status_;
     header.kvarn4_prefix_available[1] =
-        range_attn_fmt_opt_root_ && range_attn_kvarn4_opt_prefix_pso_ && range_reduce_opt_pso_;
+        range_attn_fmt_opt_root_ && range_attn_kvarn4_opt_prefix_pso_ && range_reduce_kvarn4_pso_;
     header.kvarn4_prefix_status[1] = kvarn4_opt_prefix_status_;
     header.kvarn4_mq_available = header.kvarn4_prefix_available[1] && range_attn_kvarn4_mq_pso_;
     header.kvarn4_mq_status =
@@ -2137,7 +2144,7 @@ bool RemoteAttnEngine::ensure_range_scratch(uint32_t n_tokens, std::string* erro
     const uint64_t q_bytes = q_heads * geo_.head_dim * 4;
     const uint64_t out_bytes = q_bytes + q_heads * 4;
     const uint64_t partial_bytes = 32 * q_heads * (geo_.head_dim + 2) * 4;
-    if (!create_buffer(q_bytes + uint64_t(n_tokens) * 4, D3D12_HEAP_TYPE_UPLOAD,
+    if (!create_buffer(2 * q_bytes + uint64_t(n_tokens) * 4, D3D12_HEAP_TYPE_UPLOAD,
                        D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &range_query_,
                        error) ||
         !create_buffer(partial_bytes, D3D12_HEAP_TYPE_DEFAULT,
@@ -2208,7 +2215,7 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
         const auto& segment = segments[i];
         auto& transfer = bulk_transfers_[i];
         const uint64_t q_bytes = uint64_t(segment.n_queries) * geo_.n_head * 256 * 4;
-        const uint64_t query_bytes = q_bytes + segment.n_queries * 4;
+        const uint64_t query_bytes = 2 * q_bytes + segment.n_queries * 4;
         const uint64_t output_bytes = q_bytes + uint64_t(segment.n_queries) * geo_.n_head * 4;
         if (transfer.upload.bytes < segment.data_bytes) {
             alloc_grew = true;
@@ -2538,6 +2545,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
     timer.mark(rp::kCpuAlloc);
     const uint64_t q_heads = uint64_t(n_tokens) * geo_.n_head;
     const uint64_t q_bytes = q_heads * geo_.head_dim * 4;
+    const uint64_t positions_offset =
+        s->range_storage == rp::kStorageKvarn4 ? 2 * q_bytes : q_bytes;
     const uint64_t out_bytes = q_bytes + q_heads * 4;
     const prof_clock::time_point t_map_start =
         bulk_prof ? prof_clock::now() : prof_clock::time_point{};
@@ -2549,7 +2558,17 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             return fail(error, "Map range queries", hr);
         }
         std::memcpy(mapped, q, q_bytes);
-        std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions, uint64_t(n_tokens) * 4);
+        if (s->range_storage == 3) {
+            float* q_rot = reinterpret_cast<float*>(static_cast<uint8_t*>(mapped) + q_bytes);
+            for (uint64_t r = 0; r < q_heads; ++r) {
+                rkva_kvarn_range::butterfly_wht256(q + r * 256, q_rot + r * 256);
+            }
+            std::memcpy(static_cast<uint8_t*>(mapped) + 2 * q_bytes, positions,
+                        uint64_t(n_tokens) * 4);
+        } else {
+            std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions,
+                        uint64_t(n_tokens) * 4);
+        }
         range_query_.resource->Unmap(0, nullptr);
     }
     timer.mark(rp::kCpuMapCopy);
@@ -2668,7 +2687,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         cmd_->SetComputeRootShaderResourceView(1, q_addr);
         cmd_->SetComputeRootShaderResourceView(2, kv_addr);
         cmd_->SetComputeRootShaderResourceView(3, kv_addr + s->half_stride);
-        cmd_->SetComputeRootShaderResourceView(4, q_addr + q_bytes);
+        cmd_->SetComputeRootShaderResourceView(4, q_addr + positions_offset);
         cmd_->SetComputeRootUnorderedAccessView(
             5, range_opt_partials_.resource->GetGPUVirtualAddress());
         cmd_->SetComputeRootUnorderedAccessView(6, range_output_.resource->GetGPUVirtualAddress());
@@ -2724,8 +2743,10 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             seg.groups = geo_.n_head_kv * query_groups * split_k;
             seg.q_tile = uint8_t(q_tile);
         }
-        cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
-                               out_bytes);
+        if (!bulk_gpu_query_) {
+            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
+                                   out_bytes);
+        }
         return finish(direct ? 1u : 2u);
     }
     // F16 / Q8_0 / native KVarN4 optimized decode/verification kernels: same dispatch shape and
@@ -2743,7 +2764,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                                    : prefix ? range_attn_kvarn4_opt_prefix_pso_.Get()
                                             : range_attn_fmt_opt_pso_[storage].Get();
     const bool fmt_optimized =
-        fmt_pso && range_attn_fmt_opt_root_ && range_reduce_opt_pso_ &&
+        fmt_pso && range_attn_fmt_opt_root_ &&
+        (kvarn ? range_reduce_kvarn4_pso_ : range_reduce_opt_pso_) &&
         range_opt_partials_.resource &&
         (kvarn ? rp::optimized_kvarn4_supported(q4_kernel_mode_, storage, n_tokens, geo_.n_head,
                                                 geo_.n_head_kv, geo_.head_dim, s->range_origin,
@@ -2783,7 +2805,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         if (kvarn) {
             const rp::KvarnSplit ks = (n_tokens == 1 && decode_opt)
                                           ? rp::kvarn4_decode_split(active_count, q4_kernel_mode_)
-                                          : rp::kvarn4_split(active_count, q4_kernel_mode_);
+                                          : (q_tile ? rp::kvarn4_mq_split(active_count, q4_kernel_mode_, q_tile)
+                                                    : rp::kvarn4_split(active_count, q4_kernel_mode_));
             split_k = ks.split_k;
             rows = ks.split_rows;
         } else if (q_tile) {
@@ -2819,7 +2842,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         cmd_->SetComputeRootShaderResourceView(1, q_addr);
         cmd_->SetComputeRootShaderResourceView(2, kv_addr);
         cmd_->SetComputeRootShaderResourceView(3, kv_addr + s->half_stride);
-        cmd_->SetComputeRootShaderResourceView(4, q_addr + q_bytes);
+        cmd_->SetComputeRootShaderResourceView(4, q_addr + positions_offset);
         cmd_->SetComputeRootUnorderedAccessView(
             5, range_opt_partials_.resource->GetGPUVirtualAddress());
         cmd_->SetComputeRootUnorderedAccessView(6, range_output_.resource->GetGPUVirtualAddress());
@@ -2837,7 +2860,10 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             }
             const uint32_t reduce_params[] = {n_tokens, geo_.n_head, geo_.head_dim, split_k};
             cmd_->SetComputeRootSignature(range_reduce_root_.Get());
-            cmd_->SetPipelineState(range_reduce_opt_pso_.Get());
+            ID3D12PipelineState* reduce_pso = (kvarn && range_reduce_kvarn4_pso_)
+                                                  ? range_reduce_kvarn4_pso_.Get()
+                                                  : range_reduce_opt_pso_.Get();
+            cmd_->SetPipelineState(reduce_pso);
             cmd_->SetComputeRoot32BitConstants(0, 4, reduce_params, 0);
             cmd_->SetComputeRootShaderResourceView(
                 1, range_opt_partials_.resource->GetGPUVirtualAddress());
@@ -2877,8 +2903,10 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             seg.q_tile = uint8_t(q_tile);
             seg.decode_opt = uint8_t(decode_opt ? 1 : 0);
         }
-        cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
-                               out_bytes);
+        if (!bulk_gpu_query_) {
+            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
+                                   out_bytes);
+        }
         return finish(direct ? 1u : 2u);
     }
     const uint32_t split_k = std::max(1u, std::min(32u, (active_count + 255) / 256));
@@ -2908,7 +2936,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
     cmd_->SetComputeRootShaderResourceView(1, q_addr);
     cmd_->SetComputeRootShaderResourceView(2, kv_addr);
     cmd_->SetComputeRootShaderResourceView(3, kv_addr + s->half_stride);
-    cmd_->SetComputeRootShaderResourceView(4, q_addr + q_bytes);
+    cmd_->SetComputeRootShaderResourceView(4, q_addr + positions_offset);
     cmd_->SetComputeRootUnorderedAccessView(5, range_partials_.resource->GetGPUVirtualAddress());
     cmd_->Dispatch(geo_.n_head, n_tokens, split_k);
     uav_barrier(range_partials_);
@@ -2950,8 +2978,10 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         seg.groups = geo_.n_head * n_tokens * split_k;
         seg.q_tile = 0;
     }
-    cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
-                           out_bytes);
+    if (!bulk_gpu_query_) {
+        cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
+                               out_bytes);
+    }
     return finish(2);
 }
 

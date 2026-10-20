@@ -9,6 +9,8 @@ uwp/packages/
 *.appx
 *.appxbundle
 *.appxsym
+*.msix
+*.msixbundle
 *.pfx
 *.cer
 

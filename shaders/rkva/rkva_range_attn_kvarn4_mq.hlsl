@@ -309,38 +309,42 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
         fast_hi = split_begin;
     }
 
-    // Rotate each query's GQA Q heads exactly like the per-query kernel.
+    // Hoisted / pre-computed Q WHT: Q_rotated is staged at offset q_stride in the
+    // queries ByteAddressBuffer, while exact original Q resides at offset 0 for tail.
     // Queries 0..1 stay in q_lo (48 VGPRs); for RKVA_MQ_QT == 4, rotated Q for
     // query 2 is staged in gs_vec[1536..3071] and query 3 stays in gs_vec[0..1535]
     // until the non-tail residual loop finishes (zero extra LDS).
+    uint q_stride = n_query * n_head * RKVA_DIM * 4;
     float4 q_lo[RKVA_PAIR_QG];
-    [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
-        float v[RKVA_ELEMS];
+    [unroll] for (uint j = 0; j < min(2u, uint(RKVA_MQ_QT)); ++j) {
         [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-            v[2 * g] = asfloat(queries.Load(((head0[j] + g) * RKVA_DIM + tid) * 4));
-            v[2 * g + 1] = asfloat(queries.Load(((head0[j] + g) * RKVA_DIM + tid + 128) * 4));
+            uint q_rot_base = q_stride + ((head0[j] + g) * RKVA_DIM + u * 4) * 4;
+            q_lo[j * RKVA_GQA + g] =
+                active ? asfloat(queries.Load4(q_rot_base)) : float4(0, 0, 0, 0);
         }
-        wht256x6(v, tid);
-        if (j < 2) {
-            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-                uint b = g * RKVA_DIM + u * 4;
-                q_lo[j * RKVA_GQA + g] =
-                    active ? float4(gs_vec[b], gs_vec[b + 1], gs_vec[b + 2], gs_vec[b + 3])
-                           : float4(0, 0, 0, 0);
-            }
-            GroupMemoryBarrierWithGroupSync(); // gs_vec is rewritten by the next query / merge
-        }
-#if RKVA_MQ_QT == 4
-        else if (j == 2) {
-            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-                uint b = (RKVA_GQA + g) * RKVA_DIM + tid;
-                gs_vec[b] = v[2 * g];
-                gs_vec[b + 128] = v[2 * g + 1];
-            }
-            GroupMemoryBarrierWithGroupSync(); // wht256x6 of j == 3 only rewrites gs_vec[0..1535]
-        }
-#endif
     }
+#if RKVA_MQ_QT == 4
+    if (wave == 0 && active) {
+        [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+            uint q_rot_base2 = q_stride + ((head0[2] + g) * RKVA_DIM + u * 4) * 4;
+            float4 q2 = asfloat(queries.Load4(q_rot_base2));
+            uint b2 = (RKVA_GQA + g) * RKVA_DIM + u * 4;
+            gs_vec[b2 + 0] = q2.x;
+            gs_vec[b2 + 1] = q2.y;
+            gs_vec[b2 + 2] = q2.z;
+            gs_vec[b2 + 3] = q2.w;
+
+            uint q_rot_base3 = q_stride + ((head0[3] + g) * RKVA_DIM + u * 4) * 4;
+            float4 q3 = asfloat(queries.Load4(q_rot_base3));
+            uint b3 = g * RKVA_DIM + u * 4;
+            gs_vec[b3 + 0] = q3.x;
+            gs_vec[b3 + 1] = q3.y;
+            gs_vec[b3 + 2] = q3.z;
+            gs_vec[b3 + 3] = q3.w;
+        }
+    }
+    GroupMemoryBarrierWithGroupSync();
+#endif
     float4 body[RKVA_QG];
     float maximum[RKVA_QG], denom[RKVA_QG];
     [unroll] for (uint i = 0; i < RKVA_QG; ++i) {
@@ -575,13 +579,32 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
                         }
                     }
                 }
-                GroupMemoryBarrierWithGroupSync();
-                wht256x6(merged_body,
-                         tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
-                [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
-                    uint g = k / 2, d = tid + (k & 1) * 128;
-                    store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
-                                 merged_body[k] + merged_tail[k], merged_max[g], merged_den[g]);
+                if (direct_output != 0) {
+                    GroupMemoryBarrierWithGroupSync();
+                    wht256x6(merged_body, tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
+                    [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+                        uint g = k / 2, d = tid + (k & 1) * 128;
+                        store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
+                                     merged_body[k] + merged_tail[k], merged_max[g], merged_den[g]);
+                    }
+                } else {
+                    if (has_tail) {
+                        GroupMemoryBarrierWithGroupSync();
+                        wht256x6(merged_tail, tid);
+                        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+                            uint g = k / 2, d = tid + (k & 1) * 128;
+                            store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
+                                         merged_body[k] + merged_tail[k], merged_max[g], merged_den[g]);
+                        }
+                    } else {
+                        // Retire LDS reads before the next query reuses gs_* storage.
+                        GroupMemoryBarrierWithGroupSync();
+                        [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+                            uint g = k / 2, d = tid + (k & 1) * 128;
+                            store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
+                                         merged_body[k], merged_max[g], merged_den[g]);
+                        }
+                    }
                 }
             }
         }

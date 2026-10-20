@@ -300,12 +300,13 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
             if (state.native_serial_prefix_v3_client &&
                 state.engine->native_serial_prefix_available())
                 ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX | RKVA_CAP_KVARN_BULK_ATTN |
-                                   RKVA_CAP_KVARN_BULK_F16;
+                                   RKVA_CAP_KVARN_BULK_F16 | RKVA_CAP_KVARN_BULK_FP8 |
+                                   RKVA_CAP_KVARN_BULK_FP8_RNE;
         }
         if (!state.native_rewind_v2_client)
             ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_REWIND);
         ack.max_sessions = 64;
-        ack.server_version = 270; // bumped with the UWP package
+        ack.server_version = 273; // bumped with the UWP package
         // ~5 GiB game heap; leave headroom for the D3D12 runtime + buffers.
         ack.mem_budget_bytes = 4ull * 1024 * 1024 * 1024;
         output.resize(sizeof(ack));
@@ -659,15 +660,27 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         if (!rkva_kvarn_bulk::peek_wire(input.data(), input.size(), &wire))
             return RKVA_ERR_BAD_PAYLOAD;
         const bool wire_f16 = (wire == RKVA_WIRE_F16);
+        const bool wire_fp8 = (wire == RKVA_WIRE_FP8);
+        const bool wire_sz = (wire == RKVA_WIRE_SPLITZIP);
         const uint64_t heads = uint64_t(req.n_tokens) * state.geo.n_head;
-        const uint64_t out_bytes = heads * state.geo.head_dim * (wire_f16 ? 2ull : 4ull);
-        output.resize(out_bytes + heads * 4);
+        const uint64_t total_elems = heads * state.geo.head_dim;
+        const uint64_t out_bytes = total_elems * (wire_fp8 ? 1ull : (wire_f16 || wire_sz) ? 2ull : 4ull);
+        std::vector<uint16_t> temp_out_f16;
+        std::vector<float> temp_lse;
+        if (wire_fp8 || wire_sz) {
+            temp_out_f16.resize(total_elems);
+            temp_lse.resize(heads);
+        } else {
+            output.resize(out_bytes + heads * 4);
+        }
         std::string error;
         const auto start = clock_type::now();
-        const bool ok = wire_f16 ? state.engine->attend_kvarn_bulk_f16(
+        const bool ok = (wire_f16 || wire_fp8 || wire_sz) ? state.engine->attend_kvarn_bulk_f16(
                                        req.session_id, req.layer_id, req.n_tokens, input.data(),
-                                       input.size(), reinterpret_cast<uint16_t*>(output.data()),
-                                       reinterpret_cast<float*>(output.data() + out_bytes), &error)
+                                       input.size(),
+                                       (wire_fp8 || wire_sz) ? temp_out_f16.data() : reinterpret_cast<uint16_t*>(output.data()),
+                                       (wire_fp8 || wire_sz) ? temp_lse.data() : reinterpret_cast<float*>(output.data() + out_bytes),
+                                       &error)
                                  : state.engine->attend_kvarn_bulk(
                                        req.session_id, req.layer_id, req.n_tokens, input.data(),
                                        input.size(), reinterpret_cast<float*>(output.data()),
@@ -677,6 +690,28 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
             event_engine_error(error);
             return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
                                                                  : RKVA_ERR_BAD_PAYLOAD;
+        }
+        if (wire_fp8) {
+            output.resize(total_elems + heads * sizeof(float));
+            uint8_t* dst_fp8 = output.data();
+            for (size_t e = 0; e < total_elems; ++e) {
+                dst_fp8[e] = rkva_kvarn_bulk::f16_to_fp8_bits(temp_out_f16[e]);
+            }
+            std::memcpy(output.data() + total_elems, temp_lse.data(), heads * sizeof(float));
+        } else if (wire_sz) {
+            const uint64_t f16_bytes = total_elems * sizeof(uint16_t);
+            output.resize(f16_bytes + heads * sizeof(float));
+            std::vector<uint8_t> sz_out;
+            rkva_kvarn_bulk::splitzip_encode(temp_out_f16.data(), temp_out_f16.size(), sz_out);
+            if (sz_out.size() <= f16_bytes) {
+                std::memcpy(output.data(), sz_out.data(), sz_out.size());
+                if (sz_out.size() < f16_bytes) {
+                    std::memset(output.data() + sz_out.size(), 0, f16_bytes - sz_out.size());
+                }
+            } else {
+                std::memcpy(output.data(), temp_out_f16.data(), f16_bytes);
+            }
+            std::memcpy(output.data() + f16_bytes, temp_lse.data(), heads * sizeof(float));
         }
         compute_us = elapsed_us(start);
         prepare_us = elapsed_us(t0);

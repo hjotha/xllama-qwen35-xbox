@@ -304,6 +304,29 @@ inline KvarnSplit kvarn4_decode_split(uint32_t active_count, uint32_t mode) {
     return {std::max(1u, k), rows};
 }
 
+// Multi-query tile split policy for native KVarN4 (nq 2..9, q_tile 2 or 4):
+// For q_tile == 2 or 4 in mode 1 (balanced) and mode 2 (fine):
+//   target_rows = 256 (2 record groups of 128 tokens),
+//   max_splits = 64 (mode fine) or 32 (mode balanced).
+// Mode 3 (coarse) or invalid q_tile keeps kvarn4_split.
+// rows is rounded up to whole kKvarnTile (8), and active_count == 0 returns {1, 0}.
+inline KvarnSplit kvarn4_mq_split(uint32_t active_count, uint32_t mode, uint32_t q_tile) {
+    if (active_count == 0) {
+        return {1, 0};
+    }
+    if ((q_tile != 2 && q_tile != 4) || (mode != kModeOptBalanced && mode != kModeOptFine)) {
+        return kvarn4_split(active_count, mode);
+    }
+    const uint32_t target_rows = 256u;
+    const uint32_t max_splits = (mode == kModeOptFine) ? 64u : 32u;
+    const uint32_t wanted = (active_count + target_rows - 1) / target_rows;
+    const uint32_t k0 = std::max(1u, std::min(max_splits, wanted));
+    uint32_t rows = split_rows(active_count, k0);
+    rows = (rows + kKvarnTile - 1) / kKvarnTile * kKvarnTile;
+    const uint32_t k = rows ? (active_count + rows - 1) / rows : 1;
+    return {std::max(1u, k), rows};
+}
+
 enum Kind : uint8_t { kUpload = 0, kAttention = 1, kKindCount = 2 };
 
 // Disjoint CPU spans; their sum is the engine wall time of the call (profiling

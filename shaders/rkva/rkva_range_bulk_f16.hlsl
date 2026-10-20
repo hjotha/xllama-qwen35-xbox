@@ -79,6 +79,7 @@ void CSBulkUnpackQF16(uint3 tid : SV_DispatchThreadID) {
     if (idx < aux_words) {
         const uint pos_word = src.Load((q_pairs + idx) * 4);
         dst.Store((q_pairs * 2 + idx) * 4, pos_word);
+        dst.Store((q_pairs * 4 + idx) * 4, pos_word);
     }
 }
 
