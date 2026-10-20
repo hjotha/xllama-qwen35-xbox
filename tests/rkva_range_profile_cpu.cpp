@@ -157,20 +157,68 @@ int main() {
     assert(std::strcmp(format_mq_kernel_name(kStorageKvarn4, 2), "invalid") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageQ4, 4), "q4_mq4_balanced") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageQ8, 2), "q8_mq2_fine") == 0);
-    // Native KVarN4 revision-3 2-query tile (268): mode 2 only, nq 2..9; the
-    // F16/Q8_0 selector and names never return it.
+    // Native KVarN4 revision-3 multi-query tile (268/MQ4): mode 1 -> 4, mode 2 -> 2,
+    // nq 2..9, tail 128 only; the F16/Q8_0 selector and names never return it.
     for (uint32_t m = 0; m < kModeCount; ++m) {
         for (uint32_t nq = 0; nq <= 12; ++nq) {
-            const bool on = m == kModeOptFine && nq >= 2 && nq <= kOptMaxQueries;
-            assert(kvarn4_mq_tile(m, nq, 128) == (on ? 2u : 0u));
+            const uint32_t want = (nq >= 2 && nq <= kOptMaxQueries) ? (m == kModeOptBalanced ? 4u
+                                                                       : m == kModeOptFine   ? 2u
+                                                                                             : 0u)
+                                                                    : 0u;
+            assert(kvarn4_mq_tile(m, nq, 128) == want);
             assert(kvarn4_mq_tile(m, nq, 0) == 0);
             assert(kvarn4_mq_tile(m, nq, 64) == 0);
         }
     }
     assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 2), "kvarn4_mq2_fine") == 0);
-    assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 4), "invalid") == 0);
+    assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 4), "kvarn4_mq4_balanced") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 0), "invalid") == 0);
     assert(kKvarn4MqWaveLanes == 64);
+    assert(kKvarn4MqTileMax == 4);
+
+    // Native KVarN4 wave64 decode kernel and split policy (nq == 1):
+    assert(kKvarn4DecodeWaveLanes == 64);
+    assert(kvarn4_decode_opt(kModeOptBalanced, 64));
+    assert(kvarn4_decode_opt(kModeOptFine, 64));
+    assert(!kvarn4_decode_opt(kModeOptCoarse, 64));
+    assert(!kvarn4_decode_opt(kModeReference, 64));
+    assert(!kvarn4_decode_opt(kModeOptFine, 32)); // requires wave64
+
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptBalanced), "kvarn4_decode_balanced") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptFine), "kvarn4_decode_fine") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptCoarse), "kvarn4_gqa_coarse") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(0), "invalid") == 0);
+
+    for (uint32_t m = 1; m < kModeCount; ++m) {
+        for (uint32_t a :
+             {0u, 1u, 127u, 128u, 129u, 1000u, 6144u, 16384u, 24576u, 34816u, 131072u}) {
+            const KvarnSplit ks = kvarn4_decode_split(a, m);
+            assert(ks.split_k >= 1 && ks.split_k <= kOptMaxSplits);
+            if (m != kModeOptCoarse) {
+                assert(ks.split_rows % kKvarnGroup == 0); // whole 128-token record groups
+            } else {
+                assert(ks.split_rows % kKvarnTile == 0);
+            }
+            assert(uint64_t(ks.split_rows) * ks.split_k >= a);
+            assert(a == 0 || uint64_t(ks.split_rows) * (ks.split_k - 1) < a);
+        }
+    }
+    // Remote context decode split counts:
+    // 6k (6144):
+    assert(kvarn4_decode_split(6144, kModeOptBalanced).split_k == 12);
+    assert(kvarn4_decode_split(6144, kModeOptBalanced).split_rows == 512);
+    assert(kvarn4_decode_split(6144, kModeOptFine).split_k == 24);
+    assert(kvarn4_decode_split(6144, kModeOptFine).split_rows == 256);
+    // 16k (16384):
+    assert(kvarn4_decode_split(16384, kModeOptBalanced).split_k == 32);
+    assert(kvarn4_decode_split(16384, kModeOptBalanced).split_rows == 512);
+    assert(kvarn4_decode_split(16384, kModeOptFine).split_k == 64);
+    assert(kvarn4_decode_split(16384, kModeOptFine).split_rows == 256);
+    // 35k (34816):
+    assert(kvarn4_decode_split(34816, kModeOptBalanced).split_k == 31);
+    assert(kvarn4_decode_split(34816, kModeOptBalanced).split_rows == 1152);
+    assert(kvarn4_decode_split(34816, kModeOptFine).split_k == 55);
+    assert(kvarn4_decode_split(34816, kModeOptFine).split_rows == 640);
 
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;
@@ -204,11 +252,27 @@ int main() {
     s.q_tile = 2;
     assert(bucket_key(s) ==
            "attention/kvarn4-prefix/optimized-kvarn4_mq2_fine/nq2-16/r16k-32k/warm");
+    s.mode = 1;
+    s.q_tile = 4;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_mq4_balanced/nq2-16/r16k-32k/warm");
     s.mode = 3;
     s.q_tile = 0;
     assert(bucket_key(s) ==
            "attention/kvarn4-prefix/optimized-kvarn4_gqa_coarse/nq2-16/r16k-32k/warm");
+    // Decode specialization bucket (nq == 1, decode_opt == 1):
+    s.n_tokens = 1;
+    s.q_tile = 0;
+    s.decode_opt = 1;
     s.mode = 1;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_decode_balanced/nq1/r16k-32k/warm");
+    s.mode = 2;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_decode_fine/nq1/r16k-32k/warm");
+    s.decode_opt = 0;
+    s.mode = 1;
+    s.n_tokens = 3;
     // Multi-query tile calls get their own Q4 kernel bucket.
     s.storage = 1;
     s.serial_prefix = 0;
@@ -262,6 +326,31 @@ int main() {
     r.counters.calls[kUpload] = 3;
     r.counters.calls[kAttention] = 3;
 
+    BulkEnvelopeSample b;
+    b.segment_count = 4;
+    b.total_queries = 32;
+    b.gpu_valid = 1;
+    b.gpu_upload_ticks = 100;
+    b.gpu_pass1_ticks = 400;
+    b.gpu_reduce_ticks = 50;
+    b.gpu_copy_ticks = 30;
+    b.gpu_total_ticks = 650;
+    b.cpu_ns[kCpuValidate] = 15000;
+    b.cpu_ns[kCpuAlloc] = 5000;
+    b.cpu_ns[kCpuMapCopy] = 120000;
+    b.cpu_ns[kCpuRecord] = 80000;
+    b.cpu_ns[kCpuSubmit] = 20000;
+    b.cpu_ns[kCpuFenceWait] = 900000;
+    b.cpu_ns[kCpuReadback] = 40000;
+    b.upload_bytes = 65536;
+    b.query_bytes = 32768;
+    b.output_bytes = 32768;
+    r.record_bulk(b);
+    assert(r.bulk_recorded() == 1 && r.bulk_stored() == 1);
+    r.counters.bulk_calls = 1;
+    r.counters.bulk_segments = 4;
+    r.counters.bulk_queries = 32;
+
     Header h;
     h.profiling = true;
     h.q4_kernel_mode = 1;
@@ -294,7 +383,13 @@ int main() {
     r.counters.fmt_mq_calls[kStorageF16][0] = 3;
     r.counters.fmt_mq_calls[kStorageQ8][1] = 11;
     h.kvarn4_mq_status = "requires wave lanes >= 64 (reported min 32)";
+    h.kvarn4_mq4_available = true;
+    h.kvarn4_mq4_status = "ready";
+    h.kvarn4_decode_available = true;
+    h.kvarn4_decode_status = "ready";
     r.counters.kvarn4_mq_calls = 13;
+    r.counters.kvarn4_mq4_calls = 5;
+    r.counters.kvarn4_decode_calls = 7;
     h.memory.app_available = true;
     h.memory.app_usage_bytes = 123456789;
     h.memory.app_limit_bytes = 5ull * 1024 * 1024 * 1024;
@@ -305,11 +400,19 @@ int main() {
     assert(json.find("\"app_limit_bytes\":5368709120") != std::string::npos);
     assert(json.find("\"gpu_local_usage_bytes\":1075838976") != std::string::npos);
     assert(json.find("\"kvarn4_mq_qualified_precision_tail_tokens\":[128]") != std::string::npos);
-    assert(json.find("\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":9,"
-                     "\"descriptor_revision\":3,\"required_wave_lanes\":64,\"mode_map\":\"1:"
-                     "per-query kvarn4_gqa_balanced 2:kvarn4_mq2_fine 3:per-query "
-                     "kvarn4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"requires "
-                     "wave lanes >= 64 (reported min 32)\",\"calls\":13}}") != std::string::npos);
+    assert(
+        json.find("\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":9,"
+                  "\"descriptor_revision\":3,\"required_wave_lanes\":64,\"mode_map\":\"1:"
+                  "kvarn4_mq4_balanced 2:kvarn4_mq2_fine 3:per-query "
+                  "kvarn4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"requires "
+                  "wave lanes >= 64 (reported min 32)\",\"calls\":13},\"mq4\":{\"available\":true,"
+                  "\"status\":\"ready\",\"calls\":5}}") != std::string::npos);
+    assert(
+        json.find("\"kvarn4_decode\":{\"nq\":1,"
+                  "\"descriptor_revision\":3,\"required_wave_lanes\":64,"
+                  "\"mode_map\":\"1:kvarn4_decode_balanced 2:kvarn4_decode_fine "
+                  "3:per-query kvarn4_gqa_coarse\","
+                  "\"available\":true,\"status\":\"ready\",\"calls\":7}") != std::string::npos);
     assert(json.find("\"format_multi_query\":{\"nq_min\":2,\"nq_max\":9,\"tile_rows\":64,"
                      "\"mode_map\":\"1:<fmt>_mq4_balanced 2:<fmt>_mq2_fine 3:per-query "
                      "<fmt>_gqa_coarse\",\"f16\":{\"mq2\":{\"available\":true,\"status\":"
@@ -344,12 +447,24 @@ int main() {
     assert(json.find("\"f16\":{\"available\":false,\"status\":\"\",\"optimized_calls\":0,"
                      "\"reference_calls\":2,\"fast_nq_max\":0}") != std::string::npos);
     assert(json.find("\\\"quoted\\\"\\u000a") != std::string::npos);
+    assert(json.find("\"bulk\":{") != std::string::npos);
+    assert(json.find("\"bulk_calls\":1") != std::string::npos);
+    assert(json.find("\"bulk_segments\":4") != std::string::npos);
+    assert(json.find("\"bulk_queries\":32") != std::string::npos);
+    assert(json.find("\"admission_cpu_us\":{\"n\":1,\"mean\":15.000") != std::string::npos);
+    assert(json.find("\"gpu_total_us\":{\"n\":1,\"mean\":650.000") != std::string::npos);
+    assert(json.find("\"queue_wait_us\":{\"n\":1,\"mean\":250.000") != std::string::npos);
+    assert(json.find("\"upload_bytes\":{\"n\":1,\"mean\":65536.000") != std::string::npos);
+    assert(json.find("\"timing_breakdown_notes\":{") != std::string::npos);
     std::printf("%s\n", json.c_str());
 
     // Reset clears samples and counters but keeps the reserved ring.
     r.reset();
     assert(r.recorded() == 0 && r.stored() == 0 && r.capacity() == 4);
+    assert(r.bulk_recorded() == 0 && r.bulk_stored() == 0);
     assert(r.counters.calls[kAttention] == 0);
+    assert(r.counters.bulk_calls == 0);
+    assert(r.counters.kvarn4_decode_calls == 0);
     const std::string empty = Recorder().json(Header{});
     assert(empty.find("\"buckets\":{}") != std::string::npos);
     std::fprintf(stderr, "rkva_range_profile_cpu: ok\n");

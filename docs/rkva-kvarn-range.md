@@ -74,6 +74,12 @@ Q4-only opt-in gate does not reach it, and mode 0 (the default) keeps the refere
   `precision_tail_tokens` 0 or 128, and the host passes `split_rows` as a multiple of 8.
   A missing PSO marks `optimized_kernels.kvarn4.available=false`, and the reference
   kernel is used.
+- **Wave64 decode specialization (`CSRangeAttnKvarn4Decode`).** When compiled with
+  `RKVA_DECODE_OPT=1`, the kernel specializes for Xbox Series X's 64-lane waves (2 waves per
+  128-thread group), cutting LDS from 24 KiB to 12 KiB to double workgroup occupancy per CU,
+  eliminating dead wave32 second-unit registers, ping-ponging WHT256 (9 barriers vs 17),
+  hoisting record-group scale/zero/other metadata across 128-token groups, and using
+  record-group-aligned split-K (`kvarn4_decode_split`).
 
 `tests/rkva_range_kvarn4_opt_model.py` checks it on the CPU, without a GPU:
 

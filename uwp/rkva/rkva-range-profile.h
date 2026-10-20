@@ -191,28 +191,38 @@ inline const char* format_mq_kernel_name(uint32_t storage, uint32_t q_tile) {
 }
 
 // Native KVarN4 descriptor revision-3 (serial prefix) multi-query tile kernel
-// (rkva_range_attn_kvarn4_mq.hlsl, 268): two queries x 6 GQA heads share the
-// K/V record/stage/tail loads and decode of rows every query reads with the
-// same representation; each query keeps its own serial-prefix windows. Only
-// mode 2 (fine split) with nq 2..kOptMaxQueries selects it; modes 1/3, nq1,
-// mode 0 and descriptor revisions 1/2 are unchanged.
+// (rkva_range_attn_kvarn4_mq.hlsl): 2 or 4 queries x 6 GQA heads share the K/V
+// record/stage/tail loads and decode of rows every query reads with the same
+// representation; each query keeps its own serial-prefix windows. Mode 2 (fine
+// split, the qualified default) selects the 2-query tile (kvarn4_mq2_fine);
+// mode 1 (balanced split) opts into the 4-query tile (kvarn4_mq4_balanced) for
+// nq 2..kOptMaxQueries when its PSO is present (falling back to per-query
+// kvarn4_gqa_balanced otherwise); mode 3 (coarse), nq1, mode 0 and descriptor
+// revisions 1/2 are unchanged.
 constexpr uint32_t kKvarn4MqTile = 2;
+constexpr uint32_t kKvarn4MqTileMax = 4;
 constexpr uint32_t kKvarn4MqWaveLanes = 64; // one 4-dim unit per lane
 
-// Zero exact tails retain the qualified per-query arithmetic. The shared tile
-// is qualified with a 128-token original-F16 tail; raw FP64 parity alone does
-// not establish the same speculative cache trajectory without that tail.
+// Zero exact tails retain the qualified per-query arithmetic. The shared tiles
+// require a 128-token original-F16 tail; raw FP64 parity alone does not
+// establish the same speculative cache trajectory without that tail.
 inline uint32_t kvarn4_mq_tile(uint32_t mode, uint32_t n_tokens, uint32_t precision_tail_tokens) {
-    return precision_tail_tokens == 128 && mode == kModeOptFine && n_tokens >= 2 &&
-                   n_tokens <= kOptMaxQueries
-               ? kKvarn4MqTile
-               : 0u;
+    if (precision_tail_tokens != 128 || n_tokens < 2 || n_tokens > kOptMaxQueries) {
+        return 0u;
+    }
+    return mode == kModeOptBalanced ? kKvarn4MqTileMax : mode == kModeOptFine ? kKvarn4MqTile : 0u;
+}
+
+inline const char* kvarn4_mq_kernel_name(uint32_t q_tile) {
+    return q_tile == kKvarn4MqTileMax ? "kvarn4_mq4_balanced"
+           : q_tile == kKvarn4MqTile  ? "kvarn4_mq2_fine"
+                                      : "invalid";
 }
 
 // Storage-qualified multi-query kernel name (Q4_0 keeps its 266 names).
 inline const char* mq_kernel_name(uint32_t storage, uint32_t q_tile) {
     if (storage == kStorageKvarn4) {
-        return q_tile == kKvarn4MqTile ? "kvarn4_mq2_fine" : "invalid";
+        return kvarn4_mq_kernel_name(q_tile);
     }
     return storage == kStorageQ4 ? q4_mq_kernel_name(q_tile)
                                  : format_mq_kernel_name(storage, q_tile);
@@ -246,6 +256,54 @@ inline KvarnSplit kvarn4_split(uint32_t active_count, uint32_t mode) {
     return {std::max(1u, k), rows};
 }
 
+// Native KVarN4 wave64 decode kernel specialization (nq == 1):
+// Requires wave lanes == 64 (wave64 RDNA2 APU), opt modes 1/2.
+// Halves LDS to 12 KiB, ping-pongs WHT256 (9 barriers), eliminates wave32
+// second-unit registers, and hoists group metadata across 128-token record groups.
+constexpr uint32_t kKvarn4DecodeWaveLanes = 64;
+
+inline bool kvarn4_decode_opt(uint32_t mode, uint32_t wave_lane_min) {
+    return (mode == kModeOptBalanced || mode == kModeOptFine) &&
+           wave_lane_min >= kKvarn4DecodeWaveLanes;
+}
+
+inline const char* kvarn4_decode_kernel_name(uint32_t mode) {
+    switch (mode) {
+    case kModeOptBalanced:
+        return "kvarn4_decode_balanced";
+    case kModeOptFine:
+        return "kvarn4_decode_fine";
+    case kModeOptCoarse:
+        return "kvarn4_gqa_coarse";
+    default:
+        return "invalid";
+    }
+}
+
+// Decode split policy for single-query native KVarN4 (nq == 1):
+// Round split rows up to whole 128-token record groups (kKvarnGroup = 128)
+// so splits never straddle record boundaries, and bound max_splits so the
+// reducer and WHT workgroup overhead are proportional to console CU count.
+// Mode 1 (balanced): target_rows = 512 (4 groups), max_splits = 32.
+// Mode 2 (fine):     target_rows = 256 (2 groups), max_splits = 64.
+// Mode 3 (coarse):   keeps the legacy kvarn4_split baseline.
+inline KvarnSplit kvarn4_decode_split(uint32_t active_count, uint32_t mode) {
+    if (active_count == 0) {
+        return {1, 0};
+    }
+    if (mode == kModeOptCoarse) {
+        return kvarn4_split(active_count, mode);
+    }
+    const uint32_t target_rows = mode == kModeOptFine ? 256u : 512u;
+    const uint32_t max_splits = mode == kModeOptFine ? 64u : 32u;
+    const uint32_t wanted = (active_count + target_rows - 1) / target_rows;
+    const uint32_t k0 = std::max(1u, std::min(max_splits, wanted));
+    uint32_t rows = split_rows(active_count, k0);
+    rows = (rows + kKvarnGroup - 1) / kKvarnGroup * kKvarnGroup;
+    const uint32_t k = rows ? (active_count + rows - 1) / rows : 1;
+    return {std::max(1u, k), rows};
+}
+
 enum Kind : uint8_t { kUpload = 0, kAttention = 1, kKindCount = 2 };
 
 // Disjoint CPU spans; their sum is the engine wall time of the call (profiling
@@ -274,7 +332,9 @@ struct Sample {
     uint8_t fence_blocked = 0;
     uint8_t alloc_grew = 0;
     uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
-    uint8_t q_tile = 0;        // multi-query tile (Q4_0/F16/Q8_0 2 or 4, KVarN4 2); 0 = per-query
+    uint8_t q_tile = 0;
+    uint8_t decode_opt = 0;        // multi-query tile (Q4_0/F16/Q8_0/KVarN4 2 or 4); 0 = per-query
+    uint8_t bulk_segment = 0;  // 1 if recorded as an individual segment of native bulk op 22
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -292,8 +352,11 @@ struct Counters {
     uint64_t q4_mq_calls[2] = {}; // subset of optimized_calls: [0] 2-query, [1] 4-query tile
     // F16/Q8_0 multi-query tile calls (subset of optimized_by_storage), [storage][tile/4].
     uint64_t fmt_mq_calls[kStorageCount][2] = {};
-    // Native KVarN4 revision-3 2-query tile calls (subset of optimized_by_storage[kvarn4]).
+    // Native KVarN4 revision-3 2-query and 4-query tile calls (subset of
+    // optimized_by_storage[kvarn4]).
     uint64_t kvarn4_mq_calls = 0;
+    uint64_t kvarn4_decode_calls = 0;
+    uint64_t kvarn4_mq4_calls = 0;
     uint64_t optimized_by_storage[kStorageCount] = {};
     uint64_t reference_by_storage[kStorageCount] = {};
     uint64_t failed_calls = 0;
@@ -306,6 +369,27 @@ struct Counters {
     uint64_t buffer_create_bytes = 0;
     uint64_t timestamp_resolves = 0;
     uint64_t timestamp_map_failures = 0;
+    uint64_t bulk_calls = 0;
+    uint64_t bulk_segments = 0;
+    uint64_t bulk_queries = 0;
+};
+
+struct BulkEnvelopeSample {
+    uint32_t segment_count = 0;
+    uint32_t total_queries = 0;
+    uint8_t gpu_valid = 0;
+    uint8_t fence_blocked = 0;
+    uint8_t alloc_grew = 0;
+    uint64_t upload_bytes = 0;
+    uint64_t query_bytes = 0;
+    uint64_t output_bytes = 0;
+    uint64_t cpu_ns[kCpuSpanCount] = {};
+    uint64_t gpu_upload_ticks = 0;
+    uint64_t gpu_pass1_ticks = 0;
+    uint64_t gpu_reduce_ticks = 0;
+    uint64_t gpu_copy_ticks = 0;
+    uint64_t gpu_total_ticks = 0;
+    uint64_t overhead_ns = 0;
 };
 
 struct MemoryInfo {
@@ -358,9 +442,14 @@ struct Header {
     // F16 / Q8_0 multi-query tile pipelines, [storage][0] 2-query, [storage][1] 4-query.
     bool fmt_mq_available[kStorageCount][2] = {};
     std::string fmt_mq_status[kStorageCount][2];
-    // Native KVarN4 revision-3 2-query tile pipeline (requires the optimized prefix PSO).
+    // Native KVarN4 revision-3 2-query and 4-query tile pipelines (require the optimized prefix
+    // PSO).
     bool kvarn4_mq_available = false;
     std::string kvarn4_mq_status;
+    bool kvarn4_decode_available = false;
+    std::string kvarn4_decode_status;
+    bool kvarn4_mq4_available = false;
+    std::string kvarn4_mq4_status;
 };
 
 inline const char* storage_name(uint32_t storage) {
@@ -408,7 +497,10 @@ inline std::string bucket_key(const Sample& s) {
     if (s.kind == kAttention) {
         key += s.optimized ? "/optimized-" : "/reference";
         if (s.optimized) {
-            key += s.q_tile ? mq_kernel_name(s.storage, s.q_tile) : kernel_name(s.storage, s.mode);
+            key += s.q_tile ? mq_kernel_name(s.storage, s.q_tile)
+                            : (s.storage == kStorageKvarn4 && s.decode_opt
+                                   ? kvarn4_decode_kernel_name(s.mode)
+                                   : kernel_name(s.storage, s.mode));
         }
     }
     key += '/';
@@ -442,6 +534,7 @@ inline std::string json_escape(const std::string& in) {
 class Recorder {
   public:
     static constexpr size_t kDefaultCapacity = 16384;
+    static constexpr size_t kDefaultBulkCapacity = 2048;
 
     void configure(size_t capacity = kDefaultCapacity) {
         if (ring_.size() != capacity) {
@@ -449,11 +542,20 @@ class Recorder {
             next_ = 0;
             stored_ = 0;
         }
+        const size_t bulk_cap = std::min(capacity, kDefaultBulkCapacity);
+        if (bulk_ring_.size() != bulk_cap) {
+            bulk_ring_.assign(bulk_cap, BulkEnvelopeSample{});
+            bulk_next_ = 0;
+            bulk_stored_ = 0;
+        }
     }
     void reset() {
         next_ = 0;
         stored_ = 0;
         recorded_ = 0;
+        bulk_next_ = 0;
+        bulk_stored_ = 0;
+        bulk_recorded_ = 0;
         counters = Counters{};
     }
     void record(const Sample& sample) {
@@ -465,6 +567,15 @@ class Recorder {
         next_ = (next_ + 1) % ring_.size();
         stored_ = std::min(stored_ + 1, ring_.size());
     }
+    void record_bulk(const BulkEnvelopeSample& sample) {
+        ++bulk_recorded_;
+        if (bulk_ring_.empty()) {
+            return;
+        }
+        bulk_ring_[bulk_next_] = sample;
+        bulk_next_ = (bulk_next_ + 1) % bulk_ring_.size();
+        bulk_stored_ = std::min(bulk_stored_ + 1, bulk_ring_.size());
+    }
     size_t capacity() const {
         return ring_.size();
     }
@@ -473,6 +584,15 @@ class Recorder {
     }
     uint64_t recorded() const {
         return recorded_;
+    }
+    size_t bulk_capacity() const {
+        return bulk_ring_.size();
+    }
+    size_t bulk_stored() const {
+        return bulk_stored_;
+    }
+    uint64_t bulk_recorded() const {
+        return bulk_recorded_;
     }
 
     std::string json(const Header& h) const {
@@ -521,9 +641,11 @@ class Recorder {
         o += buf;
         std::snprintf(buf, sizeof(buf),
                       "\"buffer_creates\":%llu,\"buffer_create_bytes\":%llu,"
-                      "\"timestamp_resolves\":%llu,\"timestamp_map_failures\":%llu}",
+                      "\"timestamp_resolves\":%llu,\"timestamp_map_failures\":%llu,"
+                      "\"bulk_calls\":%llu,\"bulk_segments\":%llu,\"bulk_queries\":%llu}",
                       ull(c.buffer_creates), ull(c.buffer_create_bytes), ull(c.timestamp_resolves),
-                      ull(c.timestamp_map_failures));
+                      ull(c.timestamp_map_failures), ull(c.bulk_calls), ull(c.bulk_segments),
+                      ull(c.bulk_queries));
         o += buf;
         o += ",\"memory\":" + memory_json(h.memory);
         o += ",\"kvarn4_mq_qualified_precision_tail_tokens\":[128]";
@@ -532,7 +654,7 @@ class Recorder {
              "otherwise reference; Q4_0 nq 2..9 in modes 1/2 use the q4_multi_query tile "
              "kernel when available; F16/Q8_0 nq 2..9 in modes 1/2 use the "
              "format_multi_query tile kernel when available; native KVarN4 descriptor "
-             "revision 3 nq 2..9 in mode 2 uses the kvarn4_multi_query tile kernel when "
+             "revision 3 nq 2..9 in modes 1/2 uses the kvarn4_multi_query tile kernel when "
              "available\"";
         o += ",\"optimized_kernels\":{";
         for (uint32_t st = 0; st < kStorageCount; ++st) {
@@ -590,12 +712,28 @@ class Recorder {
         std::snprintf(buf, sizeof(buf),
                       ",\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":%u,"
                       "\"descriptor_revision\":3,\"required_wave_lanes\":%u,"
-                      "\"mode_map\":\"1:per-query kvarn4_gqa_balanced 2:kvarn4_mq2_fine "
+                      "\"mode_map\":\"1:kvarn4_mq4_balanced 2:kvarn4_mq2_fine "
                       "3:per-query kvarn4_gqa_coarse\","
-                      "\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
+                      "\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu},",
                       kOptMaxQueries, kKvarn4MqWaveLanes, h.kvarn4_mq_available ? "true" : "false",
                       json_escape(h.kvarn4_mq_status).c_str(), ull(c.kvarn4_mq_calls));
         o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      "\"mq4\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
+                      h.kvarn4_mq4_available ? "true" : "false",
+                      json_escape(h.kvarn4_mq4_status).c_str(), ull(c.kvarn4_mq4_calls));
+        o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      ",\"kvarn4_decode\":{\"nq\":1,"
+                      "\"descriptor_revision\":3,\"required_wave_lanes\":%u,"
+                      "\"mode_map\":\"1:kvarn4_decode_balanced 2:kvarn4_decode_fine "
+                      "3:per-query kvarn4_gqa_coarse\","
+                      "\"available\":%s,\"status\":\"%s\",\"calls\":%llu}",
+                      kKvarn4DecodeWaveLanes, h.kvarn4_decode_available ? "true" : "false",
+                      json_escape(h.kvarn4_decode_status).c_str(), ull(c.kvarn4_decode_calls));
+        o += buf;
+        o += ",\"bulk\":";
+        append_bulk_json(o, h);
 
         std::map<std::string, std::vector<const Sample*>> buckets;
         for (size_t i = 0; i < stored_; ++i) {
@@ -746,10 +884,122 @@ class Recorder {
         o += '}';
     }
 
+    void append_bulk_json(std::string& o, const Header& h) const {
+        char buf[512];
+        o += '{';
+        std::snprintf(buf, sizeof(buf),
+                      "\"bulk_calls\":%llu,\"bulk_segments\":%llu,\"bulk_queries\":%llu,"
+                      "\"samples_recorded\":%llu,\"samples_in_ring\":%llu,"
+                      "\"gpu_timestamps\":%s",
+                      ull(counters.bulk_calls), ull(counters.bulk_segments),
+                      ull(counters.bulk_queries), ull(bulk_recorded_), ull(bulk_stored_),
+                      (h.gpu_timestamps && h.gpu_timestamp_frequency) ? "true" : "false");
+        o += buf;
+
+        std::vector<double> v_val, v_alloc, v_mc, v_rec, v_sub, v_fw, v_rb, v_tot;
+        std::vector<double> v_gpu_u, v_gpu_p1, v_gpu_red, v_gpu_cp, v_gpu_tot, v_qw;
+        std::vector<double> v_b_up, v_b_q, v_b_out, v_b_tot;
+
+        const double us_per_tick = h.gpu_timestamp_frequency
+                                       ? (1e6 / static_cast<double>(h.gpu_timestamp_frequency))
+                                       : 0.0;
+
+        for (size_t i = 0; i < bulk_stored_; ++i) {
+            const size_t idx =
+                (bulk_next_ + bulk_ring_.size() - bulk_stored_ + i) % bulk_ring_.size();
+            const auto& b = bulk_ring_[idx];
+            v_val.push_back(double(b.cpu_ns[kCpuValidate]) / 1000.0);
+            v_alloc.push_back(double(b.cpu_ns[kCpuAlloc]) / 1000.0);
+            v_mc.push_back(double(b.cpu_ns[kCpuMapCopy]) / 1000.0);
+            v_rec.push_back(double(b.cpu_ns[kCpuRecord]) / 1000.0);
+            v_sub.push_back(double(b.cpu_ns[kCpuSubmit]) / 1000.0);
+            const double fw_us = double(b.cpu_ns[kCpuFenceWait]) / 1000.0;
+            v_fw.push_back(fw_us);
+            v_rb.push_back(double(b.cpu_ns[kCpuReadback]) / 1000.0);
+            uint64_t cpu_tot = 0;
+            for (uint32_t sp = 0; sp < kCpuSpanCount; ++sp) {
+                cpu_tot += b.cpu_ns[sp];
+            }
+            v_tot.push_back(double(cpu_tot) / 1000.0);
+
+            v_b_up.push_back(double(b.upload_bytes));
+            v_b_q.push_back(double(b.query_bytes));
+            v_b_out.push_back(double(b.output_bytes));
+            v_b_tot.push_back(double(b.upload_bytes + b.query_bytes + b.output_bytes));
+
+            if (b.gpu_valid && us_per_tick > 0.0) {
+                v_gpu_u.push_back(double(b.gpu_upload_ticks) * us_per_tick);
+                v_gpu_p1.push_back(double(b.gpu_pass1_ticks) * us_per_tick);
+                v_gpu_red.push_back(double(b.gpu_reduce_ticks) * us_per_tick);
+                v_gpu_cp.push_back(double(b.gpu_copy_ticks) * us_per_tick);
+                const double gpu_tot_us = double(b.gpu_total_ticks) * us_per_tick;
+                v_gpu_tot.push_back(gpu_tot_us);
+                v_qw.push_back(std::max(0.0, fw_us - gpu_tot_us));
+            }
+        }
+
+        o += ",\"timings\":{";
+        append_stats(o, "admission_cpu_us", v_val);
+        o += ',';
+        append_stats(o, "alloc_cpu_us", v_alloc);
+        o += ',';
+        append_stats(o, "map_copy_cpu_us", v_mc);
+        o += ',';
+        append_stats(o, "record_cpu_us", v_rec);
+        o += ',';
+        append_stats(o, "submit_cpu_us", v_sub);
+        o += ',';
+        append_stats(o, "fence_wait_cpu_us", v_fw);
+        o += ',';
+        append_stats(o, "readback_cpu_us", v_rb);
+        o += ',';
+        append_stats(o, "engine_total_cpu_us", v_tot);
+        if (h.gpu_timestamp_frequency) {
+            o += ',';
+            append_stats(o, "gpu_upload_us", v_gpu_u);
+            o += ',';
+            append_stats(o, "gpu_pass1_us", v_gpu_p1);
+            o += ',';
+            append_stats(o, "gpu_reduce_us", v_gpu_red);
+            o += ',';
+            append_stats(o, "gpu_readback_copy_us", v_gpu_cp);
+            o += ',';
+            append_stats(o, "gpu_total_us", v_gpu_tot);
+            o += ',';
+            append_stats(o, "queue_wait_us", v_qw);
+        }
+        o += "},\"bytes\":{";
+        append_stats(o, "upload_bytes", v_b_up);
+        o += ',';
+        append_stats(o, "query_bytes", v_b_q);
+        o += ',';
+        append_stats(o, "output_bytes", v_b_out);
+        o += ',';
+        append_stats(o, "total_bytes", v_b_tot);
+        o += "},\"timing_breakdown_notes\":{";
+        o += "\"inclusive_fence_wait\":\"fence_wait_cpu_us is inclusive host CPU wall time waiting "
+             "for fence completion.\",";
+        o += "\"exclusive_gpu_total\":\"gpu_total_us measures exclusive GPU execution duration "
+             "between first and last queries.\",";
+        o += "\"queue_wait\":\"queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us), capturing "
+             "scheduling delay.\",";
+        o += "\"cpu_copies\":\"CPU copy cost is map_copy_cpu_us + readback_cpu_us.\",";
+        o += "\"gpu_kernel\":\"GPU kernel cost is gpu_upload_us + gpu_pass1_us + gpu_reduce_us + "
+             "gpu_readback_copy_us.\",";
+        o += "\"unmeasurable_network_oneway\":\"One-way network transit over LAN is strictly "
+             "unmeasurable without synchronized clocks. Use transport payload_receive_us, "
+             "send_enqueue_us, and host RTT minus handle_us for network attribution.\"";
+        o += "}}";
+    }
+
     std::vector<Sample> ring_;
     size_t next_ = 0;
     size_t stored_ = 0;
     uint64_t recorded_ = 0;
+    std::vector<BulkEnvelopeSample> bulk_ring_;
+    size_t bulk_next_ = 0;
+    size_t bulk_stored_ = 0;
+    uint64_t bulk_recorded_ = 0;
 };
 
 } // namespace rkva_rprof

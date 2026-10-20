@@ -34,9 +34,13 @@
 //
 // Supported shape (host-gated): head_dim 256, n_head == RKVA_GQA * n_head_kv,
 // origin % 128 == 0, precision_tail_tokens 0 or 128, descriptor revision 3,
-// 2..9 queries, wave size 64..128 (one 4-dim unit per lane). A wave size
-// outside 64..128 poisons the outputs with NaN instead of computing a partial
-// result. Query positions are used as given (no sorting assumption).
+// 2..9 queries, RKVA_MQ_QT in {2, 4}, wave size 64..128 (one 4-dim unit per
+// lane). A wave size outside 64..128 poisons the outputs with NaN instead of
+// computing a partial result. Query positions are used as given (no sorting
+// assumption). For RKVA_MQ_QT == 4, rotated Q for queries 2..3 is staged in
+// the idle 12 KiB gs_vec buffer during the record/stage loops and tail/merge
+// runs in two 2-query pairs after rotated Q is dead, keeping LDS at 12,384 B
+// and live VGPRs under the RDNA2 256-VGPR wave64 limit.
 #define RKVA_GQA 6
 #define RKVA_DIM 256
 #define RKVA_THREADS 128
@@ -50,10 +54,11 @@
 #ifndef RKVA_MQ_QT
 #define RKVA_MQ_QT 2
 #endif
-#if RKVA_MQ_QT != 2
-#error "native KVarN4 multi-query tile is qualified for 2 queries only"
+#if RKVA_MQ_QT != 2 && RKVA_MQ_QT != 4
+#error "native KVarN4 multi-query tile supports RKVA_MQ_QT == 2 or 4 only"
 #endif
 #define RKVA_QG (RKVA_MQ_QT * RKVA_GQA)
+#define RKVA_PAIR_QG (2 * RKVA_GQA)
 #define RKVA_KIND_NONE 0u
 #define RKVA_KIND_TAIL 1u
 #define RKVA_KIND_STAGE 2u
@@ -218,6 +223,17 @@ void store_result(uint qh, uint d, uint split, float numerator, float merged_max
     }
 }
 
+float4 load_rotated_q(uint j, uint g, uint u, bool active, float4 q_lo[RKVA_PAIR_QG]) {
+#if RKVA_MQ_QT == 4
+    if (j >= 2) {
+        uint b = ((3 - j) * RKVA_GQA + g) * RKVA_DIM + u * 4;
+        return active ? float4(gs_vec[b], gs_vec[b + 1], gs_vec[b + 2], gs_vec[b + 3])
+                      : float4(0, 0, 0, 0);
+    }
+#endif
+    return q_lo[j * RKVA_GQA + g];
+}
+
 [numthreads(RKVA_THREADS, 1, 1)]
 void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     uint kv_head = group.x, q_first = group.y * RKVA_MQ_QT, split = group.z;
@@ -261,10 +277,11 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     uint split_begin = split * split_rows;
     uint split_end = split_begin + split_rows;
     uint record_lo = origin == 0 ? 128 : 0;
-    uint window[RKVA_MQ_QT], end_q[RKVA_MQ_QT], tail_begin[RKVA_MQ_QT], head0[RKVA_MQ_QT];
+    uint window[RKVA_MQ_QT], end_q[RKVA_MQ_QT], body_end_q[RKVA_MQ_QT], tail_begin[RKVA_MQ_QT];
+    uint head0[RKVA_MQ_QT];
     bool act[RKVA_MQ_QT];
     uint shared_hi = 0xffffffffu;
-    uint end_max = split_begin;
+    uint body_end_max = split_begin;
     bool any_active = false;
     [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
         uint qi = q_first + j;
@@ -277,10 +294,11 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
         uint end = min(limit, split_end);
         act[j] = end > split_begin;
         end_q[j] = act[j] ? end : 0;
+        body_end_q[j] = min(end_q[j], tail_begin[j]);
         head0[j] = qc * n_head + kv_head * RKVA_GQA;
         if (act[j]) {
             any_active = true;
-            end_max = max(end_max, end);
+            body_end_max = max(body_end_max, body_end_q[j]);
             shared_hi = min(shared_hi, min(min(end, limit & ~127u), tail_begin[j]));
         }
     }
@@ -292,7 +310,10 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     }
 
     // Rotate each query's GQA Q heads exactly like the per-query kernel.
-    float4 q[RKVA_QG];
+    // Queries 0..1 stay in q_lo (48 VGPRs); for RKVA_MQ_QT == 4, rotated Q for
+    // query 2 is staged in gs_vec[1536..3071] and query 3 stays in gs_vec[0..1535]
+    // until the non-tail residual loop finishes (zero extra LDS).
+    float4 q_lo[RKVA_PAIR_QG];
     [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
         float v[RKVA_ELEMS];
         [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
@@ -300,113 +321,115 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
             v[2 * g + 1] = asfloat(queries.Load(((head0[j] + g) * RKVA_DIM + tid + 128) * 4));
         }
         wht256x6(v, tid);
-        [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-            uint b = g * RKVA_DIM + u * 4;
-            q[j * RKVA_GQA + g] = active ? float4(gs_vec[b], gs_vec[b + 1], gs_vec[b + 2],
-                                                  gs_vec[b + 3])
-                                         : float4(0, 0, 0, 0);
+        if (j < 2) {
+            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+                uint b = g * RKVA_DIM + u * 4;
+                q_lo[j * RKVA_GQA + g] =
+                    active ? float4(gs_vec[b], gs_vec[b + 1], gs_vec[b + 2], gs_vec[b + 3])
+                           : float4(0, 0, 0, 0);
+            }
+            GroupMemoryBarrierWithGroupSync(); // gs_vec is rewritten by the next query / merge
         }
-        GroupMemoryBarrierWithGroupSync(); // gs_vec is rewritten by the next query / merge
+#if RKVA_MQ_QT == 4
+        else if (j == 2) {
+            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+                uint b = (RKVA_GQA + g) * RKVA_DIM + tid;
+                gs_vec[b] = v[2 * g];
+                gs_vec[b + 128] = v[2 * g + 1];
+            }
+            GroupMemoryBarrierWithGroupSync(); // wht256x6 of j == 3 only rewrites gs_vec[0..1535]
+        }
+#endif
     }
-    float4 body[RKVA_QG], tail[RKVA_QG];
+    float4 body[RKVA_QG];
     float maximum[RKVA_QG], denom[RKVA_QG];
     [unroll] for (uint i = 0; i < RKVA_QG; ++i) {
         body[i] = float4(0, 0, 0, 0);
-        tail[i] = body[i];
         maximum[i] = -3.402823466e38f;
         denom[i] = 0;
     }
 
     // ---- Shared record tiles (first, so the still-zero tail needs no rescale) ----
+    uint dim = (u & 31) * 4;
+    uint cached_group = 0xffffffffu;
+    uint base = 0;
+    float4 kscale = float4(0, 0, 0, 0), kzero = kscale, vother = kscale;
     [loop] for (uint t0 = fast_lo + wave * RKVA_TILE; t0 < fast_hi; t0 += n_waves * RKVA_TILE) {
         uint rgroup = t0 / 128, pos0 = t0 & 127;
-        uint base = (rgroup * n_head_kv * 2 + kv_head * 2 + (u >> 5)) * RKVA_RECORD;
-        uint dim = (u & 31) * 4;
-        float4 kscale = halves4(keys.Load2(base + 8192 + dim * 2));
-        float4 kzero = halves4(keys.Load2(base + 8448 + dim * 2));
+        if (rgroup != cached_group) {
+            base = (rgroup * n_head_kv * 2 + kv_head * 2 + (u >> 5)) * RKVA_RECORD;
+            kscale = halves4(keys.Load2(base + 8192 + dim * 2));
+            kzero = halves4(keys.Load2(base + 8448 + dim * 2));
+            vother = halves4(values.Load2(base + 8704 + dim * 2));
+            cached_group = rgroup;
+        }
         uint4 kother_bits = keys.Load4(base + 8704 + pos0 * 2);
         uint nib_base = base + (pos0 / 8) * 4;
         uint kw[4] = {keys.Load(nib_base + (dim + 0) * 64), keys.Load(nib_base + (dim + 1) * 64),
                       keys.Load(nib_base + (dim + 2) * 64), keys.Load(nib_base + (dim + 3) * 64)};
         uint4 vscale_bits = values.Load4(base + 8192 + pos0 * 2);
         uint4 vzero_bits = values.Load4(base + 8448 + pos0 * 2);
-        float4 vother = halves4(values.Load2(base + 8704 + dim * 2));
         [unroll] for (uint h = 0; h < RKVA_TILE / RKVA_HALF; ++h) {
-            float score[RKVA_QG * RKVA_HALF];
+            float4 k_half[RKVA_HALF], v_half[RKVA_HALF];
             [unroll] for (uint t = 0; t < RKVA_HALF; ++t) {
                 uint tt = h * RKVA_HALF + t;
-                float other = f16tof32((kother_bits[tt / 2] >> ((tt & 1) * 16)) & 65535u);
-                float4 k;
-                k.x = decode((kw[0] >> (4 * tt)) & 15u, kscale.x, kzero.x, other);
-                k.y = decode((kw[1] >> (4 * tt)) & 15u, kscale.y, kzero.y, other);
-                k.z = decode((kw[2] >> (4 * tt)) & 15u, kscale.z, kzero.z, other);
-                k.w = decode((kw[3] >> (4 * tt)) & 15u, kscale.w, kzero.w, other);
-                [unroll] for (uint i = 0; i < RKVA_QG; ++i) {
-                    score[i * RKVA_HALF + t] = dot(q[i], k);
-                }
+                uint sh = (tt & 1) * 16;
+                float other = f16tof32((kother_bits[tt / 2] >> sh) & 65535u);
+                k_half[t].x = decode((kw[0] >> (4 * tt)) & 15u, kscale.x, kzero.x, other);
+                k_half[t].y = decode((kw[1] >> (4 * tt)) & 15u, kscale.y, kzero.y, other);
+                k_half[t].z = decode((kw[2] >> (4 * tt)) & 15u, kscale.z, kzero.z, other);
+                k_half[t].w = decode((kw[3] >> (4 * tt)) & 15u, kscale.w, kzero.w, other);
+                float scale = f16tof32((vscale_bits[tt / 2] >> sh) & 65535u);
+                float zero = f16tof32((vzero_bits[tt / 2] >> sh) & 65535u);
+                uint index = (pos0 + tt) * 128 + dim;
+                uint word = values.Load(base + (index / 8) * 4) >> ((index & 7) * 4);
+                v_half[t].x = decode(word & 15u, scale, zero, vother.x);
+                v_half[t].y = decode((word >> 4) & 15u, scale, zero, vother.y);
+                v_half[t].z = decode((word >> 8) & 15u, scale, zero, vother.z);
+                v_half[t].w = decode((word >> 12) & 15u, scale, zero, vother.w);
             }
             [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
                 [branch] if (act[j]) {
                     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
                         uint i = j * RKVA_GQA + g;
+                        float4 qa = load_rotated_q(j, g, u, active, q_lo);
+                        float s[RKVA_HALF];
                         float half_max = -3.402823466e38f;
                         [unroll] for (uint t = 0; t < RKVA_HALF; ++t) {
-                            score[i * RKVA_HALF + t] =
-                                WaveActiveSum(score[i * RKVA_HALF + t]) * kq_scale;
-                            half_max = max(half_max, score[i * RKVA_HALF + t]);
+                            s[t] = WaveActiveSum(dot(qa, k_half[t])) * kq_scale;
+                            half_max = max(half_max, s[t]);
                         }
                         float next_max = max(maximum[i], half_max);
                         float old_weight = denom[i] == 0 ? 0 : exp(maximum[i] - next_max);
                         float sum = 0;
                         [unroll] for (uint t = 0; t < RKVA_HALF; ++t) {
-                            score[i * RKVA_HALF + t] = exp(score[i * RKVA_HALF + t] - next_max);
-                            sum += score[i * RKVA_HALF + t];
+                            s[t] = exp(s[t] - next_max);
+                            sum += s[t];
                         }
                         body[i] *= old_weight;
+                        [unroll] for (uint t = 0; t < RKVA_HALF; ++t) {
+                            body[i] += s[t] * v_half[t];
+                        }
                         denom[i] = denom[i] * old_weight + sum;
                         maximum[i] = next_max;
-                    }
-                }
-            }
-            [unroll] for (uint t = 0; t < RKVA_HALF; ++t) {
-                uint tt = h * RKVA_HALF + t;
-                uint sh = (tt & 1) * 16;
-                float scale = f16tof32((vscale_bits[tt / 2] >> sh) & 65535u);
-                float zero = f16tof32((vzero_bits[tt / 2] >> sh) & 65535u);
-                uint index = (pos0 + tt) * 128 + dim;
-                uint word = values.Load(base + (index / 8) * 4) >> ((index & 7) * 4);
-                float4 x;
-                x.x = decode(word & 15u, scale, zero, vother.x);
-                x.y = decode((word >> 4) & 15u, scale, zero, vother.y);
-                x.z = decode((word >> 8) & 15u, scale, zero, vother.z);
-                x.w = decode((word >> 12) & 15u, scale, zero, vother.w);
-                [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
-                    if (act[j]) {
-                        [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-                            uint i = j * RKVA_GQA + g;
-                            body[i] += score[i * RKVA_HALF + t] * x;
-                        }
                     }
                 }
             }
         }
     }
 
-    // ---- Residual rows, classified per query ----
+    // ---- Non-tail residual rows (stage and sealed record), classified per query ----
     [loop] for (uint segment = 0; segment < 2; ++segment) {
         uint seg_begin = segment == 0 ? split_begin : fast_hi;
-        uint seg_end = segment == 0 ? fast_lo : end_max;
+        uint seg_end = segment == 0 ? fast_lo : body_end_max;
         [loop] for (uint row = seg_begin + wave; row < seg_end; row += n_waves) {
             float4 k = float4(0, 0, 0, 0), x = k;
             uint loaded = RKVA_KIND_NONE; // wave-uniform
             [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
-                uint kind = row_kind(row, end_q[j], window[j], tail_begin[j]);
+                uint kind = row_kind(row, body_end_q[j], window[j], tail_begin[j]);
                 [branch] if (kind != RKVA_KIND_NONE) {
                     if (kind != loaded) {
-                        if (kind == RKVA_KIND_TAIL) {
-                            k = load_tail4(keys, row, kv_head, u);
-                            x = load_tail4(values, row, kv_head, u);
-                        } else if (kind == RKVA_KIND_STAGE) {
+                        if (kind == RKVA_KIND_STAGE) {
                             k = load_stage4(keys, row, kv_head, u);
                             x = load_stage4(values, row, kv_head, u);
                         } else {
@@ -415,25 +438,14 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
                         }
                         loaded = kind;
                     }
-                    bool exact = kind == RKVA_KIND_TAIL;
                     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
                         uint i = j * RKVA_GQA + g;
-                        float4 qa = q[i];
-                        if (exact) {
-                            qa = active ? asfloat(queries.Load4(((head0[j] + g) * RKVA_DIM + u * 4) * 4))
-                                        : float4(0, 0, 0, 0);
-                        }
+                        float4 qa = load_rotated_q(j, g, u, active, q_lo);
                         float s = WaveActiveSum(dot(qa, k)) * kq_scale;
                         float next_max = max(maximum[i], s);
                         float old_weight = denom[i] == 0 ? 0 : exp(maximum[i] - next_max);
                         float w = exp(s - next_max);
-                        body[i] *= old_weight;
-                        tail[i] *= old_weight;
-                        if (exact) {
-                            tail[i] += w * x;
-                        } else {
-                            body[i] += w * x;
-                        }
+                        body[i] = body[i] * old_weight + w * x;
                         denom[i] = denom[i] * old_weight + w;
                         maximum[i] = next_max;
                     }
@@ -442,81 +454,135 @@ void CSRangeAttnKvarn4Mq(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
         }
     }
 
-    // ---- Per-query cross-wave merge, WHT(body) + tail, store ----
-    [unroll] for (uint j = 0; j < RKVA_MQ_QT; ++j) {
-        uint qi = q_first + j;
-        [branch] if (qi < n_query) { // group-uniform
-            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-                uint i = j * RKVA_GQA + g;
-                uint slot = wave * RKVA_GQA + g;
-                if (lane == 0) {
-                    gs_max[slot] = maximum[i];
-                    gs_den[slot] = denom[i];
-                }
-                if (active) {
-                    gs_vec[slot * RKVA_DIM + u * 4 + 0] = body[i].x;
-                    gs_vec[slot * RKVA_DIM + u * 4 + 1] = body[i].y;
-                    gs_vec[slot * RKVA_DIM + u * 4 + 2] = body[i].z;
-                    gs_vec[slot * RKVA_DIM + u * 4 + 3] = body[i].w;
-                }
-            }
-            GroupMemoryBarrierWithGroupSync();
-            float merged_max[RKVA_GQA], merged_den[RKVA_GQA], weight[RKVA_MAX_WAVES * RKVA_GQA];
-            [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
-                merged_max[g] = -3.402823466e38f;
-                for (uint w = 0; w < n_waves; ++w) {
-                    if (gs_den[w * RKVA_GQA + g] > 0)
-                        merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
-                }
-                merged_den[g] = 0;
-                [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
-                    uint slot = w * RKVA_GQA + g;
-                    weight[slot] = 0;
-                    if (w < n_waves && gs_den[slot] > 0) {
-                        weight[slot] = exp(gs_max[slot] - merged_max[g]);
-                        merged_den[g] += gs_den[slot] * weight[slot];
+#if RKVA_MQ_QT == 4
+    // Rotated Q in gs_vec is no longer read after the non-tail residual loop.
+    GroupMemoryBarrierWithGroupSync();
+#endif
+
+    // ---- Paired original-F16 tail residual rows + cross-wave merge, WHT(body) + tail, store ----
+    [unroll] for (uint pair = 0; pair < RKVA_MQ_QT / 2; ++pair) {
+        float4 tail_pair[RKVA_PAIR_QG];
+        [unroll] for (uint t = 0; t < RKVA_PAIR_QG; ++t) {
+            tail_pair[t] = float4(0, 0, 0, 0);
+        }
+        uint j0 = pair * 2;
+        uint t_lo0 = max(fast_hi, tail_begin[j0]);
+        uint t_lo1 = max(fast_hi, tail_begin[j0 + 1]);
+        bool has_tail0 = end_q[j0] > t_lo0;
+        bool has_tail1 = end_q[j0 + 1] > t_lo1;
+        [branch] if (has_tail0 || has_tail1) {
+            uint pair_lo = has_tail0 ? (has_tail1 ? min(t_lo0, t_lo1) : t_lo0) : t_lo1;
+            uint pair_hi = max(has_tail0 ? end_q[j0] : 0, has_tail1 ? end_q[j0 + 1] : 0);
+            uint row0 = fast_hi + ((pair_lo - fast_hi) & ~(n_waves - 1)) + wave;
+            [loop] for (uint row = row0; row < pair_hi; row += n_waves) {
+                float4 k = float4(0, 0, 0, 0), x = k;
+                bool loaded = false;
+                [unroll] for (uint p = 0; p < 2; ++p) {
+                    uint j = j0 + p;
+                    [branch] if (row >= tail_begin[j] && row < end_q[j]) {
+                        if (!loaded) {
+                            k = load_tail4(keys, row, kv_head, u);
+                            x = load_tail4(values, row, kv_head, u);
+                            loaded = true;
+                        }
+                        [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+                            uint i = j * RKVA_GQA + g;
+                            uint ti = p * RKVA_GQA + g;
+                            float4 qa =
+                                active ? asfloat(queries.Load4(((head0[j] + g) * RKVA_DIM + u * 4) * 4))
+                                       : float4(0, 0, 0, 0);
+                            float s = WaveActiveSum(dot(qa, k)) * kq_scale;
+                            float next_max = max(maximum[i], s);
+                            float old_weight = denom[i] == 0 ? 0 : exp(maximum[i] - next_max);
+                            float w = exp(s - next_max);
+                            body[i] *= old_weight;
+                            tail_pair[ti] = tail_pair[ti] * old_weight + w * x;
+                            denom[i] = denom[i] * old_weight + w;
+                            maximum[i] = next_max;
+                        }
                     }
                 }
             }
-            float merged_body[RKVA_ELEMS], merged_tail[RKVA_ELEMS];
-            [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
-                uint g = k / 2, d = tid + (k & 1) * 128;
-                merged_body[k] = 0;
-                merged_tail[k] = 0;
-                [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
-                    uint slot = w * RKVA_GQA + g;
-                    if (weight[slot] > 0) merged_body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
-                }
-            }
-            bool has_tail = end_q[j] > max(split_begin, tail_begin[j]); // group-uniform
-            if (has_tail) {
-                GroupMemoryBarrierWithGroupSync();
+        }
+
+        [unroll] for (uint p = 0; p < 2; ++p) {
+            uint j = j0 + p;
+            uint qi = q_first + j;
+            [branch] if (qi < n_query) { // group-uniform
                 [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
                     uint i = j * RKVA_GQA + g;
                     uint slot = wave * RKVA_GQA + g;
+                    if (lane == 0) {
+                        gs_max[slot] = maximum[i];
+                        gs_den[slot] = denom[i];
+                    }
                     if (active) {
-                        gs_vec[slot * RKVA_DIM + u * 4 + 0] = tail[i].x;
-                        gs_vec[slot * RKVA_DIM + u * 4 + 1] = tail[i].y;
-                        gs_vec[slot * RKVA_DIM + u * 4 + 2] = tail[i].z;
-                        gs_vec[slot * RKVA_DIM + u * 4 + 3] = tail[i].w;
+                        gs_vec[slot * RKVA_DIM + u * 4 + 0] = body[i].x;
+                        gs_vec[slot * RKVA_DIM + u * 4 + 1] = body[i].y;
+                        gs_vec[slot * RKVA_DIM + u * 4 + 2] = body[i].z;
+                        gs_vec[slot * RKVA_DIM + u * 4 + 3] = body[i].w;
                     }
                 }
                 GroupMemoryBarrierWithGroupSync();
+                float merged_max[RKVA_GQA], merged_den[RKVA_GQA], weight[RKVA_MAX_WAVES * RKVA_GQA];
+                [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+                    merged_max[g] = -3.402823466e38f;
+                    for (uint w = 0; w < n_waves; ++w) {
+                        if (gs_den[w * RKVA_GQA + g] > 0)
+                            merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
+                    }
+                    merged_den[g] = 0;
+                    [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
+                        uint slot = w * RKVA_GQA + g;
+                        weight[slot] = 0;
+                        if (w < n_waves && gs_den[slot] > 0) {
+                            weight[slot] = exp(gs_max[slot] - merged_max[g]);
+                            merged_den[g] += gs_den[slot] * weight[slot];
+                        }
+                    }
+                }
+                float merged_body[RKVA_ELEMS], merged_tail[RKVA_ELEMS];
                 [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
                     uint g = k / 2, d = tid + (k & 1) * 128;
+                    merged_body[k] = 0;
+                    merged_tail[k] = 0;
                     [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
                         uint slot = w * RKVA_GQA + g;
                         if (weight[slot] > 0)
-                            merged_tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+                            merged_body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
                     }
                 }
-            }
-            GroupMemoryBarrierWithGroupSync();
-            wht256x6(merged_body, tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
-            [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
-                uint g = k / 2, d = tid + (k & 1) * 128;
-                store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
-                             merged_body[k] + merged_tail[k], merged_max[g], merged_den[g]);
+                bool has_tail = end_q[j] > max(split_begin, tail_begin[j]); // group-uniform
+                if (has_tail) {
+                    GroupMemoryBarrierWithGroupSync();
+                    [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
+                        uint ti = p * RKVA_GQA + g;
+                        uint slot = wave * RKVA_GQA + g;
+                        if (active) {
+                            gs_vec[slot * RKVA_DIM + u * 4 + 0] = tail_pair[ti].x;
+                            gs_vec[slot * RKVA_DIM + u * 4 + 1] = tail_pair[ti].y;
+                            gs_vec[slot * RKVA_DIM + u * 4 + 2] = tail_pair[ti].z;
+                            gs_vec[slot * RKVA_DIM + u * 4 + 3] = tail_pair[ti].w;
+                        }
+                    }
+                    GroupMemoryBarrierWithGroupSync();
+                    [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+                        uint g = k / 2, d = tid + (k & 1) * 128;
+                        [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
+                            uint slot = w * RKVA_GQA + g;
+                            if (weight[slot] > 0)
+                                merged_tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+                        }
+                    }
+                }
+                GroupMemoryBarrierWithGroupSync();
+                wht256x6(merged_body,
+                         tid); // linear: WHT(sum of wave bodies) == sum of WHT(wave bodies)
+                [unroll] for (uint k = 0; k < RKVA_ELEMS; ++k) {
+                    uint g = k / 2, d = tid + (k & 1) * 128;
+                    store_result(qi * n_head + kv_head * RKVA_GQA + g, d, split,
+                                 merged_body[k] + merged_tail[k], merged_max[g], merged_den[g]);
+                }
             }
         }
     }

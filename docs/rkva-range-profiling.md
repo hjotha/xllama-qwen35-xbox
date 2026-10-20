@@ -438,6 +438,72 @@ not be summed together. A `memory_before_destroy` log event samples the same
 values before releasing a session's buffers, outside measured attention calls.
 The diagnostic query holds no adapter references beyond the call.
 
+## Native KVarN4 multi-query prefill candidate (MQ4)
+
+Prefill segments in native bulk RPC (op 22) issue up to 8 queries per segment
+over tens of thousands of remote KV rows. While candidate 268 added a 2-query
+tile (`kvarn4_mq2_fine`) under mode 2 (`kModeOptFine`), mode 1 (`kModeOptBalanced`,
+target 128 rows, max 128 splits) now opts into a 4-query tile:
+`kvarn4_mq4_balanced` (`RKVA_MQ_QT=4`).
+
+### Mode Selection and Routing
+
+| Mode | Name               | nq 1                  | nq 2..9 (tail 128)        | Notes                                   |
+| ---- | ------------------ | --------------------- | ------------------------- | --------------------------------------- |
+| 0    | `reference`        | `reference`           | `reference`               | Reference uncompressed decode           |
+| 1    | `kModeOptBalanced` | `kvarn4_gqa_balanced` | **`kvarn4_mq4_balanced`** | Opt-in 4-query tile (prefill candidate) |
+| 2    | `kModeOptFine`     | `kvarn4_gqa_fine`     | **`kvarn4_mq2_fine`**     | Qualified 2-query tile (default)        |
+| 3    | `kModeOptCoarse`   | `kvarn4_gqa_coarse`   | `kvarn4_gqa_coarse`       | In-build A/B baseline                   |
+
+The gate requirements are identical to MQ2:
+
+- Storage is KVarN4 (`kStorageKvarn4`).
+- Descriptor revision 3 (serial-prefix) with qualified wave lanes >= 64.
+- `precision_tail_tokens == 128` (`tail=0` retains per-query kernel).
+- `2 <= n_tokens <= 9`.
+- Fail closed & graceful fallback: If `range_attn_kvarn4_mq4_pso_` is missing or fails to create, execution falls back automatically to `range_attn_kvarn4_mq_pso_` (MQ2, if available) or the per-query `range_attn_kvarn4_pso_`.
+
+### Shader Resource and Occupancy Analysis
+
+Scaling `RKVA_MQ_QT` from 2 to 4 naively would double accumulator registers and
+LDS, exceeding the RDNA2 hardware limit of 256 VGPRs and causing heavy scratch
+memory spilling. `shaders/rkva/rkva_range_attn_kvarn4_mq.hlsl` addresses this
+through four architectural techniques:
+
+1. **Constant LDS footprint (Zero Increase):**
+   The shared memory buffer `gs_vec` remains exactly 12,384 bytes (12.09 KiB),
+   identical to the 2-query tile. Queries 0..1 maintain their rotated projection in
+   `q_lo` (48 VGPRs), query 2 is staged in `gs_vec[1536..3071]`, and query 3 stays
+   in `gs_vec[0..1535]` after `wht256x6`.
+2. **Half-Tile Reduction & Score Register Reuse:**
+   Decodes 4 tokens of K and V once per half-tile; each query-head computes `s[4]`
+   locally, reducing score VGPRs from 96 down to 36.
+3. **Group Header Caching:**
+   `base`, `kscale`, `kzero`, and `vother` are cached in registers once per
+   128-row KVarN group, avoiding 8x redundant dword loads.
+4. **Split Non-Tail and Paired-Tail Residual Loops (`RKVA_PAIR_QG`):**
+   Pass 1 processes non-tail `STAGE` and `RECORD` rows across all queries while
+   `tail` registers are not yet live. Pass 2 processes `TAIL` rows in 2-query pairs,
+   dropping peak live VGPRs from ~432 down to ~228 (safely below RDNA2's 256-VGPR
+   limit with 0 register spills).
+
+### Prefill Impact
+
+At 102.4k–112.6k context (29k–40k remote rows), an 8-query prefill segment:
+
+- Reduces pass-1 dispatch groups by 2x (from 4 dispatches to 2 dispatches).
+- Reduces partial buffer writes and pass-2 reduction invocations by 2x.
+- Reuses dequantized KVarN records and WHT-transformed keys across 4 queries
+  simultaneously.
+
+### Profile Report Additions
+
+The `kvarn4_multi_query` object in `rkva-range-profile-v1` includes:
+
+- `mode_map`: `"1:kvarn4_mq4_balanced 2:kvarn4_mq2_fine 3:per-query kvarn4_gqa_coarse"`.
+- `mq4`: `{"available": bool, "status": string, "calls": uint64}`.
+- Bucket key naming: `attention/kvarn4-prefix/optimized-kvarn4_mq4_balanced/...`.
+
 ## Native KVarN4 bulk RPC (candidate 270)
 
 `RKVA_CAP_KVARN_BULK_ATTN` (bit 8) negotiates op 22,
@@ -463,9 +529,19 @@ unconfirmed submission retains transfer resources. The host publishes its
 resident-row count and generation only after the complete response.
 
 Transport op-22 counters and the existing submission/fence counters account for
-the whole batch. Per-segment timestamp buckets are disabled inside a bulk
-command list; their fixed timestamp slots cannot represent 32 simultaneous
-segments. Use separate op 16/op 14 with profiling to inspect individual kernels.
+the whole batch (`submits` count equals 1 per bulk RPC; no per-segment fences).
+
+Opt-in native bulk profiling provides comprehensive attributable GPU and CPU metrics:
+
+- **Zero fastpath overhead**: profiling instrumentation is completely bypassed when profiling is disabled.
+- **Bounded timestamp slot allocation**: Query slots are allocated without in-flight reuse. The timestamp heap provides 256 slots per set (1024 total across 4 sets). Slot 0 records `kTsBulkEnvelopeBegin`. Each segment $i$ (0 to $S-1$, max 32) uses 6 contiguous slots starting at $1 + i \times 6$: upload begin, upload end, attention begin, attention pass 1, attention reduce, and readback copy. Slot $1 + S \times 6$ records `kTsBulkEnvelopeEnd`. The queries are dispatched in strict command-list order, ensuring monotonic timestamp progression. Max slots for 32 segments is $2 + 32 \times 6 = 194 \le 256$.
+- **Attributable aggregate metrics**: Profile JSON includes a dedicated `"bulk"` object with:
+  - Disjoint CPU breakdown: `admission_cpu_us`, `alloc_cpu_us`, `map_copy_cpu_us`, `record_cpu_us`, `submit_cpu_us`, `fence_wait_cpu_us`, `readback_cpu_us`, and `engine_total_cpu_us`.
+  - Attributable GPU breakdown: `gpu_upload_us`, `gpu_pass1_us`, `gpu_reduce_us`, `gpu_readback_copy_us`, and `gpu_total_us`.
+  - Explicit queue latency: `queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us)`. Here `fence_wait_cpu_us` is the inclusive CPU wait time for fence completion, while `gpu_total_us` is the exclusive GPU execution time from envelope begin to envelope end.
+  - Byte statistics: `upload_bytes`, `query_bytes`, `output_bytes`, `total_bytes`.
+- **Per-segment attribution**: Individual upload and attention samples are recorded into sample rings and categorized into standard buckets with `bulk_segment = 1`. To avoid inflating fence wait metrics in multi-segment batches, per-segment samples record `fence_wait = 0` and `submit = 0`, keeping the fence wait exclusively attributed to the bulk envelope sample.
+- **Capability fallback**: If hardware timestamp queries are unsupported or fail allocation, CPU span and byte telemetry continue operating gracefully with `gpu_timestamps: false`.
 
 Pure admission gate (no GPU):
 
@@ -480,3 +556,27 @@ serial transaction path for both tail policies, maximum batches, record seals,
 ring wrap, rollback and new-content reappend. A corrupt final segment must be
 rejected before the first mutation; retrying the valid envelope then matches
 the serial session. This gate is not a model tokens/s benchmark.
+
+## Native KVarN4 bulk FP16 wire path (candidate 271)
+
+`RKVA_CAP_KVARN_BULK_F16` (bit 9, `1ull << 9`) negotiates opt-in FP16 Q and OUT wire encoding for `RKVA_KVARN_RANGE_BULK_ATTN` (op 22).
+The host opts in via `GGML_RKVA_NATIVE_BULK=f16` (or `GGML_RKVA_NATIVE_BULK_WIRE=f16` with `GGML_RKVA_NATIVE_BULK=1`). The default remains legacy F32 wire (`RKVA_WIRE_F32 = 1`).
+Requesting FP16 bulk wire when `RKVA_CAP_KVARN_BULK_F16` is not advertised fails closed at range configuration.
+
+- **Wire contract:**
+  - Query Q: packed as IEEE-754 FP16 (`uint16_t[nq * n_head * head_dim]`), halved in size (`2 * nq * n_head * head_dim` bytes).
+  - Query positions: stay `int32_t[nq]`.
+  - Output OUT: packed as IEEE-754 FP16 (`uint16_t[nq * n_head * head_dim]`), halved in size.
+  - Log-sum-exp (LSE): strictly retained as FP32 (`float[nq * n_head]`) for numerical stability in attention reduction and verification.
+  - KV payload: remains unchanged native KVarN4 descriptors and records.
+  - Wire type discriminator: `rkva_range_attn.wire` in each bulk segment envelope carries `RKVA_WIRE_F16` (`0`) or `RKVA_WIRE_F32` (`1`). Mixed wire types across segments are rejected.
+
+- **GPU conversion & deferred shader compilation:**
+  - On Xbox, `shaders/rkva/rkva_range_bulk_f16.hlsl` implements `CSBulkUnpackQF16` (unpacking upload FP16 Q into F32 default query buffer for range attention) and `CSBulkPackOutF16` (packing default output F32 into readback FP16 alongside F32 LSE).
+  - Shaders use the shared 4-constant + 1-SRV + 1-UAV root signature (`range_reduce_root_`) and are compiled via `scripts/compile-rkva-range-shaders.sh`.
+  - Deferred DXIL header inclusion (`#if __has_include`) provides an automatic host conversion fallback until compiled offline.
+  - When shaders are available, GPU executes compute dispatches before attention and after output barrier, keeping host CPU completely off the critical conversion path.
+
+- **Validation & Finiteness:**
+  - Host and server reject non-finite (NaN / +/-Inf) values in both F32 and FP16 formats before mutation.
+  - CPU validation in `tests/rkva_kvarn_bulk_cpu.cpp` and offline Python verification in `tests/rkva_kvarn_bulk_probe.py` assert IEEE-754 RNE roundtrip, boundary conditions, subnormals, and overflow behavior.

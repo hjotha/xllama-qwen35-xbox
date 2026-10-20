@@ -73,7 +73,66 @@ def check(origin, ptt, w0, span):
     return residual, differ
 
 
+def kvarn4_mq_tile(mode, nq, precision_tail_tokens):
+    """Mirror of uwp/rkva/rkva-range-profile.h kvarn4_mq_tile."""
+    if precision_tail_tokens != 128 or nq < 2 or nq > 9:
+        return 0
+    if mode == 1:  # kModeOptBalanced
+        return 4
+    if mode == 2:  # kModeOptFine
+        return 2
+    return 0
+
+
+def check_tile_decomposition(origin, ptt, w0, nq, mode):
+    tile_size = kvarn4_mq_tile(mode, nq, ptt)
+    if tile_size == 0:
+        return
+    all_windows = [w0 + i for i in range(nq)]
+    num_tiles = (nq + tile_size - 1) // tile_size
+    for t in range(num_tiles):
+        q_start = t * tile_size
+        q_end = min(nq, q_start + tile_size)
+        tile_windows = all_windows[q_start:q_end]
+        lo, hi = shared_record_region(tile_windows, origin, ptt)
+        # Verify shared record region invariant
+        for r in range(lo, hi):
+            reps = {representation(r, w, origin, ptt) for w in tile_windows}
+            assert reps == {"record"}, (origin, ptt, tile_windows, r, reps)
+        # Verify residual classification for each query in tile
+        for w in tile_windows:
+            tail_begin = w - min(w, ptt)
+            # Pass 1: non-tail residual rows [hi, tail_begin)
+            for r in range(hi, tail_begin):
+                rep = representation(r, w, origin, ptt)
+                assert rep in ("stage", "record"), (origin, ptt, w, r, rep)
+            # Pass 2: tail rows [tail_begin, w)
+            for r in range(tail_begin, w):
+                rep = representation(r, w, origin, ptt)
+                assert rep == "tail", (origin, ptt, w, r, rep)
+        # Check paired-tail partitioning (RKVA_PAIR_QG): at most 2 queries per tail pair
+        tile_len = len(tile_windows)
+        for pair_idx in range((tile_len + 1) // 2):
+            p0 = pair_idx * 2
+            p1 = min(tile_len, p0 + 2)
+            assert p1 - p0 in (1, 2)
+
+
 def main():
+    # 1. Mode and multi-query tile selection policy checks
+    for m in range(5):
+        for ptt in (0, 64, 128, 256):
+            for nq in range(12):
+                tile = kvarn4_mq_tile(m, nq, ptt)
+                if ptt != 128 or nq < 2 or nq > 9:
+                    assert tile == 0, (m, nq, ptt, tile)
+                elif m == 1:
+                    assert tile == 4, (m, nq, ptt, tile)
+                elif m == 2:
+                    assert tile == 2, (m, nq, ptt, tile)
+                else:
+                    assert tile == 0, (m, nq, ptt, tile)
+
     worst = {}
     differ_cases = 0
     for origin in (72704, 0):
@@ -88,6 +147,11 @@ def main():
                         key = (origin, ptt)
                         worst[key] = max(worst.get(key, 0), residual)
                         differ_cases += differ > 0
+                        # Test tile decomposition for MQ4 (mode 1) and MQ2 (mode 2)
+                        if ptt == 128 and span in range(2, 10):
+                            check_tile_decomposition(origin, ptt, w0, span, mode=1)
+                            check_tile_decomposition(origin, ptt, w0, span, mode=2)
+
     # Real filled range: live 58128, nq 3 / 5 / 9 contiguous MTP verify windows.
     for ptt in (0, 128):
         for nq in (3, 5, 9):
@@ -96,12 +160,16 @@ def main():
             print(f"live=58128 ptt={ptt:3d} nq={nq}: shared record rows {hi - lo} "
                   f"({100.0 * (hi - lo) / 58128:.2f}%), per-query residual <= "
                   f"{max(windows) - (hi - lo)} rows")
+            if ptt == 128:
+                check_tile_decomposition(72704, ptt, windows[0], nq, mode=1)
+                check_tile_decomposition(72704, ptt, windows[0], nq, mode=2)
+
     for (origin, ptt), value in sorted(worst.items()):
         print(f"origin={origin:5d} ptt={ptt:3d}: worst per-query residual {value} rows")
     assert differ_cases > 0, "boundary cases where queries disagree must exist"
     print(f"{differ_cases} tile configurations have rows whose representation differs "
           "between queries (handled per query, never shared)")
-    print("rkva_kvarn4_mq_partition_model: ok")
+    print("rkva_kvarn4_mq_partition_model: ok (MQ2 and MQ4 verified)")
     return 0
 
 

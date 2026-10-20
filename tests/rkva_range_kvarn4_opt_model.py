@@ -65,6 +65,26 @@ def kvarn4_split(active, mode):
     return max(1, k), rows
 
 
+def kvarn4_decode_split(active, mode):
+    """Opt-in decode split policy: round rows up to whole 128-token record groups.
+    Mode 1 (balanced): target_rows=512, max_splits=32.
+    Mode 2 (fine):     target_rows=256, max_splits=64.
+    Mode 3 (coarse):   keeps legacy kvarn4_split.
+    """
+    if active == 0:
+        return 1, 0
+    if mode == 3:
+        return kvarn4_split(active, mode)
+    target_rows = 256 if mode == 2 else 512
+    max_splits = 64 if mode == 2 else 32
+    wanted = (active + target_rows - 1) // target_rows
+    k0 = max(1, min(max_splits, wanted))
+    rows = (active + k0 - 1) // k0
+    rows = (rows + 127) & ~127
+    k = (active + rows - 1) // rows if rows else 1
+    return max(1, k), rows
+
+
 def reference_split(active):
     k = m4.reference_split_k(active)
     return k, (active + k - 1) // k
@@ -458,11 +478,15 @@ def run_reference(Kp, Vp, q, active, pos, scale, k_src, v_src, prefix=False):
     return split_k, out, lse
 
 
-def run_optimized(Kp, Vp, q, active, pos, scale, mode, wave, k_src, v_src, prefix=False):
+def run_optimized(
+    Kp, Vp, q, active, pos, scale, mode, wave, k_src, v_src, prefix=False, decode_split=False
+):
     """prefix=True emulates RKVA_SERIAL_PREFIX=1 (see run_reference)."""
     lay = Kp.lay
     limit = causal_limit(lay, active, pos)
-    split_k, rows = kvarn4_split(active, mode)
+    split_k, rows = (
+        kvarn4_decode_split(active, mode) if decode_split else kvarn4_split(active, mode)
+    )
     assert split_k <= 256 and rows % 8 == 0 and rows * split_k >= active
     n_waves = 128 // wave
     window = limit if prefix else active
@@ -663,19 +687,34 @@ def main():
             np.where(np.isinf(l64), 0, l64))))), ("reference vs oracle", re_o, re_l)
         for mode in modes:
             for wave in waves:
-                split_k, tiles, out, lse = run_optimized(Kp, Vp, q, active, pos, scale, mode,
-                                                         wave, k_src, v_src)
-                e_o, e_l = m4.compare("opt", out, lse, o64, l64)
-                d_o, _ = m4.compare("opt-vs-ref", out, lse, r_out, r_lse)
-                ok = e_o <= max(2e-5 * mag, 4 * re_o) and e_l <= max(2e-5, 4 * re_l)
-                worst = max(worst, e_o / mag)
-                print(f"origin={origin:6d} active={active:5d} ptt={ptt:3d} limit={limit:5d} "
-                      f"mode={mode} wave={wave:3d} split_k={split_k:3d} tiles={tiles:5d} "
-                      f"bee={int(bool(use_bee and bee))} |O-oracle|={e_o:.2e} (ref {re_o:.2e}) "
-                      f"|LSE-oracle|={e_l:.2e} (ref {re_l:.2e}) |O-ref|={d_o:.2e} "
-                      f"{'OK' if ok else 'FAIL'}")
-                if not ok:
-                    return 1
+                for dec_split in ([False, True] if (wave == 64 and mode in (1, 2)) else [False]):
+                    split_k, tiles, out, lse = run_optimized(
+                        Kp,
+                        Vp,
+                        q,
+                        active,
+                        pos,
+                        scale,
+                        mode,
+                        wave,
+                        k_src,
+                        v_src,
+                        decode_split=dec_split,
+                    )
+                    e_o, e_l = m4.compare("opt", out, lse, o64, l64)
+                    d_o, _ = m4.compare("opt-vs-ref", out, lse, r_out, r_lse)
+                    ok = e_o <= max(2e-5 * mag, 4 * re_o) and e_l <= max(2e-5, 4 * re_l)
+                    worst = max(worst, e_o / mag)
+                    dec_tag = " [decode_split]" if dec_split else ""
+                    print(
+                        f"origin={origin:6d} active={active:5d} ptt={ptt:3d} limit={limit:5d} "
+                        f"mode={mode} wave={wave:3d} split_k={split_k:3d} tiles={tiles:5d}{dec_tag} "
+                        f"bee={int(bool(use_bee and bee))} |O-oracle|={e_o:.2e} (ref {re_o:.2e}) "
+                        f"|LSE-oracle|={e_l:.2e} (ref {re_l:.2e}) |O-ref|={d_o:.2e} "
+                        f"{'OK' if ok else 'FAIL'}"
+                    )
+                    if not ok:
+                        return 1
     print(f"rkva_range_kvarn4_opt_model: ok (worst relative |O-oracle| {worst:.2e})")
     return 0
 
