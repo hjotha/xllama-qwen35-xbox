@@ -1878,6 +1878,21 @@ uint64_t RemoteAttnEngine::native_range_generation(uint32_t id) const {
     return s && s->range_configured && s->range_storage == 3 ? s->native_generation : 0;
 }
 
+bool RemoteAttnEngine::native_range_layer_state(uint32_t id, uint32_t layer,
+                                                rkva_kvarn_range_config& descriptor,
+                                                rkva_kvarn_cohort::LayerState& state) const {
+    const Session* s = find_session(id);
+    if (unconfirmed_submission_ || terminal_failure_ || bulk_recording_ || !s || !s->valid ||
+        !s->range_configured || s->range_storage != 3 || layer >= s->range_counts.size() ||
+        layer >= s->range_record_groups.size() || layer >= s->range_ready.size() ||
+        layer >= s->prefix_coverage.size())
+        return false;
+    descriptor = s->range_descriptor;
+    state = {s->range_counts[layer], s->range_record_groups[layer], s->range_ready[layer],
+             s->prefix_coverage[layer]};
+    return true;
+}
+
 // Atomic all-layer bounded rewind. Two stage ping-pong groups retain every
 // prefix row needed after <=128 removals; removed suffix rows are masked by
 // range_counts and overwritten before a group is sealed again. Only the

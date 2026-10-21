@@ -4,12 +4,12 @@
 
 // RKVA v1 — remote KVarN attention wire protocol (host <-> Xbox Series X).
 // Little-endian x64 on both ends, one persistent TCP connection per context,
-// strict request/response ordering (the 16 full-attention layers are
-// sequential, so exactly one call is in flight at a time).
+// strict request/response ordering. Negotiated cohorts contain independent
+// layer/tile jobs; one complete wire transaction is in flight at a time.
 //
 // This header is duplicated verbatim on the Xbox side
 // (xllama uwp/dflash-rpc/remote-attn-protocol.h). Keep both in sync and
-// bump RKVA_VERSION on any wire change.
+// negotiate additive operations/capabilities; bump RKVA_VERSION on incompatible changes.
 
 static constexpr uint32_t RKVA_MAGIC = 0x41564B52; // "RKVA"
 static constexpr uint16_t RKVA_VERSION = 2;
@@ -25,19 +25,20 @@ enum rkva_op : uint16_t {
     RKVA_TRIM = 7,         // remove positions >= pos0
     RKVA_REWIND = 8,       // alias of TRIM (speculative rollback)
     RKVA_PING = 9,
-    RKVA_GET_STATS = 10,             // response payload: UTF-8 JSON
-    RKVA_PROBE = 11,                 // kernel parity harness (diagnostics only)
-    RKVA_RANGE_CONFIG = 12,          // session-global origin/capacity, clears cached rows
-    RKVA_RANGE_UPLOAD = 13,          // per-layer append/replace rows, K then V
-    RKVA_KVARN_RANGE_CONFIG = 15,    // descriptor-qualified native KVarN4
-    RKVA_KVARN_RANGE_UPLOAD = 16,    // native record delta + complete stage/tail snapshot
-    RKVA_SNAPSHOT_SAVE = 17,         // atomic all-layer local-disk checkpoint
-    RKVA_SNAPSHOT_RESTORE = 18,      // validated all-layer local-disk restore
-    RKVA_RANGE_UPLOAD_ATTN = 19,     // last upload chunk plus attention in one round trip
-    RKVA_RANGE_PROFILE = 20,         // optional profiling/control, UTF-8 JSON response
-    RKVA_KVARN_RANGE_REWIND = 21,    // atomic bounded resident native rewind
-    RKVA_KVARN_RANGE_BULK_ATTN = 22, // ordered native upload/query segments, one reply
-    RKVA_RANGE_ATTN = 14,            // query-only F32, returns OUT F32 then LSE F32
+    RKVA_GET_STATS = 10,               // response payload: UTF-8 JSON
+    RKVA_PROBE = 11,                   // kernel parity harness (diagnostics only)
+    RKVA_RANGE_CONFIG = 12,            // session-global origin/capacity, clears cached rows
+    RKVA_RANGE_UPLOAD = 13,            // per-layer append/replace rows, K then V
+    RKVA_KVARN_RANGE_CONFIG = 15,      // descriptor-qualified native KVarN4
+    RKVA_KVARN_RANGE_UPLOAD = 16,      // native record delta + complete stage/tail snapshot
+    RKVA_SNAPSHOT_SAVE = 17,           // atomic all-layer local-disk checkpoint
+    RKVA_SNAPSHOT_RESTORE = 18,        // validated all-layer local-disk restore
+    RKVA_RANGE_UPLOAD_ATTN = 19,       // last upload chunk plus attention in one round trip
+    RKVA_RANGE_PROFILE = 20,           // optional profiling/control, UTF-8 JSON response
+    RKVA_KVARN_RANGE_REWIND = 21,      // atomic bounded resident native rewind
+    RKVA_KVARN_RANGE_BULK_ATTN = 22,   // ordered native upload/query segments, one reply
+    RKVA_KVARN_RANGE_COHORT_ATTN = 23, // 1..4 independent layers, ordered existing bulk bodies
+    RKVA_RANGE_ATTN = 14,              // query-only F32, returns OUT F32 then LSE F32
 };
 
 // Wire element types for Q/K/V/OUT payloads.
@@ -67,6 +68,8 @@ static constexpr uint64_t RKVA_CAP_KVARN_BULK_SPLITZIP = 1ull << 11;
 static constexpr uint64_t RKVA_CAP_KVARN_BULK_FP8_RNE = 1ull << 12;
 // Upload flag OMIT_STAGE is supported for serial-prefix overflow with an exact 128-row tail.
 static constexpr uint64_t RKVA_CAP_KVARN_COMPACT_STAGE = 1ull << 13;
+// Serial-prefix v3 only. Each cohort entry retains its own GPU submit/fence.
+static constexpr uint64_t RKVA_CAP_KVARN_COHORT_ATTN = 1ull << 14;
 static constexpr uint32_t RKVA_KVARN_UPLOAD_RESET = 1u;
 static constexpr uint32_t RKVA_KVARN_UPLOAD_OMIT_STAGE = 2u;
 static constexpr uint32_t RKVA_PROTO_NATIVE_REWIND_V2 = 1u << 16;
@@ -290,6 +293,24 @@ struct rkva_kvarn_range_bulk_segment {
     uint32_t upload_bytes, n_queries;
 };
 
+// Negotiated op23: outer layer_id must be zero and n_tokens == total_queries.
+// Header followed by entry_count interleaved [entry, old op22 body] pairs.
+// Entries name distinct layers in one session, have increasing nonzero tickets
+// and one shared nonzero epoch. All entries are admitted before any mutation.
+// Limits include the envelope: <=4 entries, <=256 queries, <=32 inner segments,
+// <=256 MiB request/reply. Existing op22 wire contracts are unchanged.
+// Success echoes this header and each entry, replacing body_bytes with the
+// old op22 OUT-then-LSE reply size. Errors contain no body; once execution has
+// started any failure poisons the session and closes the connection. No partial
+// completion, automatic retry, atomic rollback or shared-fence promise is made.
+struct rkva_kvarn_cohort_header {
+    uint32_t version, entry_count, total_queries, reserved;
+};
+struct rkva_kvarn_cohort_entry {
+    uint32_t layer, n_queries, body_bytes, reserved;
+    uint64_t ticket, epoch;
+};
+
 struct rkva_kvarn_range_upload {
     uint32_t live_count, record_begin, record_groups, flags;
     uint32_t append_begin, append_rows;
@@ -370,6 +391,8 @@ static_assert(sizeof(rkva_range_attn) == 16, "RKVA range attention wire size");
 
 static_assert(sizeof(rkva_kvarn_range_config) == 72, "KVarN descriptor wire size");
 static_assert(sizeof(rkva_kvarn_range_upload) == 32, "KVarN upload wire size");
+static_assert(sizeof(rkva_kvarn_cohort_header) == 16, "KVarN cohort header wire size");
+static_assert(sizeof(rkva_kvarn_cohort_entry) == 32, "KVarN cohort entry wire size");
 static_assert(sizeof(rkva_kvarn_range_rewind) == 24, "KVarN rewind wire size");
 static_assert(sizeof(rkva_kvarn_layer_rewind) == 8, "KVarN rewind layer wire size");
 

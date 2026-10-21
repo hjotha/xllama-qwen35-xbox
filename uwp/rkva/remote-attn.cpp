@@ -15,6 +15,7 @@
 #include "remote-attn-protocol.h"
 #include "rkva-bulk-scratch.h"
 #include "rkva-kvarn-bulk.h"
+#include "rkva-kvarn-cohort.h"
 #include "rkva-range-profile.h"
 
 #ifndef NOMINMAX
@@ -184,6 +185,10 @@ struct remote_state {
     bool fp8_gpu_enabled = true;
     rpc_profile_counter rpc_profile[32]{};
     rkva_kvarn_bulk::Scratch bulk_scratch;
+    std::vector<uint8_t> cohort_entry_reply;
+    bool close_after_response = false;
+    uint64_t cohort_calls = 0, cohort_entries = 0, cohort_rejected = 0, cohort_failed = 0;
+    uint64_t cohort_admission_us = 0;
     uint64_t bulk_scratch_prepare_us = 0, bulk_engine_us = 0, bulk_output_transcode_us = 0;
     std::array<bulk_dispatch_sample, 256> bulk_dispatch_ring{};
     std::array<size_t, 2> bulk_dispatch_next{}, bulk_dispatch_stored{};
@@ -250,7 +255,13 @@ std::string rpc_profile_json(const remote_state& state) {
                       ",\"output_transcode_us\":" + std::to_string(b.transcode_us) + "}";
         }
     }
-    return text + "],\"bulk_dispatch_phases\":" + phases + ",\"bulk_dispatch_recent\":" + recent +
+    text += "],\"cohort\":{\"calls\":" + std::to_string(state.cohort_calls) +
+            ",\"entries\":" + std::to_string(state.cohort_entries) +
+            ",\"rejected_before_execution\":" + std::to_string(state.cohort_rejected) +
+            ",\"execution_failures\":" + std::to_string(state.cohort_failed) +
+            ",\"admission_us\":" + std::to_string(state.cohort_admission_us) +
+            ",\"shared_fence\":false}";
+    return text + ",\"bulk_dispatch_phases\":" + phases + ",\"bulk_dispatch_recent\":" + recent +
            "],\"bulk_scratch\":" + state.bulk_scratch.json() +
            ",\"bulk_dispatch_us\":{\"scratch_prepare\":" +
            std::to_string(state.bulk_scratch_prepare_us) +
@@ -270,7 +281,120 @@ constexpr uint32_t supported_ops_mask() {
            (1u << RKVA_KVARN_RANGE_CONFIG) | (1u << RKVA_KVARN_RANGE_UPLOAD) |
            (1u << RKVA_SNAPSHOT_SAVE) | (1u << RKVA_SNAPSHOT_RESTORE) |
            (1u << RKVA_RANGE_UPLOAD_ATTN) | (1u << RKVA_RANGE_PROFILE) |
-           (1u << RKVA_KVARN_RANGE_BULK_ATTN) | (1u << RKVA_KVARN_RANGE_REWIND);
+           (1u << RKVA_KVARN_RANGE_BULK_ATTN) | (1u << RKVA_KVARN_RANGE_REWIND) |
+           (1u << RKVA_KVARN_RANGE_COHORT_ATTN);
+}
+
+// Caller holds state.mutex. Cohorts reuse this exact one-layer execution path;
+// every invocation retains the existing command submission and fence lifetime.
+int run_native_bulk_locked(remote_state& state, const rkva_request& req, const uint8_t* input,
+                           size_t input_bytes, std::vector<uint8_t>& output, uint64_t& prepare_us,
+                           uint64_t& compute_us) {
+    const auto t0 = clock_type::now();
+    if (req.version != RKVA_VERSION || !state.native_serial_prefix_v3_client || !req.n_tokens ||
+        req.n_tokens > 256 || req.layer_id >= state.geo.n_layer_remote)
+        return RKVA_ERR_BAD_PAYLOAD;
+    auto it = state.sessions.find(req.session_id);
+    if (it == state.sessions.end() || !it->second.range_configured ||
+        it->second.range_storage != RKVA_RANGE_STORAGE_KVARN4 || !state.engine ||
+        !state.engine_f16 || !it->second.valid)
+        return RKVA_ERR_BAD_SESSION;
+    uint32_t wire = RKVA_WIRE_F32;
+    if (!rkva_kvarn_bulk::peek_wire(input, input_bytes, &wire))
+        return RKVA_ERR_BAD_PAYLOAD;
+    const bool wire_f16 = (wire == RKVA_WIRE_F16);
+    const bool wire_fp8 = (wire == RKVA_WIRE_FP8);
+    const bool wire_sz = (wire == RKVA_WIRE_SPLITZIP);
+    const uint64_t heads = uint64_t(req.n_tokens) * state.geo.n_head;
+    const uint64_t total_elems = heads * state.geo.head_dim;
+    const uint64_t out_bytes = total_elems * (wire_fp8                ? 1ull
+                                              : (wire_f16 || wire_sz) ? 2ull
+                                                                      : 4ull);
+    // Include cold optional PSO setup in preparation, not an unreported gap.
+    const auto t_scratch = state.profile_enabled ? clock_type::now() : clock_type::time_point{};
+    const bool gpu_fp8 =
+        wire_fp8 && state.fp8_gpu_enabled && state.engine->ensure_bulk_fp8_gpu_pipelines();
+    rkva_kvarn_bulk::ScratchCall scratch_call(state.bulk_scratch, req.n_tokens, wire);
+    auto& temp_out_f16 = state.bulk_scratch.output_f16;
+    auto& temp_lse = state.bulk_scratch.lse;
+    if ((wire_fp8 && !gpu_fp8) || wire_sz) {
+        temp_out_f16.resize(total_elems);
+        temp_lse.resize(heads);
+    } else {
+        output.resize(out_bytes + heads * 4);
+    }
+    std::string error;
+    bulk_dispatch_sample dispatch;
+    dispatch.cycle_id = req.cycle_id;
+    dispatch.session = req.session_id;
+    dispatch.layer = req.layer_id;
+    dispatch.nq = req.n_tokens;
+    dispatch.wire = wire;
+    if (state.profile_enabled) {
+        dispatch.scratch_us = elapsed_us(t_scratch);
+        state.bulk_scratch_prepare_us += dispatch.scratch_us;
+    }
+    const auto start = clock_type::now();
+    const bool ok =
+        gpu_fp8 ? state.engine->attend_kvarn_bulk_fp8(
+                      req.session_id, req.layer_id, req.n_tokens, input, input_bytes, output.data(),
+                      reinterpret_cast<float*>(output.data() + out_bytes), &error, req.cycle_id)
+        : (wire_f16 || wire_fp8 || wire_sz)
+            ? state.engine->attend_kvarn_bulk_f16(
+                  req.session_id, req.layer_id, req.n_tokens, input, input_bytes,
+                  (wire_fp8 || wire_sz) ? temp_out_f16.data()
+                                        : reinterpret_cast<uint16_t*>(output.data()),
+                  (wire_fp8 || wire_sz) ? temp_lse.data()
+                                        : reinterpret_cast<float*>(output.data() + out_bytes),
+                  &error, req.cycle_id)
+            : state.engine->attend_kvarn_bulk(req.session_id, req.layer_id, req.n_tokens, input,
+                                              input_bytes, reinterpret_cast<float*>(output.data()),
+                                              reinterpret_cast<float*>(output.data() + out_bytes),
+                                              &error, req.cycle_id);
+    if (state.profile_enabled) {
+        dispatch.engine_us = elapsed_us(start);
+        state.bulk_engine_us += dispatch.engine_us;
+    }
+    const auto t_transcode = state.profile_enabled ? clock_type::now() : clock_type::time_point{};
+    if (!ok) {
+        output.clear();
+        event_engine_error(error);
+        return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU : RKVA_ERR_BAD_PAYLOAD;
+    }
+    if (wire_fp8 && !gpu_fp8) {
+        output.resize(total_elems + heads * sizeof(float));
+        uint8_t* dst_fp8 = output.data();
+        for (size_t e = 0; e < total_elems; ++e) {
+            dst_fp8[e] = rkva_kvarn_bulk::f16_to_fp8_bits(temp_out_f16[e]);
+        }
+        std::memcpy(output.data() + total_elems, temp_lse.data(), heads * sizeof(float));
+    } else if (wire_sz) {
+        const uint64_t f16_bytes = total_elems * sizeof(uint16_t);
+        output.resize(f16_bytes + heads * sizeof(float));
+        std::vector<uint8_t> sz_out;
+        rkva_kvarn_bulk::splitzip_encode(temp_out_f16.data(), temp_out_f16.size(), sz_out);
+        if (sz_out.size() <= f16_bytes) {
+            std::memcpy(output.data(), sz_out.data(), sz_out.size());
+            if (sz_out.size() < f16_bytes) {
+                std::memset(output.data() + sz_out.size(), 0, f16_bytes - sz_out.size());
+            }
+        } else {
+            std::memcpy(output.data(), temp_out_f16.data(), f16_bytes);
+        }
+        std::memcpy(output.data() + f16_bytes, temp_lse.data(), heads * sizeof(float));
+    }
+    if (state.profile_enabled) {
+        dispatch.transcode_us = elapsed_us(t_transcode);
+        state.bulk_output_transcode_us += dispatch.transcode_us;
+        const unsigned phase = req.n_tokens == 1 ? 0 : 1;
+        state.bulk_dispatch_ring[phase * 128 + state.bulk_dispatch_next[phase]] = dispatch;
+        state.bulk_dispatch_next[phase] = (state.bulk_dispatch_next[phase] + 1) % 128;
+        state.bulk_dispatch_stored[phase] =
+            std::min<size_t>(state.bulk_dispatch_stored[phase] + 1, 128);
+    }
+    compute_us = elapsed_us(start);
+    prepare_us = elapsed_us(t0);
+    return RKVA_OK;
 }
 
 int handle_request(remote_state& state, const rkva_request& req, const std::vector<uint8_t>& input,
@@ -305,6 +429,9 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         for (auto& counter : state.rpc_profile)
             counter = {};
         state.bulk_scratch.reset_counters();
+        state.close_after_response = false;
+        state.cohort_calls = state.cohort_entries = state.cohort_rejected = state.cohort_failed = 0;
+        state.cohort_admission_us = 0;
         state.bulk_scratch_prepare_us = state.bulk_engine_us = state.bulk_output_transcode_us = 0;
         state.bulk_dispatch_next = {};
         state.bulk_dispatch_stored = {};
@@ -357,7 +484,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                   (1u << RKVA_KVARN_RANGE_CONFIG) | (1u << RKVA_KVARN_RANGE_UPLOAD) |
                   (1u << RKVA_SNAPSHOT_SAVE) | (1u << RKVA_SNAPSHOT_RESTORE) |
                   (1u << RKVA_RANGE_UPLOAD_ATTN) | (1u << RKVA_RANGE_PROFILE) |
-                  (1u << RKVA_KVARN_RANGE_REWIND) | (1u << RKVA_KVARN_RANGE_BULK_ATTN));
+                  (1u << RKVA_KVARN_RANGE_REWIND) | (1u << RKVA_KVARN_RANGE_BULK_ATTN) |
+                  (1u << RKVA_KVARN_RANGE_COHORT_ATTN));
         }
         // Choose wire format: if host supports F16 wire (proto_flags bit 0), negotiate F16 for 2x
         // bandwidth savings
@@ -373,12 +501,15 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 state.engine->native_serial_prefix_available())
                 ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX | RKVA_CAP_KVARN_BULK_ATTN |
                                    RKVA_CAP_KVARN_BULK_F16 | RKVA_CAP_KVARN_BULK_FP8 |
-                                   RKVA_CAP_KVARN_BULK_FP8_RNE | RKVA_CAP_KVARN_COMPACT_STAGE;
+                                   RKVA_CAP_KVARN_BULK_FP8_RNE | RKVA_CAP_KVARN_COMPACT_STAGE |
+                                   RKVA_CAP_KVARN_COHORT_ATTN;
         }
+        if (!(ack.reserved[0] & RKVA_CAP_KVARN_COHORT_ATTN))
+            ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_COHORT_ATTN);
         if (!state.native_rewind_v2_client)
             ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_REWIND);
         ack.max_sessions = 64;
-        ack.server_version = 278; // bumped with the UWP package
+        ack.server_version = 279; // bumped with the UWP package
         // ~5 GiB game heap; leave headroom for the D3D12 runtime + buffers.
         ack.mem_budget_bytes = 4ull * 1024 * 1024 * 1024;
         output.resize(sizeof(ack));
@@ -719,114 +850,102 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
         prepare_us = elapsed_us(t0);
         return RKVA_OK;
     }
-    case RKVA_KVARN_RANGE_BULK_ATTN: {
-        if (req.version != RKVA_VERSION || !state.native_serial_prefix_v3_client || !req.n_tokens ||
-            req.n_tokens > 256 || req.layer_id >= state.geo.n_layer_remote)
+    case RKVA_KVARN_RANGE_BULK_ATTN:
+        return run_native_bulk_locked(state, req, input.data(), input.size(), output, prepare_us,
+                                      compute_us);
+    case RKVA_KVARN_RANGE_COHORT_ATTN: {
+        if (req.version != RKVA_VERSION || !state.native_serial_prefix_v3_client || req.layer_id ||
+            input.size() != req.payload_bytes || !state.engine ||
+            !state.engine->native_serial_prefix_available())
             return RKVA_ERR_BAD_PAYLOAD;
         auto it = state.sessions.find(req.session_id);
         if (it == state.sessions.end() || !it->second.range_configured ||
-            it->second.range_storage != RKVA_RANGE_STORAGE_KVARN4 || !state.engine ||
-            !state.engine_f16 || !it->second.valid)
+            it->second.range_storage != RKVA_RANGE_STORAGE_KVARN4 || !it->second.valid ||
+            !state.engine_f16 || state.geo.head_dim != 256)
             return RKVA_ERR_BAD_SESSION;
-        uint32_t wire = RKVA_WIRE_F32;
-        if (!rkva_kvarn_bulk::peek_wire(input.data(), input.size(), &wire))
-            return RKVA_ERR_BAD_PAYLOAD;
-        const bool wire_f16 = (wire == RKVA_WIRE_F16);
-        const bool wire_fp8 = (wire == RKVA_WIRE_FP8);
-        const bool wire_sz = (wire == RKVA_WIRE_SPLITZIP);
-        const uint64_t heads = uint64_t(req.n_tokens) * state.geo.n_head;
-        const uint64_t total_elems = heads * state.geo.head_dim;
-        const uint64_t out_bytes = total_elems * (wire_fp8                ? 1ull
-                                                  : (wire_f16 || wire_sz) ? 2ull
-                                                                          : 4ull);
-        // Include cold optional PSO setup in preparation, not an unreported gap.
-        const auto t_scratch = state.profile_enabled ? clock_type::now() : clock_type::time_point{};
-        const bool gpu_fp8 =
-            wire_fp8 && state.fp8_gpu_enabled && state.engine->ensure_bulk_fp8_gpu_pipelines();
-        rkva_kvarn_bulk::ScratchCall scratch_call(state.bulk_scratch, req.n_tokens, wire);
-        auto& temp_out_f16 = state.bulk_scratch.output_f16;
-        auto& temp_lse = state.bulk_scratch.lse;
-        if ((wire_fp8 && !gpu_fp8) || wire_sz) {
-            temp_out_f16.resize(total_elems);
-            temp_lse.resize(heads);
-        } else {
-            output.resize(out_bytes + heads * 4);
-        }
-        std::string error;
-        bulk_dispatch_sample dispatch;
-        dispatch.cycle_id = req.cycle_id;
-        dispatch.session = req.session_id;
-        dispatch.layer = req.layer_id;
-        dispatch.nq = req.n_tokens;
-        dispatch.wire = wire;
-        if (state.profile_enabled) {
-            dispatch.scratch_us = elapsed_us(t_scratch);
-            state.bulk_scratch_prepare_us += dispatch.scratch_us;
-        }
-        const auto start = clock_type::now();
-        const bool ok =
-            gpu_fp8 ? state.engine->attend_kvarn_bulk_fp8(
-                          req.session_id, req.layer_id, req.n_tokens, input.data(), input.size(),
-                          output.data(), reinterpret_cast<float*>(output.data() + out_bytes),
-                          &error, req.cycle_id)
-            : (wire_f16 || wire_fp8 || wire_sz)
-                ? state.engine->attend_kvarn_bulk_f16(
-                      req.session_id, req.layer_id, req.n_tokens, input.data(), input.size(),
-                      (wire_fp8 || wire_sz) ? temp_out_f16.data()
-                                            : reinterpret_cast<uint16_t*>(output.data()),
-                      (wire_fp8 || wire_sz) ? temp_lse.data()
-                                            : reinterpret_cast<float*>(output.data() + out_bytes),
-                      &error, req.cycle_id)
-                : state.engine->attend_kvarn_bulk(
-                      req.session_id, req.layer_id, req.n_tokens, input.data(), input.size(),
-                      reinterpret_cast<float*>(output.data()),
-                      reinterpret_cast<float*>(output.data() + out_bytes), &error, req.cycle_id);
-        if (state.profile_enabled) {
-            dispatch.engine_us = elapsed_us(start);
-            state.bulk_engine_us += dispatch.engine_us;
-        }
-        const auto t_transcode =
-            state.profile_enabled ? clock_type::now() : clock_type::time_point{};
-        if (!ok) {
+        rkva_kvarn_cohort::Plan plan;
+        const auto admission_start = clock_type::now();
+        bool execution_started = false;
+        const auto failure = [&](int status) {
             output.clear();
-            event_engine_error(error);
-            return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
-                                                                 : RKVA_ERR_BAD_PAYLOAD;
-        }
-        if (wire_fp8 && !gpu_fp8) {
-            output.resize(total_elems + heads * sizeof(float));
-            uint8_t* dst_fp8 = output.data();
-            for (size_t e = 0; e < total_elems; ++e) {
-                dst_fp8[e] = rkva_kvarn_bulk::f16_to_fp8_bits(temp_out_f16[e]);
+            if (execution_started) {
+                it->second.valid = false;
+                state.close_after_response = true;
+                ++state.cohort_failed;
             }
-            std::memcpy(output.data() + total_elems, temp_lse.data(), heads * sizeof(float));
-        } else if (wire_sz) {
-            const uint64_t f16_bytes = total_elems * sizeof(uint16_t);
-            output.resize(f16_bytes + heads * sizeof(float));
-            std::vector<uint8_t> sz_out;
-            rkva_kvarn_bulk::splitzip_encode(temp_out_f16.data(), temp_out_f16.size(), sz_out);
-            if (sz_out.size() <= f16_bytes) {
-                std::memcpy(output.data(), sz_out.data(), sz_out.size());
-                if (sz_out.size() < f16_bytes) {
-                    std::memset(output.data() + sz_out.size(), 0, f16_bytes - sz_out.size());
+            prepare_us = elapsed_us(t0);
+            return status;
+        };
+        try {
+            const auto snapshot = [&](uint32_t layer, rkva_kvarn_range_config& descriptor,
+                                      rkva_kvarn_cohort::LayerState& resident) {
+                return state.engine->native_range_layer_state(req.session_id, layer, descriptor,
+                                                              resident);
+            };
+            if (!rkva_kvarn_cohort::validate(input.data(), input.size(), req.n_tokens,
+                                             state.geo.n_layer_remote, state.geo.n_head,
+                                             state.geo.n_head_kv,
+                                             state.engine->native_range_generation(req.session_id),
+                                             snapshot, plan, state.bulk_scratch.segments)) {
+                ++state.cohort_rejected;
+                return RKVA_ERR_BAD_PAYLOAD;
+            }
+            if (state.profile_enabled)
+                state.cohort_admission_us += elapsed_us(admission_start);
+            // Allocate the complete reply before the first mutation. The serial
+            // entry scratch grows once to the largest body and survives calls.
+            output.resize(plan.reply_bytes);
+            size_t largest_reply = 0;
+            for (uint32_t i = 0; i < plan.header.entry_count; ++i)
+                largest_reply = std::max<size_t>(largest_reply, plan.entries[i].reply_bytes);
+            state.cohort_entry_reply.reserve(largest_reply);
+            std::memcpy(output.data(), &plan.header, sizeof(plan.header));
+            size_t cursor = sizeof(plan.header);
+            for (uint32_t i = 0; i < plan.header.entry_count; ++i) {
+                const auto& e = plan.entries[i];
+                rkva_request entry_req = req;
+                entry_req.op = RKVA_KVARN_RANGE_BULK_ATTN;
+                entry_req.layer_id = e.wire.layer;
+                entry_req.n_tokens = e.wire.n_queries;
+                entry_req.payload_bytes = e.wire.body_bytes;
+                uint64_t entry_prepare_us = 0, entry_compute_us = 0;
+                state.cohort_entry_reply.clear();
+                // Treat every execution failure as possibly mutated, including
+                // the first entry. No prefix ACK or completion may escape.
+                execution_started = true;
+                const int rc = run_native_bulk_locked(
+                    state, entry_req, input.data() + e.body_offset, e.wire.body_bytes,
+                    state.cohort_entry_reply, entry_prepare_us, entry_compute_us);
+                compute_us += entry_compute_us;
+                if (rc != RKVA_OK ||
+                    state.engine->native_range_generation(req.session_id) != e.generation_after ||
+                    !rkva_kvarn_cohort::valid_reply(e, state.cohort_entry_reply.data(),
+                                                    state.cohort_entry_reply.size(),
+                                                    state.geo.n_head)) {
+                    return failure(RKVA_ERR_GPU);
                 }
-            } else {
-                std::memcpy(output.data(), temp_out_f16.data(), f16_bytes);
+                auto reply_entry = e.wire;
+                reply_entry.body_bytes = e.reply_bytes;
+                std::memcpy(output.data() + cursor, &reply_entry, sizeof(reply_entry));
+                cursor += sizeof(reply_entry);
+                std::memcpy(output.data() + cursor, state.cohort_entry_reply.data(), e.reply_bytes);
+                cursor += e.reply_bytes;
             }
-            std::memcpy(output.data() + f16_bytes, temp_lse.data(), heads * sizeof(float));
+            ++state.cohort_calls;
+            state.cohort_entries += plan.header.entry_count;
+            prepare_us = elapsed_us(t0); // inclusive of each entry's existing fence
+            return RKVA_OK;
+        } catch (const std::exception& error) {
+            const int status = failure(execution_started ? RKVA_ERR_GPU : RKVA_ERR_MEMORY);
+            try {
+                event_engine_error(error.what());
+            } catch (...) {
+                // Poison/close was published before best-effort logging.
+            }
+            return status;
+        } catch (...) {
+            return failure(execution_started ? RKVA_ERR_GPU : RKVA_ERR_MEMORY);
         }
-        if (state.profile_enabled) {
-            dispatch.transcode_us = elapsed_us(t_transcode);
-            state.bulk_output_transcode_us += dispatch.transcode_us;
-            const unsigned phase = req.n_tokens == 1 ? 0 : 1;
-            state.bulk_dispatch_ring[phase * 128 + state.bulk_dispatch_next[phase]] = dispatch;
-            state.bulk_dispatch_next[phase] = (state.bulk_dispatch_next[phase] + 1) % 128;
-            state.bulk_dispatch_stored[phase] =
-                std::min<size_t>(state.bulk_dispatch_stored[phase] + 1, 128);
-        }
-        compute_us = elapsed_us(start);
-        prepare_us = elapsed_us(t0);
-        return RKVA_OK;
     }
     case RKVA_RANGE_ATTN: {
         if (input.size() < sizeof(rkva_range_attn)) {
@@ -919,6 +1038,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 for (auto& counter : state.rpc_profile)
                     counter = {};
                 state.bulk_scratch.reset_counters();
+                state.cohort_calls = state.cohort_entries = state.cohort_rejected =
+                    state.cohort_failed = state.cohort_admission_us = 0;
                 state.bulk_scratch_prepare_us = state.bulk_engine_us =
                     state.bulk_output_transcode_us = 0;
                 state.bulk_dispatch_next = {};
@@ -1113,6 +1234,11 @@ void client_loop(SOCKET sock, remote_state& state, const std::string& log_path) 
             break;
         }
         previous_response_us = elapsed_us(response_start);
+        if (state.close_after_response) {
+            event(log_path, "{\"phase\":\"cohort_failure\",\"session_poisoned\":true,"
+                            "\"connection_closed\":true}");
+            break;
+        }
         if (state.profile_enabled && req.op != RKVA_RANGE_PROFILE && req.op < 32) {
             auto& counter = state.rpc_profile[req.op];
             ++counter.calls;
@@ -1217,6 +1343,7 @@ void serve_remote_attn(const std::string& local_folder) {
         {
             std::lock_guard<std::mutex> lock(state.mutex);
             state.hello_done = false;
+            state.close_after_response = false;
             state.sessions.clear();
             state.engine.reset(); // freed and re-created at the next HELLO
             state.engine_f16 = false;

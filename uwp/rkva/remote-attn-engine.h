@@ -24,6 +24,7 @@
 #include "rkva-bulk-fp8.h"
 #include "rkva-bulk-scratch.h"
 #include "rkva-execution-lifetime.h"
+#include "rkva-kvarn-cohort.h"
 #include <d3d12.h>
 #include <wrl/client.h>
 
@@ -116,6 +117,9 @@ class RemoteAttnEngine {
     bool upload_range(uint32_t session_id, uint32_t layer, uint32_t start_row, uint32_t n_rows,
                       const uint16_t* k, const uint16_t* v, std::string* error);
     uint64_t native_range_generation(uint32_t id) const;
+    // Serial-owner admission snapshot only; no GPU work, synchronization or mutation.
+    bool native_range_layer_state(uint32_t id, uint32_t layer, rkva_kvarn_range_config& descriptor,
+                                  rkva_kvarn_cohort::LayerState& state) const;
     bool rewind_kvarn_range(uint32_t id, const rkva_kvarn_range_rewind& request,
                             const uint8_t* data, size_t bytes, std::string* error);
     bool configure_kvarn_range(uint32_t id, const rkva_kvarn_range_config& config,

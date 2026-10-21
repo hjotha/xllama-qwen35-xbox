@@ -65,3 +65,16 @@ target_compile_definitions(xllama-tests PRIVATE
     PARITY_GOLDEN_BIN="${CMAKE_CURRENT_SOURCE_DIR}/golden/logits-smol-short.bin")
 
 add_test(NAME xllama-tests COMMAND xllama-tests)
+
+# Pure RKVA cohort admission; no D3D12, model or GPU dependency.
+add_executable(rkva_kvarn_cohort_cpu rkva_kvarn_cohort_cpu.cpp)
+target_compile_features(rkva_kvarn_cohort_cpu PRIVATE cxx_std_17)
+if(XLLAMA_ENABLE_ASAN)
+    target_compile_options(rkva_kvarn_cohort_cpu PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+    target_link_options(rkva_kvarn_cohort_cpu PRIVATE -fsanitize=address)
+endif()
+if(XLLAMA_ENABLE_UBSAN)
+    target_compile_options(rkva_kvarn_cohort_cpu PRIVATE -fsanitize=undefined)
+    target_link_options(rkva_kvarn_cohort_cpu PRIVATE -fsanitize=undefined)
+endif()
+add_test(NAME rkva_kvarn_cohort_cpu COMMAND rkva_kvarn_cohort_cpu)

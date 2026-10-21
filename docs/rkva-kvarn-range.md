@@ -245,3 +245,19 @@ F32-to-F16-to-FP8 and every finite-value gate; this is not a wire contract or
 capability change. The existing CPU conversion is the explicit fallback.
 Effective PSO counters, ablation flag and the bounded diagnostic codec probe
 are specified in [RKVA profiling](rkva-range-profiling.md#native-bulk-fp8-gpu-codec-test-package-278).
+
+## Experimental independent-layer cohorts (test package279)
+
+This feature branch adds negotiated `RKVA_KVARN_RANGE_COHORT_ATTN` (op23) with `RKVA_CAP_KVARN_COHORT_ATTN` (capability bit14), for serial-prefix revision3. It is an experimental transport extension; the real tiled host model has not passed its exact-logprob quality gate and this is not a production performance release.
+
+A cohort contains up to four ready entries for distinct layers in the same session. Each entry carries an existing op22body, and retains its ticket/epoch identity, descriptor, generation and FP8/F16numeric contract. Request and response layouts are declared in `uwp/rkva/remote-attn-protocol.h`; their versioned header and entry sizes are checked by the parser. A client must require the negotiated capability before submitting op23. Legacy op22clients retain their existing behavior.
+
+The server validates the entire cohort against immutable per-layer state before any entry mutates the session. Invalid admission leaves generation/state unchanged. Accepted entries execute in order through the existing bulk implementation, including its GPU fence for each entry. An uncertain execution failure invalidates the affected session/connection; a partially executed cohort is not a rollback transaction and must not be retried on an uncertain ordered stream.
+
+The host checks response identity, length, status and all numeric bodies before publishing member completions. Buffers remain owned until CPU/GPU retirement finishes. Control barriers drain the queue before trim/reset/reuse. A whole-cohort response does not permit early completion of its first member.
+
+Only independent temporal tiles can make different layers ready concurrently: Q for a later layer of the same tile still depends on the preceding attention/merge/FFN. With256parent tokens and16remote stages, observed scheduling counts are baseline16tasks/16envelopes, WF128/B1=32/32, WF128/B4=32/17 and WF64/B4=64/19. They are RKVA envelopes, not Ethernet packet counts or a16-to-4payload reduction.
+
+Pure parser tests live in `tests/rkva_kvarn_cohort_cpu.cpp`. The installed test package279passed legacy compatibility and physical cohort numeric/pre-admission checks. Five uninstrumented host A/B pairs did not demonstrate a repeatable small-query GPU decode improvement in both contexts. One-off WF64/B4screens were slower than WF128/B1, while K/V upload segment/row/byte totals were equal. Generated token IDs differ from the untiled run, and the two wavefront policies were not a factorial batching experiment.
+
+Detailed operator evidence remains archived outside Git under `/home/hjotha/build/rkva-next-20261021/`, including `reports/xbox279-gates.json` and `reports/r5e-wire-envelope-counters-v1/report.json`. No package homologation, MTP qualification, main integration or new FPS/TPS guarantee follows from this branch.
