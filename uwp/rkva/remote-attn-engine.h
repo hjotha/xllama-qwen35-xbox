@@ -21,6 +21,9 @@
 #endif
 
 #include "remote-attn-protocol.h"
+#include "rkva-bulk-fp8.h"
+#include "rkva-bulk-scratch.h"
+#include "rkva-execution-lifetime.h"
 #include <d3d12.h>
 #include <wrl/client.h>
 
@@ -32,7 +35,8 @@
 
 namespace rkva_rprof {
 struct Sample;
-}
+struct BulkEnvelopeSample;
+} // namespace rkva_rprof
 
 class RemoteAttnEngine {
   public:
@@ -64,6 +68,12 @@ class RemoteAttnEngine {
     // scratch buffers. Session KV resources are allocated per create_session.
     // A failed initialize never leaves the engine half-enabled.
     bool initialize(const Geometry& geo, std::string* error);
+    bool submission_unconfirmed() const {
+        return unconfirmed_submission_;
+    }
+    // Owner calls before destruction. Queries the existing fence/device only;
+    // never waits, submits a marker, CPU-signals a fence, or retries work.
+    bool confirm_execution_retired();
     bool ready() const {
         return ready_;
     }
@@ -113,9 +123,17 @@ class RemoteAttnEngine {
     bool upload_kvarn_range(uint32_t id, uint32_t layer, const rkva_kvarn_range_upload& upload,
                             const uint8_t* data, size_t bytes, std::string* error);
     bool attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
-                           size_t bytes, float* out, float* lse, std::string* error);
+                           size_t bytes, float* out, float* lse, std::string* error,
+                           uint64_t cycle_id = 0);
     bool attend_kvarn_bulk_f16(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
-                               size_t bytes, uint16_t* out_f16, float* lse, std::string* error);
+                               size_t bytes, uint16_t* out_f16, float* lse, std::string* error,
+                               uint64_t cycle_id = 0);
+    bool ensure_bulk_fp8_gpu_pipelines();
+    bool attend_kvarn_bulk_fp8(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
+                               size_t bytes, uint8_t* out_fp8, float* lse, std::string* error,
+                               uint64_t cycle_id = 0);
+    bool probe_bulk_fp8_pack(const uint8_t* data, size_t bytes, std::vector<uint8_t>& output,
+                             std::string* error);
     bool bulk_f16_gpu_available() const {
         return bool(bulk_unpack_q_f16_pso_) && bool(bulk_pack_out_f16_pso_);
     }
@@ -173,6 +191,10 @@ class RemoteAttnEngine {
     // F16/Q8_0/KVarN4 optimized pipelines; needs the Q4 opt prerequisites.
     void create_format_opt_pipelines();
     void create_bulk_f16_pipelines();
+    bool attend_kvarn_bulk_compact(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                   const uint8_t* data, size_t bytes, uint16_t* out_f16,
+                                   uint8_t* out_fp8, float* lse, std::string* error,
+                                   uint64_t cycle_id);
     bool ensure_profile_resources(std::string* error);
     void timestamp(uint32_t slot);
     void resolve_timestamps(uint32_t first, uint32_t count);
@@ -180,6 +202,7 @@ class RemoteAttnEngine {
     // Splits submit() into exec/fence spans, reads timestamps and records the sample.
     void finish_profile_sample(rkva_rprof::Sample& sample, bool timestamps, uint32_t first_slot,
                                uint32_t slot_count, uint32_t copy_regions, uint32_t dispatches);
+    void finish_bulk_profile(rkva_rprof::BulkEnvelopeSample& envelope, bool timestamps);
     void transition(Buffer& buffer, D3D12_RESOURCE_STATES state);
     void uav_barrier(Buffer& buffer);
     bool begin(std::string* error);
@@ -298,12 +321,16 @@ class RemoteAttnEngine {
         Buffer query_f16_upload, query_f32_default, packed_out_f16;
     };
     std::vector<BulkTransfer> bulk_transfers_;
+    rkva_kvarn_bulk::Scratch bulk_scratch_;
     bool bulk_recording_ = false;
     bool bulk_gpu_query_ = false;
     Buffer bulk_f16_stage_out_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> bulk_unpack_q_f16_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> bulk_pack_out_f16_pso_;
     std::string bulk_f16_status_ = "not initialized";
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> bulk_unpack_q_fp8_pso_, bulk_pack_out_fp8_pso_;
+    std::string bulk_fp8_status_ = "not initialized";
+    Buffer bulk_probe_upload_, bulk_probe_packed_, bulk_probe_readback_;
     Buffer range_upload_;
     Buffer range_query_;
     Buffer range_partials_;

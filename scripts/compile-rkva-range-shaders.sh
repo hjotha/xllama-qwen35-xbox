@@ -9,7 +9,7 @@ DXC="${DXC:-dxc}"
 ALL_TARGETS=(attn attn_q4 attn_q8 attn_kvarn4 reduce attn_q4_opt reduce_opt reduce_kvarn4
     attn_f16_opt attn_q8_opt attn_kvarn4_opt attn_kvarn4_prefix attn_kvarn4_opt_prefix
     attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4
-    attn_kvarn4_mq2 attn_kvarn4_mq4 bulk_unpack_q_f16 bulk_pack_out_f16 attn_kvarn4_decode_prefix)
+    attn_kvarn4_mq2 attn_kvarn4_mq4 bulk_unpack_q_f16 bulk_pack_out_f16 bulk_unpack_q_fp8 bulk_pack_out_fp8 attn_kvarn4_decode_prefix)
 if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
@@ -108,6 +108,16 @@ for target in "${TARGETS[@]}"; do
     fi
     if [[ "$target" == bulk_pack_out_f16 ]]; then
         entry=CSBulkPackOutF16
+        source="$ROOT/shaders/rkva/rkva_range_bulk_f16.hlsl"
+        defines=()
+    fi
+    if [[ "$target" == bulk_unpack_q_fp8 ]]; then
+        entry=CSBulkUnpackQFP8
+        source="$ROOT/shaders/rkva/rkva_range_bulk_f16.hlsl"
+        defines=()
+    fi
+    if [[ "$target" == bulk_pack_out_fp8 ]]; then
+        entry=CSBulkPackOutFP8
         source="$ROOT/shaders/rkva/rkva_range_bulk_f16.hlsl"
         defines=()
     fi

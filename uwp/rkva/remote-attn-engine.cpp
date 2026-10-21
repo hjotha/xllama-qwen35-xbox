@@ -47,8 +47,8 @@
 #include "rkva_range_attn_q8_mq4_dxil.h"
 #include "rkva_range_attn_q8_opt_dxil.h"
 #include "rkva_range_reduce_dxil.h"
-#include "rkva_range_reduce_opt_dxil.h"
 #include "rkva_range_reduce_kvarn4_dxil.h"
+#include "rkva_range_reduce_opt_dxil.h"
 #include "rkva_store_f16_dxil.h"
 #include "rkva_store_kvarn4_dxil.h"
 #include "rkva_wht_dxil.h"
@@ -74,6 +74,7 @@ static const size_t kRkvaFlashAttnSplitKReduceDxilSize =
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <exception>
 #include <limits>
 #include <new>
 
@@ -142,10 +143,11 @@ struct FailedCallGuard {
 // Timestamp slots layout per set. Non-bulk uses slots 0..5.
 // Bulk uses:
 //   Slot 0: envelope begin
-//   Segments 0..31: 6 slots each starting at slot 1 + i * 6:
-//     upload_begin, upload_end, attn_begin, attn_pass1, attn_reduce, attn_copy
-//   Slot 1 + segment_count * 6: envelope end
-// Total max slots for 32 segments: 2 + 32 * 6 = 194 <= 256.
+//   Segments 0..31: 8 slots each starting at slot 1 + i * 8:
+//     upload_begin, upload_end, attn_begin, attn_pass1, attn_reduce, attn_end,
+//     pack_end, copy_end. upload_end..attn_begin includes bulk unpack/WHT.
+//   Slot 1 + segment_count * 8: envelope end
+// Total max slots for 32 segments: 2 + 32 * 8 = 258 <= 512.
 constexpr uint32_t kTsUploadBegin = 0;
 constexpr uint32_t kTsUploadEnd = 1;
 constexpr uint32_t kTsAttnBegin = 2;
@@ -160,10 +162,12 @@ constexpr uint32_t kTsBulkAttnBegin = 2;
 constexpr uint32_t kTsBulkAttnPass1 = 3;
 constexpr uint32_t kTsBulkAttnReduce = 4;
 constexpr uint32_t kTsBulkAttnCopy = 5;
-constexpr uint32_t kTsBulkSlotsPerSegment = 6;
+constexpr uint32_t kTsBulkPackEnd = 6;
+constexpr uint32_t kTsBulkCopyEnd = 7;
+constexpr uint32_t kTsBulkSlotsPerSegment = 8;
 constexpr uint32_t kTsBulkMaxSegments = 32;
 
-constexpr uint32_t kTsPerSet = 256;
+constexpr uint32_t kTsPerSet = 512;
 constexpr uint32_t kTsSets = 4;
 
 struct BulkSegmentProfile {
@@ -243,7 +247,32 @@ struct RemoteAttnEngine::Session {
 
 RemoteAttnEngine::RemoteAttnEngine() = default;
 
+bool RemoteAttnEngine::confirm_execution_retired() {
+    if (!unconfirmed_submission_)
+        return true; // normal path: no extra D3D call
+    rkva_execution_lifetime::Snapshot snapshot;
+    snapshot.unconfirmed = true;
+    snapshot.has_fence = bool(fence_);
+    snapshot.has_device = bool(device_);
+    snapshot.submitted = fence_value_;
+    if (fence_)
+        snapshot.completed = fence_->GetCompletedValue();
+    if (device_)
+        snapshot.device_removed = FAILED(device_->GetDeviceRemovedReason());
+    if (!rkva_execution_lifetime::releasable(snapshot))
+        return false;
+    unconfirmed_submission_ = false;
+    return true;
+}
+
 RemoteAttnEngine::~RemoteAttnEngine() {
+    // The serial listener owner must retain an uncertain engine BEFORE delete.
+    // A destructor cannot cancel deletion. If another caller violates ownership,
+    // fail fast before any event/COM/resource member is released.
+    if (!confirm_execution_retired()) {
+        OutputDebugStringA("RKVA invariant: destroying engine with unconfirmed GPU work\n");
+        std::terminate();
+    }
     if (fence_event_) {
         CloseHandle(fence_event_);
         fence_event_ = nullptr;
@@ -354,6 +383,10 @@ bool RemoteAttnEngine::submit(std::string* error) {
     if (FAILED(hr)) {
         return fail(error, "CommandList Close", hr);
     }
+    if (fence_value_ >= UINT64_MAX - 1) {
+        terminal_failure_ = true;
+        return fail(error, "GPU fence value exhausted");
+    }
     ID3D12CommandList* lists[] = {cmd_.Get()};
     queue_->ExecuteCommandLists(1, lists);
     unconfirmed_submission_ = true;
@@ -382,12 +415,21 @@ bool RemoteAttnEngine::submit(std::string* error) {
             return fail(error, "GPU fence wait failed");
         }
     }
-    if (fence_->GetCompletedValue() < value) {
+    const uint64_t completed = fence_->GetCompletedValue();
+    hr = device_->GetDeviceRemovedReason();
+    if (completed == UINT64_MAX) {
         terminal_failure_ = true;
-        return fail(error, "GPU execution did not complete", device_->GetDeviceRemovedReason());
+        // MAX is device-removal, never an ordinary completed fence value.
+        // Release is safe only when the device independently confirms removal.
+        if (FAILED(hr))
+            unconfirmed_submission_ = false;
+        return fail(error, "GPU fence device-removal sentinel", hr);
+    }
+    if (completed < value) {
+        terminal_failure_ = true;
+        return fail(error, "GPU execution did not complete", hr);
     }
     unconfirmed_submission_ = false;
-    hr = device_->GetDeviceRemovedReason();
     if (FAILED(hr)) {
         terminal_failure_ = true;
         return fail(error, "D3D12 device removed", hr);
@@ -1088,6 +1130,7 @@ bool RemoteAttnEngine::set_range_profiling(bool enabled, bool reset, uint32_t q4
     }
     if (reset) {
         profile_->recorder.reset();
+        bulk_scratch_.reset_counters();
     }
     profiling_ = enabled;
     q4_kernel_mode_ = q4_kernel_mode;
@@ -1200,10 +1243,12 @@ std::string RemoteAttnEngine::get_range_profile_json() {
                                                     " optimized pipeline: " + fmt_opt_status_[st];
         }
     }
-    if (!profile_) {
-        return rp::Recorder().json(header);
-    }
-    return profile_->recorder.json(header);
+    std::string json = profile_ ? profile_->recorder.json(header) : rp::Recorder().json(header);
+    json.pop_back();
+    return json + ",\"bulk_scratch\":" + bulk_scratch_.json() +
+           ",\"bulk_fp8_gpu\":{\"available\":" +
+           (bulk_unpack_q_fp8_pso_ && bulk_pack_out_fp8_pso_ ? "true" : "false") +
+           ",\"status\":\"" + rp::json_escape(bulk_fp8_status_) + "\"}}";
 }
 
 bool RemoteAttnEngine::initialize(const Geometry& geo, std::string* error) {
@@ -1307,6 +1352,8 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
 }
 
 bool RemoteAttnEngine::destroy_session(uint32_t session_id) {
+    if (unconfirmed_submission_ || bulk_recording_)
+        return false;
     for (auto it = sessions_.begin(); it != sessions_.end(); ++it) {
         if (*it && (*it)->id == session_id) {
             allocated_bytes_ -= (*it)->kv_bytes;
@@ -1328,6 +1375,8 @@ bool RemoteAttnEngine::session_invalid(uint32_t session_id) const {
 }
 
 bool RemoteAttnEngine::reset_session(uint32_t session_id, std::string* error) {
+    if (unconfirmed_submission_ || bulk_recording_)
+        return ::fail(error, "reset: GPU execution unconfirmed/recording");
     Session* s = find_session(session_id);
     if (!s) {
         return fail(error, "reset: no session");
@@ -1923,8 +1972,10 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     Session* s = find_session(id);
     if (!ready_ || !s || !rkva_kvarn_generation_mutable(s->native_generation) || !s->valid ||
         !s->range_configured || s->range_storage != 3 || layer >= s->layer_kv.size() || !data ||
-        !rkva_kvarn_range::valid_upload(u, s->capacity, s->range_counts[layer],
-                                        s->range_record_groups[layer], s->range_ready[layer])) {
+        !rkva_kvarn_range::valid_upload(
+            u, s->capacity, s->range_counts[layer], s->range_record_groups[layer],
+            s->range_ready[layer],
+            rkva_kvarn_range::compact_stage_supported(s->range_descriptor))) {
         return ::fail(error, "KVarN range upload: invalid descriptor/coverage/snapshot");
     }
     const uint64_t record_group_bytes = uint64_t(geo_.n_head_kv) * 2 * 8960;
@@ -1932,7 +1983,7 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     const bool reset = (u.flags & 1) != 0;
     const bool prefix = rkva_kvarn_range::serial_prefix(s->range_descriptor);
     const uint64_t row_bytes = uint64_t(geo_.n_head_kv) * 256 * 2;
-    const uint32_t stage_rows = reset ? 384 : u.append_rows;
+    const uint32_t stage_rows = rkva_kvarn_range::upload_stage_rows(u);
     const uint32_t tail_rows =
         s->precision_tail_tokens
             ? (reset ? std::min(u.live_count, s->precision_tail_tokens) : u.append_rows)
@@ -1985,7 +2036,7 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
     for (uint32_t kind = 0; kind < 2; ++kind) {
         const uint64_t plane = kind * s->half_stride;
         const uint64_t stage_source = 2 * rec_bytes + kind * stage_payload;
-        if (reset) {
+        if (reset && stage_payload) {
             cmd_->CopyBufferRegion(dst.resource.Get(), plane + s->records_bytes,
                                    range_upload_.resource.Get(), stage_source, stage_payload);
         } else {
@@ -2161,13 +2212,171 @@ bool RemoteAttnEngine::ensure_range_scratch(uint32_t n_tokens, std::string* erro
     return true;
 }
 
+// Both F32 and F16/FP8 bulk paths retire timestamp readback after their existing
+// single submit/fence. This helper never submits or waits for GPU work.
+void RemoteAttnEngine::finish_bulk_profile(rp::BulkEnvelopeSample& envelope, bool timestamps) {
+    const prof_clock::time_point t_overhead_start = prof_clock::now();
+    const uint32_t total_slots = 2 + envelope.segment_count * kTsBulkSlotsPerSegment;
+    uint64_t ticks[kTsPerSet] = {};
+    bool gpu_valid = false;
+    if (timestamps && read_timestamps(0, total_slots, ticks)) {
+        gpu_valid = true;
+    }
+
+    uint64_t total_map_copy_ns = 0;
+    uint64_t total_record_ns = 0;
+    uint64_t total_upload_bytes = 0;
+    uint64_t total_query_bytes = 0;
+    uint64_t total_output_bytes = 0;
+
+    uint64_t env_gpu_upload_ticks = 0;
+    uint64_t env_gpu_unpack_ticks = 0;
+    uint64_t env_gpu_pack_ticks = 0;
+    uint64_t env_gpu_pass1_ticks = 0;
+    uint64_t env_gpu_reduce_ticks = 0;
+    uint64_t env_gpu_copy_ticks = 0;
+
+    rp::Counters& c = profile_->recorder.counters;
+    ++c.bulk_calls;
+    c.bulk_segments += envelope.segment_count;
+    c.bulk_queries += envelope.total_queries;
+    if (envelope.wire == RKVA_WIRE_FP8) {
+        if (envelope.fp8_gpu)
+            ++c.fp8_gpu_calls;
+        else
+            ++c.fp8_cpu_fallback_calls;
+    }
+
+    for (size_t i = 0; i < envelope.segment_count; ++i) {
+        const auto& seg = profile_->bulk.segments[i];
+        total_map_copy_ns += (seg.map_copy_upload_ns + seg.map_copy_query_ns);
+        total_record_ns += (seg.record_upload_ns + seg.record_attn_ns);
+        total_upload_bytes += seg.upload_bytes;
+        total_query_bytes += seg.query_bytes;
+        total_output_bytes += seg.out_bytes;
+
+        const uint32_t base = 1 + static_cast<uint32_t>(i) * kTsBulkSlotsPerSegment;
+        uint64_t u_ticks = 0;
+        uint64_t p1_ticks = 0;
+        uint64_t red_ticks = 0;
+        uint64_t cp_ticks = 0;
+        if (gpu_valid) {
+            u_ticks = ticks[base + kTsBulkUploadEnd] - ticks[base + kTsBulkUploadBegin];
+            p1_ticks = ticks[base + kTsBulkAttnPass1] - ticks[base + kTsBulkAttnBegin];
+            red_ticks = ticks[base + kTsBulkAttnReduce] - ticks[base + kTsBulkAttnPass1];
+            cp_ticks = ticks[base + kTsBulkAttnCopy] - ticks[base + kTsBulkAttnReduce];
+
+            env_gpu_upload_ticks += u_ticks;
+            env_gpu_unpack_ticks += ticks[base + kTsBulkAttnBegin] - ticks[base + kTsBulkUploadEnd];
+            env_gpu_pack_ticks += ticks[base + kTsBulkPackEnd] - ticks[base + kTsBulkAttnCopy];
+            cp_ticks += ticks[base + kTsBulkCopyEnd] - ticks[base + kTsBulkPackEnd];
+            env_gpu_pass1_ticks += p1_ticks;
+            env_gpu_reduce_ticks += red_ticks;
+            env_gpu_copy_ticks += cp_ticks;
+        }
+
+        // Per-segment upload Sample
+        rp::Sample up_sample;
+        up_sample.kind = rp::kUpload;
+        up_sample.storage = 3;
+        up_sample.serial_prefix = 1;
+        up_sample.mode = uint8_t(q4_kernel_mode_);
+        up_sample.alloc_grew = 0;
+        up_sample.bulk_segment = 1;
+        up_sample.n_tokens = seg.append_rows;
+        up_sample.rows = seg.append_rows;
+        up_sample.bytes = seg.upload_bytes;
+        up_sample.cpu_ns[rp::kCpuMapCopy] = seg.map_copy_upload_ns;
+        up_sample.cpu_ns[rp::kCpuRecord] = seg.record_upload_ns;
+        if (gpu_valid) {
+            up_sample.gpu_ticks[0] = u_ticks;
+            up_sample.gpu_valid = 1;
+        }
+        profile_->recorder.record(up_sample);
+        ++c.calls[rp::kUpload];
+        c.copy_regions += 1;
+
+        // Per-segment attention Sample
+        rp::Sample attn_sample;
+        attn_sample.kind = rp::kAttention;
+        attn_sample.storage = 3;
+        attn_sample.serial_prefix = 1;
+        attn_sample.mode = uint8_t(q4_kernel_mode_);
+        attn_sample.alloc_grew = 0;
+        attn_sample.bulk_segment = 1;
+        attn_sample.optimized = seg.optimized;
+        attn_sample.direct_output = seg.direct_output;
+        attn_sample.split_k = seg.split_k;
+        attn_sample.groups = seg.groups;
+        attn_sample.q_tile = seg.q_tile;
+        attn_sample.decode_opt = seg.decode_opt;
+        attn_sample.n_tokens = seg.n_queries;
+        attn_sample.rows = seg.active_count;
+        attn_sample.bytes = seg.query_bytes + seg.out_bytes;
+        attn_sample.cpu_ns[rp::kCpuMapCopy] = seg.map_copy_query_ns;
+        attn_sample.cpu_ns[rp::kCpuRecord] = seg.record_attn_ns;
+        attn_sample.cpu_ns[rp::kCpuReadback] = seg.readback_ns;
+        if (gpu_valid) {
+            attn_sample.gpu_ticks[0] = p1_ticks;
+            attn_sample.gpu_ticks[1] = red_ticks;
+            attn_sample.gpu_ticks[2] = cp_ticks;
+            attn_sample.gpu_valid = 1;
+        }
+        profile_->recorder.record(attn_sample);
+        ++c.calls[rp::kAttention];
+        c.dispatches += seg.dispatches;
+        c.copy_regions += 1;
+        if (seg.optimized) {
+            ++c.optimized_by_storage[rp::kStorageKvarn4];
+            if (seg.decode_opt) {
+                ++c.kvarn4_decode_calls;
+            } else if (seg.q_tile == rp::kKvarn4MqTile) {
+                ++c.kvarn4_mq_calls;
+            } else if (seg.q_tile == rp::kKvarn4MqTileMax) {
+                ++c.kvarn4_mq4_calls;
+            }
+        } else {
+            ++c.reference_by_storage[rp::kStorageKvarn4];
+        }
+    }
+
+    envelope.cpu_ns[rp::kCpuMapCopy] = total_map_copy_ns;
+    if (!envelope.cpu_ns[rp::kCpuRecord])
+        envelope.cpu_ns[rp::kCpuRecord] = total_record_ns;
+    envelope.upload_bytes = total_upload_bytes;
+    envelope.query_bytes = total_query_bytes;
+    envelope.output_bytes = total_output_bytes;
+
+    if (gpu_valid) {
+        envelope.gpu_valid = 1;
+        envelope.gpu_upload_ticks = env_gpu_upload_ticks;
+        envelope.gpu_unpack_ticks = env_gpu_unpack_ticks;
+        envelope.gpu_pack_ticks = env_gpu_pack_ticks;
+        envelope.gpu_pass1_ticks = env_gpu_pass1_ticks;
+        envelope.gpu_reduce_ticks = env_gpu_reduce_ticks;
+        envelope.gpu_copy_ticks = env_gpu_copy_ticks;
+        const uint32_t env_end_slot =
+            1 + static_cast<uint32_t>(envelope.segment_count) * kTsBulkSlotsPerSegment;
+        envelope.gpu_total_ticks = ticks[env_end_slot] - ticks[kTsBulkEnvelopeBegin];
+    }
+
+    envelope.overhead_ns = elapsed_ns(t_overhead_start, prof_clock::now());
+    profile_->recorder.record_bulk(envelope);
+    profile_->bulk.active = false;
+}
+
 bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
                                          const uint8_t* data, size_t bytes, float* out, float* lse,
-                                         std::string* error) {
+                                         std::string* error, uint64_t cycle_id) {
     const bool prof = profiling_ && profile_ && !bulk_recording_;
     const prof_clock::time_point t_val_start = prof ? prof_clock::now() : prof_clock::time_point{};
     rp::BulkEnvelopeSample envelope;
     envelope.total_queries = n_tokens;
+    envelope.cycle_id = cycle_id;
+    envelope.session_id = id;
+    envelope.layer = layer;
+    envelope.wire = RKVA_WIRE_F32;
+    rkva_kvarn_bulk::ScratchCall scratch_call(bulk_scratch_, n_tokens, RKVA_WIRE_F32);
 
     Session* s = find_session(id);
     if (!ready_ || !s || !s->valid || !s->range_configured || s->range_storage != 3 ||
@@ -2178,7 +2387,9 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
         }
         return ::fail(error, "native bulk: invalid session/arguments");
     }
-    std::vector<rkva_kvarn_bulk::Segment> segments;
+    auto& segments = bulk_scratch_.segments;
+    if (segments.capacity() < kTsBulkMaxSegments)
+        segments.reserve(kTsBulkMaxSegments);
     if (!rkva_kvarn_bulk::validate(data, bytes, n_tokens, s->range_descriptor, geo_.n_head,
                                    geo_.n_head_kv, s->range_counts[layer],
                                    s->range_record_groups[layer], s->range_ready[layer],
@@ -2293,6 +2504,11 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
         std::swap(range_upload_, transfer.upload);
         std::swap(range_query_, transfer.query);
         std::swap(range_readback_, transfer.readback);
+        if (ts_bulk && ok) {
+            const uint32_t base = 1 + uint32_t(i) * kTsBulkSlotsPerSegment;
+            timestamp(base + kTsBulkPackEnd);
+            timestamp(base + kTsBulkCopyEnd);
+        }
         if (!ok) {
             bulk_recording_ = false;
             if (prof) {
@@ -2369,139 +2585,7 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
     }
 
     if (prof) {
-        const prof_clock::time_point t_overhead_start = prof_clock::now();
-        std::vector<uint64_t> ticks(total_slots, 0);
-        bool gpu_valid = false;
-        if (ts_bulk && read_timestamps(0, total_slots, ticks.data())) {
-            gpu_valid = true;
-        }
-
-        uint64_t total_map_copy_ns = 0;
-        uint64_t total_record_ns = 0;
-        uint64_t total_upload_bytes = 0;
-        uint64_t total_query_bytes = 0;
-        uint64_t total_output_bytes = 0;
-
-        uint64_t env_gpu_upload_ticks = 0;
-        uint64_t env_gpu_pass1_ticks = 0;
-        uint64_t env_gpu_reduce_ticks = 0;
-        uint64_t env_gpu_copy_ticks = 0;
-
-        rp::Counters& c = profile_->recorder.counters;
-        ++c.bulk_calls;
-        c.bulk_segments += segments.size();
-        c.bulk_queries += n_tokens;
-
-        for (size_t i = 0; i < segments.size(); ++i) {
-            const auto& seg = profile_->bulk.segments[i];
-            total_map_copy_ns += (seg.map_copy_upload_ns + seg.map_copy_query_ns);
-            total_record_ns += (seg.record_upload_ns + seg.record_attn_ns);
-            total_upload_bytes += seg.upload_bytes;
-            total_query_bytes += seg.query_bytes;
-            total_output_bytes += seg.out_bytes;
-
-            const uint32_t base = 1 + static_cast<uint32_t>(i) * kTsBulkSlotsPerSegment;
-            uint64_t u_ticks = 0;
-            uint64_t p1_ticks = 0;
-            uint64_t red_ticks = 0;
-            uint64_t cp_ticks = 0;
-            if (gpu_valid) {
-                u_ticks = ticks[base + kTsBulkUploadEnd] - ticks[base + kTsBulkUploadBegin];
-                p1_ticks = ticks[base + kTsBulkAttnPass1] - ticks[base + kTsBulkAttnBegin];
-                red_ticks = ticks[base + kTsBulkAttnReduce] - ticks[base + kTsBulkAttnPass1];
-                cp_ticks = ticks[base + kTsBulkAttnCopy] - ticks[base + kTsBulkAttnReduce];
-
-                env_gpu_upload_ticks += u_ticks;
-                env_gpu_pass1_ticks += p1_ticks;
-                env_gpu_reduce_ticks += red_ticks;
-                env_gpu_copy_ticks += cp_ticks;
-            }
-
-            // Per-segment upload Sample
-            rp::Sample up_sample;
-            up_sample.kind = rp::kUpload;
-            up_sample.storage = 3;
-            up_sample.serial_prefix = 1;
-            up_sample.mode = uint8_t(q4_kernel_mode_);
-            up_sample.alloc_grew = 0;
-            up_sample.bulk_segment = 1;
-            up_sample.n_tokens = seg.append_rows;
-            up_sample.rows = seg.append_rows;
-            up_sample.bytes = seg.upload_bytes;
-            up_sample.cpu_ns[rp::kCpuMapCopy] = seg.map_copy_upload_ns;
-            up_sample.cpu_ns[rp::kCpuRecord] = seg.record_upload_ns;
-            if (gpu_valid) {
-                up_sample.gpu_ticks[0] = u_ticks;
-                up_sample.gpu_valid = 1;
-            }
-            profile_->recorder.record(up_sample);
-            ++c.calls[rp::kUpload];
-            c.copy_regions += 1;
-
-            // Per-segment attention Sample
-            rp::Sample attn_sample;
-            attn_sample.kind = rp::kAttention;
-            attn_sample.storage = 3;
-            attn_sample.serial_prefix = 1;
-            attn_sample.mode = uint8_t(q4_kernel_mode_);
-            attn_sample.alloc_grew = 0;
-            attn_sample.bulk_segment = 1;
-            attn_sample.optimized = seg.optimized;
-            attn_sample.direct_output = seg.direct_output;
-            attn_sample.split_k = seg.split_k;
-            attn_sample.groups = seg.groups;
-            attn_sample.q_tile = seg.q_tile;
-            attn_sample.decode_opt = seg.decode_opt;
-            attn_sample.n_tokens = seg.n_queries;
-            attn_sample.rows = seg.active_count;
-            attn_sample.bytes = seg.query_bytes + seg.out_bytes;
-            attn_sample.cpu_ns[rp::kCpuMapCopy] = seg.map_copy_query_ns;
-            attn_sample.cpu_ns[rp::kCpuRecord] = seg.record_attn_ns;
-            attn_sample.cpu_ns[rp::kCpuReadback] = seg.readback_ns;
-            if (gpu_valid) {
-                attn_sample.gpu_ticks[0] = p1_ticks;
-                attn_sample.gpu_ticks[1] = red_ticks;
-                attn_sample.gpu_ticks[2] = cp_ticks;
-                attn_sample.gpu_valid = 1;
-            }
-            profile_->recorder.record(attn_sample);
-            ++c.calls[rp::kAttention];
-            c.dispatches += seg.dispatches;
-            c.copy_regions += 1;
-            if (seg.optimized) {
-                ++c.optimized_by_storage[rp::kStorageKvarn4];
-                if (seg.decode_opt) {
-                    ++c.kvarn4_decode_calls;
-                } else if (seg.q_tile == rp::kKvarn4MqTile) {
-                    ++c.kvarn4_mq_calls;
-                } else if (seg.q_tile == rp::kKvarn4MqTileMax) {
-                    ++c.kvarn4_mq4_calls;
-                }
-            } else {
-                ++c.reference_by_storage[rp::kStorageKvarn4];
-            }
-        }
-
-        envelope.cpu_ns[rp::kCpuMapCopy] = total_map_copy_ns;
-        envelope.cpu_ns[rp::kCpuRecord] = total_record_ns;
-        envelope.upload_bytes = total_upload_bytes;
-        envelope.query_bytes = total_query_bytes;
-        envelope.output_bytes = total_output_bytes;
-
-        if (gpu_valid) {
-            envelope.gpu_valid = 1;
-            envelope.gpu_upload_ticks = env_gpu_upload_ticks;
-            envelope.gpu_pass1_ticks = env_gpu_pass1_ticks;
-            envelope.gpu_reduce_ticks = env_gpu_reduce_ticks;
-            envelope.gpu_copy_ticks = env_gpu_copy_ticks;
-            const uint32_t env_end_slot =
-                1 + static_cast<uint32_t>(segments.size()) * kTsBulkSlotsPerSegment;
-            envelope.gpu_total_ticks = ticks[env_end_slot] - ticks[kTsBulkEnvelopeBegin];
-        }
-
-        envelope.overhead_ns = elapsed_ns(t_overhead_start, prof_clock::now());
-        profile_->recorder.record_bulk(envelope);
-        profile_->bulk.active = false;
+        finish_bulk_profile(envelope, ts_bulk);
     }
     return true;
 }
@@ -2566,8 +2650,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             std::memcpy(static_cast<uint8_t*>(mapped) + 2 * q_bytes, positions,
                         uint64_t(n_tokens) * 4);
         } else {
-            std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions,
-                        uint64_t(n_tokens) * 4);
+            std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions, uint64_t(n_tokens) * 4);
         }
         range_query_.resource->Unmap(0, nullptr);
     }
@@ -2744,8 +2827,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             seg.q_tile = uint8_t(q_tile);
         }
         if (!bulk_gpu_query_) {
-            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
-                                   out_bytes);
+            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(),
+                                   0, out_bytes);
         }
         return finish(direct ? 1u : 2u);
     }
@@ -2803,10 +2886,11 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
         uint32_t rows = rp::split_rows(active_count, split_k);
         if (kvarn) {
-            const rp::KvarnSplit ks = (n_tokens == 1 && decode_opt)
-                                          ? rp::kvarn4_decode_split(active_count, q4_kernel_mode_)
-                                          : (q_tile ? rp::kvarn4_mq_split(active_count, q4_kernel_mode_, q_tile)
-                                                    : rp::kvarn4_split(active_count, q4_kernel_mode_));
+            const rp::KvarnSplit ks =
+                (n_tokens == 1 && decode_opt)
+                    ? rp::kvarn4_decode_split(active_count, q4_kernel_mode_)
+                    : (q_tile ? rp::kvarn4_mq_split(active_count, q4_kernel_mode_, q_tile)
+                              : rp::kvarn4_split(active_count, q4_kernel_mode_));
             split_k = ks.split_k;
             rows = ks.split_rows;
         } else if (q_tile) {
@@ -2904,8 +2988,8 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             seg.decode_opt = uint8_t(decode_opt ? 1 : 0);
         }
         if (!bulk_gpu_query_) {
-            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
-                                   out_bytes);
+            cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(),
+                                   0, out_bytes);
         }
         return finish(direct ? 1u : 2u);
     }

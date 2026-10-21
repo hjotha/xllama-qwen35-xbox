@@ -38,6 +38,35 @@ RESET, TRIM, and REWIND invalidate every native layer's stage/record/tail covera
 
 The exact precision tail replaces the latest original-domain rows in the attention domain. It is not the rounded rotated F16 stage. The shader computes tail scores using original Q, body scores using WHT(Q), accumulates the body in rotated V, inversely transforms its numerator, then adds the original-domain tail numerator. The ordinary split-K reducer returns the merged OUT and LSE.
 
+## Negotiated compact stage uploads
+
+`RKVA_CAP_KVARN_COMPACT_STAGE` (HELLO_ACK bit 13) permits upload flag
+`RKVA_KVARN_UPLOAD_OMIT_STAGE` (bit 1, value 2). The host enables it only when the
+server advertises the capability and the native descriptor uses revision 3,
+`origin >= 128`, and `precision_tail_tokens == 128`. Other descriptors reject the
+flag. Servers without this capability retain the complete stage payload.
+
+With the flag set, both rotated-F16 stage planes have zero wire bytes, for RESET
+and ordinary append. The record planes and all chronological original-F16 tail
+rows remain unchanged. Their offsets are computed using the zero-length stage
+planes. Physical console buffer offsets and allocation sizes do not change.
+
+This is exact for each serial prefix: its incomplete group has fewer than 128
+rows, so every such row belongs to its exact 128-row tail. Earlier completed
+groups use native records. The excluded global group-0 sink is the only sealed
+group that unconditionally uses rotated stage. The host still maintains its full
+stage locally for canonical record sealing and bounded original-F32 rewind;
+rewind still repairs original tail rows before publication. Switching to tail 0
+or a descriptor containing the global sink requires a full ordinary stage image.
+
+A completed record does not make that segment's original-F16 tail redundant:
+earlier queries within the same segment can still require those rows in their
+exact tail. Compact uploads therefore retain every appended tail row.
+
+At four KV heads, a steady 256-token microbatch omits 1,048,576 bytes of stage per
+attention layer. This byte count does not predict model tokens/s; physical serving
+benchmarks must use the negotiated server and identical model/prompt settings.
+
 ## Bee client integration and remaining gates
 
 Package263 has passed root GPU tests against independent oracles for both tail settings. The original list below describes the client integration contract. The experimental Bee native producer is being integrated separately; full model measurements and native snapshot replay are independent gates:
@@ -209,3 +238,10 @@ The revision-1 disk codec assumes a 128-row ring. SAVE and RESTORE on a revision
 - `tests/rkva_kvarn_serial_prefix_probe.py` is the future raw GPU gate. It is offline unless `--execute --host` is given, and `--self-test` replays its real payloads into an offline engine transliteration.
 
 No GPU, console or model result exists for revision 3.
+
+Test package278 additionally keeps native FP8 Q/OUT conversion on the GPU when
+its optional PSOs are available. It preserves the deployed OUT composition
+F32-to-F16-to-FP8 and every finite-value gate; this is not a wire contract or
+capability change. The existing CPU conversion is the explicit fallback.
+Effective PSO counters, ablation flag and the bounded diagnostic codec probe
+are specified in [RKVA profiling](rkva-range-profiling.md#native-bulk-fp8-gpu-codec-test-package-278).

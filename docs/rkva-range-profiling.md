@@ -533,12 +533,12 @@ the whole batch (`submits` count equals 1 per bulk RPC; no per-segment fences).
 
 Opt-in native bulk profiling provides comprehensive attributable GPU and CPU metrics:
 
-- **Zero fastpath overhead**: profiling instrumentation is completely bypassed when profiling is disabled.
-- **Bounded timestamp slot allocation**: Query slots are allocated without in-flight reuse. The timestamp heap provides 256 slots per set (1024 total across 4 sets). Slot 0 records `kTsBulkEnvelopeBegin`. Each segment $i$ (0 to $S-1$, max 32) uses 6 contiguous slots starting at $1 + i \times 6$: upload begin, upload end, attention begin, attention pass 1, attention reduce, and readback copy. Slot $1 + S \times 6$ records `kTsBulkEnvelopeEnd`. The queries are dispatched in strict command-list order, ensuring monotonic timestamp progression. Max slots for 32 segments is $2 + 32 \times 6 = 194 \le 256$.
+- **Disabled profile path**: timestamp commands, sample recording and profile clocks are bypassed when profiling is disabled. Measure profile on/off for the actual overhead; no zero-cost guarantee is inferred from the branch.
+- **Bounded timestamp slot allocation**: Query slots are allocated without in-flight reuse. The timestamp heap provides 512 slots per set (2048 total across four sets). Slot 0 records `kTsBulkEnvelopeBegin`. Each segment $i$ (0 to $S-1$, max 32) uses eight contiguous slots starting at $1 + i \times 8$: upload begin/end, attention begin, pass1 end, reduce end, attention end, pack end and readback copy end. Slot $1 + S \times 8$ records `kTsBulkEnvelopeEnd`. Queries follow strict command-list order. Max slots for 32 segments is $2 + 32 \times 8 = 258 \le 512$.
 - **Attributable aggregate metrics**: Profile JSON includes a dedicated `"bulk"` object with:
   - Disjoint CPU breakdown: `admission_cpu_us`, `alloc_cpu_us`, `map_copy_cpu_us`, `record_cpu_us`, `submit_cpu_us`, `fence_wait_cpu_us`, `readback_cpu_us`, and `engine_total_cpu_us`.
-  - Attributable GPU breakdown: `gpu_upload_us`, `gpu_pass1_us`, `gpu_reduce_us`, `gpu_readback_copy_us`, and `gpu_total_us`.
-  - Explicit queue latency: `queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us)`. Here `fence_wait_cpu_us` is the inclusive CPU wait time for fence completion, while `gpu_total_us` is the exclusive GPU execution time from envelope begin to envelope end.
+  - Attributable GPU breakdown: `gpu_upload_us`, `gpu_unpack_wht_us`, `gpu_pass1_us`, `gpu_reduce_us`, `gpu_pack_us`, `gpu_readback_copy_us`, and `gpu_total_us`.
+  - Inclusive fence residual: `queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us)`. Here `fence_wait_cpu_us` is the inclusive CPU wait time for fence completion, while `gpu_total_us` spans envelope begin to end on the GPU. The residual also includes driver/wakeup overhead and is not pure queue latency.
   - Byte statistics: `upload_bytes`, `query_bytes`, `output_bytes`, `total_bytes`.
 - **Per-segment attribution**: Individual upload and attention samples are recorded into sample rings and categorized into standard buckets with `bulk_segment = 1`. To avoid inflating fence wait metrics in multi-segment batches, per-segment samples record `fence_wait = 0` and `submit = 0`, keeping the fence wait exclusively attributed to the bulk envelope sample.
 - **Capability fallback**: If hardware timestamp queries are unsupported or fail allocation, CPU span and byte telemetry continue operating gracefully with `gpu_timestamps: false`.
@@ -575,8 +575,136 @@ Requesting FP16 bulk wire when `RKVA_CAP_KVARN_BULK_F16` is not advertised fails
   - On Xbox, `shaders/rkva/rkva_range_bulk_f16.hlsl` implements `CSBulkUnpackQF16` (unpacking upload FP16 Q into F32 default query buffer for range attention) and `CSBulkPackOutF16` (packing default output F32 into readback FP16 alongside F32 LSE).
   - Shaders use the shared 4-constant + 1-SRV + 1-UAV root signature (`range_reduce_root_`) and are compiled via `scripts/compile-rkva-range-shaders.sh`.
   - Deferred DXIL header inclusion (`#if __has_include`) provides an automatic host conversion fallback until compiled offline.
-  - When shaders are available, GPU executes compute dispatches before attention and after output barrier, keeping host CPU completely off the critical conversion path.
+  - When shaders are available, GPU executes compute dispatches before attention and after output barrier, performing F16 expansion and packing on the GPU; CPU readback validation remains. FP8 additionally keeps its existing CPU byte/F16 transcodes.
 
 - **Validation & Finiteness:**
   - Host and server reject non-finite (NaN / +/-Inf) values in both F32 and FP16 formats before mutation.
   - CPU validation in `tests/rkva_kvarn_bulk_cpu.cpp` and offline Python verification in `tests/rkva_kvarn_bulk_probe.py` assert IEEE-754 RNE roundtrip, boundary conditions, subnormals, and overflow behavior.
+
+## Native bulk FP8/F16 instrumentation (test package 277)
+
+Native FP8/F16 envelopes now use the same profile recorder as F32. The outer
+bulk call activates segment profiling before recording upload/attention, resolves
+one timestamp range in that command list, and reads it only after the existing
+final fence. Profiling adds timestamp commands and report bookkeeping; it adds no
+queue submission or GPU fence wait. Compare profile on/off to measure its cost.
+
+Each of at most 32 segments has eight GPU boundaries: upload begin/end,
+attention begin (after query unpack/WHT), pass1 end, reduce end, attention end,
+output pack end, and readback copy end. The fixed ring has four sets of 512
+64-bit timestamps. `bulk.timings` exposes exclusive upload, unpack/WHT, pass1,
+reduce, pack and readback-copy intervals plus the inclusive GPU envelope.
+`bulk.phases` separates envelope nq=1 (decode), nq=2..9 (verification), and
+nq>9 (prefill), with p50/p95 and the other existing summary statistics. Each phase retains up to 1024 envelopes independently of the global ring, with four recent correlated cycle IDs and raw GPU tick / CPU nanosecond spans, so a long decode suffix cannot erase prefill or verification distributions.
+
+`bulk.recent_envelopes` retains the last 16 successful cycle/session/layer/wire
+identifiers and disjoint CPU spans, correlating with the host request cycle ID.
+`transport.bulk_dispatch_phases` and `bulk_dispatch_recent` separately report
+scratch preparation, inclusive engine wall time and output CPU transcode. Separate fixed rings retain the last 128 decode and 128 multi-query dispatches, so a decode suffix cannot evict every prefill transcode sample; recent correlation includes the last eight from each ring. Engine
+wall time includes its GPU wait; do not add GPU time to it. `xbox_prepare_us`
+continues to include `xbox_compute_us`. Fence-minus-GPU is an inclusive driver /
+wakeup / scheduling residual, not pure queue latency. RTT-minus-engine is not a
+measurement of cable transit.
+
+Engine and listener `bulk_scratch` arrays count calls, growth calls, vector
+reallocations and capacity bytes gained for each `(wire,nq)` shape. Segments,
+fallback queries, temporary F16 OUT and LSE persist in their existing serial
+owners. Profile reset clears counters while preserving capacities, so a warmed
+shape can prove zero subsequent growth. These counters cover the named scratch
+vectors, not all allocations made by the service or D3D12. Engine byte summaries
+cover native upload/query and F16 staging output; transport counters are the
+actual request/response wire bytes. FP8 output still follows the existing
+F32-to-F16-to-FP8 numerical contract; no shader or wire capability changed.
+
+## Native bulk FP8 GPU codec (test package 278)
+
+FP8 requests use `CSBulkUnpackQFP8` and `CSBulkPackOutFP8` when both optional
+PSOs are available. `engine.bulk_fp8_gpu` reports availability/status, while
+`engine.bulk.fp8_gpu_calls` and `fp8_cpu_fallback_calls` report actual selection.
+The local diagnostic ablation flag `rkva-fp8-gpu-off.flag` is read at each HELLO;
+its presence selects the previous CPU FP8/F16 transcodes, retaining FP8 wire
+format and every previous finite-value gate. `transport.fp8_gpu_enabled`
+reports that explicit selection. A missing/failed FP8 PSO selects the same
+CPU fallback and reports its reason. F16 wire and its two PSOs remain available.
+
+Query upload now contains compact FP8 bytes followed by positions. The new
+unpack expands byte `b` through the exact F16 bits `b << 8`, reusing the identical
+WHT body and `[Q_raw][Q_rot][positions]` default layout. CPU envelope admission
+still rejects all exponent-31 FP8 bytes before any native KV mutation.
+
+Output conversion deliberately composes the existing `ggml_half_bits(F32)`
+rounding with finite F16-to-E5M2 nearest-even/saturation. It is not a direct
+F32-to-FP8 conversion: `nextafter(1.125,+inf)` must yield `0x3c`, and finite
+65520 must fail because the intermediate F16 overflows to Inf. Any F16
+exponent 31 or nonfinite F32 LSE poisons a per-threadgroup status word. Each group
+fully overwrites its own status word after shared-memory reduction; there is no
+global clear or shared-slot race. The existing UAV barrier/copy/fence retires
+all payload/status writes. CPU validates status and LSE before returning any
+op22 response; failure invalidates the session, as in the previous F16 path.
+LSE bytes are copied as F32 throughout. Internal status bytes are never sent as
+an attention response.
+
+The pack cbuffer still uses `{q_pairs, q_heads, 0, 0}`. With D=256,
+`elements=2*q_pairs` is a multiple of 256, hence `q_pairs` is even and all FP8,
+F32 LSE and status offsets are four-byte aligned, including odd head counts.
+One pack thread handles four elements. Group count is
+`ceil(max(elements/4,q_heads)/256)`. Internal readback layout is
+`[elements FP8 bytes][q_heads F32 LSE][group_count u32 status]`; bit1 (value1)
+marks nonfinite/overflowed intermediate F16 OUT, bit2 (value2) marks nonfinite
+LSE. Serving strips the last region after validation.
+
+An explicit bounded diagnostic **op11 / probe_id 5 / mode0** exercises only the
+pack PSO, without a session, KV storage or generation reference. It does not
+add a wire capability and does not redefine probe IDs 1..4. Request session must
+be `RKVA_SESSION_NONE`, layer/n_tokens zero. Payload is `rkva_probe_req`, then
+`{uint32 q_heads,uint32 reserved=0}`, followed by exactly
+`q_heads*256` F32 output values and `q_heads` F32 LSE values. Both reserved
+fields must be zero, `1 <= q_heads <= 1024`, and blob/outer lengths must match
+exactly. NaN/Inf are intentional input data in this diagnostic. Its response
+contains the full internal layout, including poison status, so an independent
+oracle can inspect failures; this is not an attention ACK. Malformed requests
+fail admission without GPU submission. Probe buffers survive unconfirmed GPU
+work, and the probe never mutates native session state.
+
+Host-only gates:
+
+```bash
+c++ -std=c++17 -O1 -g -fsanitize=address,undefined tests/rkva_bulk_fp8_cpu.cpp -o /tmp/rkva-bulk-fp8-cpu
+/tmp/rkva-bulk-fp8-cpu
+```
+
+Explicit console lease gates (no network without `--execute`):
+
+```bash
+python3 tests/rkva_bulk_fp8_probe.py --execute --host 192.168.1.26 --output /tmp/rkva-fp8-pack.json
+```
+
+The CPU test enumerates 63488 finite and 2048 special F16 patterns against an
+independent nearest-representable reference, rounding witnesses and malformed
+probe layouts. The GPU probe checks all F16 patterns, F32 half midpoints and
+adjacent values, signed zeros/subnormals, finite F16 overflow, NaN/Inf and exact
+F32 LSE bits/status. The op22 FP8/F16 parity probe remains a separate gate for
+query/WHT layout and attention outputs. No TPS gain follows from these unit
+checks; compare the complete envelope and serving with the explicit ablation.
+
+Fatal submission retirement (Build 278): a failed queue signal, event setup or
+fence wait leaves the engine poisoned. The listener stops parsing frames, closes
+the client and listener sockets without attempting a potentially blocking error
+response, and does not accept another client or replace
+the engine on HELLO. It checks the existing queue fence without adding a GPU
+signal or wait: ordinary completion must reach the submitted value and must not
+be UINT64_MAX. The UINT64_MAX sentinel permits release only with an independent
+failed GetDeviceRemovedReason result. Unprovable execution keeps the single
+engine and its resources owned by the original parked listener thread until
+process restart; a lifetime-wide listener owner mutex prevents UI reactivation
+from creating another engine. Its single process-lifetime allocation intentionally
+has no static destructor, avoiding destruction of a mutex held by the parked
+worker during process exit. This is bounded fatal retention, not automatic
+recovery. The log explicitly reports restart_required. The destructor fails
+fast before releasing members if a caller violates this ownership invariant.
+Normal completed requests add no fence query or synchronization. Fence counter
+exhaustion is rejected before command execution, reserving UINT64_MAX.
+
+The host-only tests/rkva_execution_lifetime_cpu.cpp gate covers the retirement
+decision table, the sentinel/device-removal distinction, retained ownership and
+a blocked duplicate listener. It does not inject a physical Xbox device loss.

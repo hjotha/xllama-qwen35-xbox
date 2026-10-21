@@ -4,6 +4,7 @@
 // See docs/rkva-range-profiling.md for the schema and timing semantics.
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdio>
 #include <map>
@@ -356,8 +357,8 @@ struct Sample {
     uint8_t alloc_grew = 0;
     uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
     uint8_t q_tile = 0;
-    uint8_t decode_opt = 0;        // multi-query tile (Q4_0/F16/Q8_0/KVarN4 2 or 4); 0 = per-query
-    uint8_t bulk_segment = 0;  // 1 if recorded as an individual segment of native bulk op 22
+    uint8_t decode_opt = 0;   // multi-query tile (Q4_0/F16/Q8_0/KVarN4 2 or 4); 0 = per-query
+    uint8_t bulk_segment = 0; // 1 if recorded as an individual segment of native bulk op 22
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -395,12 +396,16 @@ struct Counters {
     uint64_t bulk_calls = 0;
     uint64_t bulk_segments = 0;
     uint64_t bulk_queries = 0;
+    uint64_t fp8_gpu_calls = 0, fp8_cpu_fallback_calls = 0;
 };
 
 struct BulkEnvelopeSample {
+    uint64_t cycle_id = 0;
+    uint32_t session_id = 0, layer = 0, wire = 0;
     uint32_t segment_count = 0;
     uint32_t total_queries = 0;
     uint8_t gpu_valid = 0;
+    uint8_t fp8_gpu = 0;
     uint8_t fence_blocked = 0;
     uint8_t alloc_grew = 0;
     uint64_t upload_bytes = 0;
@@ -408,6 +413,8 @@ struct BulkEnvelopeSample {
     uint64_t output_bytes = 0;
     uint64_t cpu_ns[kCpuSpanCount] = {};
     uint64_t gpu_upload_ticks = 0;
+    uint64_t gpu_unpack_ticks = 0;
+    uint64_t gpu_pack_ticks = 0;
     uint64_t gpu_pass1_ticks = 0;
     uint64_t gpu_reduce_ticks = 0;
     uint64_t gpu_copy_ticks = 0;
@@ -571,6 +578,15 @@ class Recorder {
             bulk_next_ = 0;
             bulk_stored_ = 0;
         }
+        // Keep phase distributions even after a long decode suffix. Allocate
+        // only on the control path; record_bulk never grows these buffers.
+        const size_t phase_cap = std::min<size_t>(capacity, 1024);
+        for (size_t phase = 0; phase < bulk_phase_ring_.size(); ++phase) {
+            if (bulk_phase_ring_[phase].size() != phase_cap) {
+                bulk_phase_ring_[phase].assign(phase_cap, BulkEnvelopeSample{});
+                bulk_phase_next_[phase] = bulk_phase_stored_[phase] = 0;
+            }
+        }
     }
     void reset() {
         next_ = 0;
@@ -579,6 +595,8 @@ class Recorder {
         bulk_next_ = 0;
         bulk_stored_ = 0;
         bulk_recorded_ = 0;
+        bulk_phase_next_ = {};
+        bulk_phase_stored_ = {};
         counters = Counters{};
     }
     void record(const Sample& sample) {
@@ -598,6 +616,13 @@ class Recorder {
         bulk_ring_[bulk_next_] = sample;
         bulk_next_ = (bulk_next_ + 1) % bulk_ring_.size();
         bulk_stored_ = std::min(bulk_stored_ + 1, bulk_ring_.size());
+        const size_t phase = sample.total_queries == 1 ? 0 : sample.total_queries <= 9 ? 1 : 2;
+        auto& ring = bulk_phase_ring_[phase];
+        if (!ring.empty()) {
+            ring[bulk_phase_next_[phase]] = sample;
+            bulk_phase_next_[phase] = (bulk_phase_next_[phase] + 1) % ring.size();
+            bulk_phase_stored_[phase] = std::min(bulk_phase_stored_[phase] + 1, ring.size());
+        }
     }
     size_t capacity() const {
         return ring_.size();
@@ -784,7 +809,8 @@ class Recorder {
         return static_cast<unsigned long long>(v);
     }
 
-    // values are sorted in place; nearest-rank percentiles.
+  public:
+    // Control/report path only. Values are sorted in place; nearest-rank percentiles.
     static void append_stats(std::string& o, const char* name, std::vector<double>& values) {
         char buf[320];
         if (values.empty()) {
@@ -804,13 +830,14 @@ class Recorder {
         };
         std::snprintf(buf, sizeof(buf),
                       "\"%s\":{\"n\":%llu,\"mean\":%.3f,\"min\":%.3f,\"p50\":%.3f,\"p90\":%.3f,"
-                      "\"p99\":%.3f,\"max\":%.3f,\"sum\":%.3f}",
+                      "\"p95\":%.3f,\"p99\":%.3f,\"max\":%.3f,\"sum\":%.3f}",
                       name, static_cast<unsigned long long>(values.size()),
                       sum / static_cast<double>(values.size()), values.front(), rank(0.5),
-                      rank(0.9), rank(0.99), values.back(), sum);
+                      rank(0.9), rank(0.95), rank(0.99), values.back(), sum);
         o += buf;
     }
 
+  private:
     static void append_bucket(std::string& o, const std::string& key,
                               const std::vector<const Sample*>& samples, const Header& h) {
         const bool attention = !samples.empty() && samples.front()->kind == kAttention;
@@ -918,9 +945,12 @@ class Recorder {
                       ull(counters.bulk_queries), ull(bulk_recorded_), ull(bulk_stored_),
                       (h.gpu_timestamps && h.gpu_timestamp_frequency) ? "true" : "false");
         o += buf;
+        o += ",\"fp8_gpu_calls\":" + std::to_string(counters.fp8_gpu_calls) +
+             ",\"fp8_cpu_fallback_calls\":" + std::to_string(counters.fp8_cpu_fallback_calls);
 
         std::vector<double> v_val, v_alloc, v_mc, v_rec, v_sub, v_fw, v_rb, v_tot;
-        std::vector<double> v_gpu_u, v_gpu_p1, v_gpu_red, v_gpu_cp, v_gpu_tot, v_qw;
+        std::vector<double> v_gpu_u, v_gpu_unp, v_gpu_pack, v_gpu_p1, v_gpu_red, v_gpu_cp,
+            v_gpu_tot, v_qw;
         std::vector<double> v_b_up, v_b_q, v_b_out, v_b_tot;
 
         const double us_per_tick = h.gpu_timestamp_frequency
@@ -952,6 +982,8 @@ class Recorder {
 
             if (b.gpu_valid && us_per_tick > 0.0) {
                 v_gpu_u.push_back(double(b.gpu_upload_ticks) * us_per_tick);
+                v_gpu_unp.push_back(double(b.gpu_unpack_ticks) * us_per_tick);
+                v_gpu_pack.push_back(double(b.gpu_pack_ticks) * us_per_tick);
                 v_gpu_p1.push_back(double(b.gpu_pass1_ticks) * us_per_tick);
                 v_gpu_red.push_back(double(b.gpu_reduce_ticks) * us_per_tick);
                 v_gpu_cp.push_back(double(b.gpu_copy_ticks) * us_per_tick);
@@ -981,6 +1013,10 @@ class Recorder {
             o += ',';
             append_stats(o, "gpu_upload_us", v_gpu_u);
             o += ',';
+            append_stats(o, "gpu_unpack_wht_us", v_gpu_unp);
+            o += ',';
+            append_stats(o, "gpu_pack_us", v_gpu_pack);
+            o += ',';
             append_stats(o, "gpu_pass1_us", v_gpu_p1);
             o += ',';
             append_stats(o, "gpu_reduce_us", v_gpu_red);
@@ -990,6 +1026,92 @@ class Recorder {
             append_stats(o, "gpu_total_us", v_gpu_tot);
             o += ',';
             append_stats(o, "queue_wait_us", v_qw);
+        }
+        o += "},\"recent_envelopes\":[";
+        const size_t first_recent = bulk_stored_ > 16 ? bulk_stored_ - 16 : 0;
+        for (size_t i = first_recent; i < bulk_stored_; ++i) {
+            const auto& b =
+                bulk_ring_[(bulk_next_ + bulk_ring_.size() - bulk_stored_ + i) % bulk_ring_.size()];
+            if (i != first_recent)
+                o += ',';
+            std::snprintf(buf, sizeof(buf),
+                          "{\"cycle_id\":%llu,\"session\":%u,\"layer\":%u,\"wire\":%u,\"nq\":%u,"
+                          "\"segments\":%u,\"gpu_valid\":%u,\"alloc_grew\":%u,\"gpu_total_ticks\":%"
+                          "llu,\"cpu_ns\":[",
+                          ull(b.cycle_id), b.session_id, b.layer, b.wire, b.total_queries,
+                          b.segment_count, unsigned(b.gpu_valid), unsigned(b.alloc_grew),
+                          ull(b.gpu_total_ticks));
+            o += buf;
+            for (uint32_t sp = 0; sp < kCpuSpanCount; ++sp) {
+                if (sp)
+                    o += ',';
+                o += std::to_string(b.cpu_ns[sp]);
+            }
+            o += "]}";
+        }
+        o += "],\"phases\":{";
+        for (uint32_t phase = 0; phase < 3; ++phase) {
+            if (phase)
+                o += ',';
+            o += phase == 0 ? "\"decode\":{" : phase == 1 ? "\"verification\":{" : "\"prefill\":{";
+            const char* cpu_names[] = {"admission_cpu_us", "alloc_cpu_us",  "map_copy_cpu_us",
+                                       "record_cpu_us",    "submit_cpu_us", "fence_wait_cpu_us",
+                                       "readback_cpu_us"};
+            const char* gpu_names[] = {"gpu_upload_us", "gpu_unpack_wht_us", "gpu_pass1_us",
+                                       "gpu_reduce_us", "gpu_pack_us",       "gpu_readback_copy_us",
+                                       "gpu_total_us"};
+            for (uint32_t metric = 0; metric < kCpuSpanCount + 7; ++metric) {
+                if (metric)
+                    o += ',';
+                std::vector<double> values;
+                for (size_t i = 0; i < bulk_phase_stored_[phase]; ++i) {
+                    const auto& b = bulk_phase_ring_[phase][i];
+                    if (metric < kCpuSpanCount)
+                        values.push_back(double(b.cpu_ns[metric]) / 1000.0);
+                    else if (b.gpu_valid && us_per_tick > 0.0) {
+                        const uint64_t ticks[] = {b.gpu_upload_ticks, b.gpu_unpack_ticks,
+                                                  b.gpu_pass1_ticks,  b.gpu_reduce_ticks,
+                                                  b.gpu_pack_ticks,   b.gpu_copy_ticks,
+                                                  b.gpu_total_ticks};
+                        values.push_back(double(ticks[metric - kCpuSpanCount]) * us_per_tick);
+                    }
+                }
+                append_stats(o,
+                             metric < kCpuSpanCount ? cpu_names[metric]
+                                                    : gpu_names[metric - kCpuSpanCount],
+                             values);
+            }
+            o += ",\"recent\":[";
+            const auto& ring = bulk_phase_ring_[phase];
+            const size_t count = std::min<size_t>(4, bulk_phase_stored_[phase]);
+            for (size_t i = 0; i < count; ++i) {
+                const auto& b =
+                    ring[(bulk_phase_next_[phase] + ring.size() - count + i) % ring.size()];
+                if (i)
+                    o += ',';
+                o += "{\"cycle_id\":" + std::to_string(b.cycle_id) +
+                     ",\"session\":" + std::to_string(b.session_id) +
+                     ",\"layer\":" + std::to_string(b.layer) +
+                     ",\"fp8_gpu\":" + std::to_string(b.fp8_gpu) +
+                     ",\"wire\":" + std::to_string(b.wire) +
+                     ",\"nq\":" + std::to_string(b.total_queries) + ",\"gpu_ticks\":[";
+                const uint64_t ticks[] = {b.gpu_upload_ticks, b.gpu_unpack_ticks, b.gpu_pass1_ticks,
+                                          b.gpu_reduce_ticks, b.gpu_pack_ticks,   b.gpu_copy_ticks,
+                                          b.gpu_total_ticks};
+                for (size_t j = 0; j < 7; ++j) {
+                    if (j)
+                        o += ',';
+                    o += std::to_string(ticks[j]);
+                }
+                o += "],\"cpu_ns\":[";
+                for (size_t j = 0; j < kCpuSpanCount; ++j) {
+                    if (j)
+                        o += ',';
+                    o += std::to_string(b.cpu_ns[j]);
+                }
+                o += "]}";
+            }
+            o += "]}";
         }
         o += "},\"bytes\":{";
         append_stats(o, "upload_bytes", v_b_up);
@@ -1005,13 +1127,15 @@ class Recorder {
         o += "\"exclusive_gpu_total\":\"gpu_total_us measures exclusive GPU execution duration "
              "between first and last queries.\",";
         o += "\"queue_wait\":\"queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us), capturing "
-             "scheduling delay.\",";
+             "queue/driver/wakeup overhead; it is not pure GPU queue latency.\",";
         o += "\"cpu_copies\":\"CPU copy cost is map_copy_cpu_us + readback_cpu_us.\",";
-        o += "\"gpu_kernel\":\"GPU kernel cost is gpu_upload_us + gpu_pass1_us + gpu_reduce_us + "
+        o += "\"gpu_kernel\":\"GPU kernel cost is gpu_upload_us + gpu_unpack_wht_us + gpu_pass1_us "
+             "+ gpu_reduce_us + gpu_pack_us + "
              "gpu_readback_copy_us.\",";
         o += "\"unmeasurable_network_oneway\":\"One-way network transit over LAN is strictly "
              "unmeasurable without synchronized clocks. Use transport payload_receive_us, "
-             "send_enqueue_us, and host RTT minus handle_us for network attribution.\"";
+             "send_enqueue_us, and host RTT minus handle_us as inclusive transport diagnostics "
+             "(not pure network time).\"";
         o += "}}";
     }
 
@@ -1023,6 +1147,8 @@ class Recorder {
     size_t bulk_next_ = 0;
     size_t bulk_stored_ = 0;
     uint64_t bulk_recorded_ = 0;
+    std::array<std::vector<BulkEnvelopeSample>, 3> bulk_phase_ring_;
+    std::array<size_t, 3> bulk_phase_next_{}, bulk_phase_stored_{};
 };
 
 } // namespace rkva_rprof

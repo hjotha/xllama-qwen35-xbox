@@ -26,9 +26,22 @@ inline bool valid_descriptor(const rkva_kvarn_range_config& c, uint32_t dimensio
 inline uint32_t required_record_groups(uint32_t live) {
     return live / 128; // eager: every completed overflow group, including relative group 0
 }
+// OMIT_STAGE is safe only when the exact tail covers every incomplete group
+// and global group 0 (whose sink uses stage) is outside this overflow range.
+inline bool compact_stage_supported(const rkva_kvarn_range_config& c) {
+    return c.layout_version == 3 && c.origin >= 128 && c.precision_tail_tokens == 128;
+}
+inline uint32_t upload_stage_rows(const rkva_kvarn_range_upload& u) {
+    return (u.flags & RKVA_KVARN_UPLOAD_OMIT_STAGE)
+               ? 0u
+               : ((u.flags & RKVA_KVARN_UPLOAD_RESET) ? 384u : u.append_rows);
+}
 inline bool valid_upload(const rkva_kvarn_range_upload& u, uint32_t capacity,
-                         uint32_t previous_live, uint32_t previous_groups, bool ready) {
-    if (!u.live_count || u.live_count > capacity || (u.flags & ~1u) || u.reserved[0] ||
+                         uint32_t previous_live, uint32_t previous_groups, bool ready,
+                         bool allow_compact_stage = false) {
+    if (!u.live_count || u.live_count > capacity ||
+        (u.flags & ~(RKVA_KVARN_UPLOAD_RESET | RKVA_KVARN_UPLOAD_OMIT_STAGE)) ||
+        ((u.flags & RKVA_KVARN_UPLOAD_OMIT_STAGE) && !allow_compact_stage) || u.reserved[0] ||
         u.reserved[1])
         return false;
     const uint32_t total_groups = (capacity + 127) / 128;
@@ -158,7 +171,8 @@ inline bool valid_prefix_queries(const int32_t* positions, uint32_t n, uint32_t 
 // Bit-exact with CSWht (rkva_wht.hlsl) and wht256x6 (rkva_range_attn_kvarn4_mq.hlsl).
 inline void butterfly_wht256(const float* src, float* dst) {
     float t[256];
-    for (int i = 0; i < 256; ++i) t[i] = src[i];
+    for (int i = 0; i < 256; ++i)
+        t[i] = src[i];
     for (int slice = 0; slice < 2; ++slice) {
         float* s = t + slice * 128;
         for (int stride = 1; stride < 128; stride <<= 1) {

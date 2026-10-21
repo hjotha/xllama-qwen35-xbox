@@ -473,9 +473,13 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     // ---- Cross-wave merge: body numerators, then tail numerators ----
     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
         uint slot = wave * RKVA_GQA + g;
+        // Reject the whole wave state before a zero merge weight can hide it.
+        bool invalid_state = !isfinite(denom[g]) || denom[g] < 0 ||
+            (denom[g] != 0 && (!isfinite(maximum[g]) || !(all(isfinite(body0[g])) && all(isfinite(body1[g])) && all(isfinite(tail0[g])) && all(isfinite(tail1[g])))));
+        bool invalid_wave = WaveActiveAnyTrue(invalid_state);
         if (lane == 0) {
-            gs_max[slot] = maximum[g];
-            gs_den[slot] = denom[g];
+            gs_max[slot] = invalid_wave ? asfloat(0x7fc00000u) : maximum[g];
+            gs_den[slot] = invalid_wave ? asfloat(0x7fc00000u) : denom[g];
         }
         if (active0) {
             gs_vec[slot * RKVA_DIM + u0 * 4 + 0] = body0[g].x;
@@ -497,13 +501,13 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
         merged_max[g] = -3.402823466e38f;
         for (uint w = 0; w < n_waves; ++w) {
-            if (gs_den[w * RKVA_GQA + g] > 0) merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
+            if (gs_den[w * RKVA_GQA + g] != 0) merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
         }
         merged_den[g] = 0;
         [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
             uint slot = w * RKVA_GQA + g;
             weight[slot] = 0;
-            if (w < n_waves && gs_den[slot] > 0) {
+            if (w < n_waves && gs_den[slot] != 0) {
                 weight[slot] = exp(gs_max[slot] - merged_max[g]);
                 merged_den[g] += gs_den[slot] * weight[slot];
             }
@@ -516,7 +520,7 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
         tail[k] = 0;
         [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
             uint slot = w * RKVA_GQA + g;
-            if (weight[slot] > 0) body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+            if (weight[slot] != 0) body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
         }
     }
     bool has_tail = end > max(begin, tail_begin); // group-uniform
@@ -542,7 +546,7 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
             uint g = k / 2, d = tid + (k & 1) * 128;
             [unroll] for (uint w = 0; w < RKVA_MAX_WAVES; ++w) {
                 uint slot = w * RKVA_GQA + g;
-                if (weight[slot] > 0) tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+                if (weight[slot] != 0) tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
             }
         }
     }
@@ -554,10 +558,10 @@ void CSRangeAttnKvarn4Opt(uint tid : SV_GroupIndex, uint3 group : SV_GroupID) {
             uint g = k / 2, d = tid + (k & 1) * 128;
             uint qh = head0 + g;
             float numerator = body[k] + tail[k];
-            float inv = merged_den[g] > 0 ? 1 / merged_den[g] : 0;
+            float inv = merged_den[g] == 0 ? 0 : 1 / merged_den[g];
             output.Store((qh * RKVA_DIM + d) * 4, asuint(numerator * inv));
             if (d == 0) {
-                float lse = merged_den[g] > 0 ? merged_max[g] + log(merged_den[g])
+                float lse = merged_den[g] != 0 ? merged_max[g] + log(merged_den[g])
                                               : asfloat(0xff800000);
                 output.Store((total * RKVA_DIM + qh) * 4, asuint(lse));
             }
@@ -763,9 +767,13 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
     // Phase 4: Cross-wave merge (2 waves)
     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
         uint slot = wave * RKVA_GQA + g;
+        // Reject the whole wave state before a zero merge weight can hide it.
+        bool invalid_state = !isfinite(denom[g]) || denom[g] < 0 ||
+            (denom[g] != 0 && (!isfinite(maximum[g]) || !(all(isfinite(body[g])) && all(isfinite(tail[g])))));
+        bool invalid_wave = WaveActiveAnyTrue(invalid_state);
         if (lane == 0) {
-            gs_max[slot] = maximum[g];
-            gs_den[slot] = denom[g];
+            gs_max[slot] = invalid_wave ? asfloat(0x7fc00000u) : maximum[g];
+            gs_den[slot] = invalid_wave ? asfloat(0x7fc00000u) : denom[g];
         }
         gs_vec[slot * RKVA_DIM + u * 4 + 0] = body[g].x;
         gs_vec[slot * RKVA_DIM + u * 4 + 1] = body[g].y;
@@ -778,13 +786,13 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
     [unroll] for (uint g = 0; g < RKVA_GQA; ++g) {
         merged_max[g] = -3.402823466e38f;
         for (uint w = 0; w < RKVA_DECODE_WAVES; ++w) {
-            if (gs_den[w * RKVA_GQA + g] > 0) merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
+            if (gs_den[w * RKVA_GQA + g] != 0) merged_max[g] = max(merged_max[g], gs_max[w * RKVA_GQA + g]);
         }
         merged_den[g] = 0;
         [unroll] for (uint w = 0; w < RKVA_DECODE_WAVES; ++w) {
             uint slot = w * RKVA_GQA + g;
             weight[slot] = 0;
-            if (gs_den[slot] > 0) {
+            if (gs_den[slot] != 0) {
                 weight[slot] = exp(gs_max[slot] - merged_max[g]);
                 merged_den[g] += gs_den[slot] * weight[slot];
             }
@@ -798,7 +806,7 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
         merged_tail[k] = 0;
         [unroll] for (uint w = 0; w < RKVA_DECODE_WAVES; ++w) {
             uint slot = w * RKVA_GQA + g;
-            if (weight[slot] > 0) merged_body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+            if (weight[slot] != 0) merged_body[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
         }
     }
 
@@ -817,7 +825,7 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
             uint g = k / 2, d = tid + (k & 1) * 128;
             [unroll] for (uint w = 0; w < RKVA_DECODE_WAVES; ++w) {
                 uint slot = w * RKVA_GQA + g;
-                if (weight[slot] > 0) merged_tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
+                if (weight[slot] != 0) merged_tail[k] += gs_vec[slot * RKVA_DIM + d] * weight[slot];
             }
         }
     }
@@ -833,10 +841,10 @@ void CSRangeAttnKvarn4Decode(uint tid : SV_GroupIndex, uint3 group : SV_GroupID)
             uint g = k / 2, d = tid + (k & 1) * 128;
             uint qh = head0 + g;
             float numerator = merged_body[k] + merged_tail[k];
-            float inv = merged_den[g] > 0 ? 1 / merged_den[g] : 0;
+            float inv = merged_den[g] == 0 ? 0 : 1 / merged_den[g];
             output.Store((qh * RKVA_DIM + d) * 4, asuint(numerator * inv));
             if (d == 0) {
-                float lse = merged_den[g] > 0 ? merged_max[g] + log(merged_den[g])
+                float lse = merged_den[g] != 0 ? merged_max[g] + log(merged_den[g])
                                               : asfloat(0xff800000);
                 output.Store((total * RKVA_DIM + qh) * 4, asuint(lse));
             }

@@ -21,23 +21,30 @@ rkva_kvarn_range_config descriptor(uint32_t tail) {
             1,     1,     1};
 }
 std::vector<uint8_t> payload(uint32_t begin, uint32_t count, uint32_t tail,
-                             uint32_t wire = RKVA_WIRE_F32) {
+                             uint32_t wire = RKVA_WIRE_F32, bool compact_stage = false) {
     std::vector<uint8_t> data;
     const uint32_t segments = (count + 7) / 8;
-    const size_t q_elem_bytes = (wire == RKVA_WIRE_FP8) ? sizeof(uint8_t) :
-                                (wire == RKVA_WIRE_F16 || wire == RKVA_WIRE_SPLITZIP) ? sizeof(uint16_t) :
-                                sizeof(float);
+    const size_t q_elem_bytes = (wire == RKVA_WIRE_FP8) ? sizeof(uint8_t)
+                                : (wire == RKVA_WIRE_F16 || wire == RKVA_WIRE_SPLITZIP)
+                                    ? sizeof(uint16_t)
+                                    : sizeof(float);
     append(data, rkva_kvarn_range_bulk{1, segments, count, 0});
     for (uint32_t first = 0; first < count; first += 8) {
         const uint32_t n = std::min(8u, count - first);
         const uint32_t previous = begin + first, live = previous + n;
         const bool reset = previous == 0;
         const uint32_t groups = live / 128 - previous / 128;
-        const rkva_kvarn_range_upload u{
-            live,           previous / 128, groups, reset ? 1u : 0u, reset ? 0u : previous,
-            reset ? 0u : n, {0, 0}};
+        const rkva_kvarn_range_upload u{live,
+                                        previous / 128,
+                                        groups,
+                                        (reset ? 1u : 0u) |
+                                            (compact_stage ? RKVA_KVARN_UPLOAD_OMIT_STAGE : 0u),
+                                        reset ? 0u : previous,
+                                        reset ? 0u : n,
+                                        {0, 0}};
         const size_t records = size_t(groups) * 4 * 2 * 8960;
-        const size_t rows = (reset ? 384 : n) + (tail ? (reset ? std::min(live, tail) : n) : 0);
+        const size_t rows = (compact_stage ? 0 : (reset ? 384 : n)) +
+                            (tail ? (reset ? std::min(live, tail) : n) : 0);
         const size_t bytes = 2 * (records + rows * 4 * 256 * 2);
         append(data, rkva_kvarn_range_bulk_segment{uint32_t(sizeof(u) + bytes), n});
         append(data, u);
@@ -178,7 +185,8 @@ void test_splitzip() {
     auto corrupt_escapes = compressed;
     auto* hdr_e = reinterpret_cast<rkva_splitzip_header*>(corrupt_escapes.data());
     hdr_e->n_escapes = 0xffffffffu;
-    assert(!splitzip_decode(corrupt_escapes.data(), corrupt_escapes.size(), decoded.data(), decoded.size()));
+    assert(!splitzip_decode(corrupt_escapes.data(), corrupt_escapes.size(), decoded.data(),
+                            decoded.size()));
 
     auto corrupt_sz = compressed;
     auto* hdr_s = reinterpret_cast<rkva_splitzip_header*>(corrupt_sz.data());
@@ -188,8 +196,10 @@ void test_splitzip() {
     assert(!splitzip_decode(corrupt_sz.data(), corrupt_sz.size(), decoded.data(), decoded.size()));
 
     // Element count mismatch:
-    assert(!splitzip_decode(compressed.data(), compressed.size(), decoded.data(), decoded.size() - 1));
-    assert(!splitzip_decode(compressed.data(), compressed.size(), decoded.data(), decoded.size() + 1));
+    assert(
+        !splitzip_decode(compressed.data(), compressed.size(), decoded.data(), decoded.size() - 1));
+    assert(
+        !splitzip_decode(compressed.data(), compressed.size(), decoded.data(), decoded.size() + 1));
 
     // Null pointer checks:
     assert(!splitzip_decode(nullptr, compressed.size(), decoded.data(), decoded.size()));
@@ -198,18 +208,54 @@ void test_splitzip() {
     // Byte-oriented input need not have native struct alignment.
     std::vector<uint8_t> unaligned(compressed.size() + 1);
     std::memcpy(unaligned.data() + 1, compressed.data(), compressed.size());
-    assert(splitzip_decode(unaligned.data() + 1, compressed.size(), decoded.data(), decoded.size()));
+    assert(
+        splitzip_decode(unaligned.data() + 1, compressed.size(), decoded.data(), decoded.size()));
     assert(decoded == src);
 
     for (size_t count : {size_t(0), size_t(1), size_t(3), size_t(65536)}) {
         std::vector<uint16_t> input(count), output(count);
-        for (size_t i = 0; i < count; ++i) input[i] = uint16_t(i);
+        for (size_t i = 0; i < count; ++i)
+            input[i] = uint16_t(i);
         std::vector<uint8_t> frame;
         splitzip_encode(input.data(), count, frame);
         assert(splitzip_decode(frame.data(), frame.size(), output.data(), count));
         assert(input == output);
     }
     std::puts("splitzip bounds, truncation and corruption safety: passed");
+}
+void test_compact_stage() {
+    using namespace rkva_kvarn_range;
+    for (uint32_t begin : {0u, 1u, 120u, 127u, 128u, 255u, 8191u, 16128u}) {
+        for (uint32_t count : {1u, 2u, 3u, 4u, 5u, 6u, 7u, 8u, 9u, 256u}) {
+            for (uint32_t wire :
+                 {uint32_t(RKVA_WIRE_F32), uint32_t(RKVA_WIRE_F16), uint32_t(RKVA_WIRE_FP8)}) {
+                auto compact = payload(begin, count, 128, wire, true);
+                auto full = payload(begin, count, 128, wire);
+                assert(valid(compact, begin, count, 128, 1, wire));
+                const size_t omitted_rows = begin ? count : 384u + count - std::min(count, 8u);
+                assert(full.size() - compact.size() == omitted_rows * 4u * 256u * 2u * 2u);
+                compact.pop_back();
+                assert(!valid(compact, begin, count, 128, 1, wire));
+            }
+        }
+    }
+    // The omitted stage cannot serve tail=0, revision 1/2 or the global sink.
+    auto d = descriptor(128);
+    assert(compact_stage_supported(d));
+    d.origin = 0;
+    assert(!compact_stage_supported(d));
+    d = descriptor(128);
+    d.layout_version = 2;
+    assert(!compact_stage_supported(d));
+    assert(!compact_stage_supported(descriptor(0)));
+    auto data = payload(127, 9, 0, RKVA_WIRE_FP8, true);
+    assert(!valid(data, 127, 9, 0, 1, RKVA_WIRE_FP8));
+    rkva_kvarn_range_upload u{8, 0, 0, 3, 0, 0, {0, 0}};
+    assert(!valid_upload(u, 512, 0, 0, false)); // old/default admission rejects flag
+    assert(valid_upload(u, 512, 0, 0, false, true));
+    u.flags |= 4;
+    assert(!valid_upload(u, 512, 0, 0, false, true));
+    std::puts("compact exact-tail upload admission, seal edges and wire byte savings: passed");
 }
 void test_kvarn4_mq_split() {
     using namespace rkva_rprof;
@@ -251,10 +297,14 @@ void test_kvarn4_mq_split() {
     }
 
     // Invalid q_tile or coarse mode falls back to kvarn4_split
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 0).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 1).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 3).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptCoarse, 4).split_k == kvarn4_split(16384, kModeOptCoarse).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 0).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 1).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 3).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptCoarse, 4).split_k ==
+           kvarn4_split(16384, kModeOptCoarse).split_k);
     std::puts("kvarn4_mq_split policy invariants: passed");
 }
 } // namespace
@@ -263,6 +313,7 @@ int main() {
     test_fp8_contract();
     test_splitzip();
     test_kvarn4_mq_split();
+    test_compact_stage();
     for (uint32_t count : {1u, 8u, 256u}) {
         auto data = payload(0, count, 128, RKVA_WIRE_SPLITZIP);
         uint32_t wire = 99;
@@ -273,8 +324,8 @@ int main() {
     // tail wrap, arbitrary unaligned live reuse, and maximum b/ub=256 for F32,
     // FP16 and FP8 wire formats. SplitZip remains archived, never admitted.
     for (uint32_t tail : {0u, 128u}) {
-        for (uint32_t wire : {uint32_t(RKVA_WIRE_F32), uint32_t(RKVA_WIRE_F16),
-                              uint32_t(RKVA_WIRE_FP8)}) {
+        for (uint32_t wire :
+             {uint32_t(RKVA_WIRE_F32), uint32_t(RKVA_WIRE_F16), uint32_t(RKVA_WIRE_FP8)}) {
             for (uint32_t begin : {0u, 1u, 120u, 127u, 128u, 255u, 8191u}) {
                 for (uint32_t count : {1u, 8u, 9u, 64u, 256u}) {
                     auto data = payload(begin, count, tail, wire);

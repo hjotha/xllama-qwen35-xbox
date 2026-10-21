@@ -17,8 +17,8 @@ the optional original-domain F16 precision tail) with the real Qwen35 shape
 3. optimized: float32 emulation of shaders/rkva/rkva_range_attn_kvarn4_opt.hlsl
    + rkva_range_reduce_opt.hlsl (GQA group per KV head, 8-aligned split rows,
    per-row path for stage/tail/edges, 8-token record tiles, wave-owned rows for
-   32/64/128-lane waves, two-phase body/tail merge, WHT of the merged body,
-   direct output for split_k == 1).
+   32/64/128-lane waves, two-phase body/tail merge, rotated-domain partials and post-reduction WHT,
+   direct output in the original domain for split_k == 1).
 
 Every emulated load is a dword (or Load2/Load4) read that must stay inside the
 region the descriptor allows (the record of that group/head, the stage slot,
@@ -262,6 +262,49 @@ def butterfly_wht(x):
     out = np.concatenate([(x0 + y0) * F32(0.7071067811865475),
                           (x0 - y0) * F32(0.7071067811865475)], axis=1)
     return out.astype(np.float32).reshape(np.shape(x))
+
+
+def merge_partial_states(partials):
+    """Finite-state wave/split merge; only exactly zero denominator is empty.
+
+    Validation precedes weighting, so even a split whose exponential weight
+    underflows to zero cannot hide malformed participating metadata/numerators.
+    """
+    heads, width = partials[0][2].shape
+    maximum = np.full(heads, -FLT_MAX, np.float32)
+    total = np.zeros(heads, np.float32)
+    numerator = np.zeros((heads, width), np.float32)
+    bad = np.zeros(heads, bool)
+    for mx, den, acc in partials:
+        present = den != 0
+        bad |= present & (~np.isfinite(den) | (den < 0) | ~np.isfinite(mx) |
+                          ~np.all(np.isfinite(acc), axis=1))
+        maximum = np.where(present & ~bad, np.maximum(maximum, mx), maximum)
+    with np.errstate(over="ignore", invalid="ignore", under="ignore"):
+        for mx, den, acc in partials:
+            present = (den != 0) & ~bad
+            weight = np.where(present, np.exp(mx - maximum), F32(0)).astype(np.float32)
+            total = (total + np.where(present, den * weight, F32(0))).astype(np.float32)
+            numerator = (numerator + np.where(present[:, None], acc * weight[:, None],
+                                             F32(0))).astype(np.float32)
+    bad |= ~np.isfinite(total) | (total < 0) | ~np.all(np.isfinite(numerator), axis=1)
+    maximum[bad] = total[bad] = F32(np.nan)
+    numerator[bad] = F32(np.nan)
+    return maximum, total, numerator
+
+
+def reduce_partials(partials, rotated=False):
+    """Current optimized reducer, including R=H/16 after the split merge."""
+    mx, den, acc = merge_partial_states(partials)
+    with np.errstate(divide="ignore", invalid="ignore", over="ignore"):
+        inv = np.where(den == 0, F32(0), F32(1) / den).astype(np.float32)
+        out = (acc * inv[:, None]).astype(np.float32)
+        lse = np.where(den == 0, F32(-np.inf), mx + np.log(den)).astype(np.float32)
+        if rotated:
+            out = butterfly_wht(out)
+    bad = ((den != 0) & ~np.isfinite(lse)) | ~np.all(np.isfinite(out), axis=1)
+    out[bad], lse[bad] = F32(np.nan), F32(np.nan)
+    return out, lse
 
 
 def f16(bits):
@@ -581,27 +624,15 @@ def run_optimized(
                     tiles += 1
                 states.append((m_, d_, bd, tl))
             assert sorted(covered) == list(range(begin, end)), "row coverage"
-            mm = np.full(GQA, -FLT_MAX, np.float32)
-            for m_, d_, _, _ in states:
-                mm = np.where(d_ > 0, np.maximum(mm, m_), mm)
-            md = np.zeros(GQA, np.float32)
-            bm = np.zeros((GQA, D), np.float32)
-            tm = np.zeros((GQA, D), np.float32)
-            for m_, d_, bd, tl in states:
-                wt = np.where(d_ > 0, np.exp(m_ - mm), F32(0)).astype(np.float32)
-                md = (md + np.where(d_ > 0, d_ * wt, F32(0))).astype(np.float32)
-                bm = (bm + np.where((wt > 0)[:, None], bd * wt[:, None], F32(0))).astype(np.float32)
-                tm = (tm + np.where((wt > 0)[:, None], tl * wt[:, None], F32(0))).astype(np.float32)
+            mm, md, both = merge_partial_states([
+                (m_, d_, np.concatenate((bd, tl), axis=1)) for m_, d_, bd, tl in states
+            ])
+            bm, tm = both[:, :D], both[:, D:]
             mx[hs], den[hs] = mm, md
-            acc[hs] = (butterfly_wht(bm) + tm).astype(np.float32)
+            acc[hs] = ((butterfly_wht(bm) + tm) if split_k == 1 else
+                       (bm + butterfly_wht(tm))).astype(np.float32)
         partials.append((mx, den, acc))
-    if split_k == 1:
-        mx, den, acc = partials[0]
-        inv = np.where(den > 0, F32(1) / np.where(den > 0, den, 1), F32(0))
-        with np.errstate(divide="ignore"):
-            lse = np.where(den > 0, mx + np.log(np.where(den > 0, den, 1)), -np.inf)
-        return split_k, tiles, (acc * inv[:, None]).astype(np.float32), lse.astype(np.float32)
-    out, lse = m4.reduce_splits(partials)
+    out, lse = reduce_partials(partials, rotated=split_k != 1)
     return split_k, tiles, out, lse
 
 

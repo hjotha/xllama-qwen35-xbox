@@ -111,9 +111,8 @@ inline uint16_t fp8_to_f16_bits(uint8_t b) {
 }
 
 // Option B: SplitZip FP16 lossless exponent-split codec
-static const uint8_t kSplitZipTopExponents[15] = {
-    14, 15, 13, 12, 16, 11, 10, 17, 9, 18, 8, 19, 7, 20, 6
-};
+static const uint8_t kSplitZipTopExponents[15] = {14, 15, 13, 12, 16, 11, 10, 17,
+                                                  9,  18, 8,  19, 7,  20, 6};
 
 struct rkva_splitzip_header {
     uint32_t n_elements;
@@ -121,7 +120,7 @@ struct rkva_splitzip_header {
     uint32_t compressed_bytes;
 };
 
-inline size_t splitzip_encode(const uint16_t * src, size_t n, std::vector<uint8_t> & out) {
+inline size_t splitzip_encode(const uint16_t* src, size_t n, std::vector<uint8_t>& out) {
     uint8_t exp_to_code[32];
     std::memset(exp_to_code, 0x0F, sizeof(exp_to_code));
     for (uint8_t code = 0; code < 15; ++code) {
@@ -130,11 +129,11 @@ inline size_t splitzip_encode(const uint16_t * src, size_t n, std::vector<uint8_
 
     std::vector<uint8_t> escapes;
     out.resize(sizeof(rkva_splitzip_header) + n * 4 + 16);
-    auto * hdr = reinterpret_cast<rkva_splitzip_header*>(out.data());
+    auto* hdr = reinterpret_cast<rkva_splitzip_header*>(out.data());
     hdr->n_elements = (uint32_t)n;
     hdr->n_escapes = 0;
 
-    uint8_t * p = out.data() + sizeof(rkva_splitzip_header);
+    uint8_t* p = out.data() + sizeof(rkva_splitzip_header);
     for (size_t i = 0; i < n; ++i) {
         p[i] = (uint8_t)(src[i] & 0xFF);
     }
@@ -145,8 +144,10 @@ inline size_t splitzip_encode(const uint16_t * src, size_t n, std::vector<uint8_
         uint8_t e1 = (i + 1 < n) ? ((src[i + 1] >> 10) & 0x1F) : 0;
         uint8_t c1 = (i + 1 < n) ? exp_to_code[e1] : 0;
         *p++ = (c0 << 4) | (c1 & 0x0F);
-        if (c0 == 0x0F) escapes.push_back((uint8_t)((src[i] >> 8) & 0xFF));
-        if (c1 == 0x0F && i + 1 < n) escapes.push_back((uint8_t)((src[i + 1] >> 8) & 0xFF));
+        if (c0 == 0x0F)
+            escapes.push_back((uint8_t)((src[i] >> 8) & 0xFF));
+        if (c1 == 0x0F && i + 1 < n)
+            escapes.push_back((uint8_t)((src[i + 1] >> 8) & 0xFF));
     }
     for (size_t i = 0; i < n; i += 2) {
         uint8_t s0 = ((src[i] >> 15) & 1) << 2 | ((src[i] >> 8) & 3);
@@ -163,22 +164,28 @@ inline size_t splitzip_encode(const uint16_t * src, size_t n, std::vector<uint8_
     return out.size();
 }
 
-inline bool splitzip_decode(const uint8_t * in, size_t in_bytes, uint16_t * dst, size_t n) {
-    if (!in || (!dst && n > 0) || in_bytes < sizeof(rkva_splitzip_header)) return false;
+inline bool splitzip_decode(const uint8_t* in, size_t in_bytes, uint16_t* dst, size_t n) {
+    if (!in || (!dst && n > 0) || in_bytes < sizeof(rkva_splitzip_header))
+        return false;
     rkva_splitzip_header header{};
     std::memcpy(&header, in, sizeof(header));
-    const auto * hdr = &header;
-    if (hdr->n_elements != n || hdr->n_escapes > n) return false;
+    const auto* hdr = &header;
+    if (hdr->n_elements != n || hdr->n_escapes > n)
+        return false;
     const uint64_t count = hdr->n_elements;
     const uint64_t nibble_bytes = (count + 1) / 2;
     const uint64_t required_bytes = sizeof(header) + count + 2 * nibble_bytes + hdr->n_escapes;
-    if (hdr->compressed_bytes != required_bytes || in_bytes < required_bytes) return false;
+    if (hdr->compressed_bytes != required_bytes || in_bytes < required_bytes)
+        return false;
 
-    const uint8_t * p = in + sizeof(rkva_splitzip_header);
-    const uint8_t * low_bytes = p; p += n;
-    const uint8_t * exp_nibbles = p; p += (n + 1) / 2;
-    const uint8_t * sm_nibbles = p; p += (n + 1) / 2;
-    const uint8_t * esc_ptr = p;
+    const uint8_t* p = in + sizeof(rkva_splitzip_header);
+    const uint8_t* low_bytes = p;
+    p += n;
+    const uint8_t* exp_nibbles = p;
+    p += (n + 1) / 2;
+    const uint8_t* sm_nibbles = p;
+    p += (n + 1) / 2;
+    const uint8_t* esc_ptr = p;
 
     size_t esc_idx = 0;
     for (size_t i = 0; i < n; ++i) {
@@ -193,7 +200,8 @@ inline bool splitzip_decode(const uint8_t * in, size_t in_bytes, uint16_t * dst,
 
         uint16_t exp;
         if (code == 0x0F) {
-            if (esc_idx >= hdr->n_escapes) return false;
+            if (esc_idx >= hdr->n_escapes)
+                return false;
             uint8_t raw_hi = esc_ptr[esc_idx++];
             exp = (raw_hi >> 2) & 0x1F;
         } else {
@@ -203,7 +211,8 @@ inline bool splitzip_decode(const uint8_t * in, size_t in_bytes, uint16_t * dst,
         uint16_t h = (sign << 15) | (exp << 10) | (top_m << 8) | lo;
         dst[i] = h;
     }
-    if (esc_idx != hdr->n_escapes) return false;
+    if (esc_idx != hdr->n_escapes)
+        return false;
     return true;
 }
 
@@ -257,9 +266,9 @@ inline bool validate_wire(const uint8_t* data, size_t bytes, uint32_t n_queries,
         generation > UINT64_MAX - header.segment_count)
         return false;
     const uint64_t query_elem_bytes =
-        (expected_wire == RKVA_WIRE_FP8) ? sizeof(uint8_t) :
-        (expected_wire == RKVA_WIRE_F16 || expected_wire == RKVA_WIRE_SPLITZIP) ? sizeof(uint16_t) :
-        sizeof(float);
+        (expected_wire == RKVA_WIRE_FP8)                                          ? sizeof(uint8_t)
+        : (expected_wire == RKVA_WIRE_F16 || expected_wire == RKVA_WIRE_SPLITZIP) ? sizeof(uint16_t)
+                                                                                  : sizeof(float);
     size_t offset = sizeof(header);
     uint32_t total = 0;
     for (uint32_t i = 0; i < header.segment_count; ++i) {
@@ -276,14 +285,15 @@ inline bool validate_wire(const uint8_t* data, size_t bytes, uint32_t n_queries,
         part.n_queries = wire.n_queries;
         std::memcpy(&part.upload, data + offset, sizeof(part.upload));
         const auto& u = part.upload;
-        if (!rkva_kvarn_range::valid_upload(u, descriptor.capacity, live, groups, ready))
+        if (!rkva_kvarn_range::valid_upload(u, descriptor.capacity, live, groups, ready,
+                                            rkva_kvarn_range::compact_stage_supported(descriptor)))
             return false;
         const bool reset = (u.flags & 1) != 0;
         if ((reset && i) || (!reset && u.append_rows != wire.n_queries))
             return false;
         const uint64_t row_bytes = uint64_t(n_head_kv) * 256 * 2;
         const uint64_t records = uint64_t(u.record_groups) * n_head_kv * 2 * 8960;
-        const uint64_t stage = uint64_t(reset ? 384 : u.append_rows) * row_bytes;
+        const uint64_t stage = uint64_t(rkva_kvarn_range::upload_stage_rows(u)) * row_bytes;
         const uint64_t tail_rows =
             descriptor.precision_tail_tokens
                 ? (reset ? std::min(u.live_count, descriptor.precision_tail_tokens) : u.append_rows)

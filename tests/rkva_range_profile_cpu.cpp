@@ -2,6 +2,7 @@
 // math, ring behaviour and JSON report shape. Build and run:
 //   g++ -std=c++17 -Wall -Wextra -Werror tests/rkva_range_profile_cpu.cpp -o /tmp/rkva_profile
 //   /tmp/rkva_profile > /tmp/rkva_profile.json && python3 -m json.tool /tmp/rkva_profile.json
+#include "../uwp/rkva/rkva-bulk-scratch.h"
 #include "../uwp/rkva/rkva-range-profile.h"
 #undef NDEBUG
 #include <cassert>
@@ -284,10 +285,14 @@ int main() {
     }
 
     // Invalid q_tile or coarse mode falls back to kvarn4_split
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 0).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 1).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptBalanced, 3).split_k == kvarn4_split(16384, kModeOptBalanced).split_k);
-    assert(kvarn4_mq_split(16384, kModeOptCoarse, 4).split_k == kvarn4_split(16384, kModeOptCoarse).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 0).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 1).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptBalanced, 3).split_k ==
+           kvarn4_split(16384, kModeOptBalanced).split_k);
+    assert(kvarn4_mq_split(16384, kModeOptCoarse, 4).split_k ==
+           kvarn4_split(16384, kModeOptCoarse).split_k);
 
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;
@@ -395,7 +400,38 @@ int main() {
     r.counters.calls[kUpload] = 3;
     r.counters.calls[kAttention] = 3;
 
+    // Scratch shape counters distinguish cold growth from equal/smaller warm calls.
+    rkva_kvarn_bulk::Scratch scratch;
+    for (unsigned i = 0; i < 3; ++i) {
+        rkva_kvarn_bulk::ScratchCall call(scratch, 256, RKVA_WIRE_FP8);
+        scratch.output_f16.resize(256 * 24 * 256);
+        scratch.lse.resize(256 * 24);
+        scratch.segments.clear();
+        scratch.segments.resize(32);
+    }
+    assert(scratch.shapes[2][256].calls == 3);
+    assert(scratch.shapes[2][256].growth_calls == 1);
+    assert(scratch.shapes[2][256].reallocations == 3);
+    {
+        rkva_kvarn_bulk::ScratchCall call(scratch, 1, RKVA_WIRE_FP8);
+        scratch.output_f16.resize(24 * 256);
+        scratch.lse.resize(24);
+        scratch.segments.resize(1);
+    }
+    assert(scratch.shapes[2][1].growth_calls == 0);
+    assert(scratch.json().find("\"growth_calls\":0") != std::string::npos);
+    const auto capacity_before_reset = scratch.capacities();
+    scratch.reset_counters();
+    assert(scratch.capacities() == capacity_before_reset);
+    assert(scratch.json() == "[]");
+
     BulkEnvelopeSample b;
+    b.cycle_id = 123;
+    b.session_id = 7;
+    b.layer = 3;
+    b.wire = RKVA_WIRE_FP8;
+    b.gpu_unpack_ticks = 20;
+    b.gpu_pack_ticks = 10;
     b.segment_count = 4;
     b.total_queries = 32;
     b.gpu_valid = 1;
@@ -476,12 +512,11 @@ int main() {
                   "kvarn4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"requires "
                   "wave lanes >= 64 (reported min 32)\",\"calls\":13},\"mq4\":{\"available\":true,"
                   "\"status\":\"ready\",\"calls\":5}}") != std::string::npos);
-    assert(
-        json.find("\"kvarn4_decode\":{\"nq\":1,"
-                  "\"descriptor_revision\":3,\"required_wave_lanes\":64,"
-                  "\"mode_map\":\"1:kvarn4_decode_balanced 2:kvarn4_decode_fine "
-                  "3:per-query kvarn4_gqa_coarse\","
-                  "\"available\":true,\"status\":\"ready\",\"calls\":7}") != std::string::npos);
+    assert(json.find("\"kvarn4_decode\":{\"nq\":1,"
+                     "\"descriptor_revision\":3,\"required_wave_lanes\":64,"
+                     "\"mode_map\":\"1:kvarn4_decode_balanced 2:kvarn4_decode_fine "
+                     "3:per-query kvarn4_gqa_coarse\","
+                     "\"available\":true,\"status\":\"ready\",\"calls\":7}") != std::string::npos);
     assert(json.find("\"format_multi_query\":{\"nq_min\":2,\"nq_max\":9,\"tile_rows\":64,"
                      "\"mode_map\":\"1:<fmt>_mq4_balanced 2:<fmt>_mq2_fine 3:per-query "
                      "<fmt>_gqa_coarse\",\"f16\":{\"mq2\":{\"available\":true,\"status\":"
@@ -517,6 +552,11 @@ int main() {
                      "\"reference_calls\":2,\"fast_nq_max\":0}") != std::string::npos);
     assert(json.find("\\\"quoted\\\"\\u000a") != std::string::npos);
     assert(json.find("\"bulk\":{") != std::string::npos);
+    assert(json.find("\"cycle_id\":123,\"session\":7,\"layer\":3,\"wire\":4,\"nq\":32") !=
+           std::string::npos);
+    assert(json.find("\"gpu_unpack_wht_us\":{\"n\":1,\"mean\":20.000") != std::string::npos);
+    assert(json.find("\"gpu_pack_us\":{\"n\":1,\"mean\":10.000") != std::string::npos);
+    assert(json.find("\"p95\":") != std::string::npos);
     assert(json.find("\"bulk_calls\":1") != std::string::npos);
     assert(json.find("\"bulk_segments\":4") != std::string::npos);
     assert(json.find("\"bulk_queries\":32") != std::string::npos);
@@ -526,6 +566,30 @@ int main() {
     assert(json.find("\"upload_bytes\":{\"n\":1,\"mean\":65536.000") != std::string::npos);
     assert(json.find("\"timing_breakdown_notes\":{") != std::string::npos);
     std::printf("%s\n", json.c_str());
+
+    // A long decode suffix evicts prefill from the global ring but must not
+    // erase either independent phase distribution or its correlation IDs.
+    Recorder phase_recorder;
+    phase_recorder.configure(4);
+    phase_recorder.record_bulk(b);
+    BulkEnvelopeSample verification = b;
+    verification.total_queries = 4;
+    verification.gpu_total_ticks = 333;
+    phase_recorder.record_bulk(verification);
+    BulkEnvelopeSample decode = b;
+    decode.total_queries = 1;
+    decode.gpu_total_ticks = 2;
+    for (unsigned i = 0; i < 20; ++i)
+        phase_recorder.record_bulk(decode);
+    const std::string phase_json = phase_recorder.json(h);
+    const auto prefill_pos = phase_json.find("\"prefill\":{");
+    const auto verification_pos = phase_json.find("\"verification\":{");
+    assert(prefill_pos != std::string::npos && verification_pos != std::string::npos);
+    assert(phase_json.find("\"gpu_total_us\":{\"n\":1,\"mean\":650.000", prefill_pos) !=
+           std::string::npos);
+    assert(phase_json.find("\"gpu_total_us\":{\"n\":1,\"mean\":333.000", verification_pos) !=
+           std::string::npos);
+    assert(phase_json.find("\"recent\":[{\"cycle_id\":123", prefill_pos) != std::string::npos);
 
     // Reset clears samples and counters but keeps the reserved ring.
     r.reset();
