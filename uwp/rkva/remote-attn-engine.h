@@ -122,6 +122,18 @@ class RemoteAttnEngine {
                                std::string* error);
     bool upload_kvarn_range(uint32_t id, uint32_t layer, const rkva_kvarn_range_upload& upload,
                             const uint8_t* data, size_t bytes, std::string* error);
+    // Layout-4 Q4_0 envelope: every segment upload and attention is recorded in
+    // ONE command list and published by a single submit/fence, then each
+    // segment's OUT/LSE is read back. Q wire may be F32, F16 or FP8.
+    bool attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
+                        size_t bytes, float* out, float* lse, std::string* error);
+    bool attend_q8_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
+                        size_t bytes, float* out, float* lse, std::string* error);
+    // Shared layout-4/5 implementation: storage selects the row format and
+    // row_bytes is the per-token plane stride (heads * 144 or heads * 272).
+    bool attend_native_rows(uint32_t id, uint32_t layer, uint32_t n_tokens, uint32_t storage,
+                            uint64_t row_bytes, const uint8_t* data, size_t bytes, float* out,
+                            float* lse, std::string* error);
     bool attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
                            size_t bytes, float* out, float* lse, std::string* error,
                            uint64_t cycle_id = 0);

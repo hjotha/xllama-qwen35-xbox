@@ -2116,7 +2116,10 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
 bool RemoteAttnEngine::upload_range(uint32_t id, uint32_t layer, uint32_t start_row,
                                     uint32_t n_rows, const uint16_t* k, const uint16_t* v,
                                     std::string* error) {
-    const bool prof = profiling_ && profile_;
+    // In bulk recording the submit is deferred to the envelope, so the
+    // timestamp readback would run before the GPU; bulk profiling collects
+    // upload timings from the envelope instead.
+    const bool prof = profiling_ && profile_ && !bulk_recording_;
     rp::Sample sample;
     SpanTimer timer;
     timer.start(prof, sample.cpu_ns);
@@ -2588,6 +2591,184 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
         finish_bulk_profile(envelope, ts_bulk);
     }
     return true;
+}
+
+bool RemoteAttnEngine::attend_native_rows(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                          uint32_t storage, uint64_t row_bytes,
+                                          const uint8_t* data, size_t bytes, float* out,
+                                          float* lse, std::string* error) {
+    struct q4_segment {
+        size_t up_off, pos_off, q_off;
+        uint32_t up_bytes, append_begin, append_rows, n_queries, wire;
+    };
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured ||
+        s->range_storage != storage || layer >= s->layer_kv.size() ||
+        !data || !out || !lse || bulk_recording_ || !n_tokens || n_tokens > 256) {
+        return ::fail(error, "q4 bulk: invalid session/arguments");
+    }
+    std::vector<q4_segment> segments;
+    segments.reserve(32);
+    size_t off = sizeof(rkva_kvarn_range_bulk);
+    rkva_kvarn_range_bulk header{};
+    if (bytes < off) return ::fail(error, "q4 bulk: short header");
+    std::memcpy(&header, data, sizeof(header));
+    if (header.version != 1 || !header.segment_count || header.segment_count > 32 ||
+        header.reserved || header.total_queries != n_tokens)
+        return ::fail(error, "q4 bulk: bad header");
+    const uint64_t row = row_bytes;
+    uint32_t sum_queries = 0;
+    for (uint32_t i = 0; i < header.segment_count; ++i) {
+        if (bytes - off < sizeof(rkva_kvarn_range_bulk_segment))
+            return ::fail(error, "q4 bulk: short segment");
+        rkva_kvarn_range_bulk_segment seg{};
+        std::memcpy(&seg, data + off, sizeof(seg));
+        off += sizeof(seg);
+        if (seg.upload_bytes < sizeof(rkva_kvarn_range_upload) || seg.upload_bytes > bytes - off)
+            return ::fail(error, "q4 bulk: bad upload size");
+        rkva_kvarn_range_upload u{};
+        std::memcpy(&u, data + off, sizeof(u));
+        const bool upload_ok = storage == RKVA_RANGE_STORAGE_Q8_0
+                ? rkva_kvarn_range::valid_q8_upload(u, s->capacity, u.append_begin)
+                : rkva_kvarn_range::valid_q4_upload(u, s->capacity, u.append_begin);
+        if (!upload_ok ||
+            uint64_t(u.append_begin) + u.append_rows != u.live_count ||
+            seg.upload_bytes != sizeof(u) + uint64_t(u.append_rows) * row * 2)
+            return ::fail(error, "q4 bulk: bad upload header");
+        q4_segment qs{off + sizeof(u), 0, 0, seg.upload_bytes, u.append_begin, u.append_rows,
+                      seg.n_queries, RKVA_WIRE_F32};
+        off += seg.upload_bytes;
+        if (bytes - off < sizeof(rkva_range_attn))
+            return ::fail(error, "q4 bulk: short attention");
+        rkva_range_attn attn{};
+        std::memcpy(&attn, data + off, sizeof(attn));
+        off += sizeof(attn);
+        qs.wire = attn.wire;
+        if (!qs.n_queries || qs.n_queries > n_tokens - sum_queries || attn.flags ||
+            attn.reserved[0] || attn.reserved[1] ||
+            (attn.wire != RKVA_WIRE_F32 && attn.wire != RKVA_WIRE_F16 &&
+             attn.wire != RKVA_WIRE_FP8))
+            return ::fail(error, "q4 bulk: bad attention");
+        const uint64_t elements = uint64_t(qs.n_queries) * geo_.n_head * geo_.head_dim;
+        const uint64_t pos_bytes = uint64_t(qs.n_queries) * sizeof(int32_t);
+        const uint64_t q_bytes = elements * (attn.wire == RKVA_WIRE_FP8 ? 1u :
+                                             attn.wire == RKVA_WIRE_F16 ? 2u : 4u);
+        if (elements > (64ull << 20) || bytes - off < pos_bytes + q_bytes)
+            return ::fail(error, "q4 bulk: short query payload");
+        qs.pos_off = off;
+        qs.q_off = off + pos_bytes;
+        off += pos_bytes + q_bytes;
+        sum_queries += qs.n_queries;
+        segments.push_back(qs);
+    }
+    if (off != bytes || sum_queries != n_tokens)
+        return ::fail(error, "q4 bulk: trailing bytes/query total");
+
+    uint32_t max_queries = 0;
+    for (const auto& segment : segments)
+        max_queries = std::max(max_queries, segment.n_queries);
+    if (!ensure_range_scratch(max_queries, error)) return false;
+    if (bulk_transfers_.size() < segments.size()) bulk_transfers_.resize(segments.size());
+    for (size_t i = 0; i < segments.size(); ++i) {
+        auto& transfer = bulk_transfers_[i];
+        const uint64_t q_bytes = uint64_t(segments[i].n_queries) * geo_.n_head * 256 * 4;
+        const uint64_t query_bytes = 2 * q_bytes + segments[i].n_queries * 4;
+        const uint64_t output_bytes = q_bytes + uint64_t(segments[i].n_queries) * geo_.n_head * 4;
+        if (transfer.upload.bytes < segments[i].up_bytes &&
+            !create_buffer(segments[i].up_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                           D3D12_RESOURCE_STATE_GENERIC_READ, &transfer.upload, error)) return false;
+        if (transfer.query.bytes < query_bytes &&
+            !create_buffer(query_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                           D3D12_RESOURCE_STATE_GENERIC_READ, &transfer.query, error)) return false;
+        if (transfer.readback.bytes < output_bytes &&
+            !create_buffer(output_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
+                           D3D12_RESOURCE_STATE_COPY_DEST, &transfer.readback, error)) return false;
+    }
+    if (!begin(error)) return false;
+    bulk_recording_ = true;
+    std::vector<float> q_f32;
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const auto& seg = segments[i];
+        auto& transfer = bulk_transfers_[i];
+        std::swap(range_upload_, transfer.upload);
+        std::swap(range_query_, transfer.query);
+        std::swap(range_readback_, transfer.readback);
+        const uint8_t* up = data + seg.up_off;
+        const uint64_t plane = uint64_t(seg.append_rows) * row;
+        const uint8_t* kp = up;
+        const uint8_t* vp = up + plane;
+        const uint64_t elements = uint64_t(seg.n_queries) * geo_.n_head * geo_.head_dim;
+        q_f32.resize(elements);
+        const uint8_t* qsrc = data + seg.q_off;
+        if (seg.wire == RKVA_WIRE_FP8) {
+            for (uint64_t e = 0; e < elements; ++e)
+                q_f32[e] = rkva_kvarn_bulk::f16_bits_to_f32(
+                        rkva_kvarn_bulk::fp8_to_f16_bits(qsrc[e]));
+        } else if (seg.wire == RKVA_WIRE_F16) {
+            const uint16_t* q16 = reinterpret_cast<const uint16_t*>(qsrc);
+            for (uint64_t e = 0; e < elements; ++e)
+                q_f32[e] = rkva_kvarn_bulk::f16_bits_to_f32(q16[e]);
+        } else {
+            std::memcpy(q_f32.data(), qsrc, elements * sizeof(float));
+        }
+        const bool ok = (seg.append_rows == 0 ||
+                         upload_range(id, layer, seg.append_begin, seg.append_rows,
+                                      reinterpret_cast<const uint16_t*>(kp),
+                                      reinterpret_cast<const uint16_t*>(vp), error)) &&
+                        attend_range(id, layer, seg.n_queries,
+                                     reinterpret_cast<const int32_t*>(data + seg.pos_off),
+                                     q_f32.data(), out, lse, error);
+        std::swap(range_upload_, transfer.upload);
+        std::swap(range_query_, transfer.query);
+        std::swap(range_readback_, transfer.readback);
+        if (!ok) {
+            bulk_recording_ = false;
+            s->valid = false;
+            terminal_failure_ = true;
+            return false;
+        }
+    }
+    bulk_recording_ = false;
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+    size_t row_out = 0;
+    for (size_t i = 0; i < segments.size(); ++i) {
+        const uint64_t heads = uint64_t(segments[i].n_queries) * geo_.n_head;
+        const uint64_t q_bytes = heads * 256 * 4;
+        const uint64_t output_bytes = q_bytes + heads * 4;
+        void* mapped = nullptr;
+        D3D12_RANGE range{0, static_cast<SIZE_T>(output_bytes)};
+        const HRESULT hr = bulk_transfers_[i].readback.resource->Map(0, &range, &mapped);
+        if (FAILED(hr)) {
+            s->valid = false;
+            return fail(error, "Map q4 bulk readback", hr);
+        }
+        std::memcpy(out + row_out * geo_.n_head * 256, mapped, q_bytes);
+        std::memcpy(lse + row_out * geo_.n_head, static_cast<const uint8_t*>(mapped) + q_bytes,
+                    heads * 4);
+        D3D12_RANGE empty{0, 0};
+        bulk_transfers_[i].readback.resource->Unmap(0, &empty);
+        row_out += segments[i].n_queries;
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                      const uint8_t* data, size_t bytes, float* out, float* lse,
+                                      std::string* error) {
+    return attend_native_rows(id, layer, n_tokens, RKVA_RANGE_STORAGE_Q4_0,
+                              rkva_kvarn_range::q4_row_bytes(geo_.head_dim, geo_.n_head_kv),
+                              data, bytes, out, lse, error);
+}
+
+bool RemoteAttnEngine::attend_q8_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                      const uint8_t* data, size_t bytes, float* out, float* lse,
+                                      std::string* error) {
+    return attend_native_rows(id, layer, n_tokens, RKVA_RANGE_STORAGE_Q8_0,
+                              rkva_kvarn_range::q8_row_bytes(geo_.head_dim, geo_.n_head_kv),
+                              data, bytes, out, lse, error);
 }
 
 bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_tokens,

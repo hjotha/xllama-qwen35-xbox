@@ -859,6 +859,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
             {
                 size_t v = sizeof(header);
                 uint32_t vq = 0;
+                uint32_t expected_live = 0;
+                bool first_segment = true;
                 for (uint32_t si = 0; si < header.segment_count; ++si) {
                     rkva_kvarn_range_bulk_segment vseg{};
                     if (input.size() - v < sizeof(vseg))
@@ -870,9 +872,18 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                         return q4_bad("segment upload size", si, v, input.size());
                     rkva_kvarn_range_upload vu{};
                     std::memcpy(&vu, input.data() + v, sizeof(vu));
+                    // Continuity inside the envelope: every segment after the
+                    // first must start exactly at the previous live count, and
+                    // a non-RESET bootstrap is left to the engine's coverage
+                    // check (the handler has no per-layer counter).
+                    const bool reset = (vu.flags & RKVA_KVARN_UPLOAD_RESET) != 0;
                     if (!valid_rows_upload(vu) ||
-                        uint64_t(vu.append_begin) + vu.append_rows != vu.live_count)
+                        uint64_t(vu.append_begin) + vu.append_rows != vu.live_count ||
+                        (first_segment ? (reset && vu.append_begin != 0)
+                                       : vu.append_begin != expected_live))
                         return q4_bad("upload header", si, v, input.size());
+                    expected_live = vu.live_count;
+                    first_segment = false;
                     if (vseg.upload_bytes != sizeof(vu) + uint64_t(vu.append_rows) * row * 2)
                         return q4_bad("upload payload", si, v, input.size());
                     v += vseg.upload_bytes;
@@ -897,101 +908,38 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 if (vq != req.n_tokens)
                     return q4_bad("query total", header.segment_count, vq, req.n_tokens);
             }
+            // One command list / one submit for every segment of the layer.
+            std::vector<float> out_f32(size_t(total), 0.0f);
+            std::vector<float> lse_f32(size_t(heads), 0.0f);
+            std::string error;
+            const auto start = clock_type::now();
+            const bool bulk_ok = q8_rows
+                ? state.engine->attend_q8_bulk(req.session_id, req.layer_id, req.n_tokens,
+                                               input.data(), input.size(), out_f32.data(),
+                                               lse_f32.data(), &error)
+                : state.engine->attend_q4_bulk(req.session_id, req.layer_id, req.n_tokens,
+                                               input.data(), input.size(), out_f32.data(),
+                                               lse_f32.data(), &error);
+            if (!bulk_ok) {
+                event_engine_error(error);
+                return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
+                                                                     : RKVA_ERR_BAD_PAYLOAD;
+            }
+            compute_us = elapsed_us(start);
             output.resize(size_t(total * out_elem + heads * sizeof(float)));
             uint8_t * out_bytes = output.data();
-            float * lse = reinterpret_cast<float*>(output.data() + total * out_elem);
-            std::string error;
-            std::vector<float> q_f32;
-            std::vector<float> out_f32;
-            size_t off = sizeof(header);
-            uint32_t done = 0;
-            const auto start = clock_type::now();
-            for (uint32_t si = 0; si < header.segment_count; ++si) {
-                rkva_kvarn_range_bulk_segment seg{};
-                if (input.size() - off < sizeof(seg))
-                    return RKVA_ERR_BAD_PAYLOAD;
-                std::memcpy(&seg, input.data() + off, sizeof(seg));
-                off += sizeof(seg);
-                if (seg.upload_bytes < sizeof(rkva_kvarn_range_upload) ||
-                    seg.upload_bytes > input.size() - off)
-                    return RKVA_ERR_BAD_PAYLOAD;
-                rkva_kvarn_range_upload u{};
-                std::memcpy(&u, input.data() + off, sizeof(u));
-                if (!valid_rows_upload(u) ||
-                    uint64_t(u.append_begin) + u.append_rows != u.live_count)
-                    return RKVA_ERR_BAD_PAYLOAD;
-                const uint64_t need = uint64_t(u.append_rows) * row * 2;
-                if (seg.upload_bytes != sizeof(u) + need)
-                    return RKVA_ERR_BAD_PAYLOAD;
-                const uint8_t* kp = input.data() + off + sizeof(u);
-                const uint8_t* vp = kp + uint64_t(u.append_rows) * row;
-                if (!state.engine->upload_range(req.session_id, req.layer_id, u.append_begin,
-                                                u.append_rows,
-                                                reinterpret_cast<const uint16_t*>(kp),
-                                                reinterpret_cast<const uint16_t*>(vp), &error)) {
-                    event_engine_error(error);
-                    return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
-                                                                         : RKVA_ERR_BAD_POSITION;
-                }
-                off += seg.upload_bytes;
-                rkva_range_attn attn{};
-                if (input.size() - off < sizeof(attn))
-                    return RKVA_ERR_BAD_PAYLOAD;
-                std::memcpy(&attn, input.data() + off, sizeof(attn));
-                off += sizeof(attn);
-                const uint32_t chunk = seg.n_queries;
-                if (!chunk || chunk > req.n_tokens - done || attn.wire != reply_wire ||
-                    attn.flags || attn.reserved[0] || attn.reserved[1])
-                    return RKVA_ERR_BAD_PAYLOAD;
-                const uint64_t elements = uint64_t(chunk) * state.geo.n_head * state.geo.head_dim;
-                const uint64_t pos_bytes = uint64_t(chunk) * sizeof(int32_t);
-                const uint64_t q_bytes = elements * out_elem;
-                if (elements > (64ull << 20) || input.size() - off < pos_bytes + q_bytes)
-                    return RKVA_ERR_BAD_PAYLOAD;
-                std::vector<int32_t> positions(chunk);
-                std::memcpy(positions.data(), input.data() + off, pos_bytes);
-                off += pos_bytes;
-                q_f32.resize(elements);
-                if (reply_wire == RKVA_WIRE_FP8) {
-                    const uint8_t * q8 = input.data() + off;
-                    for (uint64_t i = 0; i < elements; ++i)
-                        q_f32[i] = rkva_kvarn_bulk::f16_bits_to_f32(
-                                rkva_kvarn_bulk::fp8_to_f16_bits(q8[i]));
-                } else if (reply_wire == RKVA_WIRE_F16) {
-                    const uint16_t * q16 = reinterpret_cast<const uint16_t*>(input.data() + off);
-                    for (uint64_t i = 0; i < elements; ++i)
-                        q_f32[i] = rkva_kvarn_bulk::f16_bits_to_f32(q16[i]);
-                } else {
-                    std::memcpy(q_f32.data(), input.data() + off, elements * sizeof(float));
-                }
-                off += q_bytes;
-                out_f32.resize(elements);
-                float * seg_lse = lse + uint64_t(done) * state.geo.n_head;
-                if (!state.engine->attend_range(req.session_id, req.layer_id, chunk,
-                                                positions.data(), q_f32.data(), out_f32.data(),
-                                                seg_lse, &error)) {
-                    event_engine_error(error);
-                    return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU
-                                                                         : RKVA_ERR_BAD_POSITION;
-                }
-                uint8_t * seg_out = out_bytes + size_t(done) * state.geo.n_head *
-                                    state.geo.head_dim * out_elem;
-                if (reply_wire == RKVA_WIRE_FP8) {
-                    for (uint64_t i = 0; i < elements; ++i)
-                        seg_out[i] = rkva_kvarn_bulk::f16_to_fp8_bits(
-                                rkva_kvarn_bulk::f32_to_f16_bits(out_f32[i]));
-                } else if (reply_wire == RKVA_WIRE_F16) {
-                    uint16_t * o16 = reinterpret_cast<uint16_t*>(seg_out);
-                    for (uint64_t i = 0; i < elements; ++i)
-                        o16[i] = rkva_kvarn_bulk::f32_to_f16_bits(out_f32[i]);
-                } else {
-                    std::memcpy(seg_out, out_f32.data(), elements * sizeof(float));
-                }
-                done += chunk;
+            std::memcpy(output.data() + total * out_elem, lse_f32.data(), heads * sizeof(float));
+            if (reply_wire == RKVA_WIRE_FP8) {
+                for (uint64_t e = 0; e < total; ++e)
+                    out_bytes[e] = rkva_kvarn_bulk::f16_to_fp8_bits(
+                            rkva_kvarn_bulk::f32_to_f16_bits(out_f32[e]));
+            } else if (reply_wire == RKVA_WIRE_F16) {
+                uint16_t * o16 = reinterpret_cast<uint16_t*>(out_bytes);
+                for (uint64_t e = 0; e < total; ++e)
+                    o16[e] = rkva_kvarn_bulk::f32_to_f16_bits(out_f32[e]);
+            } else {
+                std::memcpy(out_bytes, out_f32.data(), total * sizeof(float));
             }
-            if (done != req.n_tokens)
-                return RKVA_ERR_BAD_PAYLOAD;
-            compute_us = elapsed_us(start);
             prepare_us = elapsed_us(t0);
             return RKVA_OK;
         }
