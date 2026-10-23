@@ -2593,16 +2593,17 @@ bool RemoteAttnEngine::attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n
     return true;
 }
 
-bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
-                                      const uint8_t* data, size_t bytes, float* out, float* lse,
-                                      std::string* error) {
+bool RemoteAttnEngine::attend_native_rows(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                          uint32_t storage, uint64_t row_bytes,
+                                          const uint8_t* data, size_t bytes, float* out,
+                                          float* lse, std::string* error) {
     struct q4_segment {
         size_t up_off, pos_off, q_off;
         uint32_t up_bytes, append_begin, append_rows, n_queries, wire;
     };
     Session* s = find_session(id);
     if (!ready_ || !s || !s->valid || !s->range_configured ||
-        s->range_storage != RKVA_RANGE_STORAGE_Q4_0 || layer >= s->layer_kv.size() ||
+        s->range_storage != storage || layer >= s->layer_kv.size() ||
         !data || !out || !lse || bulk_recording_ || !n_tokens || n_tokens > 256) {
         return ::fail(error, "q4 bulk: invalid session/arguments");
     }
@@ -2615,7 +2616,7 @@ bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_to
     if (header.version != 1 || !header.segment_count || header.segment_count > 32 ||
         header.reserved || header.total_queries != n_tokens)
         return ::fail(error, "q4 bulk: bad header");
-    const uint64_t row = rkva_kvarn_range::q4_row_bytes(geo_.head_dim, geo_.n_head_kv);
+    const uint64_t row = row_bytes;
     uint32_t sum_queries = 0;
     for (uint32_t i = 0; i < header.segment_count; ++i) {
         if (bytes - off < sizeof(rkva_kvarn_range_bulk_segment))
@@ -2627,7 +2628,10 @@ bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_to
             return ::fail(error, "q4 bulk: bad upload size");
         rkva_kvarn_range_upload u{};
         std::memcpy(&u, data + off, sizeof(u));
-        if (!rkva_kvarn_range::valid_q4_upload(u, s->capacity, u.append_begin) ||
+        const bool upload_ok = storage == RKVA_RANGE_STORAGE_Q8_0
+                ? rkva_kvarn_range::valid_q8_upload(u, s->capacity, u.append_begin)
+                : rkva_kvarn_range::valid_q4_upload(u, s->capacity, u.append_begin);
+        if (!upload_ok ||
             uint64_t(u.append_begin) + u.append_rows != u.live_count ||
             seg.upload_bytes != sizeof(u) + uint64_t(u.append_rows) * row * 2)
             return ::fail(error, "q4 bulk: bad upload header");
@@ -2749,6 +2753,22 @@ bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_to
         row_out += segments[i].n_queries;
     }
     return true;
+}
+
+bool RemoteAttnEngine::attend_q4_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                      const uint8_t* data, size_t bytes, float* out, float* lse,
+                                      std::string* error) {
+    return attend_native_rows(id, layer, n_tokens, RKVA_RANGE_STORAGE_Q4_0,
+                              rkva_kvarn_range::q4_row_bytes(geo_.head_dim, geo_.n_head_kv),
+                              data, bytes, out, lse, error);
+}
+
+bool RemoteAttnEngine::attend_q8_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                      const uint8_t* data, size_t bytes, float* out, float* lse,
+                                      std::string* error) {
+    return attend_native_rows(id, layer, n_tokens, RKVA_RANGE_STORAGE_Q8_0,
+                              rkva_kvarn_range::q8_row_bytes(geo_.head_dim, geo_.n_head_kv),
+                              data, bytes, out, lse, error);
 }
 
 bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_tokens,
