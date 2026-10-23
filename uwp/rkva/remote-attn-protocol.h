@@ -69,6 +69,8 @@ static constexpr uint64_t RKVA_CAP_KVARN_BULK_FP8_RNE = 1ull << 12;
 static constexpr uint64_t RKVA_CAP_KVARN_COMPACT_STAGE = 1ull << 13;
 // layout 4: native Q4_0 overflow rows over op16/op22 (bulk + async capable server)
 static constexpr uint64_t RKVA_CAP_NATIVE_Q4_BULK = 1ull << 14;
+// layout 5: native Q8_0 overflow rows over op16/op22 (bulk + async capable server)
+static constexpr uint64_t RKVA_CAP_NATIVE_Q8_BULK = 1ull << 15;
 static constexpr uint32_t RKVA_KVARN_UPLOAD_RESET = 1u;
 static constexpr uint32_t RKVA_KVARN_UPLOAD_OMIT_STAGE = 2u;
 static constexpr uint32_t RKVA_PROTO_NATIVE_REWIND_V2 = 1u << 16;
@@ -283,8 +285,9 @@ struct rkva_kvarn_range_config {
 // and Q (F32 by default; F16 when RKVA_CAP_KVARN_BULK_F16 is advertised and
 // every segment sets attention.wire == RKVA_WIRE_F16). Response is ALL OUT
 // (matching attention.wire, F32 or F16), followed by ALL LSE (F32), in order.
-// Only descriptor revision 3; <=256 total queries, <=32 segments, 1..9 queries
-// per segment (8 for prefill). Envelope is validated before any GPU mutation.
+// Descriptor revision 3, or layouts 4/5 (native Q4_0/Q8_0 rows); <=256 total
+// queries, <=32 segments, 1..9 queries per segment (8 for prefill). Envelope is
+// validated before any GPU mutation.
 struct rkva_kvarn_range_bulk {
     uint32_t version, segment_count, total_queries, reserved;
 };
