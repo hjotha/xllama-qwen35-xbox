@@ -2116,7 +2116,10 @@ bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
 bool RemoteAttnEngine::upload_range(uint32_t id, uint32_t layer, uint32_t start_row,
                                     uint32_t n_rows, const uint16_t* k, const uint16_t* v,
                                     std::string* error) {
-    const bool prof = profiling_ && profile_;
+    // In bulk recording the submit is deferred to the envelope, so the
+    // timestamp readback would run before the GPU; bulk profiling collects
+    // upload timings from the envelope instead.
+    const bool prof = profiling_ && profile_ && !bulk_recording_;
     rp::Sample sample;
     SpanTimer timer;
     timer.start(prof, sample.cpu_ns);
