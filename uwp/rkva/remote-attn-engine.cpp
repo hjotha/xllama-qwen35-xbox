@@ -1,0 +1,1780 @@
+// RemoteAttnEngine — D3D12 executor for the RKVA service (Xbox Series X).
+//
+// F16 bring-up path: stores K/V as F16 (GGML RNE) in a per-session, per-layer
+// DEFAULT-heap buffer and runs causal GQA flash attention on the GPU. This
+// validates the full split-execution pipeline (RPC -> session -> store ->
+// attention -> readback) independently of KVarN numerics, and remains the
+// materialize/correctness fallback once the native KVarN-over-records kernels
+// land. One engine serves the single persistent RKVA connection; calls are
+// serialized by the listener, so no internal locking is needed.
+
+#include "remote-attn-engine.h"
+
+#include "rkva-kvarn-range.h"
+#include "rkva-range-profile.h"
+#include "rkva_flash_attn_dxil.h"
+#include "rkva_flash_attn_kvarn4_dxil.h"
+#include "rkva_flash_attn_split_k_reduce_dxil.h"
+#include "rkva_range_attn_dxil.h"
+#include "rkva_range_attn_kvarn4_dxil.h"
+#include "rkva_range_attn_q4_dxil.h"
+#include "rkva_range_attn_q4_opt_dxil.h"
+#include "rkva_range_attn_q8_dxil.h"
+#include "rkva_range_reduce_dxil.h"
+#include "rkva_range_reduce_opt_dxil.h"
+#include "rkva_store_f16_dxil.h"
+#include "rkva_store_kvarn4_dxil.h"
+#include "rkva_wht_dxil.h"
+#include "xllama/d3d12_dyn.h"
+
+static const uint8_t* kRkvaStoreKvarn4Dxil = g_rkva_store_kvarn4_dxil;
+static const size_t kRkvaStoreKvarn4DxilSize = sizeof(g_rkva_store_kvarn4_dxil);
+
+static const uint8_t* kRkvaFlashAttnKvarn4Dxil = g_rkva_flash_attn_kvarn4_dxil;
+static const size_t kRkvaFlashAttnKvarn4DxilSize = sizeof(g_rkva_flash_attn_kvarn4_dxil);
+
+static const uint8_t* kRkvaFlashAttnSplitKReduceDxil = g_rkva_flash_attn_split_k_reduce_dxil;
+static const size_t kRkvaFlashAttnSplitKReduceDxilSize =
+    sizeof(g_rkva_flash_attn_split_k_reduce_dxil);
+
+#include <dxgi1_4.h>
+
+#include <algorithm>
+#include <chrono>
+#include <cstdio>
+#include <cstring>
+#include <limits>
+#include <new>
+
+using Microsoft::WRL::ComPtr;
+
+namespace {
+
+uint64_t aligned4(uint64_t bytes) {
+    return (bytes + 3ull) & ~3ull;
+}
+
+bool fail(std::string* error, const char* stage, HRESULT hr = S_OK) {
+    if (error) {
+        char text[160];
+        if (hr == S_OK) {
+            std::snprintf(text, sizeof(text), "%s", stage);
+        } else {
+            std::snprintf(text, sizeof(text), "%s: 0x%08X", stage, static_cast<unsigned>(hr));
+        }
+        *error = text;
+    }
+    return false;
+}
+
+namespace rp = rkva_rprof;
+using prof_clock = std::chrono::steady_clock;
+
+uint64_t elapsed_ns(prof_clock::time_point from, prof_clock::time_point to) {
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(to - from).count());
+}
+
+// Disjoint consecutive CPU spans; inactive (no clock reads) unless profiling.
+struct SpanTimer {
+    bool on = false;
+    prof_clock::time_point last;
+    uint64_t* spans = nullptr;
+    void start(bool enabled, uint64_t* target) {
+        on = enabled;
+        spans = target;
+        if (on) {
+            last = prof_clock::now();
+        }
+    }
+    void mark(uint32_t span) {
+        if (!on) {
+            return;
+        }
+        const prof_clock::time_point now = prof_clock::now();
+        spans[span] += elapsed_ns(last, now);
+        last = now;
+    }
+};
+
+// Counts a profiled call that returned before recording its sample.
+struct FailedCallGuard {
+    uint64_t* failed = nullptr;
+    bool done = false;
+    ~FailedCallGuard() {
+        if (failed && !done) {
+            ++*failed;
+        }
+    }
+};
+
+// Fixed timestamp slots per set. Upload and attention never share a slot.
+constexpr uint32_t kTsUploadBegin = 0;
+constexpr uint32_t kTsUploadEnd = 1;
+constexpr uint32_t kTsAttnBegin = 2;
+constexpr uint32_t kTsAttnPass1 = 3;
+constexpr uint32_t kTsAttnReduce = 4;
+constexpr uint32_t kTsAttnCopy = 5;
+constexpr uint32_t kTsPerSet = 8;
+constexpr uint32_t kTsSets = 4;
+
+} // namespace
+
+struct RemoteAttnEngine::RangeProfile {
+    rp::Recorder recorder;
+};
+
+// Per-session KV storage. Each remote layer has its own dedicated committed DEFAULT
+// resource in `layer_kv`, preventing >2 GiB single-resource allocation failures
+// and 32-bit offset overflow in ByteAddressBuffer at 128K-256K+ context.
+// F16 path: [kind: 0=K,1=V][capacity][n_head_kv][head_dim].
+// KVarN path (cache_bits 2..8): per layer slot the buffer is laid out as
+// [records K][stage K][records V][stage V], where a record group covers 128
+// positions (KVAR_N_GROUP) and the stage holds stage_groups*128 positions of
+// F16 (group 0 sink + tail_groups live groups).
+struct RemoteAttnEngine::Session {
+    uint32_t id = 0;
+    uint32_t capacity = 0;
+    int32_t high_water = -1; // highest stored position; -1 = empty
+    bool valid = true;
+    bool range_configured = false;
+    uint32_t range_storage = 0; // 0=F16, 1=Q4_0, 2=Q8_0
+    uint32_t range_origin = 0;
+    rkva_kvarn_range_config range_descriptor{};
+    uint32_t precision_tail_tokens = 0;
+    std::vector<uint32_t> range_record_groups;
+    std::vector<bool> range_ready;
+    std::vector<uint32_t> range_counts; // per layer; never share a high-water mark
+
+    std::vector<Buffer> layer_kv; // 1 committed buffer per layer slot
+    uint64_t kv_bytes = 0;
+    uint64_t layer_stride = 0; // bytes per (slot) covering K+V
+    uint64_t half_stride = 0;  // bytes per K or V plane (F16 path)
+    // KVarN path sizes (bits>8 none; cache_bits 2..8).
+    uint64_t record_words = 0;  // per record group, u32 words
+    uint64_t records_bytes = 0; // per layer per kind (K or V)
+    uint64_t stage_bytes = 0;   // per layer per kind (K or V)
+    uint64_t groups_per_stream = 0;
+    uint64_t rec_off = 0;   // byte offset of records K within a layer slot
+    uint64_t stg_off = 0;   // byte offset of stage K within a layer slot
+    uint64_t rec_v_off = 0; // byte offset of records V within a layer slot
+    uint64_t stg_v_off = 0; // byte offset of stage V within a layer slot
+};
+
+RemoteAttnEngine::RemoteAttnEngine() = default;
+
+RemoteAttnEngine::~RemoteAttnEngine() {
+    if (fence_event_) {
+        CloseHandle(fence_event_);
+        fence_event_ = nullptr;
+    }
+}
+
+bool RemoteAttnEngine::fail(std::string* error, const char* stage, HRESULT hr) {
+    ready_ = false;
+    return ::fail(error, stage, hr);
+}
+
+bool RemoteAttnEngine::create_buffer(uint64_t bytes, D3D12_HEAP_TYPE heap,
+                                     D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES state,
+                                     Buffer* out, std::string* error) {
+    if (!device_ || !out || !bytes) {
+        return fail(error, "invalid buffer size");
+    }
+    const HRESULT hr = try_create_buffer(bytes, heap, flags, state, out);
+    if (FAILED(hr)) {
+        return fail(error, "CreateCommittedResource", hr);
+    }
+    return true;
+}
+
+HRESULT RemoteAttnEngine::try_create_buffer(uint64_t bytes, D3D12_HEAP_TYPE heap,
+                                            D3D12_RESOURCE_FLAGS flags, D3D12_RESOURCE_STATES state,
+                                            Buffer* out) {
+    if (!device_ || !out || !bytes) {
+        return E_INVALIDARG;
+    }
+    D3D12_HEAP_PROPERTIES hp = {};
+    hp.Type = heap;
+    D3D12_RESOURCE_DESC rd = {};
+    rd.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    rd.Width = aligned4(bytes);
+    rd.Height = 1;
+    rd.DepthOrArraySize = 1;
+    rd.MipLevels = 1;
+    rd.SampleDesc.Count = 1;
+    rd.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    rd.Flags = flags;
+    ComPtr<ID3D12Resource> resource;
+    const HRESULT hr = device_->CreateCommittedResource(&hp, D3D12_HEAP_FLAG_NONE, &rd, state,
+                                                        nullptr, IID_PPV_ARGS(&resource));
+    if (FAILED(hr)) {
+        return hr;
+    }
+    out->resource = std::move(resource);
+    out->bytes = rd.Width;
+    out->state = state;
+    if (profiling_ && profile_) {
+        ++profile_->recorder.counters.buffer_creates;
+        profile_->recorder.counters.buffer_create_bytes += rd.Width;
+    }
+    return S_OK;
+}
+
+void RemoteAttnEngine::transition(Buffer& buffer, D3D12_RESOURCE_STATES state) {
+    if (buffer.state == state || !buffer.resource) {
+        return;
+    }
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Transition.pResource = buffer.resource.Get();
+    barrier.Transition.StateBefore = buffer.state;
+    barrier.Transition.StateAfter = state;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    cmd_->ResourceBarrier(1, &barrier);
+    buffer.state = state;
+}
+
+void RemoteAttnEngine::uav_barrier(Buffer& buffer) {
+    D3D12_RESOURCE_BARRIER barrier = {};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+    barrier.UAV.pResource = buffer.resource.Get();
+    cmd_->ResourceBarrier(1, &barrier);
+}
+
+bool RemoteAttnEngine::begin(std::string* error) {
+    if (terminal_failure_ || unconfirmed_submission_) {
+        return fail(error, "engine terminal after unconfirmed submission");
+    }
+    HRESULT hr = allocator_->Reset();
+    if (FAILED(hr)) {
+        return fail(error, "CommandAllocator Reset", hr);
+    }
+    hr = cmd_->Reset(allocator_.Get(), nullptr);
+    if (FAILED(hr)) {
+        return fail(error, "CommandList Reset", hr);
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::submit(std::string* error) {
+    if (terminal_failure_ || unconfirmed_submission_) {
+        return fail(error, "engine terminal after unconfirmed submission");
+    }
+    const bool prof = profiling_ && profile_;
+    prof_clock::time_point exec_start;
+    if (prof) {
+        exec_start = prof_clock::now();
+    }
+    HRESULT hr = cmd_->Close();
+    if (FAILED(hr)) {
+        return fail(error, "CommandList Close", hr);
+    }
+    ID3D12CommandList* lists[] = {cmd_.Get()};
+    queue_->ExecuteCommandLists(1, lists);
+    unconfirmed_submission_ = true;
+    const UINT64 value = ++fence_value_;
+    hr = queue_->Signal(fence_.Get(), value);
+    if (FAILED(hr)) {
+        terminal_failure_ = true;
+        return fail(error, "CommandQueue Signal", hr);
+    }
+    const bool blocked = fence_->GetCompletedValue() < value;
+    if (prof) {
+        last_submit_exec_ns_ = elapsed_ns(exec_start, prof_clock::now());
+        last_submit_blocked_ = blocked;
+        rp::Counters& c = profile_->recorder.counters;
+        ++c.submits;
+        ++(blocked ? c.fence_blocking_waits : c.fence_already_complete);
+    }
+    if (blocked) {
+        hr = fence_->SetEventOnCompletion(value, fence_event_);
+        if (FAILED(hr)) {
+            terminal_failure_ = true;
+            return fail(error, "Fence SetEventOnCompletion", hr);
+        }
+        if (WaitForSingleObject(fence_event_, 60000) != WAIT_OBJECT_0) {
+            terminal_failure_ = true;
+            return fail(error, "GPU fence wait failed");
+        }
+    }
+    if (fence_->GetCompletedValue() < value) {
+        terminal_failure_ = true;
+        return fail(error, "GPU execution did not complete", device_->GetDeviceRemovedReason());
+    }
+    unconfirmed_submission_ = false;
+    hr = device_->GetDeviceRemovedReason();
+    if (FAILED(hr)) {
+        terminal_failure_ = true;
+        return fail(error, "D3D12 device removed", hr);
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::create_device(std::string* error) {
+    auto create_device_fn = xllama::d3d12_dyn::CreateDevice();
+    if (!create_device_fn) {
+        return fail(error, "D3D12CreateDevice unavailable");
+    }
+    ComPtr<IDXGIFactory4> factory;
+    HRESULT hr = CreateDXGIFactory1(IID_PPV_ARGS(&factory));
+    if (FAILED(hr)) {
+        return fail(error, "CreateDXGIFactory1", hr);
+    }
+    for (UINT index = 0;; ++index) {
+        ComPtr<IDXGIAdapter1> adapter;
+        if (factory->EnumAdapters1(index, &adapter) == DXGI_ERROR_NOT_FOUND) {
+            break;
+        }
+        DXGI_ADAPTER_DESC1 desc = {};
+        adapter->GetDesc1(&desc);
+        if (desc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) {
+            continue;
+        }
+        hr = create_device_fn(adapter.Get(), D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&device_));
+        if (SUCCEEDED(hr)) {
+            break;
+        }
+    }
+    if (!device_) {
+        return fail(error, "no hardware D3D12 adapter");
+    }
+    D3D12_COMMAND_QUEUE_DESC queue_desc = {};
+    queue_desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
+    hr = device_->CreateCommandQueue(&queue_desc, IID_PPV_ARGS(&queue_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateCommandQueue", hr);
+    }
+    hr = device_->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateCommandAllocator", hr);
+    }
+    hr = device_->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator_.Get(), nullptr,
+                                    IID_PPV_ARGS(&cmd_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateCommandList", hr);
+    }
+    hr = cmd_->Close();
+    if (FAILED(hr)) {
+        return fail(error, "CommandList initial Close", hr);
+    }
+    hr = device_->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateFence", hr);
+    }
+    fence_event_ = CreateEventW(nullptr, FALSE, FALSE, nullptr);
+    if (!fence_event_) {
+        return fail(error, "CreateEventW failed");
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::create_pipelines(std::string* error) {
+    auto serialize = xllama::d3d12_dyn::SerializeRootSignature();
+    if (!serialize) {
+        return fail(error, "D3D12SerializeRootSignature unavailable");
+    }
+    auto make_root = [&](uint32_t n_const, uint32_t n_srv, uint32_t n_uav,
+                         ID3D12RootSignature** out) -> bool {
+        // Use a fixed-size array (max 8 params) to avoid vector pointer math.
+        D3D12_ROOT_PARAMETER p[8] = {};
+        uint32_t idx = 0;
+        if (n_const) {
+            p[idx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+            p[idx].Constants.ShaderRegister = 0;
+            p[idx].Constants.Num32BitValues = n_const;
+            p[idx].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+            ++idx;
+        }
+        for (uint32_t s = 0; s < n_srv; ++s) {
+            p[idx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+            p[idx].Descriptor.ShaderRegister = s;
+            p[idx].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+            ++idx;
+        }
+        for (uint32_t u = 0; u < n_uav; ++u) {
+            p[idx].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+            p[idx].Descriptor.ShaderRegister = u;
+            p[idx].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+            ++idx;
+        }
+        D3D12_ROOT_SIGNATURE_DESC desc = {};
+        desc.NumParameters = idx;
+        desc.pParameters = p;
+        ComPtr<ID3DBlob> blob;
+        ComPtr<ID3DBlob> messages;
+        HRESULT hr = serialize(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &messages);
+        if (FAILED(hr)) {
+            return fail(error, "SerializeRootSignature", hr);
+        }
+        hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
+                                          IID_PPV_ARGS(out));
+        if (FAILED(hr)) {
+            return fail(error, "CreateRootSignature", hr);
+        }
+        return true;
+    };
+
+    // Attention: 8 constants + SRV t0..t3 (4) + UAV u0 (1).
+    if (!make_root(8, 4, 1, attn_root_.GetAddressOf())) {
+        return false;
+    }
+    // Store: 4 constants + SRV t0..t1 (2) + UAV u0 (1).
+    if (!make_root(4, 2, 1, store_root_.GetAddressOf())) {
+        return false;
+    }
+    // KVarN WHT: 3 constants + SRV t0 (1) + UAV u0 (1).
+    if (!make_root(3, 1, 1, wht_root_.GetAddressOf())) {
+        return false;
+    }
+    // KVarN store: 11 constants + SRV t0..t1 (2) + UAV u0..u1 (2).
+    if (!make_root(11, 2, 2, store_kvarn_root_.GetAddressOf())) {
+        return false;
+    }
+    // KVarN attention: 14 constants (including split_k) + SRV t0..t5 (6) + UAV u0 (1).
+    if (!make_root(14, 6, 1, attn_kvarn_root_.GetAddressOf())) {
+        return false;
+    }
+    // Split-K reduction: 4 constants + SRV t0 (1) + UAV u0 (1).
+    if (!make_root(4, 1, 1, split_k_reduce_root_.GetAddressOf())) {
+        return false;
+    }
+
+    if (!make_root(11, 4, 1, range_attn_root_.GetAddressOf()) ||
+        !make_root(4, 1, 1, range_reduce_root_.GetAddressOf())) {
+        return false;
+    }
+
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso = {};
+    pso.pRootSignature = attn_root_.Get();
+    pso.CS = {kRkvaFlashAttnDxil, kRkvaFlashAttnDxilSize};
+    HRESULT hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&attn_decode_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState attn", hr);
+    }
+    attn_prefill_pso_ = attn_decode_pso_; // same kernel; grid differs
+
+    pso.pRootSignature = store_root_.Get();
+    pso.CS = {kRkvaStoreF16Dxil, kRkvaStoreF16DxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&store_k_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState store", hr);
+    }
+    store_v_pso_ = store_k_pso_;
+
+    pso.pRootSignature = wht_root_.Get();
+    pso.CS = {kRkvaWhtDxil, kRkvaWhtDxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&wht_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState wht", hr);
+    }
+
+    pso.pRootSignature = store_kvarn_root_.Get();
+    pso.CS = {kRkvaStoreKvarn4Dxil, kRkvaStoreKvarn4DxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&store_kvarn_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState store kvarn", hr);
+    }
+
+    pso.pRootSignature = attn_kvarn_root_.Get();
+    pso.CS = {kRkvaFlashAttnKvarn4Dxil, kRkvaFlashAttnKvarn4DxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&attn_kvarn_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState attn kvarn", hr);
+    }
+
+    pso.pRootSignature = split_k_reduce_root_.Get();
+    pso.CS = {kRkvaFlashAttnSplitKReduceDxil, kRkvaFlashAttnSplitKReduceDxilSize};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&split_k_reduce_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState split_k reduce", hr);
+    }
+    pso.pRootSignature = range_attn_root_.Get();
+    const D3D12_SHADER_BYTECODE range_shaders[] = {
+        {g_rkva_range_attn_dxil, sizeof(g_rkva_range_attn_dxil)},
+        {g_rkva_range_attn_q4_dxil, sizeof(g_rkva_range_attn_q4_dxil)},
+        {g_rkva_range_attn_q8_dxil, sizeof(g_rkva_range_attn_q8_dxil)},
+        {g_rkva_range_attn_kvarn4_dxil, sizeof(g_rkva_range_attn_kvarn4_dxil)},
+    };
+    for (uint32_t storage = 0; storage < 4; ++storage) {
+        pso.CS = range_shaders[storage];
+        hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_attn_pso_[storage]));
+        if (FAILED(hr)) {
+            return fail(error, "CreateComputePipelineState range attention", hr);
+        }
+    }
+    pso.pRootSignature = range_reduce_root_.Get();
+    pso.CS = {g_rkva_range_reduce_dxil, sizeof(g_rkva_range_reduce_dxil)};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_reduce_pso_));
+    if (FAILED(hr)) {
+        return fail(error, "CreateComputePipelineState range reduction", hr);
+    }
+    return true;
+}
+
+// Optional optimized Q4_0 decode pipelines. Failure only disables modes 1..3;
+// the reference range pipelines and engine readiness are unaffected.
+void RemoteAttnEngine::create_q4_opt_pipelines() {
+    D3D12_FEATURE_DATA_D3D12_OPTIONS1 options = {};
+    if (FAILED(device_->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS1, &options,
+                                            sizeof(options))) ||
+        !options.WaveOps) {
+        q4_opt_status_ = "wave operations unsupported";
+        return;
+    }
+    wave_lane_min_ = options.WaveLaneCountMin;
+    wave_lane_max_ = options.WaveLaneCountMax;
+    if (wave_lane_min_ < rp::kOptMinWaveLanes || wave_lane_max_ > rp::kOptMaxWaveLanes) {
+        q4_opt_status_ = "wave lane count outside 32..128";
+        return;
+    }
+    if (geo_.head_dim != rp::kOptHeadDim || geo_.n_head != rp::kOptGqa * geo_.n_head_kv) {
+        q4_opt_status_ = "geometry is not head_dim 256 with 6 Q heads per KV head";
+        return;
+    }
+    auto serialize = xllama::d3d12_dyn::SerializeRootSignature();
+    if (!serialize) {
+        q4_opt_status_ = "D3D12SerializeRootSignature unavailable";
+        return;
+    }
+    // 10 constants, SRV t0..t3, UAV u0 (partials) and u1 (direct output).
+    D3D12_ROOT_PARAMETER params[7] = {};
+    params[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+    params[0].Constants.ShaderRegister = 0;
+    params[0].Constants.Num32BitValues = 10;
+    params[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    for (uint32_t i = 0; i < 4; ++i) {
+        params[1 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
+        params[1 + i].Descriptor.ShaderRegister = i;
+        params[1 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    }
+    for (uint32_t i = 0; i < 2; ++i) {
+        params[5 + i].ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
+        params[5 + i].Descriptor.ShaderRegister = i;
+        params[5 + i].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+    }
+    D3D12_ROOT_SIGNATURE_DESC desc = {};
+    desc.NumParameters = 7;
+    desc.pParameters = params;
+    ComPtr<ID3DBlob> blob;
+    ComPtr<ID3DBlob> messages;
+    char text[96];
+    HRESULT hr = serialize(&desc, D3D_ROOT_SIGNATURE_VERSION_1, &blob, &messages);
+    if (SUCCEEDED(hr)) {
+        hr = device_->CreateRootSignature(0, blob->GetBufferPointer(), blob->GetBufferSize(),
+                                          IID_PPV_ARGS(&range_attn_q4_opt_root_));
+    }
+    if (FAILED(hr)) {
+        std::snprintf(text, sizeof(text), "q4 optimized root signature: 0x%08X", unsigned(hr));
+        q4_opt_status_ = text;
+        range_attn_q4_opt_root_.Reset();
+        return;
+    }
+    D3D12_COMPUTE_PIPELINE_STATE_DESC pso = {};
+    pso.pRootSignature = range_attn_q4_opt_root_.Get();
+    pso.CS = {g_rkva_range_attn_q4_opt_dxil, sizeof(g_rkva_range_attn_q4_opt_dxil)};
+    hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_attn_q4_opt_pso_));
+    if (SUCCEEDED(hr)) {
+        pso.pRootSignature = range_reduce_root_.Get();
+        pso.CS = {g_rkva_range_reduce_opt_dxil, sizeof(g_rkva_range_reduce_opt_dxil)};
+        hr = device_->CreateComputePipelineState(&pso, IID_PPV_ARGS(&range_reduce_opt_pso_));
+    }
+    if (FAILED(hr)) {
+        std::snprintf(text, sizeof(text), "q4 optimized pipeline state: 0x%08X", unsigned(hr));
+        q4_opt_status_ = text;
+        range_attn_q4_opt_pso_.Reset();
+        range_reduce_opt_pso_.Reset();
+        return;
+    }
+    q4_opt_status_ = "ready";
+}
+
+// Timestamp heap + readback ring, created once from the control path. A failure
+// leaves CPU span profiling available and reports gpu_timestamps=false.
+bool RemoteAttnEngine::ensure_profile_resources(std::string* error) {
+    if (timestamp_heap_ && timestamp_readback_.resource && timestamp_frequency_) {
+        return true;
+    }
+    char text[96];
+    UINT64 frequency = 0;
+    HRESULT hr = queue_->GetTimestampFrequency(&frequency);
+    if (FAILED(hr) || !frequency) {
+        std::snprintf(text, sizeof(text), "GetTimestampFrequency: 0x%08X", unsigned(hr));
+        timestamp_status_ = text;
+        return ::fail(error, text);
+    }
+    D3D12_QUERY_HEAP_DESC heap_desc = {};
+    heap_desc.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP;
+    heap_desc.Count = kTsPerSet * kTsSets;
+    ComPtr<ID3D12QueryHeap> heap;
+    hr = device_->CreateQueryHeap(&heap_desc, IID_PPV_ARGS(&heap));
+    if (FAILED(hr)) {
+        std::snprintf(text, sizeof(text), "CreateQueryHeap timestamp: 0x%08X", unsigned(hr));
+        timestamp_status_ = text;
+        return ::fail(error, text);
+    }
+    Buffer readback;
+    hr = try_create_buffer(uint64_t(kTsPerSet) * kTsSets * sizeof(uint64_t),
+                           D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
+                           D3D12_RESOURCE_STATE_COPY_DEST, &readback);
+    if (FAILED(hr)) {
+        std::snprintf(text, sizeof(text), "timestamp readback: 0x%08X", unsigned(hr));
+        timestamp_status_ = text;
+        return ::fail(error, text);
+    }
+    timestamp_frequency_ = frequency;
+    timestamp_heap_ = std::move(heap);
+    timestamp_readback_ = std::move(readback);
+    timestamp_set_ = 0;
+    timestamp_status_ = "ready";
+    return true;
+}
+
+void RemoteAttnEngine::timestamp(uint32_t slot) {
+    cmd_->EndQuery(timestamp_heap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP,
+                   timestamp_set_ * kTsPerSet + slot);
+}
+
+void RemoteAttnEngine::resolve_timestamps(uint32_t first, uint32_t count) {
+    const uint32_t index = timestamp_set_ * kTsPerSet + first;
+    cmd_->ResolveQueryData(timestamp_heap_.Get(), D3D12_QUERY_TYPE_TIMESTAMP, index, count,
+                           timestamp_readback_.resource.Get(), uint64_t(index) * sizeof(uint64_t));
+    ++profile_->recorder.counters.timestamp_resolves;
+}
+
+// Called only after the submission's existing fence wait completed.
+bool RemoteAttnEngine::read_timestamps(uint32_t first, uint32_t count, uint64_t* ticks) {
+    const uint32_t index = timestamp_set_ * kTsPerSet + first;
+    timestamp_set_ = (timestamp_set_ + 1) % kTsSets;
+    D3D12_RANGE range{static_cast<SIZE_T>(index) * sizeof(uint64_t),
+                      static_cast<SIZE_T>(index + count) * sizeof(uint64_t)};
+    void* mapped = nullptr;
+    if (FAILED(timestamp_readback_.resource->Map(0, &range, &mapped)) || !mapped) {
+        ++profile_->recorder.counters.timestamp_map_failures;
+        return false;
+    }
+    std::memcpy(ticks, static_cast<const uint8_t*>(mapped) + range.Begin, count * sizeof(uint64_t));
+    D3D12_RANGE empty{0, 0};
+    timestamp_readback_.resource->Unmap(0, &empty);
+    for (uint32_t i = 1; i < count; ++i) {
+        if (ticks[i] < ticks[i - 1]) {
+            return false;
+        }
+    }
+    return count > 0 && ticks[0] != 0;
+}
+
+void RemoteAttnEngine::finish_profile_sample(rp::Sample& sample, bool timestamps,
+                                             uint32_t first_slot, uint32_t slot_count,
+                                             uint32_t copy_regions, uint32_t dispatches) {
+    const prof_clock::time_point start = prof_clock::now();
+    // The fence span was measured around the whole submit() call; move its
+    // Close/Execute/Signal part into the submit span so the spans stay disjoint.
+    const uint64_t exec = std::min(last_submit_exec_ns_, sample.cpu_ns[rp::kCpuFenceWait]);
+    sample.cpu_ns[rp::kCpuSubmit] += exec;
+    sample.cpu_ns[rp::kCpuFenceWait] -= exec;
+    sample.fence_blocked = last_submit_blocked_;
+    if (timestamps) {
+        uint64_t ticks[kTsPerSet] = {};
+        if (slot_count >= 2 && slot_count <= rp::kGpuStageCount + 1 &&
+            read_timestamps(first_slot, slot_count, ticks)) {
+            for (uint32_t i = 1; i < slot_count; ++i) {
+                sample.gpu_ticks[i - 1] = ticks[i] - ticks[i - 1];
+            }
+            sample.gpu_valid = 1;
+        }
+    }
+    rp::Counters& c = profile_->recorder.counters;
+    ++c.calls[sample.kind];
+    c.copy_regions += copy_regions;
+    c.dispatches += dispatches;
+    if (sample.kind == rp::kAttention && sample.optimized) {
+        ++c.optimized_calls;
+    } else if (sample.kind == rp::kAttention && sample.storage == 1) {
+        ++c.reference_q4_calls;
+    }
+    sample.overhead_ns = elapsed_ns(start, prof_clock::now());
+    profile_->recorder.record(sample);
+}
+
+bool RemoteAttnEngine::set_range_profiling(bool enabled, bool reset, uint32_t q4_kernel_mode,
+                                           std::string& error) {
+    if (!ready_ || !device_ || !queue_) {
+        error = "range profiling: engine not ready";
+        return false;
+    }
+    if (unconfirmed_submission_ || terminal_failure_) {
+        error = "range profiling: engine has an unconfirmed or failed submission";
+        return false;
+    }
+    if (!rp::valid_mode(q4_kernel_mode)) {
+        error = "range profiling: invalid q4 kernel mode";
+        return false;
+    }
+    if (q4_kernel_mode != rp::kModeReference) {
+        if (!range_attn_q4_opt_pso_ || !range_reduce_opt_pso_) {
+            error = "range profiling: optimized q4 kernel unavailable: " + q4_opt_status_;
+            return false;
+        }
+        if (!range_opt_partials_.resource) {
+            const uint64_t bytes = uint64_t(rp::kOptMaxSplits) * rp::kOptMaxQueries * geo_.n_head *
+                                   (geo_.head_dim + 2) * sizeof(float);
+            const HRESULT hr = try_create_buffer(
+                bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &range_opt_partials_);
+            if (FAILED(hr)) {
+                char text[96];
+                std::snprintf(text, sizeof(text), "range profiling: q4 partials alloc 0x%08X",
+                              unsigned(hr));
+                error = text;
+                return false;
+            }
+        }
+    }
+    try {
+        if (!profile_) {
+            profile_ = std::make_unique<RangeProfile>();
+        }
+        if (enabled) {
+            profile_->recorder.configure();
+        }
+    } catch (const std::bad_alloc&) {
+        error = "range profiling: sample ring allocation failed";
+        return false;
+    }
+    if (enabled) {
+        std::string ignored; // GPU timestamps are optional; status is in the JSON
+        ensure_profile_resources(&ignored);
+    }
+    if (reset) {
+        profile_->recorder.reset();
+    }
+    profiling_ = enabled;
+    q4_kernel_mode_ = q4_kernel_mode;
+    return true;
+}
+
+std::string RemoteAttnEngine::get_range_profile_json() {
+    rp::Header header;
+    header.profiling = profiling_;
+    header.q4_kernel_mode = q4_kernel_mode_;
+    header.gpu_timestamps = timestamp_heap_ && timestamp_frequency_;
+    header.gpu_timestamp_frequency = timestamp_frequency_;
+    header.gpu_timestamp_status = timestamp_status_;
+    header.q4_optimized_available = range_attn_q4_opt_pso_ && range_reduce_opt_pso_;
+    header.q4_optimized_status = q4_opt_status_;
+    header.wave_lane_min = wave_lane_min_;
+    header.wave_lane_max = wave_lane_max_;
+    if (!profile_) {
+        return rp::Recorder().json(header);
+    }
+    return profile_->recorder.json(header);
+}
+
+bool RemoteAttnEngine::initialize(const Geometry& geo, std::string* error) {
+    if (ready_) {
+        return fail(error, "engine already initialized");
+    }
+    if (geo.n_head == 0 || geo.n_head_kv == 0 || geo.head_dim == 0 || geo.max_ctx == 0 ||
+        geo.n_head % geo.n_head_kv != 0) {
+        return fail(error, "invalid geometry");
+    }
+    geo_ = geo;
+    if (!create_device(error) || !create_pipelines(error)) {
+        return false;
+    }
+    create_q4_opt_pipelines();
+    // Initial scratch for a modest prefill chunk; grown on demand.
+    scratch_tokens_ = 0;
+    ready_ = true;
+    return true;
+}
+
+RemoteAttnEngine::Session* RemoteAttnEngine::find_session(uint32_t session_id) {
+    for (auto& s : sessions_) {
+        if (s && s->id == session_id) {
+            return s.get();
+        }
+    }
+    return nullptr;
+}
+
+const RemoteAttnEngine::Session* RemoteAttnEngine::find_session(uint32_t session_id) const {
+    for (const auto& s : sessions_) {
+        if (s && s->id == session_id) {
+            return s.get();
+        }
+    }
+    return nullptr;
+}
+
+bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, std::string* error,
+                                      bool defer_allocation) {
+    if (!ready_) {
+        return fail(error, "engine not ready");
+    }
+    if (find_session(session_id)) {
+        return true; // idempotent
+    }
+    const uint32_t cap = capacity ? capacity : geo_.max_ctx;
+    if (!cap || cap > geo_.max_ctx) {
+        return ::fail(error, "session capacity exceeds negotiated maximum");
+    }
+    auto session = std::make_unique<Session>();
+    session->id = session_id;
+    session->capacity = cap;
+    const uint32_t n_layers = geo_.n_layers ? geo_.n_layers : 1;
+    const bool kvarn = geo_.cache_bits_k >= 2 && geo_.cache_bits_k <= 8;
+    if (kvarn) {
+        // KVarN4 layout per layer slot:
+        //   records K: groups_per_stream * n_heads * record_words * 4
+        //   stage   K: stage_groups*128 * n_heads * 64 * 4  (F16 packed pairs)
+        //   records V / stage V: same sizes
+        const uint32_t bits = geo_.cache_bits_k;
+        const uint32_t n_heads = geo_.n_head_kv * geo_.head_slices;
+        session->groups_per_stream = (uint64_t)(cap + 127) / 128;
+        session->record_words = (uint64_t)bits * 512 + 192;
+        session->records_bytes = session->groups_per_stream * n_heads * session->record_words * 4;
+        session->stage_bytes = (uint64_t)geo_.stage_groups * 128 * n_heads * 64 * 4;
+        session->rec_off = 0;
+        session->stg_off = session->records_bytes;
+        session->rec_v_off = session->stg_off + session->stage_bytes;
+        session->stg_v_off = session->rec_v_off + session->records_bytes;
+        session->layer_stride = session->stg_v_off + session->stage_bytes;
+        session->half_stride = 0;
+    } else {
+        session->half_stride = uint64_t(cap) * geo_.n_head_kv * geo_.head_dim * 2; // F16
+        session->layer_stride = session->half_stride * 2;                          // K + V
+    }
+    session->kv_bytes = defer_allocation ? 0 : session->layer_stride * n_layers;
+    // Keep room for command/scratch/runtime resources within the advertised budget.
+    constexpr uint64_t kv_budget = 4ull * 1024 * 1024 * 1024;
+    if (session->kv_bytes > kv_budget || allocated_bytes_ > kv_budget - session->kv_bytes) {
+        return ::fail(error, "session KV exceeds budget");
+    }
+    session->range_counts.resize(n_layers, 0);
+    session->range_record_groups.resize(n_layers, 0);
+    session->range_ready.resize(n_layers, false);
+    session->layer_kv.resize(n_layers);
+    for (uint32_t l = 0; !defer_allocation && l < n_layers; ++l) {
+        if (!create_buffer(session->layer_stride, D3D12_HEAP_TYPE_DEFAULT,
+                           D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                           D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &session->layer_kv[l], error)) {
+            session->layer_kv.clear();
+            return false;
+        }
+    }
+    allocated_bytes_ += session->kv_bytes;
+    sessions_.push_back(std::move(session));
+    return true;
+}
+
+bool RemoteAttnEngine::destroy_session(uint32_t session_id) {
+    for (auto it = sessions_.begin(); it != sessions_.end(); ++it) {
+        if (*it && (*it)->id == session_id) {
+            allocated_bytes_ -= (*it)->kv_bytes;
+            (*it)->layer_kv.clear();
+            sessions_.erase(it);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool RemoteAttnEngine::has_session(uint32_t session_id) const {
+    return find_session(session_id) != nullptr;
+}
+
+bool RemoteAttnEngine::session_invalid(uint32_t session_id) const {
+    const Session* s = find_session(session_id);
+    return s ? !s->valid : true;
+}
+
+bool RemoteAttnEngine::reset_session(uint32_t session_id, std::string* error) {
+    Session* s = find_session(session_id);
+    if (!s) {
+        return fail(error, "reset: no session");
+    }
+    s->high_water = -1;
+    std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
+    std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
+    std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    s->valid = true;
+    return true;
+}
+
+bool RemoteAttnEngine::trim_session(uint32_t session_id, int32_t pos0, std::string* error) {
+    Session* s = find_session(session_id);
+    if (!s) {
+        return fail(error, "trim: no session");
+    }
+    if (pos0 < 0) {
+        return fail(error, "trim: negative position");
+    }
+    if (s->range_configured && s->range_storage == 3) {
+        // Stage slots and the exact-tail overlay cannot be reconstructed after a rewind.
+        // Invalidate every layer; require a complete host snapshot before any attention.
+        std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
+        std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
+        std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    } else if (s->range_configured) {
+        const uint32_t keep = uint32_t(pos0) <= s->range_origin
+                                  ? 0
+                                  : std::min(uint32_t(pos0) - s->range_origin, s->capacity);
+        for (auto& count : s->range_counts) {
+            count = std::min(count, keep);
+        }
+    }
+    if (s->high_water >= pos0) {
+        s->high_water = pos0 - 1;
+    }
+    return true;
+}
+
+// Ensure upload/out/readback scratch fits n_tokens. Grow-only.
+bool RemoteAttnEngine::ensure_scratch(uint32_t n_tokens, std::string* error) {
+    if (n_tokens <= scratch_tokens_ && qkv_upload_.resource) {
+        return true;
+    }
+    const uint32_t tokens = std::max(n_tokens, std::max(scratch_tokens_, 256u));
+    const uint64_t q_bytes = uint64_t(tokens) * geo_.n_head * geo_.head_dim * 4;
+    const uint64_t kv_bytes = uint64_t(tokens) * geo_.n_head_kv * geo_.head_dim * 4;
+    const uint64_t pos_bytes = uint64_t(tokens) * 4;
+    const uint64_t upload_bytes = q_bytes + 2 * kv_bytes + pos_bytes;
+    const uint64_t out_bytes = q_bytes;
+
+    qkv_upload_ = Buffer{};
+    wht_workspace_ = Buffer{}; // DEFAULT UAV: attention output before readback
+    split_accum_ = Buffer{};   // DEFAULT UAV: split-K partial accumulators
+    q_rotated_ = Buffer{};     // DEFAULT UAV: WHT(Q) input / inverse-WHT output
+    out_readback_ = Buffer{};  // READBACK: CPU-visible copy of the output
+
+    if (!create_buffer(upload_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                       D3D12_RESOURCE_STATE_GENERIC_READ, &qkv_upload_, error)) {
+        return false;
+    }
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &wht_workspace_, error)) {
+        return false;
+    }
+    const uint64_t split_accum_bytes =
+        32ull * out_bytes + 32ull * (uint64_t(tokens) * geo_.n_head * 2 * 4);
+    if (!create_buffer(split_accum_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &split_accum_, error)) {
+        return false;
+    }
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &q_rotated_, error)) {
+        return false;
+    }
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
+                       D3D12_RESOURCE_STATE_COPY_DEST, &out_readback_, error)) {
+        return false;
+    }
+    scratch_tokens_ = tokens;
+    return true;
+}
+
+bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t n_tokens,
+                              const int32_t* positions, const float* q, const float* k,
+                              const float* v, float* out, std::string* error) {
+    if (!ready_) {
+        return fail(error, "engine not ready");
+    }
+    Session* s = find_session(session_id);
+    if (!s || !s->valid) {
+        return fail(error, "attend: invalid session");
+    }
+    if (n_tokens == 0 || !positions || !q || !k || !v || !out) {
+        return fail(error, "attend: bad arguments");
+    }
+
+    // Assign a dense KV slot for this absolute layer index.
+    uint32_t slot;
+    auto it = layer_slot_.find(layer_abs);
+    if (it == layer_slot_.end()) {
+        slot = (uint32_t)layer_slot_.size();
+        if (geo_.n_layers && slot >= geo_.n_layers) {
+            return fail(error, "attend: too many remote layers");
+        }
+        layer_slot_[layer_abs] = slot;
+    } else {
+        slot = it->second;
+    }
+
+    // Validate positions are within capacity.
+    int32_t max_pos = s->high_water;
+    for (uint32_t t = 0; t < n_tokens; ++t) {
+        if (positions[t] < 0 || (uint32_t)positions[t] >= s->capacity) {
+            return fail(error, "attend: position out of range");
+        }
+        max_pos = std::max(max_pos, positions[t]);
+    }
+
+    if (!ensure_scratch(n_tokens, error)) {
+        return false;
+    }
+
+    const uint64_t q_bytes = uint64_t(n_tokens) * geo_.n_head * geo_.head_dim * 4;
+    const uint64_t kv_bytes = uint64_t(n_tokens) * geo_.n_head_kv * geo_.head_dim * 4;
+    const uint64_t q_off = 0;
+    const uint64_t k_off = q_off + q_bytes;
+    const uint64_t v_off = k_off + kv_bytes;
+    const uint64_t pos_off = v_off + kv_bytes;
+
+    if (!begin(error)) {
+        return false;
+    }
+
+    // Upload Q/K/V/positions into the persistent UPLOAD buffer.
+    {
+        void* mapped = nullptr;
+        HRESULT hr = qkv_upload_.resource->Map(0, nullptr, &mapped);
+        if (FAILED(hr)) {
+            return fail(error, "Map upload", hr);
+        }
+        auto* base = static_cast<uint8_t*>(mapped);
+        std::memcpy(base + q_off, q, q_bytes);
+        std::memcpy(base + k_off, k, kv_bytes);
+        std::memcpy(base + v_off, v, kv_bytes);
+        std::memcpy(base + pos_off, positions, uint64_t(n_tokens) * 4);
+        qkv_upload_.resource->Unmap(0, nullptr);
+    }
+
+    if (slot >= s->layer_kv.size()) {
+        return fail(error, "slot out of range for session layers");
+    }
+    Buffer& layer_buf = s->layer_kv[slot];
+    const D3D12_GPU_VIRTUAL_ADDRESS upload_addr = qkv_upload_.resource->GetGPUVirtualAddress();
+    const uint64_t k_plane = layer_buf.resource->GetGPUVirtualAddress();
+    const uint64_t v_plane = k_plane + s->half_stride;
+
+    // Ensure layer KV is in UAV state for the store.
+    transition(layer_buf, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+    s->high_water = max_pos;
+    const uint32_t active_count = (uint32_t)(s->high_water + 1);
+
+    const bool kvarn = geo_.cache_bits_k >= 2 && geo_.cache_bits_k <= 8;
+    Buffer* readback_src = &wht_workspace_;
+    if (kvarn) {
+        // KVarN path: WHT(Q) -> store K/V (records + stage) -> attention over
+        // records -> inverse WHT(out). All buffers are DEFAULT UAV; SRV reads
+        // happen after UAV barriers (the data is already ordered).
+        const uint64_t rec_k = k_plane + s->rec_off;
+        const uint64_t stg_k = k_plane + s->stg_off;
+        const uint64_t rec_v = k_plane + s->rec_v_off;
+        const uint64_t stg_v = k_plane + s->stg_v_off;
+        const uint32_t n_heads_phys = geo_.n_head_kv * geo_.head_slices;
+        const uint32_t gqa = geo_.n_head / geo_.n_head_kv;
+        const uint32_t gqa_group_size = std::min(gqa, 4u);
+        const uint32_t gqa_groups = (gqa + gqa_group_size - 1) / gqa_group_size;
+
+        // 1) Rotate Q: rows = n_tokens * n_head, F32 in -> F32 out (q_rotated_).
+        transition(q_rotated_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_->SetComputeRootSignature(wht_root_.Get());
+        cmd_->SetPipelineState(wht_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens * geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
+        cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
+        cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);
+        cmd_->SetComputeRootUnorderedAccessView(2, q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
+        uav_barrier(q_rotated_);
+
+        // 2) Store K and V (separate dispatches; `value` flips orientation).
+        cmd_->SetComputeRootSignature(store_kvarn_root_.Get());
+        cmd_->SetPipelineState(store_kvarn_pso_.Get());
+        for (uint32_t pass = 0; pass < 2; ++pass) {
+            const bool is_v = pass == 1;
+            cmd_->SetComputeRoot32BitConstant(0, n_heads_phys, 0);
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 1);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->groups_per_stream, 2);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->record_words, 3);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 4);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.sinkhorn_iters, 5);
+            cmd_->SetComputeRoot32BitConstant(0, is_v ? 1u : 0u, 6);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_slices, 7);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.stage_groups, 8);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.tail_groups, 9);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 10);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + pos_off);
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + (is_v ? v_off : k_off));
+            cmd_->SetComputeRootUnorderedAccessView(3, is_v ? stg_v : stg_k);
+            cmd_->SetComputeRootUnorderedAccessView(4, is_v ? rec_v : rec_k);
+            cmd_->Dispatch(geo_.n_head_kv, 1, 1);
+            uav_barrier(layer_buf);
+        }
+
+        // 3) Attention over records+stage (rotated domain). Records/stage and
+        // the rotated Q are read as SRVs: transition out of UAV first.
+        transition(layer_buf, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(q_rotated_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+        // Split-K parallelization on Xbox Series X 52 CUs:
+        uint32_t split_k = 1;
+        if (n_tokens == 1 && active_count > 2048) {
+            split_k = (active_count >= 32768) ? 32 : 16;
+        }
+
+        Buffer* attn_target = (split_k > 1) ? &split_accum_ : &wht_workspace_;
+        transition(*attn_target, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+        cmd_->SetComputeRootSignature(attn_kvarn_root_.Get());
+        cmd_->SetPipelineState(attn_kvarn_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 1);
+        cmd_->SetComputeRoot32BitConstant(0, n_heads_phys, 2);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 3);
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens, 4);
+        cmd_->SetComputeRoot32BitConstant(0, active_count, 5);
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->groups_per_stream, 6);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 7);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_slices, 8);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.stage_groups, 9);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.tail_groups, 10);
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->record_words, 11);
+        cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*)&geo_.kq_scale, 12);
+        cmd_->SetComputeRoot32BitConstant(0, split_k, 13);
+        cmd_->SetComputeRootShaderResourceView(1, q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootShaderResourceView(2, rec_k);
+        cmd_->SetComputeRootShaderResourceView(3, stg_k);
+        cmd_->SetComputeRootShaderResourceView(4, rec_v);
+        cmd_->SetComputeRootShaderResourceView(5, stg_v);
+        cmd_->SetComputeRootShaderResourceView(6, upload_addr + pos_off);
+        cmd_->SetComputeRootUnorderedAccessView(7, attn_target->resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(n_tokens, geo_.n_head_kv * gqa_groups, split_k);
+        uav_barrier(*attn_target);
+
+        if (split_k > 1) {
+            transition(split_accum_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+            cmd_->SetComputeRootSignature(split_k_reduce_root_.Get());
+            cmd_->SetPipelineState(split_k_reduce_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 1);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 2);
+            cmd_->SetComputeRoot32BitConstant(0, split_k, 3);
+            cmd_->SetComputeRootShaderResourceView(1,
+                                                   split_accum_.resource->GetGPUVirtualAddress());
+            cmd_->SetComputeRootUnorderedAccessView(
+                2, wht_workspace_.resource->GetGPUVirtualAddress());
+            cmd_->Dispatch(n_tokens, geo_.n_head, 1);
+            uav_barrier(wht_workspace_);
+            transition(split_accum_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        }
+
+        // 4) Inverse WHT on the output (rotated -> original domain); the WHT is
+        // self-inverse, so the same kernel rotates out back into q_rotated_.
+        transition(wht_workspace_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(q_rotated_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        cmd_->SetComputeRootSignature(wht_root_.Get());
+        cmd_->SetPipelineState(wht_pso_.Get());
+        cmd_->SetComputeRoot32BitConstant(0, n_tokens * geo_.n_head, 0);
+        cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
+        cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
+        cmd_->SetComputeRootShaderResourceView(1, wht_workspace_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(2, q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
+        uav_barrier(q_rotated_);
+        readback_src = &q_rotated_;
+    } else {
+        // Store K and V (F32 upload -> packed F16 KV at positions). The store
+        // kernel packs two F16 dims per thread, so the element count is halved.
+        const uint32_t store_pairs = n_tokens * geo_.n_head_kv * (geo_.head_dim / 2);
+        const uint32_t store_groups = (store_pairs + 255) / 256;
+        {
+            cmd_->SetComputeRootSignature(store_root_.Get());
+            cmd_->SetPipelineState(store_k_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 1);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 2);
+            cmd_->SetComputeRoot32BitConstant(0, s->capacity, 3);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + pos_off);
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + k_off);
+            cmd_->SetComputeRootUnorderedAccessView(3, k_plane);
+            cmd_->Dispatch(store_groups, 1, 1);
+            uav_barrier(layer_buf);
+
+            cmd_->SetComputeRootShaderResourceView(2, upload_addr + v_off);
+            cmd_->SetComputeRootUnorderedAccessView(3, v_plane);
+            cmd_->Dispatch(store_groups, 1, 1);
+            uav_barrier(layer_buf);
+        }
+
+        // Attention: KV transitions to SRV; out buffer (wht_workspace_) is UAV.
+        transition(layer_buf, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        {
+            cmd_->SetComputeRootSignature(attn_root_.Get());
+            cmd_->SetPipelineState(n_tokens == 1 ? attn_decode_pso_.Get()
+                                                 : attn_prefill_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);     // query_count
+            cmd_->SetComputeRoot32BitConstant(0, active_count, 1); // active_count
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 2);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 3);
+            cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 4);
+            cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*)&geo_.kq_scale, 5);
+            cmd_->SetComputeRoot32BitConstant(0, s->capacity, 6);
+            cmd_->SetComputeRoot32BitConstant(0, 0u, 7);
+            cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);   // queries
+            cmd_->SetComputeRootShaderResourceView(2, k_plane);               // keys
+            cmd_->SetComputeRootShaderResourceView(3, v_plane);               // values
+            cmd_->SetComputeRootShaderResourceView(4, upload_addr + pos_off); // query_positions
+            cmd_->SetComputeRootUnorderedAccessView(
+                5, wht_workspace_.resource->GetGPUVirtualAddress());
+            cmd_->Dispatch(geo_.n_head, n_tokens, 1);
+            uav_barrier(wht_workspace_);
+        }
+    }
+
+    // Readback out (DEFAULT UAV -> READBACK).
+    transition(*readback_src, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    transition(out_readback_, D3D12_RESOURCE_STATE_COPY_DEST);
+    cmd_->CopyBufferRegion(out_readback_.resource.Get(), 0, readback_src->resource.Get(), 0,
+                           q_bytes);
+    // Restore states for the next call.
+    transition(*readback_src, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(layer_buf, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+
+    {
+        void* mapped = nullptr;
+        D3D12_RANGE range{0, q_bytes};
+        HRESULT hr = out_readback_.resource->Map(0, &range, &mapped);
+        if (FAILED(hr)) {
+            return fail(error, "Map readback", hr);
+        }
+        std::memcpy(out, mapped, q_bytes);
+        D3D12_RANGE empty{0, 0};
+        out_readback_.resource->Unmap(0, &empty);
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::configure_range(uint32_t id, uint32_t origin, uint32_t capacity,
+                                       std::string* error, uint32_t storage) {
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || geo_.cache_bits_k != 16 || geo_.cache_bits_v != 16 ||
+        geo_.domain != 0 || capacity != s->capacity || origin > uint32_t(INT32_MAX) - capacity ||
+        storage > 2) {
+        return ::fail(error, "range config: invalid geometry/session/origin");
+    }
+    const uint64_t row_bytes = uint64_t(geo_.n_head_kv) *
+                               (storage ? uint64_t(geo_.head_dim / 32) * (storage == 1 ? 18 : 34)
+                                        : uint64_t(geo_.head_dim) * 2);
+    const uint64_t half_stride = uint64_t(capacity) * row_bytes;
+    const uint64_t bytes = 2 * half_stride * s->layer_kv.size();
+    constexpr uint64_t budget = 4ull * 1024 * 1024 * 1024;
+    const uint64_t other_bytes = allocated_bytes_ - s->kv_bytes;
+    if (bytes > budget || other_bytes > budget - bytes) {
+        return ::fail(error, "range config: KV exceeds budget");
+    }
+    if (s->kv_bytes != bytes || s->range_storage != storage || !s->layer_kv[0].resource) {
+        // Release the old format before allocating its replacement. Range
+        // configuration discards history, so no simultaneous duplicate is needed.
+        allocated_bytes_ -= s->kv_bytes;
+        s->kv_bytes = 0;
+        for (auto& buffer : s->layer_kv)
+            buffer = Buffer{};
+        s->valid = false;
+        for (auto& buffer : s->layer_kv) {
+            if (!create_buffer(2 * half_stride, D3D12_HEAP_TYPE_DEFAULT,
+                               D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                               D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &buffer, error)) {
+                for (auto& failed : s->layer_kv)
+                    failed = Buffer{};
+                return false;
+            }
+        }
+        s->kv_bytes = bytes;
+        allocated_bytes_ += bytes;
+        s->half_stride = half_stride;
+        s->layer_stride = 2 * half_stride;
+        s->valid = true;
+    }
+    s->range_storage = storage;
+    s->range_configured = true;
+    s->range_origin = origin;
+    s->high_water = -1;
+    std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
+    std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
+    std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    return true;
+}
+
+bool RemoteAttnEngine::configure_kvarn_range(uint32_t id, const rkva_kvarn_range_config& c,
+                                             std::string* error) {
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || c.capacity != s->capacity || geo_.cache_bits_k != 16 ||
+        geo_.cache_bits_v != 16 || geo_.domain != 0 ||
+        !rkva_kvarn_range::valid_descriptor(c, geo_.head_dim)) {
+        return ::fail(error, "KVarN range: unsupported descriptor/session");
+    }
+    const uint64_t heads = uint64_t(geo_.n_head_kv) * 2;
+    const uint64_t groups = (uint64_t(c.capacity) + 127) / 128;
+    const uint64_t records = groups * heads * 8960;
+    const uint64_t stage = 384 * heads * 128 * 2;
+    const uint64_t tail = uint64_t(c.precision_tail_tokens) * geo_.n_head_kv * 256 * 2;
+    const uint64_t half = records + stage + tail;
+    const uint64_t bytes = 2 * half * s->layer_kv.size();
+    constexpr uint64_t budget = 4ull * 1024 * 1024 * 1024;
+    const uint64_t other = allocated_bytes_ - s->kv_bytes;
+    if (bytes > budget || other > budget - bytes || half * 2 >= uint64_t(UINT32_MAX)) {
+        return ::fail(error, "KVarN range: KV exceeds budget/address width");
+    }
+    allocated_bytes_ -= s->kv_bytes;
+    s->kv_bytes = 0;
+    for (auto& b : s->layer_kv)
+        b = Buffer{};
+    s->valid = false;
+    for (auto& b : s->layer_kv) {
+        if (!create_buffer(2 * half, D3D12_HEAP_TYPE_DEFAULT,
+                           D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                           D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &b, error)) {
+            for (auto& failed : s->layer_kv)
+                failed = Buffer{};
+            return false;
+        }
+    }
+    s->half_stride = half;
+    s->layer_stride = 2 * half;
+    s->records_bytes = records;
+    s->stage_bytes = stage;
+    s->range_descriptor = c;
+    s->precision_tail_tokens = c.precision_tail_tokens;
+    s->kv_bytes = bytes;
+    allocated_bytes_ += bytes;
+    s->range_storage = 3;
+    s->range_configured = true;
+    s->range_origin = c.origin;
+    s->high_water = -1;
+    std::fill(s->range_counts.begin(), s->range_counts.end(), 0);
+    std::fill(s->range_record_groups.begin(), s->range_record_groups.end(), 0);
+    std::fill(s->range_ready.begin(), s->range_ready.end(), false);
+    s->valid = true;
+    return true;
+}
+
+bool RemoteAttnEngine::upload_kvarn_range(uint32_t id, uint32_t layer,
+                                          const rkva_kvarn_range_upload& u, const uint8_t* data,
+                                          size_t bytes, std::string* error) {
+    const bool prof = profiling_ && profile_;
+    rp::Sample sample;
+    SpanTimer timer;
+    timer.start(prof, sample.cpu_ns);
+    FailedCallGuard guard{prof ? &profile_->recorder.counters.failed_calls : nullptr};
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured || s->range_storage != 3 ||
+        layer >= s->layer_kv.size() || !data ||
+        !rkva_kvarn_range::valid_upload(u, s->capacity, s->range_counts[layer],
+                                        s->range_record_groups[layer], s->range_ready[layer])) {
+        return ::fail(error, "KVarN range upload: invalid descriptor/coverage/snapshot");
+    }
+    const uint64_t record_group_bytes = uint64_t(geo_.n_head_kv) * 2 * 8960;
+    const uint64_t rec_bytes = uint64_t(u.record_groups) * record_group_bytes;
+    const bool reset = (u.flags & 1) != 0;
+    const uint64_t row_bytes = uint64_t(geo_.n_head_kv) * 256 * 2;
+    const uint32_t stage_rows = reset ? 384 : u.append_rows;
+    const uint32_t tail_rows =
+        s->precision_tail_tokens
+            ? (reset ? std::min(u.live_count, s->precision_tail_tokens) : u.append_rows)
+            : 0;
+    const uint64_t stage_payload = uint64_t(stage_rows) * row_bytes;
+    const uint64_t tail_payload = uint64_t(tail_rows) * row_bytes;
+    const uint64_t expected = 2 * (rec_bytes + stage_payload + tail_payload);
+    if (bytes != expected)
+        return ::fail(error, "KVarN range upload: wrong payload size");
+    timer.mark(rp::kCpuValidate);
+    const bool grow = range_upload_.bytes < expected;
+    if (grow && !create_buffer(expected, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                               D3D12_RESOURCE_STATE_GENERIC_READ, &range_upload_, error))
+        return false;
+    timer.mark(rp::kCpuAlloc);
+    void* mapped = nullptr;
+    HRESULT hr = range_upload_.resource->Map(0, nullptr, &mapped);
+    if (FAILED(hr))
+        return fail(error, "Map KVarN range upload", hr);
+    std::memcpy(mapped, data, bytes);
+    range_upload_.resource->Unmap(0, nullptr);
+    timer.mark(rp::kCpuMapCopy);
+    if (!begin(error))
+        return false;
+    const bool ts = prof && timestamp_heap_;
+    if (ts)
+        timestamp(kTsUploadBegin);
+    Buffer& dst = s->layer_kv[layer];
+    transition(dst, D3D12_RESOURCE_STATE_COPY_DEST);
+    const uint64_t record_offset = uint64_t(u.record_begin) * record_group_bytes;
+    if (rec_bytes) {
+        cmd_->CopyBufferRegion(dst.resource.Get(), record_offset, range_upload_.resource.Get(), 0,
+                               rec_bytes);
+        cmd_->CopyBufferRegion(dst.resource.Get(), s->half_stride + record_offset,
+                               range_upload_.resource.Get(), rec_bytes, rec_bytes);
+    }
+    for (uint32_t kind = 0; kind < 2; ++kind) {
+        const uint64_t plane = kind * s->half_stride;
+        const uint64_t stage_source = 2 * rec_bytes + kind * stage_payload;
+        if (reset) {
+            cmd_->CopyBufferRegion(dst.resource.Get(), plane + s->records_bytes,
+                                   range_upload_.resource.Get(), stage_source, stage_payload);
+        } else {
+            rkva_kvarn_range::stage_chunks(
+                s->range_origin + u.append_begin, stage_rows,
+                [&](uint32_t source, uint32_t target, uint32_t rows) {
+                    cmd_->CopyBufferRegion(dst.resource.Get(),
+                                           plane + s->records_bytes + target * row_bytes,
+                                           range_upload_.resource.Get(),
+                                           stage_source + source * row_bytes, rows * row_bytes);
+                });
+        }
+        const uint64_t tail_source = 2 * (rec_bytes + stage_payload) + kind * tail_payload;
+        const uint32_t tail_begin = reset ? u.live_count - tail_rows : u.append_begin;
+        // A prefill may upload >128 new rows: only its newest 128 are live in the overlay.
+        rkva_kvarn_range::tail_chunks(
+            tail_begin, tail_rows, [&](uint32_t source, uint32_t target, uint32_t rows) {
+                cmd_->CopyBufferRegion(dst.resource.Get(),
+                                       plane + s->records_bytes + s->stage_bytes +
+                                           target * row_bytes,
+                                       range_upload_.resource.Get(),
+                                       tail_source + source * row_bytes, rows * row_bytes);
+            });
+    }
+    transition(dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    if (ts) {
+        timestamp(kTsUploadEnd);
+        resolve_timestamps(kTsUploadBegin, 2);
+    }
+    timer.mark(rp::kCpuRecord);
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+    timer.mark(rp::kCpuFenceWait);
+    s->range_record_groups[layer] =
+        (u.flags & 1) ? u.record_groups
+                      : std::max(s->range_record_groups[layer], u.record_begin + u.record_groups);
+    s->range_counts[layer] = u.live_count;
+    s->range_ready[layer] = true;
+    if (prof) {
+        sample.kind = rp::kUpload;
+        sample.storage = 3;
+        sample.mode = uint8_t(q4_kernel_mode_);
+        sample.alloc_grew = grow;
+        sample.n_tokens = u.append_rows;
+        sample.rows = u.append_rows;
+        sample.bytes = bytes;
+        finish_profile_sample(sample, ts, kTsUploadBegin, 2, 0, 0);
+        guard.done = true;
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::upload_range(uint32_t id, uint32_t layer, uint32_t start_row,
+                                    uint32_t n_rows, const uint16_t* k, const uint16_t* v,
+                                    std::string* error) {
+    const bool prof = profiling_ && profile_;
+    rp::Sample sample;
+    SpanTimer timer;
+    timer.start(prof, sample.cpu_ns);
+    FailedCallGuard guard{prof ? &profile_->recorder.counters.failed_calls : nullptr};
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured || layer >= s->layer_kv.size() ||
+        s->range_storage == 3 || !n_rows || !k || !v || start_row > s->capacity ||
+        n_rows > s->capacity - start_row || (start_row && start_row != s->range_counts[layer])) {
+        return ::fail(error, "range upload: invalid/noncontiguous rows");
+    }
+    const uint64_t row_bytes =
+        uint64_t(geo_.n_head_kv) *
+        (s->range_storage ? uint64_t(geo_.head_dim / 32) * (s->range_storage == 1 ? 18 : 34)
+                          : uint64_t(geo_.head_dim) * 2);
+    const uint64_t bytes = uint64_t(n_rows) * row_bytes;
+    timer.mark(rp::kCpuValidate);
+    const bool grow = range_upload_.bytes < 2 * bytes;
+    if (grow && !create_buffer(2 * bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
+                               D3D12_RESOURCE_STATE_GENERIC_READ, &range_upload_, error)) {
+        return false;
+    }
+    timer.mark(rp::kCpuAlloc);
+    void* mapped = nullptr;
+    HRESULT hr = range_upload_.resource->Map(0, nullptr, &mapped);
+    if (FAILED(hr)) {
+        return fail(error, "Map range upload", hr);
+    }
+    std::memcpy(mapped, k, bytes);
+    std::memcpy(static_cast<uint8_t*>(mapped) + bytes, v, bytes);
+    range_upload_.resource->Unmap(0, nullptr);
+    timer.mark(rp::kCpuMapCopy);
+    if (!begin(error)) {
+        return false;
+    }
+    const bool ts = prof && timestamp_heap_;
+    if (ts) {
+        timestamp(kTsUploadBegin);
+    }
+    Buffer& dst = s->layer_kv[layer];
+    transition(dst, D3D12_RESOURCE_STATE_COPY_DEST);
+    const uint64_t offset = uint64_t(start_row) * row_bytes;
+    cmd_->CopyBufferRegion(dst.resource.Get(), offset, range_upload_.resource.Get(), 0, bytes);
+    cmd_->CopyBufferRegion(dst.resource.Get(), s->half_stride + offset,
+                           range_upload_.resource.Get(), bytes, bytes);
+    transition(dst, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    if (ts) {
+        timestamp(kTsUploadEnd);
+        resolve_timestamps(kTsUploadBegin, 2);
+    }
+    timer.mark(rp::kCpuRecord);
+    if (!submit(error)) {
+        s->valid = false;
+        return false;
+    }
+    timer.mark(rp::kCpuFenceWait);
+    s->range_counts[layer] = start_row + n_rows;
+    if (prof) {
+        sample.kind = rp::kUpload;
+        sample.storage = uint8_t(s->range_storage);
+        sample.mode = uint8_t(q4_kernel_mode_);
+        sample.alloc_grew = grow;
+        sample.n_tokens = n_rows;
+        sample.rows = n_rows;
+        sample.bytes = 2 * bytes;
+        finish_profile_sample(sample, ts, kTsUploadBegin, 2, 2, 0);
+        guard.done = true;
+    }
+    return true;
+}
+
+bool RemoteAttnEngine::ensure_range_scratch(uint32_t n_tokens, std::string* error) {
+    if (range_scratch_tokens_ >= n_tokens) {
+        return true;
+    }
+    const uint64_t q_heads = uint64_t(n_tokens) * geo_.n_head;
+    const uint64_t q_bytes = q_heads * geo_.head_dim * 4;
+    const uint64_t out_bytes = q_bytes + q_heads * 4;
+    const uint64_t partial_bytes = 32 * q_heads * (geo_.head_dim + 2) * 4;
+    if (!create_buffer(q_bytes + uint64_t(n_tokens) * 4, D3D12_HEAP_TYPE_UPLOAD,
+                       D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_GENERIC_READ, &range_query_,
+                       error) ||
+        !create_buffer(partial_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &range_partials_, error) ||
+        !create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &range_output_, error) ||
+        !create_buffer(out_bytes, D3D12_HEAP_TYPE_READBACK, D3D12_RESOURCE_FLAG_NONE,
+                       D3D12_RESOURCE_STATE_COPY_DEST, &range_readback_, error)) {
+        return false;
+    }
+    range_scratch_tokens_ = n_tokens;
+    return true;
+}
+
+bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_tokens,
+                                    const int32_t* positions, const float* q, float* out,
+                                    float* lse, std::string* error) {
+    const bool prof = profiling_ && profile_;
+    rp::Sample sample;
+    SpanTimer timer;
+    timer.start(prof, sample.cpu_ns);
+    FailedCallGuard guard{prof ? &profile_->recorder.counters.failed_calls : nullptr};
+    Session* s = find_session(id);
+    if (!ready_ || !s || !s->valid || !s->range_configured || layer >= s->layer_kv.size() ||
+        !n_tokens || !positions || !q || !out || !lse ||
+        (s->range_storage == 3 && !s->range_ready[layer])) {
+        return ::fail(error, "range attention: invalid arguments/session");
+    }
+    for (uint32_t t = 0; t < n_tokens; ++t) {
+        if (positions[t] < 0) {
+            return ::fail(error, "range attention: negative query position");
+        }
+    }
+    timer.mark(rp::kCpuValidate);
+    const bool grow = range_scratch_tokens_ < n_tokens;
+    if (!ensure_range_scratch(n_tokens, error)) {
+        return false;
+    }
+    timer.mark(rp::kCpuAlloc);
+    const uint64_t q_heads = uint64_t(n_tokens) * geo_.n_head;
+    const uint64_t q_bytes = q_heads * geo_.head_dim * 4;
+    const uint64_t out_bytes = q_bytes + q_heads * 4;
+    void* mapped = nullptr;
+    HRESULT hr = range_query_.resource->Map(0, nullptr, &mapped);
+    if (FAILED(hr)) {
+        return fail(error, "Map range queries", hr);
+    }
+    std::memcpy(mapped, q, q_bytes);
+    std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions, uint64_t(n_tokens) * 4);
+    range_query_.resource->Unmap(0, nullptr);
+    timer.mark(rp::kCpuMapCopy);
+    if (!begin(error)) {
+        return false;
+    }
+    const bool ts = prof && timestamp_heap_;
+    if (ts) {
+        timestamp(kTsAttnBegin);
+    }
+    const uint32_t active_count = s->range_counts[layer];
+    // Shared tail after the readback copy has been recorded.
+    auto finish = [&](uint32_t dispatches) -> bool {
+        if (ts) {
+            timestamp(kTsAttnCopy);
+            resolve_timestamps(kTsAttnBegin, 4);
+        }
+        timer.mark(rp::kCpuRecord);
+        if (!submit(error)) {
+            s->valid = false;
+            return false;
+        }
+        timer.mark(rp::kCpuFenceWait);
+        D3D12_RANGE range{0, static_cast<SIZE_T>(out_bytes)};
+        hr = range_readback_.resource->Map(0, &range, &mapped);
+        if (FAILED(hr)) {
+            return fail(error, "Map range readback", hr);
+        }
+        std::memcpy(out, mapped, q_bytes);
+        std::memcpy(lse, static_cast<uint8_t*>(mapped) + q_bytes, q_heads * 4);
+        D3D12_RANGE empty{0, 0};
+        range_readback_.resource->Unmap(0, &empty);
+        timer.mark(rp::kCpuReadback);
+        if (prof) {
+            sample.kind = rp::kAttention;
+            sample.storage = uint8_t(s->range_storage);
+            sample.mode = uint8_t(q4_kernel_mode_);
+            sample.alloc_grew = grow;
+            sample.n_tokens = n_tokens;
+            sample.rows = active_count;
+            sample.bytes = q_bytes + uint64_t(n_tokens) * 4 + out_bytes;
+            finish_profile_sample(sample, ts, kTsAttnBegin, 4, 1, dispatches);
+            guard.done = true;
+        }
+        return true;
+    };
+    const bool optimized = range_attn_q4_opt_pso_ && range_reduce_opt_pso_ &&
+                           range_opt_partials_.resource &&
+                           rp::optimized_q4_supported(q4_kernel_mode_, s->range_storage, n_tokens,
+                                                      geo_.n_head, geo_.n_head_kv, geo_.head_dim);
+    if (optimized) {
+        // GQA-shared decode kernel; split_k == 1 writes OUT/LSE directly.
+        const uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
+        const bool direct = split_k == 1;
+        Buffer& kv = s->layer_kv[layer];
+        transition(kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+        transition(range_opt_partials_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        transition(range_output_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+        const uint64_t q_addr = range_query_.resource->GetGPUVirtualAddress();
+        const uint64_t kv_addr = kv.resource->GetGPUVirtualAddress();
+        uint32_t scale;
+        std::memcpy(&scale, &geo_.kq_scale, sizeof(scale));
+        const uint32_t params[] = {
+            n_tokens,        active_count,  geo_.n_head,
+            geo_.n_head_kv,  geo_.head_dim, scale,
+            s->range_origin, split_k,       rp::split_rows(active_count, split_k),
+            direct ? 1u : 0u};
+        cmd_->SetComputeRootSignature(range_attn_q4_opt_root_.Get());
+        cmd_->SetPipelineState(range_attn_q4_opt_pso_.Get());
+        cmd_->SetComputeRoot32BitConstants(0, 10, params, 0);
+        cmd_->SetComputeRootShaderResourceView(1, q_addr);
+        cmd_->SetComputeRootShaderResourceView(2, kv_addr);
+        cmd_->SetComputeRootShaderResourceView(3, kv_addr + s->half_stride);
+        cmd_->SetComputeRootShaderResourceView(4, q_addr + q_bytes);
+        cmd_->SetComputeRootUnorderedAccessView(
+            5, range_opt_partials_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(6, range_output_.resource->GetGPUVirtualAddress());
+        cmd_->Dispatch(geo_.n_head_kv, n_tokens, split_k);
+        if (!direct) {
+            uav_barrier(range_opt_partials_);
+            transition(range_opt_partials_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+            if (ts) {
+                timestamp(kTsAttnPass1);
+            }
+            const uint32_t reduce_params[] = {n_tokens, geo_.n_head, geo_.head_dim, split_k};
+            cmd_->SetComputeRootSignature(range_reduce_root_.Get());
+            cmd_->SetPipelineState(range_reduce_opt_pso_.Get());
+            cmd_->SetComputeRoot32BitConstants(0, 4, reduce_params, 0);
+            cmd_->SetComputeRootShaderResourceView(
+                1, range_opt_partials_.resource->GetGPUVirtualAddress());
+            cmd_->SetComputeRootUnorderedAccessView(2,
+                                                    range_output_.resource->GetGPUVirtualAddress());
+            cmd_->Dispatch(geo_.n_head, n_tokens, 1);
+        }
+        uav_barrier(range_output_);
+        transition(range_output_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+        if (ts) {
+            if (direct) {
+                timestamp(kTsAttnPass1); // pass1 includes the output barrier; reduce == 0
+            }
+            timestamp(kTsAttnReduce);
+        }
+        if (prof) {
+            sample.optimized = 1;
+            sample.direct_output = direct;
+            sample.split_k = split_k;
+            sample.groups = geo_.n_head_kv * n_tokens * split_k;
+        }
+        cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
+                               out_bytes);
+        return finish(direct ? 1u : 2u);
+    }
+    const uint32_t split_k = std::max(1u, std::min(32u, (active_count + 255) / 256));
+    Buffer& kv = s->layer_kv[layer];
+    transition(kv, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    transition(range_partials_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    transition(range_output_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+    const uint64_t q_addr = range_query_.resource->GetGPUVirtualAddress();
+    const uint64_t kv_addr = kv.resource->GetGPUVirtualAddress();
+    uint32_t scale;
+    std::memcpy(&scale, &geo_.kq_scale, sizeof(scale));
+    const uint32_t params[] = {n_tokens,
+                               active_count,
+                               geo_.n_head,
+                               geo_.n_head_kv,
+                               geo_.head_dim,
+                               scale,
+                               s->range_origin,
+                               split_k,
+                               s->range_storage,
+                               uint32_t(s->records_bytes),
+                               s->precision_tail_tokens};
+    cmd_->SetComputeRootSignature(range_attn_root_.Get());
+    cmd_->SetPipelineState(range_attn_pso_[s->range_storage].Get());
+    cmd_->SetComputeRoot32BitConstants(0, 11, params, 0);
+    cmd_->SetComputeRootShaderResourceView(1, q_addr);
+    cmd_->SetComputeRootShaderResourceView(2, kv_addr);
+    cmd_->SetComputeRootShaderResourceView(3, kv_addr + s->half_stride);
+    cmd_->SetComputeRootShaderResourceView(4, q_addr + q_bytes);
+    cmd_->SetComputeRootUnorderedAccessView(5, range_partials_.resource->GetGPUVirtualAddress());
+    cmd_->Dispatch(geo_.n_head, n_tokens, split_k);
+    uav_barrier(range_partials_);
+    transition(range_partials_, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+    if (ts) {
+        timestamp(kTsAttnPass1);
+    }
+    const uint32_t reduce_params[] = {n_tokens, geo_.n_head, geo_.head_dim, split_k};
+    cmd_->SetComputeRootSignature(range_reduce_root_.Get());
+    cmd_->SetPipelineState(range_reduce_pso_.Get());
+    cmd_->SetComputeRoot32BitConstants(0, 4, reduce_params, 0);
+    cmd_->SetComputeRootShaderResourceView(1, range_partials_.resource->GetGPUVirtualAddress());
+    cmd_->SetComputeRootUnorderedAccessView(2, range_output_.resource->GetGPUVirtualAddress());
+    cmd_->Dispatch(geo_.n_head, n_tokens, 1);
+    uav_barrier(range_output_);
+    transition(range_output_, D3D12_RESOURCE_STATE_COPY_SOURCE);
+    if (ts) {
+        timestamp(kTsAttnReduce);
+    }
+    if (prof) {
+        sample.split_k = split_k;
+        sample.groups = geo_.n_head * n_tokens * split_k;
+    }
+    cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
+                           out_bytes);
+    return finish(2);
+}
+
+#include "rkva-disk-snapshot.inc"

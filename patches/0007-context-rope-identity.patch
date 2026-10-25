@@ -1,0 +1,37 @@
+diff --git a/include/llama.h b/include/llama.h
+--- a/include/llama.h
++++ b/include/llama.h
+@@ -800,6 +800,16 @@
+     // NOTE: After creating a llama_context, it is recommended to query the actual values using these functions
+     //       In some cases the requested values via llama_context_params may differ from the actual values used by the context
+     //       ref: https://github.com/ggml-org/llama.cpp/pull/17046#discussion_r2503085732
++    // Resolved RoPE/YaRN identity, after model defaults and context adjustments.
++    struct llama_context_rope_params {
++        int32_t scaling_type;
++        uint32_t orig_ctx;
++        float freq_base, freq_scale;
++        float ext_factor, attn_factor, beta_fast, beta_slow;
++    };
++    LLAMA_API struct llama_context_rope_params llama_get_context_rope_params(
++            const struct llama_context * ctx);
++
+     LLAMA_API uint32_t llama_n_ctx      (const struct llama_context * ctx);
+     LLAMA_API uint32_t llama_n_ctx_seq  (const struct llama_context * ctx);
+     LLAMA_API uint32_t llama_n_batch    (const struct llama_context * ctx);
+diff --git a/src/llama-context.cpp b/src/llama-context.cpp
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -6536,6 +6536,13 @@
+     delete ctx;
+ }
+ 
++llama_context_rope_params llama_get_context_rope_params(const llama_context * ctx) {
++    const auto & p = ctx->get_cparams();
++    return { static_cast<int32_t>(p.rope_scaling_type), p.n_ctx_orig_yarn,
++             p.rope_freq_base, p.rope_freq_scale, p.yarn_ext_factor,
++             p.yarn_attn_factor, p.yarn_beta_fast, p.yarn_beta_slow };
++}
++
+ uint32_t llama_n_ctx(const llama_context * ctx) {
+     return ctx->n_ctx();
+ }
