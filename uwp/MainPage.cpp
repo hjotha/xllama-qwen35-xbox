@@ -135,9 +135,12 @@ no_keyboard_on_programmatic_focus(winrt::Windows::UI::Xaml::Controls::TextBox co
 
 void MainPageController::BuildUI() {
     m_root = Page();
+    m_viewHost = Grid();
+    m_chatView = Grid();
+    m_viewHost.Children().Append(m_chatView);
 
-    // ---- outer grid (3 rows: header / body / footer) ----
-    Grid outerGrid;
+    // ---- chat view (unchanged layout, hidden by default) ----
+    Grid& outerGrid = m_chatView;
     outerGrid.Margin(ThicknessHelper::FromLengths(48, 27, 48, 27)); // Xbox TV safe area (5%)
 
     RowDefinition rowAuto1;
@@ -254,6 +257,11 @@ void MainPageController::BuildUI() {
     m_settingsButton.MinWidth(100);
     m_settingsButton.Margin(ThicknessHelper::FromLengths(0, 0, 12, 0));
 
+    m_dashboardButton = Button();
+    m_dashboardButton.Content(winrt::box_value(L"\u25a6  Dashboard"));
+    m_dashboardButton.MinWidth(120);
+    m_dashboardButton.Margin(ThicknessHelper::FromLengths(0, 0, 12, 0));
+
     m_newChatButton = Button();
     m_newChatButton.Content(winrt::box_value(L"+  New"));
     m_newChatButton.MinWidth(100);
@@ -280,6 +288,7 @@ void MainPageController::BuildUI() {
     m_cancelButton.IsEnabled(false);
     m_cancelButton.MinWidth(120);
 
+    btnPanel.Children().Append(m_dashboardButton);
     btnPanel.Children().Append(m_settingsButton);
     btnPanel.Children().Append(m_newChatButton);
     btnPanel.Children().Append(m_historyButton);
@@ -295,7 +304,14 @@ void MainPageController::BuildUI() {
     outerGrid.Children().Append(m_outputScroll);
     outerGrid.Children().Append(footer);
 
-    m_root.Content(outerGrid);
+    // The dashboard is the main surface: this console is a server and nobody
+    // types prompts on it. The chat view remains fully functional behind one
+    // press; nothing in it was removed.
+    m_chatView.Visibility(Visibility::Collapsed);
+    m_dashboard = std::make_unique<::xllama::ui::Dashboard>();
+    m_viewHost.Children().Append(m_dashboard->Root());
+    m_root.Content(m_viewHost);
+    m_root.Background(winrt::Windows::UI::Xaml::Media::SolidColorBrush({255, 7, 10, 14}));
 
     // Dark theme fallback on desktop (Xbox inherits from Application)
     m_root.RequestedTheme(ElementTheme::Dark);
@@ -346,6 +362,10 @@ void MainPageController::Init() {
         if (auto s = self.lock())
             s->ShowImageDialog();
     });
+    m_dashboardButton.Click([self](IInspectable const&, RoutedEventArgs const&) {
+        if (auto s = self.lock())
+            s->ShowDashboard();
+    });
 
     // B button (gamepad Back). On Xbox an unhandled BackRequested is the shell's
     // cue to suspend the app and return to Home, so a B press anywhere outside a
@@ -377,6 +397,10 @@ void MainPageController::Init() {
             using VK = winrt::Windows::System::VirtualKey;
             switch (e.Key()) {
             case VK::GamepadView:
+                if (s->m_dashboard_visible) {
+                    e.Handled(true); // View only clears the chat transcript
+                    break;
+                }
                 s->m_outputBody.Blocks().Clear();
                 s->m_currentParagraph = winrt::Windows::UI::Xaml::Documents::Paragraph();
                 s->m_outputBody.Blocks().Append(s->m_currentParagraph);
@@ -385,6 +409,8 @@ void MainPageController::Init() {
                 e.Handled(true);
                 break;
             case VK::GamepadY:
+                if (s->m_dashboard_visible)
+                    s->ShowChatView();
                 s->m_promptInput.Focus(FocusState::Programmatic);
                 e.Handled(true);
                 break;
@@ -405,8 +431,10 @@ void MainPageController::Init() {
             }
         });
 
-    // Start with focus on Run button
-    m_runButton.Focus(FocusState::Programmatic);
+    // Start with focus on the dashboard's only control. The chat's Run button
+    // stays disabled until a model is ready; focusing a hidden control is what
+    // used to slide the on-screen keyboard up over the answer.
+    m_dashboard->FocusPrimary();
 
     // Init chat history and settings
     {
@@ -417,6 +445,31 @@ void MainPageController::Init() {
         m_history.LoadIndex();
     }
     LoadSettings();
+
+    // Dashboard telemetry: one background sampler (log tail + optional host
+    // /metrics poll), one 1 Hz UI tick. The sampler is read-only and does not
+    // touch prompts or conversations.
+    m_app_started_at = std::chrono::steady_clock::now();
+    {
+        auto folder = winrt::Windows::Storage::ApplicationData::Current().LocalFolder();
+        m_dashboard->Start(std::wstring(folder.Path().c_str()));
+    }
+    {
+        auto weak_self = weak_from_this();
+        m_dashboard->OnChat([weak_self]() {
+            if (auto s = weak_self.lock())
+                s->ShowChatView();
+        });
+        m_dashboardTimer = winrt::Windows::UI::Xaml::DispatcherTimer{};
+        m_dashboardTimer.Interval(std::chrono::seconds(1));
+        m_dashboard_tick_token =
+            m_dashboardTimer.Tick([weak_self](IInspectable const&, IInspectable const&) {
+                if (auto s = weak_self.lock())
+                    s->RefreshDashboard();
+            });
+        m_dashboardTimer.Start();
+    }
+    RefreshDashboard();
 
     EnsureModelAsync();
     ShowDisclaimerIfNeeded();
@@ -476,14 +529,17 @@ void MainPageController::FlushTokenBuffer() {
             std::chrono::duration<double>(std::chrono::steady_clock::now() - m_first_token_at)
                 .count();
         if (elapsed > 0.2) {
+            const double tps = (n - 1) / elapsed;
+            m_live_decode_tps = tps;
             wchar_t buf[80];
-            swprintf_s(buf, L"~%.0f tok/s  ·  %d tok", (n - 1) / elapsed, n);
+            swprintf_s(buf, L"~%.0f tok/s  ·  %d tok", tps, n);
             m_metricsText.Text(buf);
         }
     }
 }
 
 void MainPageController::SetStatus(std::wstring const& msg, StatusKind kind) {
+    m_status_kind = kind;
     namespace Media = winrt::Windows::UI::Xaml::Media;
     switch (kind) {
     case StatusKind::Working:
@@ -520,8 +576,126 @@ void MainPageController::SetRunning(bool running) {
             m_flush_timer.Stop();
             FlushTokenBuffer(); // drain any remaining tokens
         }
-        m_promptInput.Focus(FocusState::Programmatic); // return focus to prompt after inference
+        if (m_dashboard_visible && m_dashboard) {
+            m_dashboard->FocusPrimary();
+        } else {
+            m_promptInput.Focus(FocusState::Programmatic); // return focus to prompt
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// TV dashboard
+// ---------------------------------------------------------------------------
+
+void MainPageController::ShowDashboard() {
+    m_dashboard_visible = true;
+    if (m_chatView)
+        m_chatView.Visibility(Visibility::Collapsed);
+    if (m_dashboard) {
+        m_dashboard->Root().Visibility(Visibility::Visible);
+        m_dashboard->FocusPrimary();
+    }
+    RefreshDashboard();
+}
+
+void MainPageController::ShowChatView() {
+    m_dashboard_visible = false;
+    if (m_dashboard)
+        m_dashboard->Root().Visibility(Visibility::Collapsed);
+    if (m_chatView)
+        m_chatView.Visibility(Visibility::Visible);
+    if (!m_is_running.load())
+        m_promptInput.Focus(FocusState::Programmatic);
+}
+
+void MainPageController::RefreshDashboard() {
+    if (!m_dashboard)
+        return;
+    const ui::DashboardInputs inputs = BuildDashboardInputs();
+    m_dashboard->Tick(inputs);
+    m_local_turn_fresh = false;
+}
+
+void MainPageController::ResetDashboardTurnMetrics() {
+    m_live_decode_tps = 0.0;
+    m_last_prefill_tps = 0.0;
+    m_last_decode_tps = 0.0;
+    m_last_prompt_tokens = 0;
+    m_last_peak_mb = 0;
+    m_local_turn_fresh = false;
+}
+
+ui::DashboardInputs MainPageController::BuildDashboardInputs() {
+    ui::DashboardInputs inputs;
+    inputs.model = m_model_filename.empty() ? m_active_model : m_model_filename;
+    inputs.model_ready = m_model_ready.load();
+    inputs.running = m_is_running.load();
+    inputs.error = m_status_kind == StatusKind::Error;
+    if (inputs.error)
+        inputs.status_short = L"Error - open chat for details";
+    else if (inputs.running)
+        inputs.status_short = L"Generating";
+    else if (inputs.model_ready)
+        inputs.status_short = L"Ready";
+    else
+        inputs.status_short = L"Loading model";
+
+    inputs.local_decode_tps = m_last_decode_tps;
+    if (inputs.running && m_live_decode_tps > 0.0)
+        inputs.local_decode_tps = m_live_decode_tps;
+    inputs.has_local_decode = inputs.local_decode_tps > 0.0;
+    inputs.local_live = inputs.running && m_live_decode_tps > 0.0;
+    inputs.local_prefill_tps = m_last_prefill_tps;
+    inputs.has_local_prefill = inputs.local_prefill_tps > 0.0;
+    inputs.local_turn_fresh = m_local_turn_fresh;
+
+    inputs.ctx_used = m_last_prompt_tokens;
+    inputs.peak_ws_mb = m_last_peak_mb;
+    {
+        // Exact capacity from the resident session. try_lock: a running turn
+        // holds the hub for its whole duration, so keep the last known value
+        // instead of blocking the UI thread.
+        auto& hub = ::xllama::session_hub();
+        std::unique_lock<std::mutex> lock(hub.mtx, std::try_to_lock);
+        if (lock.owns_lock() && hub.session) {
+            const int capacity = hub.session->context_length();
+            if (capacity > 0)
+                m_dash_ctx_capacity = capacity;
+        }
+    }
+    inputs.ctx_capacity = m_dash_ctx_capacity;
+
+    inputs.uptime_seconds =
+        static_cast<unsigned long long>(std::chrono::duration_cast<std::chrono::seconds>(
+                                            std::chrono::steady_clock::now() - m_app_started_at)
+                                            .count());
+
+    #ifndef XLLAMA_STORE_SKU
+    const ::xllama::api::ServerStatus status = ::xllama::api::server_status();
+    switch (status.state) {
+    case ::xllama::api::ServerState::Running:
+        inputs.lan = ui::DashboardLink::On;
+        inputs.lan_detail = L":" + std::to_wstring(status.port);
+        break;
+    case ::xllama::api::ServerState::Starting:
+        inputs.lan = ui::DashboardLink::Pending;
+        inputs.lan_detail = L"STARTING";
+        break;
+    case ::xllama::api::ServerState::Error:
+        inputs.lan = ui::DashboardLink::Error;
+        inputs.lan_detail = L"SERVER ERROR";
+        break;
+    default:
+        inputs.lan = ui::DashboardLink::Off;
+        break;
+    }
+    #else
+    inputs.lan = ui::DashboardLink::Off;
+    inputs.lan_detail = L"STORE BUILD";
+    #endif
+
+    return inputs;
 }
 
 // ---------------------------------------------------------------------------
@@ -908,6 +1082,7 @@ void MainPageController::NewChat() {
     m_outputBody.Blocks().Append(m_currentParagraph);
     m_promptInput.Text(L"");
     m_metricsText.Text(L"");
+    ResetDashboardTurnMetrics();
     SetStatus(L"New conversation");
 }
 
@@ -984,6 +1159,7 @@ void MainPageController::LoadConversation(const std::string& id) {
         m_current.id = id;
     }
     RenderConversation();
+    ResetDashboardTurnMetrics();
     SetStatus(L"Conversation loaded");
 }
 
@@ -2731,6 +2907,7 @@ void MainPageController::StartInference(std::wstring const& prompt_w) {
 
     // Reset streaming counters
     m_tokens_received.store(0);
+    ResetDashboardTurnMetrics();
     {
         std::lock_guard<std::mutex> lk(m_token_mutex);
         m_token_buffer.clear();
@@ -3061,11 +3238,16 @@ void MainPageController::StartInference(std::wstring const& prompt_w) {
             self->m_hub_generation = hub.generation;
 
             std::wstring metrics;
+            double decode_tps = 0.0;
+            double prefill_tps = 0.0;
             if (res.success) {
                 wchar_t buf[256];
                 double dt = (res.n_eval > 0 && res.t_eval_ms > 0)
                                 ? (double)res.n_eval / (res.t_eval_ms / 1000.0)
                                 : 0.0;
+                decode_tps = dt;
+                if (res.n_p_eval > 0 && res.t_p_eval_ms > 0)
+                    prefill_tps = (double)res.n_p_eval / (res.t_p_eval_ms / 1000.0);
                 // #130: lead with time-to-first-token. The app streams, so TTFT
                 // is the wait the user actually experiences; the decode rate
                 // that follows is well above reading speed on both backends and
@@ -3107,48 +3289,63 @@ void MainPageController::StartInference(std::wstring const& prompt_w) {
                 ::xllama::log_output(
                     "[xllama] postprocess left no answer (truncated reasoning block)\n");
             }
-            dispatcher.RunAsync(
-                CoreDispatcherPriority::Normal,
-                [self, metrics, res, output_text, was_aborted, ep_kv_ok, thinking_only]() {
-                    self->m_metricsText.Text(metrics);
-                    const wchar_t* status_text = L"Error";
-                    StatusKind status_kind = StatusKind::Error;
-                    if (was_aborted) {
-                        status_text = L"Cancelled";
-                        status_kind = StatusKind::Info;
-                    } else if (res.success && thinking_only) {
-                        // Not a failure and not a normal answer: the model spent the
-                        // whole budget reasoning.
-                        status_text = L"Reasoning cut off — raise Max new tokens";
-                        status_kind = StatusKind::Info;
-                    } else if (res.success) {
-                        status_text = L"Done";
-                        status_kind = StatusKind::Success;
-                    }
-                    self->SetStatus(status_text, status_kind);
-                    self->SetRunning(false); // also stops timer + flushes remaining tokens
-                    // KV-reuse bookkeeping: the persistent generator now holds this
-                    // turn only if it completed cleanly. On failure or abort, force a
-                    // fresh generator (full re-prefill) next turn.
-                    if (self->m_kv_reuse && res.success && !was_aborted && ep_kv_ok) {
-                        self->m_kv_valid = true;
-                        self->m_kv_last_ended_with_stop = res.ended_with_stop;
-                    } else {
-                        self->m_kv_valid = false;
-                    }
-                    // Save assistant response (partial-flagged if user aborted)
-                    if (!output_text.empty()) {
-                        xllama::ui::ChatMessage amsg;
-                        amsg.role = xllama::ui::MessageRole::Assistant;
-                        amsg.content = output_text;
-                        amsg.ts_unix = static_cast<int64_t>(std::time(nullptr));
-                        amsg.partial = was_aborted;
-                        self->m_current.messages.push_back(std::move(amsg));
-                    }
-                    self->SaveCurrentConversation(was_aborted);
-                    if (!was_aborted && !output_text.empty())
-                        self->FinalizeStreamedTurn(output_text);
-                });
+            dispatcher.RunAsync(CoreDispatcherPriority::Normal, [self, metrics, res, output_text,
+                                                                 was_aborted, ep_kv_ok,
+                                                                 thinking_only, decode_tps,
+                                                                 prefill_tps]() {
+                self->m_metricsText.Text(metrics);
+                if (res.success && !was_aborted) {
+                    // Exact, measured on this console for this turn. The
+                    // dashboard only falls back to these while RKVA is not
+                    // in a split session; in split mode the host endpoint
+                    // is the only allowed source.
+                    self->m_last_decode_tps = decode_tps;
+                    self->m_last_prefill_tps = prefill_tps;
+                    self->m_live_decode_tps = decode_tps;
+                    self->m_last_prompt_tokens = res.n_p_eval;
+                    self->m_last_peak_mb = res.peak_ws_mb;
+                    self->m_local_turn_fresh = true;
+                    if (self->m_dashboard)
+                        self->m_dashboard->RecordTurn(prefill_tps, decode_tps);
+                }
+                const wchar_t* status_text = L"Error";
+                StatusKind status_kind = StatusKind::Error;
+                if (was_aborted) {
+                    status_text = L"Cancelled";
+                    status_kind = StatusKind::Info;
+                } else if (res.success && thinking_only) {
+                    // Not a failure and not a normal answer: the model spent the
+                    // whole budget reasoning.
+                    status_text = L"Reasoning cut off — raise Max new tokens";
+                    status_kind = StatusKind::Info;
+                } else if (res.success) {
+                    status_text = L"Done";
+                    status_kind = StatusKind::Success;
+                }
+                self->SetStatus(status_text, status_kind);
+                self->SetRunning(false); // also stops timer + flushes remaining tokens
+                // KV-reuse bookkeeping: the persistent generator now holds this
+                // turn only if it completed cleanly. On failure or abort, force a
+                // fresh generator (full re-prefill) next turn.
+                if (self->m_kv_reuse && res.success && !was_aborted && ep_kv_ok) {
+                    self->m_kv_valid = true;
+                    self->m_kv_last_ended_with_stop = res.ended_with_stop;
+                } else {
+                    self->m_kv_valid = false;
+                }
+                // Save assistant response (partial-flagged if user aborted)
+                if (!output_text.empty()) {
+                    xllama::ui::ChatMessage amsg;
+                    amsg.role = xllama::ui::MessageRole::Assistant;
+                    amsg.content = output_text;
+                    amsg.ts_unix = static_cast<int64_t>(std::time(nullptr));
+                    amsg.partial = was_aborted;
+                    self->m_current.messages.push_back(std::move(amsg));
+                }
+                self->SaveCurrentConversation(was_aborted);
+                if (!was_aborted && !output_text.empty())
+                    self->FinalizeStreamedTurn(output_text);
+            });
         } catch (const std::exception& ex) {
             ::xllama::log_output(std::string("[xllama] thread terminated: ") + ex.what() + "\n");
             dispatcher.RunAsync(CoreDispatcherPriority::Normal, [self]() {
@@ -3389,6 +3586,11 @@ void MainPageController::ApRun(std::vector<ApAction> actions, std::chrono::secon
     // Gate on the model being ready (first-launch download may be in flight).
     if (!ApWaitAtomic(m_model_ready, true, std::chrono::seconds{600}))
         throw std::runtime_error("model not ready after 600s");
+
+    // Existing gates screenshot and probe the chat surface. The dashboard is
+    // the default surface now, so put the chat view back in front before the
+    // first scripted action rather than changing every gate.
+    ApDispatchSync([this]() { ShowChatView(); });
 
     auto not_running = [&]() {
         return ApWaitAtomic(m_is_running, false, kGrace) &&
