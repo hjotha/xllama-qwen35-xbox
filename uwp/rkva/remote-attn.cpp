@@ -13,6 +13,7 @@
 #include "remote-attn.h"
 #include "remote-attn-engine.h"
 #include "remote-attn-protocol.h"
+#include "rkva-kvarn-bulk.h"
 
 #ifndef NOMINMAX
     #define NOMINMAX
@@ -298,7 +299,8 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
                 ack.reserved[0] |= RKVA_CAP_KVARN_REWIND;
             if (state.native_serial_prefix_v3_client &&
                 state.engine->native_serial_prefix_available())
-                ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX | RKVA_CAP_KVARN_BULK_ATTN;
+                ack.reserved[0] |= RKVA_CAP_KVARN_SERIAL_PREFIX | RKVA_CAP_KVARN_BULK_ATTN |
+                                   RKVA_CAP_KVARN_BULK_F16;
         }
         if (!state.native_rewind_v2_client)
             ack.supported_ops &= ~(1u << RKVA_KVARN_RANGE_REWIND);
@@ -653,15 +655,24 @@ int handle_request(remote_state& state, const rkva_request& req, const std::vect
             it->second.range_storage != RKVA_RANGE_STORAGE_KVARN4 || !state.engine ||
             !state.engine_f16 || !it->second.valid)
             return RKVA_ERR_BAD_SESSION;
+        uint32_t wire = RKVA_WIRE_F32;
+        if (!rkva_kvarn_bulk::peek_wire(input.data(), input.size(), wire))
+            return RKVA_ERR_BAD_PAYLOAD;
+        const bool wire_f16 = (wire == RKVA_WIRE_F16);
         const uint64_t heads = uint64_t(req.n_tokens) * state.geo.n_head;
-        const uint64_t q_bytes = heads * state.geo.head_dim * 4;
-        output.resize(q_bytes + heads * 4);
+        const uint64_t out_bytes = heads * state.geo.head_dim * (wire_f16 ? 2ull : 4ull);
+        output.resize(out_bytes + heads * 4);
         std::string error;
         const auto start = clock_type::now();
-        if (!state.engine->attend_kvarn_bulk(
-                req.session_id, req.layer_id, req.n_tokens, input.data(), input.size(),
-                reinterpret_cast<float*>(output.data()),
-                reinterpret_cast<float*>(output.data() + q_bytes), &error)) {
+        const bool ok = wire_f16 ? state.engine->attend_kvarn_bulk_f16(
+                                       req.session_id, req.layer_id, req.n_tokens, input.data(),
+                                       input.size(), reinterpret_cast<uint16_t*>(output.data()),
+                                       reinterpret_cast<float*>(output.data() + out_bytes), &error)
+                                 : state.engine->attend_kvarn_bulk(
+                                       req.session_id, req.layer_id, req.n_tokens, input.data(),
+                                       input.size(), reinterpret_cast<float*>(output.data()),
+                                       reinterpret_cast<float*>(output.data() + out_bytes), &error);
+        if (!ok) {
             output.clear();
             event_engine_error(error);
             return state.engine->session_invalid(req.session_id) ? RKVA_ERR_GPU

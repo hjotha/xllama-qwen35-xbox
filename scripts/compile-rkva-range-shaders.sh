@@ -9,7 +9,7 @@ DXC="${DXC:-dxc}"
 ALL_TARGETS=(attn attn_q4 attn_q8 attn_kvarn4 reduce attn_q4_opt reduce_opt
     attn_f16_opt attn_q8_opt attn_kvarn4_opt attn_kvarn4_prefix attn_kvarn4_opt_prefix
     attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4
-    attn_kvarn4_mq2)
+    attn_kvarn4_mq2 bulk_unpack_q_f16 bulk_pack_out_f16)
 if [[ $# -gt 0 ]]; then
     TARGETS=("$@")
 else
@@ -90,6 +90,16 @@ for target in "${TARGETS[@]}"; do
         entry=CSRangeAttnKvarn4Mq
         source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_mq.hlsl"
         defines=(-D RKVA_MQ_QT=2)
+    fi
+    if [[ "$target" == bulk_unpack_q_f16 ]]; then
+        entry=CSBulkUnpackQF16
+        source="$ROOT/shaders/rkva/rkva_range_bulk_f16.hlsl"
+        defines=()
+    fi
+    if [[ "$target" == bulk_pack_out_f16 ]]; then
+        entry=CSBulkPackOutF16
+        source="$ROOT/shaders/rkva/rkva_range_bulk_f16.hlsl"
+        defines=()
     fi
     out="$ROOT/shaders/generated/rkva_range_${target}_dxil.h"
     tmp="$(mktemp)"

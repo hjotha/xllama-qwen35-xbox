@@ -2144,13 +2144,16 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
     const uint64_t q_bytes = q_heads * geo_.head_dim * 4;
     const uint64_t out_bytes = q_bytes + q_heads * 4;
     void* mapped = nullptr;
-    HRESULT hr = range_query_.resource->Map(0, nullptr, &mapped);
-    if (FAILED(hr)) {
-        return fail(error, "Map range queries", hr);
+    HRESULT hr = S_OK;
+    if (!bulk_gpu_query_) {
+        hr = range_query_.resource->Map(0, nullptr, &mapped);
+        if (FAILED(hr)) {
+            return fail(error, "Map range queries", hr);
+        }
+        std::memcpy(mapped, q, q_bytes);
+        std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions, uint64_t(n_tokens) * 4);
+        range_query_.resource->Unmap(0, nullptr);
     }
-    std::memcpy(mapped, q, q_bytes);
-    std::memcpy(static_cast<uint8_t*>(mapped) + q_bytes, positions, uint64_t(n_tokens) * 4);
-    range_query_.resource->Unmap(0, nullptr);
     timer.mark(rp::kCpuMapCopy);
     if (!begin(error)) {
         return false;
@@ -2456,3 +2459,4 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
 }
 
 #include "rkva-disk-snapshot.inc"
+#include "rkva-kvarn-bulk-f16.inc"

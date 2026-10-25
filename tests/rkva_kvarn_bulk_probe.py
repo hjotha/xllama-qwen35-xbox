@@ -184,17 +184,156 @@ def run_cuda_fixtures(host, port, directory):
     return dict(ok=True, cuda_fixtures=str(directory), checks=results)
 
 
+def run_f16(host, port):
+    import numpy as np
+    import rkva_kvarn_serial_prefix_probe as p
+    import rkva_kvarn_serial_prefix_model as sp
+    from rkva_range_probe import Client
+    p.CAPACITY = 2048
+    client = Client(host, port)
+    results = []
+    try:
+        flags = p.PROTO_F16 | p.PROTO_F32 | p.PROTO_NATIVE_REWIND_V2 | p.PROTO_SERIAL_PREFIX
+        ack = struct.unpack('<IIIIQQQ', client.call(1, p.hello_payload(1, flags)))
+        assert ack[0] & (1 << 22) and ack[5] & (1 << 8), 'native bulk not negotiated'
+        assert ack[5] & (1 << 9), 'native bulk f16 (RKVA_CAP_KVARN_BULK_F16) not negotiated'
+        for tail in (0, 128):
+            rng = np.random.default_rng(370 + tail)
+            layer = p.Layer(np, sp, rng, tail)
+            generation = {}
+            for session in (0, 1):
+                client.call(2, struct.pack('<4I', session, session, p.CAPACITY, 1))
+                body = client.call(15, struct.pack('<18I', *p.descriptor(tail)), session=session)
+                generation[session] = struct.unpack('<Q', body)[0]
+            client.call(20, struct.pack('<IIQ', 0, 2, 0))
+            for n, label, negative in (
+                (1, 'decode single query f16 wire', False),
+                (9, 'speculative verification nine f16 wire', True),
+                (64, 'chunked prefill 64 f16 wire', False),
+                (256, 'maximum envelope 256 f16 wire', False),
+            ):
+                chunks_f32, chunks_f16 = [], []
+                first = layer.live
+                layer.canon.append(n)
+                limit = n if n <= 9 else 8
+                for offset in range(0, n, limit):
+                    count = min(limit, n - offset)
+                    live = first + offset + count
+                    upload = layer.upload(live, live == count)
+                    positions = list(range(p.ORIGIN + live - count, p.ORIGIN + live))
+                    q_f32 = rng.normal(size=(count, p.H, p.D)).astype('<f4')
+                    q_f16 = q_f32.astype('<f2')
+                    q_f32_quant = q_f16.astype('<f4')
+                    pos_bytes = struct.pack('<%di' % count, *positions)
+                    query_f32 = struct.pack('<4I', 1, 0, 0, 0) + pos_bytes + q_f32_quant.tobytes()
+                    query_f16 = struct.pack('<4I', 0, 0, 0, 0) + pos_bytes + q_f16.tobytes()
+                    chunks_f32.append((upload, query_f32, count))
+                    chunks_f16.append((upload, query_f16, count))
+                bulk_f32 = struct.pack('<4I', 1, len(chunks_f32), n, 0) + b''.join(
+                    struct.pack('<2I', len(u), c) + u + q for u, q, c in chunks_f32)
+                bulk_f16 = struct.pack('<4I', 1, len(chunks_f16), n, 0) + b''.join(
+                    struct.pack('<2I', len(u), c) + u + q for u, q, c in chunks_f16)
+                if negative:
+                    corrupted = bytearray(bulk_f16)
+                    last_q_offset = len(bulk_f16) - (chunks_f16[-1][2] * p.H * p.D * 2)
+                    struct.pack_into('<H', corrupted, last_q_offset, 0x7E00)  # FP16 qNaN
+                    client.call(22, corrupted, session=1, nq=n, success=False)
+                ref_reply = bytes(client.call(22, bulk_f32, session=0, nq=n))
+                generation[0] += len(chunks_f32)
+                f16_reply = bytes(client.call(22, bulk_f16, session=1, nq=n))
+                generation[1] += len(chunks_f16)
+                out_elems = n * p.H * p.D
+                lse_elems = n * p.H
+                assert len(f16_reply) == out_elems * 2 + lse_elems * 4
+                ref_out = np.frombuffer(ref_reply, dtype='<f4', count=out_elems)
+                ref_lse = np.frombuffer(ref_reply, dtype='<f4', offset=out_elems * 4, count=lse_elems)
+                got_out = np.frombuffer(f16_reply, dtype='<f2', count=out_elems).astype(np.float32)
+                got_lse = np.frombuffer(f16_reply, dtype='<f4', offset=out_elems * 2, count=lse_elems)
+                max_abs_out = float(np.max(np.abs(got_out - ref_out)))
+                max_abs_lse = float(np.max(np.abs(got_lse - ref_lse)))
+                assert max_abs_out <= 2e-3 and max_abs_lse == 0.0, (label, tail, max_abs_out, max_abs_lse)
+                results.append(dict(label=label, tail=tail, nq=n,
+                                    req_bytes_f32=len(bulk_f32), req_bytes_f16=len(bulk_f16),
+                                    rsp_bytes_f32=len(ref_reply), rsp_bytes_f16=len(f16_reply),
+                                    max_abs_out=max_abs_out, max_abs_lse=max_abs_lse))
+            for session in (0, 1):
+                client.call(3, struct.pack('<4I', session, 0, 0, 0), session=session)
+    finally:
+        client.socket.close()
+    return dict(ok=True, wire='f16', server_version=ack[3], checks=results)
+
+
+def offline_self_test():
+    import numpy as np
+    rng = np.random.default_rng(20261019)
+    checks = []
+    for n in (1, 9, 64, 256):
+        q_f32 = rng.normal(scale=0.5, size=(n, 24, 256)).astype(np.float32)
+        q_f16 = q_f32.astype(np.float16)
+        k_f32 = rng.normal(scale=0.5, size=(128, 4, 256)).astype(np.float32)
+        v_f32 = rng.normal(scale=0.5, size=(128, 4, 256)).astype(np.float32)
+        k_rep = np.repeat(k_f32, 6, axis=1)
+        v_rep = np.repeat(v_f32, 6, axis=1)
+        scale = np.float32(1.0 / np.sqrt(256.0))
+        scores_f32 = np.einsum('qhd,khd->qhk', q_f32, k_rep) * scale
+        scores_f16q = np.einsum('qhd,khd->qhk', q_f16.astype(np.float32), k_rep) * scale
+        m_f32 = np.max(scores_f32, axis=-1, keepdims=True)
+        m_f16q = np.max(scores_f16q, axis=-1, keepdims=True)
+        w_f32 = np.exp(scores_f32 - m_f32)
+        w_f16q = np.exp(scores_f16q - m_f16q)
+        lse_f32 = (np.squeeze(m_f32, axis=-1) + np.log(np.sum(w_f32, axis=-1))).astype(np.float32)
+        lse_f16q = (np.squeeze(m_f16q, axis=-1) + np.log(np.sum(w_f16q, axis=-1))).astype(np.float32)
+        out_f32 = (np.einsum('qhk,khd->qhd', w_f32, v_rep) / np.sum(w_f32, axis=-1, keepdims=True)).astype(np.float32)
+        out_f16_wire = (np.einsum('qhk,khd->qhd', w_f16q, v_rep) / np.sum(w_f16q, axis=-1, keepdims=True)).astype(np.float16).astype(np.float32)
+        max_abs_out = float(np.max(np.abs(out_f16_wire - out_f32)))
+        mean_abs_out = float(np.mean(np.abs(out_f16_wire - out_f32)))
+        max_abs_lse = float(np.max(np.abs(lse_f16q - lse_f32)))
+        cos = float(np.dot(out_f16_wire.ravel(), out_f32.ravel()) /
+                    (np.linalg.norm(out_f16_wire.ravel()) * np.linalg.norm(out_f32.ravel())))
+        assert max_abs_out < 1e-3 and max_abs_lse < 2e-3 and cos > 0.99999
+        q_bytes_f32 = n * 24 * 256 * 4
+        q_bytes_f16 = n * 24 * 256 * 2
+        rsp_bytes_f32 = n * 24 * 256 * 4 + n * 24 * 4
+        rsp_bytes_f16 = n * 24 * 256 * 2 + n * 24 * 4
+        checks.append(dict(
+            nq=n,
+            q_bytes_f32=q_bytes_f32,
+            q_bytes_f16=q_bytes_f16,
+            rsp_bytes_f32=rsp_bytes_f32,
+            rsp_bytes_f16=rsp_bytes_f16,
+            saved_bytes_per_layer=(q_bytes_f32 - q_bytes_f16) + (rsp_bytes_f32 - rsp_bytes_f16),
+            max_abs_out=max_abs_out,
+            mean_abs_out=mean_abs_out,
+            max_abs_lse=max_abs_lse,
+            cosine_similarity=cos,
+        ))
+    return checks
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default='192.168.1.26')
     parser.add_argument('--port', type=int, default=50054)
     parser.add_argument('--execute', action='store_true')
+    parser.add_argument('--wire', choices=('f32', 'f16', 'both'), default='f32')
     parser.add_argument('--cuda-fixtures', help='real GPU op16 packet fixture directory')
     parser.add_argument('--output')
     args = parser.parse_args()
-    result = (run_cuda_fixtures(args.host, args.port, args.cuda_fixtures) if args.cuda_fixtures
-              else run(args.host, args.port)) if args.execute else dict(
-        execute=False, plan='2 tail policies; exact bulk/serial bytes; seal/wrap/rollback/retry gates')
+    if args.execute:
+        if args.cuda_fixtures:
+            result = run_cuda_fixtures(args.host, args.port, args.cuda_fixtures)
+        elif args.wire == 'f16':
+            result = run_f16(args.host, args.port)
+        elif args.wire == 'both':
+            result = dict(ok=True, f32=run(args.host, args.port), f16=run_f16(args.host, args.port))
+        else:
+            result = run(args.host, args.port)
+    else:
+        result = dict(
+            execute=False,
+            plan='2 tail policies; exact bulk/serial F32 bytes and negotiated FP16 Q/OUT bulk gate; seal/wrap/rollback/retry gates',
+            offline_f16_checks=offline_self_test(),
+        )
     text = json.dumps(result, indent=2)
     if args.output:
         from pathlib import Path

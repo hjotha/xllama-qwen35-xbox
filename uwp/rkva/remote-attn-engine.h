@@ -114,6 +114,11 @@ class RemoteAttnEngine {
                             const uint8_t* data, size_t bytes, std::string* error);
     bool attend_kvarn_bulk(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
                            size_t bytes, float* out, float* lse, std::string* error);
+    bool attend_kvarn_bulk_f16(uint32_t id, uint32_t layer, uint32_t n_tokens, const uint8_t* data,
+                               size_t bytes, uint16_t* out_f16, float* lse, std::string* error);
+    bool bulk_f16_gpu_available() const {
+        return bool(bulk_unpack_q_f16_pso_) && bool(bulk_pack_out_f16_pso_);
+    }
     bool attend_range(uint32_t session_id, uint32_t layer, uint32_t n_tokens,
                       const int32_t* positions, const float* q, float* out, float* lse,
                       std::string* error);
@@ -167,6 +172,7 @@ class RemoteAttnEngine {
     void create_q4_opt_pipelines();
     // F16/Q8_0/KVarN4 optimized pipelines; needs the Q4 opt prerequisites.
     void create_format_opt_pipelines();
+    void create_bulk_f16_pipelines();
     bool ensure_profile_resources(std::string* error);
     void timestamp(uint32_t slot);
     void resolve_timestamps(uint32_t first, uint32_t count);
@@ -282,9 +288,15 @@ class RemoteAttnEngine {
     // Grow-only bounded pool (32 segments), also retained on unconfirmed submit.
     struct BulkTransfer {
         Buffer upload, query, readback;
+        Buffer query_f16_upload, query_f32_default, packed_out_f16;
     };
     std::vector<BulkTransfer> bulk_transfers_;
     bool bulk_recording_ = false;
+    bool bulk_gpu_query_ = false;
+    Buffer bulk_f16_stage_out_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> bulk_unpack_q_f16_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> bulk_pack_out_f16_pso_;
+    std::string bulk_f16_status_ = "not initialized";
     Buffer range_upload_;
     Buffer range_query_;
     Buffer range_partials_;

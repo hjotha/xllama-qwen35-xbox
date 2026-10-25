@@ -480,3 +480,27 @@ serial transaction path for both tail policies, maximum batches, record seals,
 ring wrap, rollback and new-content reappend. A corrupt final segment must be
 rejected before the first mutation; retrying the valid envelope then matches
 the serial session. This gate is not a model tokens/s benchmark.
+
+## Native KVarN4 bulk FP16 wire path (candidate 271)
+
+`RKVA_CAP_KVARN_BULK_F16` (bit 9, `1ull << 9`) negotiates opt-in FP16 Q and OUT wire encoding for `RKVA_KVARN_RANGE_BULK_ATTN` (op 22).
+The host opts in via `GGML_RKVA_NATIVE_BULK=f16` (or `GGML_RKVA_NATIVE_BULK_WIRE=f16` with `GGML_RKVA_NATIVE_BULK=1`). The default remains legacy F32 wire (`RKVA_WIRE_F32 = 1`).
+Requesting FP16 bulk wire when `RKVA_CAP_KVARN_BULK_F16` is not advertised fails closed at range configuration.
+
+- **Wire contract:**
+  - Query Q: packed as IEEE-754 FP16 (`uint16_t[nq * n_head * head_dim]`), halved in size (`2 * nq * n_head * head_dim` bytes).
+  - Query positions: stay `int32_t[nq]`.
+  - Output OUT: packed as IEEE-754 FP16 (`uint16_t[nq * n_head * head_dim]`), halved in size.
+  - Log-sum-exp (LSE): strictly retained as FP32 (`float[nq * n_head]`) for numerical stability in attention reduction and verification.
+  - KV payload: remains unchanged native KVarN4 descriptors and records.
+  - Wire type discriminator: `rkva_range_attn.wire` in each bulk segment envelope carries `RKVA_WIRE_F16` (`0`) or `RKVA_WIRE_F32` (`1`). Mixed wire types across segments are rejected.
+
+- **GPU conversion & deferred shader compilation:**
+  - On Xbox, `shaders/rkva/rkva_range_bulk_f16.hlsl` implements `CSBulkUnpackQF16` (unpacking upload FP16 Q into F32 default query buffer for range attention) and `CSBulkPackOutF16` (packing default output F32 into readback FP16 alongside F32 LSE).
+  - Shaders use the shared 4-constant + 1-SRV + 1-UAV root signature (`range_reduce_root_`) and are compiled via `scripts/compile-rkva-range-shaders.sh`.
+  - Deferred DXIL header inclusion (`#if __has_include`) provides an automatic host conversion fallback until compiled offline.
+  - When shaders are available, GPU executes compute dispatches before attention and after output barrier, keeping host CPU completely off the critical conversion path.
+
+- **Validation & Finiteness:**
+  - Host and server reject non-finite (NaN / +/-Inf) values in both F32 and FP16 formats before mutation.
+  - CPU validation in `tests/rkva_kvarn_bulk_cpu.cpp` and offline Python verification in `tests/rkva_kvarn_bulk_probe.py` assert IEEE-754 RNE roundtrip, boundary conditions, subnormals, and overflow behavior.
