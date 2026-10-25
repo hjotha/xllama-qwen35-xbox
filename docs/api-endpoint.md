@@ -81,6 +81,16 @@ this is Dev Mode research, not a hosted service.
 
 ### Slots (`/v1/slots/*`, plan 009)
 
+Snapshot fingerprint v3 also binds the CPU flash-attention query-reduction policy
+(`fa_query`). Older snapshots without this field and snapshots from a different
+policy are refused before import; their files are not rewritten.
+
+Snapshot fingerprint v3 binds the resolved RoPE base, scale, scaling type,
+original YaRN context and all four YaRN parameters using exact float bits,
+as well as the context/cache configuration and LoRA scale. Old v1/v2
+snapshots are refused without rewriting their files. This configuration
+identity is not a cryptographic checksum of model or adapter weights.
+
 A slot is a named, versioned snapshot of the resident session's sequence-0
 state (attention KV + recurrent state + token ids), stored as one file per
 slot under `LocalState\slots\`. Save captures the live session; restore
