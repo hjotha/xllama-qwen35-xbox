@@ -25,6 +25,12 @@
 #include "rkva_range_attn_kvarn4_mq2_dxil.h"
 #include "rkva_range_attn_kvarn4_opt_dxil.h"
 #include "rkva_range_attn_kvarn4_opt_prefix_dxil.h"
+#if __has_include("rkva_range_attn_kvarn4_decode_prefix_dxil.h")
+    #include "rkva_range_attn_kvarn4_decode_prefix_dxil.h"
+    #define RKVA_HAS_KVARN4_DECODE_PREFIX_DXIL 1
+#else
+    #define RKVA_HAS_KVARN4_DECODE_PREFIX_DXIL 0
+#endif
 #include "rkva_range_attn_kvarn4_prefix_dxil.h"
 #include "rkva_range_attn_q4_dxil.h"
 #include "rkva_range_attn_q4_mq2_dxil.h"
@@ -655,6 +661,7 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
         fmt_opt_status_[rp::kStorageKvarn4] = why;
         kvarn4_opt_prefix_status_ = why;
         kvarn4_mq_status_ = why;
+        kvarn4_decode_prefix_status_ = why;
         for (uint32_t i = 0; i < 2; ++i) {
             fmt_mq_status_[rp::kStorageF16][i] = why;
             fmt_mq_status_[rp::kStorageQ8][i] = why;
@@ -699,6 +706,7 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
         fmt_opt_status_[rp::kStorageKvarn4] = text;
         kvarn4_opt_prefix_status_ = text;
         kvarn4_mq_status_ = text;
+        kvarn4_decode_prefix_status_ = text;
         for (uint32_t i = 0; i < 2; ++i) {
             fmt_mq_status_[rp::kStorageF16][i] = text;
             fmt_mq_status_[rp::kStorageQ8][i] = text;
@@ -764,6 +772,33 @@ void RemoteAttnEngine::create_format_opt_pipelines() {
         } else {
             kvarn4_mq_status_ = "ready";
         }
+    }
+    // Native KVarN4 revision-3 wave64 decode kernel (nq == 1, 12 KiB LDS):
+    // Requires wave lanes >= 64 and the generated decode DXIL.
+    if (wave_lane_min_ < rp::kKvarn4DecodeWaveLanes) {
+        std::snprintf(text, sizeof(text), "requires wave lanes >= %u (reported min %u)",
+                      rp::kKvarn4DecodeWaveLanes, wave_lane_min_);
+        kvarn4_decode_prefix_status_ = text;
+    } else {
+#if RKVA_HAS_KVARN4_DECODE_PREFIX_DXIL
+        D3D12_COMPUTE_PIPELINE_STATE_DESC dec = {};
+        dec.pRootSignature = range_attn_fmt_opt_root_.Get();
+        dec.CS = {g_rkva_range_attn_kvarn4_decode_prefix_dxil,
+                  sizeof(g_rkva_range_attn_kvarn4_decode_prefix_dxil)};
+        hr = device_->CreateComputePipelineState(
+            &dec, IID_PPV_ARGS(&range_attn_kvarn4_decode_prefix_pso_));
+        if (FAILED(hr)) {
+            std::snprintf(text, sizeof(text), "kvarn4 serial-prefix decode pipeline state: 0x%08X",
+                          unsigned(hr));
+            range_attn_kvarn4_decode_prefix_pso_.Reset();
+            kvarn4_decode_prefix_status_ = text;
+        } else {
+            kvarn4_decode_prefix_status_ = "ready";
+        }
+#else
+        kvarn4_decode_prefix_status_ =
+            "header not built (run compile-rkva-range-shaders.sh attn_kvarn4_decode_prefix)";
+#endif
     }
     // F16 / Q8_0 multi-query tiles: same root signature, one PSO per (storage, tile).
     const struct {
@@ -909,6 +944,9 @@ void RemoteAttnEngine::finish_profile_sample(rp::Sample& sample, bool timestamps
             } else if (sample.storage == rp::kStorageKvarn4 && sample.serial_prefix &&
                        sample.q_tile == rp::kKvarn4MqTile) {
                 ++c.kvarn4_mq_calls;
+            } else if (sample.storage == rp::kStorageKvarn4 && sample.serial_prefix &&
+                       sample.decode_opt) {
+                ++c.kvarn4_decode_calls;
             }
         } else {
             ++c.reference_by_storage[sample.storage];
@@ -1055,6 +1093,12 @@ std::string RemoteAttnEngine::get_range_profile_json() {
     header.kvarn4_mq_status =
         header.kvarn4_prefix_available[1]
             ? kvarn4_mq_status_
+            : "requires the kvarn4 serial-prefix optimized pipeline: " + kvarn4_opt_prefix_status_;
+    header.kvarn4_decode_available =
+        header.kvarn4_prefix_available[1] && range_attn_kvarn4_decode_prefix_pso_;
+    header.kvarn4_decode_status =
+        header.kvarn4_prefix_available[1]
+            ? kvarn4_decode_prefix_status_
             : "requires the kvarn4 serial-prefix optimized pipeline: " + kvarn4_opt_prefix_status_;
     for (uint32_t i = 0; i < 2; ++i) {
         header.q4_mq_available[i] = header.q4_optimized_available && range_attn_q4_mq_pso_[i];
@@ -2305,12 +2349,19 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
                                                 geo_.n_head_kv, geo_.head_dim));
     if (fmt_optimized) {
         uint32_t q_tile = 0;
+        bool decode_opt = false;
         if (kvarn && prefix) {
-            q_tile = rp::kvarn4_mq_tile(q4_kernel_mode_, n_tokens, s->precision_tail_tokens);
-            if (q_tile && range_attn_kvarn4_mq_pso_) {
-                fmt_pso = range_attn_kvarn4_mq_pso_.Get();
+            if (n_tokens == 1 && rp::kvarn4_decode_opt(q4_kernel_mode_, wave_lane_min_) &&
+                range_attn_kvarn4_decode_prefix_pso_) {
+                fmt_pso = range_attn_kvarn4_decode_prefix_pso_.Get();
+                decode_opt = true;
             } else {
-                q_tile = 0;
+                q_tile = rp::kvarn4_mq_tile(q4_kernel_mode_, n_tokens, s->precision_tail_tokens);
+                if (q_tile && range_attn_kvarn4_mq_pso_) {
+                    fmt_pso = range_attn_kvarn4_mq_pso_.Get();
+                } else {
+                    q_tile = 0;
+                }
             }
         } else if (!kvarn && !prefix) {
             q_tile = rp::format_mq_tile(q4_kernel_mode_, storage, n_tokens);
@@ -2323,7 +2374,9 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
         uint32_t split_k = rp::optimized_split_k(active_count, q4_kernel_mode_);
         uint32_t rows = rp::split_rows(active_count, split_k);
         if (kvarn) {
-            const rp::KvarnSplit ks = rp::kvarn4_split(active_count, q4_kernel_mode_);
+            const rp::KvarnSplit ks = (n_tokens == 1 && decode_opt)
+                                          ? rp::kvarn4_decode_split(active_count, q4_kernel_mode_)
+                                          : rp::kvarn4_split(active_count, q4_kernel_mode_);
             split_k = ks.split_k;
             rows = ks.split_rows;
         } else if (q_tile) {
@@ -2394,6 +2447,7 @@ bool RemoteAttnEngine::attend_range(uint32_t id, uint32_t layer, uint32_t n_toke
             sample.split_k = split_k;
             sample.groups = geo_.n_head_kv * query_groups * split_k;
             sample.q_tile = uint8_t(q_tile);
+            sample.decode_opt = uint8_t(decode_opt ? 1 : 0);
         }
         cmd_->CopyBufferRegion(range_readback_.resource.Get(), 0, range_output_.resource.Get(), 0,
                                out_bytes);

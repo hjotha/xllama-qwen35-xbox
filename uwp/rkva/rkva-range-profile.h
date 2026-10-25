@@ -246,6 +246,54 @@ inline KvarnSplit kvarn4_split(uint32_t active_count, uint32_t mode) {
     return {std::max(1u, k), rows};
 }
 
+// Native KVarN4 wave64 decode kernel specialization (nq == 1):
+// Requires wave lanes == 64 (wave64 RDNA2 APU), opt modes 1/2.
+// Halves LDS to 12 KiB, ping-pongs WHT256 (9 barriers), eliminates wave32
+// second-unit registers, and hoists group metadata across 128-token record groups.
+constexpr uint32_t kKvarn4DecodeWaveLanes = 64;
+
+inline bool kvarn4_decode_opt(uint32_t mode, uint32_t wave_lane_min) {
+    return (mode == kModeOptBalanced || mode == kModeOptFine) &&
+           wave_lane_min >= kKvarn4DecodeWaveLanes;
+}
+
+inline const char* kvarn4_decode_kernel_name(uint32_t mode) {
+    switch (mode) {
+    case kModeOptBalanced:
+        return "kvarn4_decode_balanced";
+    case kModeOptFine:
+        return "kvarn4_decode_fine";
+    case kModeOptCoarse:
+        return "kvarn4_gqa_coarse";
+    default:
+        return "invalid";
+    }
+}
+
+// Decode split policy for single-query native KVarN4 (nq == 1):
+// Round split rows up to whole 128-token record groups (kKvarnGroup = 128)
+// so splits never straddle record boundaries, and bound max_splits so the
+// reducer and WHT workgroup overhead are proportional to console CU count.
+// Mode 1 (balanced): target_rows = 512 (4 groups), max_splits = 32.
+// Mode 2 (fine):     target_rows = 256 (2 groups), max_splits = 64.
+// Mode 3 (coarse):   keeps the legacy kvarn4_split baseline.
+inline KvarnSplit kvarn4_decode_split(uint32_t active_count, uint32_t mode) {
+    if (active_count == 0) {
+        return {1, 0};
+    }
+    if (mode == kModeOptCoarse) {
+        return kvarn4_split(active_count, mode);
+    }
+    const uint32_t target_rows = mode == kModeOptFine ? 256u : 512u;
+    const uint32_t max_splits = mode == kModeOptFine ? 64u : 32u;
+    const uint32_t wanted = (active_count + target_rows - 1) / target_rows;
+    const uint32_t k0 = std::max(1u, std::min(max_splits, wanted));
+    uint32_t rows = split_rows(active_count, k0);
+    rows = (rows + kKvarnGroup - 1) / kKvarnGroup * kKvarnGroup;
+    const uint32_t k = rows ? (active_count + rows - 1) / rows : 1;
+    return {std::max(1u, k), rows};
+}
+
 enum Kind : uint8_t { kUpload = 0, kAttention = 1, kKindCount = 2 };
 
 // Disjoint CPU spans; their sum is the engine wall time of the call (profiling
@@ -275,6 +323,7 @@ struct Sample {
     uint8_t alloc_grew = 0;
     uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
     uint8_t q_tile = 0;        // multi-query tile (Q4_0/F16/Q8_0 2 or 4, KVarN4 2); 0 = per-query
+    uint8_t decode_opt = 0;    // native KVarN4 wave64 decode specialization
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -294,6 +343,8 @@ struct Counters {
     uint64_t fmt_mq_calls[kStorageCount][2] = {};
     // Native KVarN4 revision-3 2-query tile calls (subset of optimized_by_storage[kvarn4]).
     uint64_t kvarn4_mq_calls = 0;
+    // Native KVarN4 revision-3 wave64 decode calls (subset of optimized_by_storage[kvarn4]).
+    uint64_t kvarn4_decode_calls = 0;
     uint64_t optimized_by_storage[kStorageCount] = {};
     uint64_t reference_by_storage[kStorageCount] = {};
     uint64_t failed_calls = 0;
@@ -361,6 +412,9 @@ struct Header {
     // Native KVarN4 revision-3 2-query tile pipeline (requires the optimized prefix PSO).
     bool kvarn4_mq_available = false;
     std::string kvarn4_mq_status;
+    // Native KVarN4 revision-3 wave64 decode pipeline (requires wave lanes >= 64).
+    bool kvarn4_decode_available = false;
+    std::string kvarn4_decode_status;
 };
 
 inline const char* storage_name(uint32_t storage) {
@@ -408,7 +462,10 @@ inline std::string bucket_key(const Sample& s) {
     if (s.kind == kAttention) {
         key += s.optimized ? "/optimized-" : "/reference";
         if (s.optimized) {
-            key += s.q_tile ? mq_kernel_name(s.storage, s.q_tile) : kernel_name(s.storage, s.mode);
+            key += s.q_tile ? mq_kernel_name(s.storage, s.q_tile)
+                            : (s.storage == kStorageKvarn4 && s.decode_opt
+                                   ? kvarn4_decode_kernel_name(s.mode)
+                                   : kernel_name(s.storage, s.mode));
         }
     }
     key += '/';
@@ -595,6 +652,15 @@ class Recorder {
                       "\"mq2\":{\"available\":%s,\"status\":\"%s\",\"calls\":%llu}}",
                       kOptMaxQueries, kKvarn4MqWaveLanes, h.kvarn4_mq_available ? "true" : "false",
                       json_escape(h.kvarn4_mq_status).c_str(), ull(c.kvarn4_mq_calls));
+        o += buf;
+        std::snprintf(buf, sizeof(buf),
+                      ",\"kvarn4_decode\":{\"nq\":1,"
+                      "\"descriptor_revision\":3,\"required_wave_lanes\":%u,"
+                      "\"mode_map\":\"1:kvarn4_decode_balanced 2:kvarn4_decode_fine "
+                      "3:per-query kvarn4_gqa_coarse\","
+                      "\"available\":%s,\"status\":\"%s\",\"calls\":%llu}",
+                      kKvarn4DecodeWaveLanes, h.kvarn4_decode_available ? "true" : "false",
+                      json_escape(h.kvarn4_decode_status).c_str(), ull(c.kvarn4_decode_calls));
         o += buf;
 
         std::map<std::string, std::vector<const Sample*>> buckets;

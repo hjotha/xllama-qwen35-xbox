@@ -271,6 +271,43 @@ optimized paths after positive capability validation. The historical
 `GGML_RKVA_Q4_KERNEL` alias is restricted to Q4. No additional protocol field
 is needed. GPU kernel and model measurements remain separate qualification.
 
+## Native KVarN4 wave64 decode kernel (nq == 1, specialization)
+
+For single-query sequential decode (`nq == 1`), the general multi-query/multi-wave kernel
+suffers from several architectural bottlenecks on the Xbox Series X APU:
+
+1. **LDS allocation and occupancy:** RDNA2 CUs have 32 KiB of LDS (64 KiB per WGP). The
+   general kernel allocates 4 wave slots (`RKVA_MAX_WAVES = 4`, 24.19 KiB), which limits
+   occupancy to only 1 workgroup per CU (2 per WGP). Specializing for the console's native
+   wave64 execution (`RKVA_DECODE_WAVES = 2`, 128 threads = 2 waves of 64 lanes) halves LDS
+   to 12.09 KiB (`gs_vec[3072]`), allowing 2 workgroups per CU and 4..5 per WGP, doubling
+   workgroup occupancy.
+2. **Dead Wave32 accumulators:** On wave64, `has1 = false` permanently. Eliminating the
+   second-unit accumulators (`q1`, `body1`, `tail1`) frees 72+ VGPRs per thread and
+   eliminates 240 wasted FMAs/MULs per 8-token tile.
+3. **Hoisted record-group metadata:** In a 128-token record group, a lane's K `scale`, K `zero`,
+   and V `other` are constant across all 16 8-token tiles. Hoisting them loads them once per
+   128 tokens instead of 16 times per tile, saving 15 of 16 memory reads and F16 unpacks.
+4. **3-Phase disjoint traversal and single tail Q load:** Aligned record tiles `[fast_lo, fast_hi)`
+   run first while tail accumulators are guaranteed 0, eliminating tail rescaling during
+   the main tile loop. Residual body rows run with zero branch divergence. Exact-tail rows
+   `[max(begin, tail_begin), end)` load original Q `qo[g]` once per wave, eliminating 64 redundant
+   `queries.Load4` instructions per wave.
+5. **Ping-pong WHT256:** Alternating between the two 1536-float halves of `gs_vec[3072]`
+   cuts group barrier count from 17 to 9 per WHT256, and skips body WHT when a split contains
+   only exact tail rows.
+6. **Record-group-aligned decode split policy (`kvarn4_decode_split`):** Rounds split rows up
+   to whole 128-token record groups (`kKvarnGroup = 128`), preventing splits from straddling
+   record boundaries:
+   - Mode 1 (`kModeOptBalanced` -> `kvarn4_decode_balanced`): target rows = 512 (4 groups), max splits = 32.
+   - Mode 2 (`kModeOptFine` -> `kvarn4_decode_fine`): target rows = 256 (2 groups), max splits = 64.
+   - Mode 3 (`kModeOptCoarse`): keeps legacy `kvarn4_split` baseline.
+   - Mode 0 (`kModeReference`): keeps reference shader.
+
+The engine reports `kvarn4_decode` in the profile JSON with `available`, `status`, and `calls`
+(tracked by `counters.kvarn4_decode_calls`). Bucket keys for qualified calls use
+`attention/kvarn4-prefix/optimized-kvarn4_decode_balanced/nq1/...` or `..._fine/...`.
+
 ## Timing semantics
 
 - **GPU stages.** D3D12 timestamp queries (`EndQuery` on the direct queue) are resolved

@@ -172,6 +172,50 @@ int main() {
     assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 0), "invalid") == 0);
     assert(kKvarn4MqWaveLanes == 64);
 
+    // Native KVarN4 wave64 decode kernel and split policy (nq == 1):
+    assert(kKvarn4DecodeWaveLanes == 64);
+    assert(kvarn4_decode_opt(kModeOptBalanced, 64));
+    assert(kvarn4_decode_opt(kModeOptFine, 64));
+    assert(!kvarn4_decode_opt(kModeOptCoarse, 64));
+    assert(!kvarn4_decode_opt(kModeReference, 64));
+    assert(!kvarn4_decode_opt(kModeOptFine, 32)); // requires wave64
+
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptBalanced), "kvarn4_decode_balanced") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptFine), "kvarn4_decode_fine") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(kModeOptCoarse), "kvarn4_gqa_coarse") == 0);
+    assert(std::strcmp(kvarn4_decode_kernel_name(0), "invalid") == 0);
+
+    for (uint32_t m = 1; m < kModeCount; ++m) {
+        for (uint32_t a :
+             {0u, 1u, 127u, 128u, 129u, 1000u, 6144u, 16384u, 24576u, 34816u, 131072u}) {
+            const KvarnSplit ks = kvarn4_decode_split(a, m);
+            assert(ks.split_k >= 1 && ks.split_k <= kOptMaxSplits);
+            if (m != kModeOptCoarse) {
+                assert(ks.split_rows % kKvarnGroup == 0); // whole 128-token record groups
+            } else {
+                assert(ks.split_rows % kKvarnTile == 0);
+            }
+            assert(uint64_t(ks.split_rows) * ks.split_k >= a);
+            assert(a == 0 || uint64_t(ks.split_rows) * (ks.split_k - 1) < a);
+        }
+    }
+    // Remote context decode split counts:
+    // 6k (6144):
+    assert(kvarn4_decode_split(6144, kModeOptBalanced).split_k == 12);
+    assert(kvarn4_decode_split(6144, kModeOptBalanced).split_rows == 512);
+    assert(kvarn4_decode_split(6144, kModeOptFine).split_k == 24);
+    assert(kvarn4_decode_split(6144, kModeOptFine).split_rows == 256);
+    // 16k (16384):
+    assert(kvarn4_decode_split(16384, kModeOptBalanced).split_k == 32);
+    assert(kvarn4_decode_split(16384, kModeOptBalanced).split_rows == 512);
+    assert(kvarn4_decode_split(16384, kModeOptFine).split_k == 64);
+    assert(kvarn4_decode_split(16384, kModeOptFine).split_rows == 256);
+    // 35k (34816):
+    assert(kvarn4_decode_split(34816, kModeOptBalanced).split_k == 31);
+    assert(kvarn4_decode_split(34816, kModeOptBalanced).split_rows == 1152);
+    assert(kvarn4_decode_split(34816, kModeOptFine).split_k == 55);
+    assert(kvarn4_decode_split(34816, kModeOptFine).split_rows == 640);
+
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;
     s.kind = kAttention;
@@ -208,8 +252,20 @@ int main() {
     s.q_tile = 0;
     assert(bucket_key(s) ==
            "attention/kvarn4-prefix/optimized-kvarn4_gqa_coarse/nq2-16/r16k-32k/warm");
+    // Decode specialization bucket (nq == 1, decode_opt == 1):
+    s.n_tokens = 1;
+    s.q_tile = 0;
+    s.decode_opt = 1;
+    s.mode = 1;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_decode_balanced/nq1/r16k-32k/warm");
+    s.mode = 2;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_decode_fine/nq1/r16k-32k/warm");
+    s.decode_opt = 0;
     s.mode = 1;
     // Multi-query tile calls get their own Q4 kernel bucket.
+    s.n_tokens = 3;
     s.storage = 1;
     s.serial_prefix = 0;
     s.optimized = 1;

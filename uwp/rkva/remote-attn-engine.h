@@ -263,6 +263,9 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_mq_pso_;
     std::string kvarn4_mq_status_ = "not initialized";
     std::string kvarn4_opt_prefix_status_ = "not initialized";
+    // Native KVarN4 revision-3 wave64 decode specialization (nq == 1).
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_decode_prefix_pso_;
+    std::string kvarn4_decode_prefix_status_ = "not initialized";
 
     // Profiling (default off). Timestamp slots are fixed per stage so a future
     // fused upload+attention command list cannot alias them.

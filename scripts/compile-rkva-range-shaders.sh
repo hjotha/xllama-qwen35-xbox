@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DXC="${DXC:-dxc}"
 ALL_TARGETS=(attn attn_q4 attn_q8 attn_kvarn4 reduce attn_q4_opt reduce_opt
     attn_f16_opt attn_q8_opt attn_kvarn4_opt attn_kvarn4_prefix attn_kvarn4_opt_prefix
+    attn_kvarn4_decode_prefix
     attn_q4_mq2 attn_q4_mq4 attn_f16_mq2 attn_f16_mq4 attn_q8_mq2 attn_q8_mq4
     attn_kvarn4_mq2)
 if [[ $# -gt 0 ]]; then
@@ -69,6 +70,12 @@ for target in "${TARGETS[@]}"; do
         entry=CSRangeAttnKvarn4Opt
         source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_opt.hlsl"
         defines=(-D RKVA_SERIAL_PREFIX=1)
+    fi
+    # Specialized wave64 decode kernel (nq=1, 12 KiB LDS, hoisted group metadata, ping-pong WHT)
+    if [[ "$target" == attn_kvarn4_decode_prefix ]]; then
+        entry=CSRangeAttnKvarn4Decode
+        source="$ROOT/shaders/rkva/rkva_range_attn_kvarn4_opt.hlsl"
+        defines=(-D RKVA_SERIAL_PREFIX=1 -D RKVA_DECODE_OPT=1)
     fi
     # Q4_0 multi-query tile (nq 2..9): RKVA_MQ_QT queries share each K/V dequantization.
     if [[ "$target" == attn_q4_mq2 || "$target" == attn_q4_mq4 ]]; then
