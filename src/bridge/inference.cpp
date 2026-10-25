@@ -3,6 +3,7 @@
 
 #include "xllama/inference.h"
 #include "xllama/chat_prompt.h"
+#include "xllama/ggml_d3d12.h"
 #include "xllama/logit_dump.h"
 #include "xllama/path_utils.h"
 #include "xllama/platform.h"
@@ -488,6 +489,13 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
                    " n_ubatch=" + std::to_string(cparams.n_ubatch) + "\n");
 
     apply_gguf_gpu_context(gpu_layers, cparams);
+    if (params.offload_kqv) {
+        // Host-only default-OFF A/B override (plan004 okqv): re-enable the
+        // existing llama setting that apply_gguf_gpu_context forces off.
+        // Default (absent knob) never reaches this branch -> baseline bytes.
+        cparams.offload_kqv = true;
+        log_output("[xllama] offload_kqv=1 (host knob; default 0 = forced off)\n");
+    }
     if (params.n_batch > 0 || params.n_ubatch > 0)
         log_output("[xllama] prefill batch override: n_batch=" + std::to_string(cparams.n_batch) +
                    " n_ubatch=" + std::to_string(cparams.n_ubatch) + "\n");
@@ -668,6 +676,12 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
     dlp.decode_start = t_gen0;
     dlp.prompt_lookup = params.prompt_lookup;
     dlp.ignore_eog = params.ignore_eog;
+    dlp.profile_phases = params.profile_phases;
+    // Same OFF semantic as the Session path: the shape histogram has its own switch
+    // and must be off whenever the phase instrumentation is off, in BOTH decode
+    // paths. One is not allowed to be on while the other is off.
+    d3d12_set_shape_log(!params.profile_phases);
+    d3d12_set_scope("target", "decode");
     dlp.token_history = params.prompt_lookup ? &gen_history : nullptr;
     // Per-run token sidecar (plan 003, stage 1): collect every accepted token so
     // baseline and MTP runs can be diffed token-by-token, not just by text hash.
@@ -680,10 +694,23 @@ InferenceResult run_inference_llama(const InferenceParams& params) {
         dlp.mtp_prefill_rows = prefill_rows > 0 ? prefill_rows : 0;
     }
     const DecodeLoopResult dlr = decode_loop(dlp, res.output_text);
+    // Boundary drain: outside the loop, outside the compute lock. Never per graph.
+    d3d12_shape_drain("run_inference_decode");
     const int n_generated = dlr.n_generated;
     res.ended_with_stop = dlr.ended_with_stop;
+    res.eog_token = dlr.eog_token;
+    res.eog_branch = dlr.eog_branch ? dlr.eog_branch : "";
+    res.stop_branch = dlr.stop_branch ? dlr.stop_branch : "";
+    res.stop_round = dlr.stop_round;
     res.n_drafted = dlr.n_drafted;
     res.n_spec_accepted = dlr.n_accepted;
+    res.n_mtp_drafted = dlr.n_mtp_drafted;
+    res.n_mtp_accepted = dlr.n_mtp_accepted;
+    res.n_lookup_drafted = dlr.n_lookup_drafted;
+    res.n_lookup_accepted = dlr.n_lookup_accepted;
+    res.n_mtp_rounds = dlr.n_mtp_rounds;
+    res.t_decode_ms = dlr.t_decode_ms;
+    res.t_decode_accounted_ms = dlr.t_decode_accounted_ms;
 
     if (params.echo_stdout)
         std::fputc('\n', stdout);

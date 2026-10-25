@@ -20,6 +20,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
+#include <random>
 #include <string>
 #include <vector>
 
@@ -66,6 +68,100 @@ struct D3d12Dispatch {
 
 D3d12Dispatch d3d12_mm_dispatch(std::int64_t n, std::int64_t ncols);
 
+// Narrow z-0 weight identity (first-divergence diagnosis): the exact gate
+// weight feeding z-0, by stable loader name + shape + quant. Used for both
+// the placement pin and the dispatch record so a renamed graph node cannot
+// silently dodge either, without broadening to unrelated matmuls.
+// Host-tested like the other pure rules.
+inline bool d3d12_is_z0_weight(const char* name, std::int64_t n0, std::int64_t n1, bool is_q4k) {
+    return name != nullptr && std::strcmp(name, "blk.0.attn_gate.weight") == 0 && n0 == 2560 &&
+           n1 == 4096 && is_q4k;
+}
+
+// Two-column tile planner (plan 004, q4_k experiment): same row groups as
+// above, but one group covers two activation columns, so groups_y is
+// ceil(ncols/2). Same group-limit rule. Host-tested like the base planner;
+// the backend uses it only for the NEW variant (q4_k, ncols >= 2).
+D3d12Dispatch d3d12_mm_dispatch_2col(std::int64_t n, std::int64_t ncols);
+
+// Kernel variant switch (plan 004): 0 = one-column kernels (default, the only
+// path B=1 ever takes), 1 = q4_k two-column tile wherever applicable (bench
+// experiment: the paired runner forces both variants to compare them),
+// 2 = auto: two-column only on the explicit allowlist below (real decode).
+// Setter clamps to 0/1/2. Same-package OLD/NEW comparison rides on this;
+// production decode never changes it (stays 0) until the experiment reports.
+void d3d12_set_kernel_variant(int v);
+int d3d12_kernel_variant();
+
+// Narrow z-0 dispatch record (first-divergence diagnosis): when enabled, the
+// matmul record path logs one line per z-0 node with node/source names,
+// buffer placement flags, shapes/strides, selected variant/threads, dispatch
+// dims and root constants. Log-only, default off, gated to the exact tensor
+// name so all other dispatches are untouched.
+void d3d12_set_z0_dispatch_log(bool on);
+
+// Narrow z-0 placement pin (first-divergence diagnosis): when enabled, the
+// z-0 node is refused D3D12 execution (falls back to the CPU kernel the
+// refused f32 shapes already use). Tests whether the B3/B4 width variation
+// follows placement (split D3D12/CPU execution) or persists on one backend.
+// Log-only sibling above tells which backend ran it. Default off.
+void d3d12_set_z0_pin_cpu(bool on);
+
+// Queue-fence wait-policy knob (plan004 rev101 experiment): -1 (default,
+// knob file absent) keeps today's unbounded spin exactly as-is. A value >= 0
+// caps the GetCompletedValue spin at that many microseconds before falling
+// back to the event wait (0 = event wait immediately). Fence completion
+// semantics and numerics are identical on every path; set once before
+// decode, read per graph sync. Device knob: d3d12spinwait.txt (decimal
+// microseconds; anything else = default).
+void d3d12_set_spin_wait_us(int spin_us);
+int d3d12_spin_wait_us();
+// Explicit allowlist for variant 2 (real decode): measured winning q4_k
+// (type, N, K, B) combinations from the rev57 same-run pairs, each with pair
+// deltas far from zero. Anything unlisted — B=1, B=4, prefill widths,
+// small shapes, other types — stays OLD until measured and validated.
+// A hardcoded table, not a rule: broadening it is a code change with fresh
+// evidence, never a knob edit.
+bool d3d12_2col_allowlisted(ggml_type t, int n, int k, int ncols);
+// True when both two-column q4_k blobs created their PSOs. A paired case
+// with no NEW PSO reports an error row instead of silently running OLD.
+bool d3d12_2col_available();
+// Actual two-column dispatches since backend start (resets with the other
+// lifetime counters). Rows take deltas around their timed runs: that is what
+// really ran, regardless of the requested variant.
+std::uint64_t d3d12_2col_matmuls();
+// One-line resource record for the log: 2col blob bytes, cbuffer dwords,
+// groupshared bytes per width, per-thread accumulator floats old vs new.
+std::string d3d12_2col_info();
+
+// Read-only accessors for the backend's lifetime counters, so a caller can take a
+// delta around one phase (prefill, verify, draft) instead of reading a total that
+// backend_free later zeroes. Cheap and side-effect free; 0 on a CPU host.
+std::uint64_t d3d12_graph_calls();
+
+// Lifetime wall time of graph_compute on this backend (submission + wait +
+// driver), ms. Snapshotted as deltas around a phase call so it never overlaps
+// the phase's own wall timer twice: gpu_ms <= wall_ms <= caller's verify_ms.
+double d3d12_wall_ms();
+std::uint64_t d3d12_matmul_count();
+double d3d12_gpu_ms();
+
+// Per-shape histogram (plan 003 stage 2). Aggregates inside graph_compute into a
+// buffer keyed by (context, phase, type, N, K, B, threads); d3d12_shape_drain()
+// emits it at a phase/generation boundary, outside the compute lock and the decode
+// loop. Emission is PAGINATED: every key is written across as many records as it
+// takes, each record carrying part=i/n and keys_total, so a consumer verifies
+// completeness from the lines instead of trusting an arbitrary cap. ON by default;
+// `off` disables collection entirely for the instrumentation-cost arm.
+void d3d12_set_shape_log(bool off);
+bool d3d12_shape_drain(const char* label);
+
+// Context/phase tags for the histogram. set_scope is called around each target and
+// drafter call and restored by the caller (RAII), so a tag never leaks from one
+// call site into the next.
+void d3d12_set_scope(const char* ctx, const char* phase);
+void d3d12_get_scope(const char** ctx, const char** phase);
+
 // Kernel width for a K: 128 threads (8 chunks in flight) once K has at least
 // kD3d12LongKChunks chunks, else 64 — measured both ways in D2a runs 1 and 2.
 int d3d12_mm_threads(std::int64_t k);
@@ -77,6 +173,32 @@ int d3d12_mm_threads(std::int64_t k);
 void d3d12_mmv_emulate(ggml_type t, const std::uint8_t* w, std::size_t w_row_bytes, const float* x,
                        std::size_t x_stride, float* y, std::size_t y_stride, int n, int k,
                        int ncols);
+
+// Median and max-min range of one timed block (plan 004 variance): the
+// shape-cost bench reports medians over consecutive timed runs, not single
+// exploratory samples. Empty input yields 0. Even counts take the lower
+// middle; the bench only uses odd repeat counts.
+double d3d12_block_median(const std::vector<double>& v);
+double d3d12_block_range(const std::vector<double>& v);
+
+// Bounded weight generation for the shape-cost bench (plan 004): quantizes
+// the N x K weight matrix into `dst` (ggml_nbytes of them) from one
+// std::mt19937 seeded only by the shape, holding at most
+// kD3d12GenScratchBytes of fp32 source at a time. A full n*k source never has
+// to exist: the Q6_K 248320x2560 lm_head would need 2542.8 MB of it. The
+// bytes are identical to one ggml_quantize_chunk(0, n, k) over the whole
+// matrix whenever k % ggml_blck_size(type) == 0, because every supported
+// quantizer with a null imatrix walks the flat nrow*n_per_row stream, and
+// row boundaries are super-block boundaries exactly then. The rng ends in
+// the same state as the one-shot path, so the draws that follow the weights
+// (activations, replicates) stay the same numbers. False on a bad type, a
+// bad shape, a null dst, or a k that does not divide into blocks.
+inline constexpr std::size_t kD3d12GenScratchBytes = 16u << 20;
+bool d3d12_gen_weights(ggml_type t, int n, int k, std::mt19937& rng, void* dst);
+
+// Control for the test: the original one-shot generation (a full n*k fp32
+// vector, then one ggml_quantize_chunk). Same contract, same seed encoding.
+bool d3d12_gen_weights_reference(ggml_type t, int n, int k, std::mt19937& rng, void* dst);
 
 // Register the backend with ggml (idempotent). False when D3D12 is unavailable
 // (always on non-Windows). The device appears as a GPU device named "D3D12".
@@ -93,6 +215,32 @@ struct D3d12SelftestRow {
     bool ok = false;
     bool d3d12_ran = false;
     std::string error;
+    // Shape-cost diagnostics (plan 004), ignored by the D2a formatter: wall
+    // time of the timed compute next to the GPU timestamp (the gap is queue
+    // and submission overhead), the packed weight size, and the process peak
+    // working set at this row. The peak is monotonic — a high-water mark —
+    // so only a rise means this case added memory; an early small row just
+    // reports whatever an earlier phase left behind.
+    double wall_ms = 0.0;
+    double weight_mb = 0.0;
+    double peak_ws_mb = 0.0;
+    // Timed-block dispersion (plan 004 variance): max-min across the timed
+    // runs of this row. Zero on single-sample rows (all D2a gate rows).
+    double gpu_ms_range = 0.0;
+    double wall_ms_range = 0.0;
+    // Kernel experiment (plan 004): variant 0 = OLD one-column, 1 = NEW
+    // two-column; pair is the pair index inside a paired block, -1 on summary
+    // rows (gate rows and single-variant medians). Pair rows carry one timed
+    // sample each with zero ranges; the script aggregates pairs.
+    int variant = 0;
+    int pair = -1;
+    // Actual NEW-kernel matmul dispatches during this row's timed runs
+    // (counter delta, not the request). B1 rows read 0 even under request 1;
+    // non-Q4 rows read 0; a NEW pair row reads exactly its timed runs.
+    std::uint64_t twocol = 0;
+    // Stride padding (plan 004 padded gate): "x_pad/y_pad/w_pad" — floats of
+    // X/Y column padding, bytes of weight row padding. "0/0/0" = contiguous.
+    std::string pads = "0/0/0";
 };
 
 inline constexpr double kD3d12SelftestRelTol = 1e-2;
@@ -100,8 +248,22 @@ inline constexpr double kD3d12SelftestRelTol = 1e-2;
 const char* d3d12_selftest_csv_header();
 std::string format_d3d12_selftest_row(const D3d12SelftestRow& r, const char* host_label);
 
+// Second CSV (d3d12sc-result.csv): the D2a rows above keep their exact
+// schema, the shape-cost rows carry wall/weight/peak next to them.
+const char* d3d12_shapecost_csv_header();
+std::string format_d3d12_shapecost_row(const D3d12SelftestRow& r, const char* host_label);
+
 // Windows: run every type x shape through the backend and append rows.
 // Non-Windows: one row with d3d12_ran=false.
 void run_d3d12_selftest(std::vector<D3d12SelftestRow>* out);
+
+// The 11 real (type, N, K) triples of the tttarget histogram, costed at
+// batch widths 1/2/3/5: smallest weights first, the 248320x2560 lm_head last.
+// Each row is the median of kD3d12ShapeCostRepeats consecutive timed runs
+// with the max-min range next to it. Reported, never gated; the D2a gate
+// above keeps its exact inputs.
+inline constexpr int kD3d12ShapeCostRepeats = 5;
+inline constexpr int kD3d12ShapeCostPairs = 4;
+void run_d3d12_shape_cost(std::vector<D3d12SelftestRow>* out);
 
 } // namespace xllama

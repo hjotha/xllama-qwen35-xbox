@@ -31,6 +31,9 @@ add_executable(xllama-tests
     test_gpugemv.cpp
     test_gpustep.cpp
     test_ggml_d3d12.cpp
+    test_replay.cpp
+    test_diverge.cpp
+    test_termgate.cpp
     test_ramceil.cpp
     test_model_provision.cpp
     test_model_write.cpp

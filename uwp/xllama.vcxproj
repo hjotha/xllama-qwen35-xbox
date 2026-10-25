@@ -31,7 +31,7 @@
     <!-- Pin to 22621 (22H2): the 26100 XAML compiler has a NullReferenceException
          (WMC9999) at MarkupCompilePass2 for C++/WinRT projects (no C++/CX metadata).
          SDK 22621 is installed on the windows-2022 CI runner. -->
-    <WindowsTargetPlatformVersion>10.0.22621.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
     <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
 
@@ -325,6 +325,10 @@
     <ClCompile Include="..\src\bridge\gpubw.cpp" />
     <ClCompile Include="..\src\bridge\gpugemv.cpp" />
     <ClCompile Include="..\src\bridge\gpustep.cpp" />
+    <ClCompile Include="..\src\bridge\tttarget.cpp" />
+    <ClCompile Include="..\src\bridge\replay.cpp" />
+    <ClCompile Include="..\src\bridge\diverge.cpp" />
+    <ClCompile Include="..\src\bridge\termgate.cpp" />
     <ClCompile Include="..\src\bridge\d3d12_compute.cpp" />
     <!-- d3d12 ggml backend: implements ggml-backend-impl.h, internal to ggml. -->
     <ClCompile Include="..\src\bridge\ggml_d3d12.cpp">

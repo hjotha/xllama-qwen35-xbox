@@ -5,14 +5,17 @@
 #pragma once
 
 #include "llama.h"
-#include "xllama/chat_prompt.h" // apply_stop_sequences
-#include "xllama/mtp_draft.h"   // MtpDrafter
-#include "xllama/platform.h"    // log_output
-#include "xllama/speculative.h" // prompt_lookup_draft (#210)
+#include "xllama/chat_prompt.h"  // apply_stop_sequences
+#include "xllama/decode_trace.h" // boundary-diagnosis knob (plan 004)
+#include "xllama/ggml_d3d12.h"   // shape histogram scope tags
+#include "xllama/mtp_draft.h"    // MtpDrafter
+#include "xllama/platform.h"     // log_output
+#include "xllama/speculative.h"  // prompt_lookup_draft (#210)
 
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <cstring>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -162,15 +165,42 @@ struct DecodeLoopParams {
     // activations vs d3d12 f32) reach EOG at different points, and a decode
     // tok/s over a handful of tokens is noise (D2b). Default off.
     bool ignore_eog = false;
+
+    // Phase instrumentation on/off (InferenceParams::profile_phases). With it off
+    // the per-phase chrono snapshots are skipped while every counter still runs, so
+    // an ON/OFF pair measures the instrumentation's own cost.
+    bool profile_phases = true;
+
+    // Parity/diagnostic sink for the ids this loop accepted, in emission order.
+    // Null in every production path, so the hot loop pays nothing; the Session
+    // sets it when a caller asks for a per-turn token dump (plan 003 stage 1:
+    // greedy parity must compare integral ids, not text).
+    std::vector<llama_token>* out_token_ids = nullptr;
 };
 
 struct DecodeLoopResult {
     int n_generated = 0;
     double first_token_ms = 0.0;
     bool ended_with_stop = false; // a textual stop sequence matched
+    // Termination-state gate (plan 003): which path ended generation. The
+    // EOG token id + branch record a natural end directly from the result
+    // (never inferred from output length); the stop branch + loop round
+    // prove which path/round a stop-sequence landed in. -1/nullptr = the
+    // run ended without that event (n_predict cap or abort).
+    int eog_token = -1;
+    const char* eog_branch = nullptr;
+    const char* stop_branch = nullptr;
+    int stop_round = -1;
     // Speculative counters (zero when prompt_lookup is off or never drafted).
     int n_drafted = 0;  // draft tokens proposed (not counting the lead sample)
     int n_accepted = 0; // draft tokens that matched the target sample
+    // Per-source split of the two counters above. The aggregate is still what the
+    // CSV reports, but "MTP drafted something" is only answerable from these:
+    // with both sources on, n_drafted mixes n-gram and MTP proposals.
+    int n_mtp_drafted = 0;     // proposals that came from the MTP head
+    int n_lookup_drafted = 0;  // proposals that came from the n-gram lookup
+    int n_mtp_accepted = 0;    // accepted from MTP proposals
+    int n_lookup_accepted = 0; // accepted from lookup proposals
     // Phase accounting (plan 003, stage 2): how the MTP budget is spent, so the
     // cost can be attributed before any backend rewrite. All values are summed
     // over the whole generation; the drafter's per-call stats feed them.
@@ -183,7 +213,49 @@ struct DecodeLoopResult {
     double mtp_top_prob_ms = 0.0; // confidence softmax time
     double mtp_catchup_ms = 0.0;  // prefix replay decode time
     double verify_ms = 0.0;       // target verify-batch decode time
-    double corrective_ms = 0.0;   // immediate corrective decode time (reject path)
+    // Per-verify-round split (plan003: attribute verify's share of decode).
+    // Profile-only, empty when OFF. wall = the verify llama_decode's own
+    // wall (same clock as verify_ms, so sum(vr_wall) <= verify_ms with the
+    // bracket granularity); d3w = the D3D12 backend's graph_compute wall
+    // inside that call (submission+wait+driver), d3g = its GPU timestamps —
+    // nesting is gpu <= d3w <= wall <= verify_ms, so nothing is counted
+    // twice; wall - d3w is CPU-splits + scheduler + cross-backend sync (the
+    // lump current instrumentation cannot split further). acc0 =
+    // n_accepted BEFORE the round's accept walk; the final round's accepted
+    // count comes from out.n_accepted at loop end.
+    std::vector<int> vr_width;
+    // Process-CPU delta (all threads) of the same verify call, ms
+    // (process_cpu_ms). Read the limit with the value: process-wide, so it
+    // may exceed vr_wall under parallel threads; it counts CPU burned only —
+    // blocked/waiting time is absent and scheduler-vs-kernel work is not
+    // separable from this number alone.
+    std::vector<double> vr_cpu;
+    // Graph-reuse count inside the same verify call (llama_perf_context
+    // n_reused delta; needs cparams.no_perf=false). 1 = previous graph
+    // reused (prep = set_inputs only), 0 = graph rebuilt (reset + build_graph
+    // + sched_alloc_graph). Profile-only, plan004 rebuild-vs-reuse split.
+    std::vector<int> vr_reuse;
+    std::vector<double> vr_wall;
+    std::vector<double> vr_d3w;
+    std::vector<double> vr_d3g;
+    std::vector<int> vr_acc0;
+    double corrective_ms = 0.0; // immediate corrective decode time (reject path)
+    double t_lookup_ms = 0.0;   // n-gram lookup drafting (only when enabled)
+    // Per-token costs that live OUTSIDE any llama_decode: sampling from the target,
+    // token emission/detokenisation, and the maintenance around an accepted token
+    // (KV bookkeeping, stop-sequence scan). They are the bulk of what was previously
+    // unattributed, and they are disjoint from the decode timers by construction.
+    double t_sample_target_ms = 0.0;   // llama_sampler_sample on the TARGET context
+    double t_emit_ms = 0.0;            // emit_token: detokenise + append + stops
+    double t_maintain_ms = 0.0;        // accept_token + per-token bookkeeping
+    double t_classic_ms = 0.0;         // classic single-token DECODE only (decode_one).
+                                       // It does NOT include the MTP catch-up below.
+    double t_classic_catchup_ms = 0.0; // MTP replay triggered by a classic token
+    // Wall clock of THIS loop and the sum of the phase timers inside it, over the
+    // same interval. Their difference is the uninstrumented residual; without
+    // both, "the phases look small" could just mean the phases are incomplete.
+    double t_decode_ms = 0.0;
+    double t_decode_accounted_ms = 0.0;
     // True when a needed llama_memory_seq_rm refused after a multi-token verify
     // batch. Callers must treat the generation as failed and drop the KV —
     // continuing would desync history from cells (hybrid/LFM caches).
@@ -225,7 +297,14 @@ namespace detail {
 
 // Emit a sampled token into the output stream. Returns true if a stop sequence
 // ended generation (caller should still count the token).
-inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string& output_text) {
+inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string& output_text,
+                       DecodeLoopResult* out = nullptr) {
+    if (p.out_token_ids)
+        p.out_token_ids->push_back(token);
+    // Detokenisation is real per-token work that no decode timer covered.
+    const bool prof = out && p.profile_phases;
+    const auto t_emit0 =
+        prof ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
     char buf[256] = {};
     const int len = llama_token_to_piece(p.vocab, token, buf, sizeof(buf) - 1, 0, false);
     if (len > 0) {
@@ -238,6 +317,10 @@ inline bool emit_token(const DecodeLoopParams& p, llama_token token, std::string
             std::fflush(stdout);
         }
     }
+    if (prof)
+        out->t_emit_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_emit0)
+                .count();
     return p.stop_sequences && apply_stop_sequences(output_text, *p.stop_sequences);
 }
 
@@ -255,6 +338,41 @@ inline void accept_token(const DecodeLoopParams& p, llama_token token) {
 // pre-draft, draft commit, spec reject), so ignore_eog cannot drift between them.
 inline bool stops_at_eog(const DecodeLoopParams& p, llama_token token) {
     return llama_vocab_is_eog(p.vocab, token) && !p.ignore_eog;
+}
+
+// Plan 003 stage 2: RAII tag so the shape histogram can attribute each graph to
+// the context and phase that issued it. The drafter's private context and the
+// target share this thread, so a tag set for one call must not leak into the next —
+// the destructor restores whatever was in force before.
+struct ScopeTag {
+    const char* prev_ctx;
+    const char* prev_phase;
+    ScopeTag(const char* ctx, const char* phase) {
+        d3d12_get_scope(&prev_ctx, &prev_phase);
+        d3d12_set_scope(ctx, phase);
+    }
+    ~ScopeTag() {
+        d3d12_set_scope(prev_ctx, prev_phase);
+    }
+    ScopeTag(const ScopeTag&) = delete;
+    ScopeTag& operator=(const ScopeTag&) = delete;
+};
+
+// Per-token maintenance around an accepted token: history bookkeeping only.
+//
+// The stop-sequence scan is NOT repeated here: emit_token already calls
+// apply_stop_sequences, and calling it twice was duplicated work introduced by the
+// instrumentation — it would also mutate output_text twice per token. Measurement
+// stays observation-only.
+inline void account_maintain(const DecodeLoopParams& p, llama_token token, DecodeLoopResult& out,
+                             bool profile) {
+    const auto t_m0 =
+        profile ? std::chrono::steady_clock::now() : std::chrono::steady_clock::time_point{};
+    accept_token(p, token);
+    if (profile)
+        out.t_maintain_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_m0)
+                .count();
 }
 
 // Decode one already-sampled token (classic path).
@@ -296,6 +414,38 @@ inline bool trim_verify_tail(llama_memory_t mem, llama_pos pos_before, int n_kee
     return llama_memory_seq_rm(mem, 0, keep, -1);
 }
 
+// Trace helper (plan 004 boundary diagnosis): top-5 token:logit pairs and the
+// top-2 margin of one logits row, as a single log-safe line. Only called when
+// the trace knob names the output index being decided.
+inline std::string trace_topk(llama_context* ctx, const llama_vocab* vocab, int32_t row) {
+    if (!ctx || !vocab)
+        return "ctx-or-vocab-null";
+    const int32_t n = llama_vocab_n_tokens(vocab);
+    const float* logits = llama_get_logits_ith(ctx, row);
+    if (!logits || n <= 0)
+        return "logits-unavailable";
+    int top[5] = {-1, -1, -1, -1, -1};
+    for (int32_t i = 0; i < n; ++i) {
+        const float v = logits[i];
+        for (int k = 0; k < 5; ++k) {
+            if (top[k] < 0 || v > logits[top[k]]) {
+                for (int s = 4; s > k; --s)
+                    top[s] = top[s - 1];
+                top[k] = i;
+                break;
+            }
+        }
+    }
+    char buf[256];
+    int len = 0;
+    for (int k = 0; k < 5 && top[k] >= 0; ++k)
+        len += snprintf(buf + len, sizeof(buf) - static_cast<size_t>(len), "%s%d:%.4f",
+                        k ? " " : "", top[k], static_cast<double>(logits[top[k]]));
+    const double margin = top[1] >= 0 ? static_cast<double>(logits[top[0]]) - logits[top[1]] : 0.0;
+    len += snprintf(buf + len, sizeof(buf) - static_cast<size_t>(len), " margin=%.6f", margin);
+    return buf;
+}
+
 // History for n-gram search = prefill/prior accepted tokens + the lead sample
 // not yet recorded.
 inline std::vector<int32_t> history_for_draft(const DecodeLoopParams& p, llama_token lead) {
@@ -315,7 +465,7 @@ inline std::vector<int32_t> history_for_draft(const DecodeLoopParams& p, llama_t
 // after_chunk hook and after every target verify batch, exactly when the
 // target's nextn buffer still describes the batch that just decoded.
 inline bool mtp_catchup_batch(class MtpDrafter* mtp, llama_context* ctx, const llama_token* tokens,
-                              int n_rows, llama_pos pos0, int n_embd) {
+                              int n_rows, llama_pos pos0, int n_embd, bool profile = true) {
     if (!mtp || !mtp->ready() || n_rows <= 0 || !tokens)
         return true;
     // The target's buffer describes the LAST decode — this batch. Copy the rows
@@ -328,7 +478,9 @@ inline bool mtp_catchup_batch(class MtpDrafter* mtp, llama_context* ctx, const l
         std::memcpy(h_rows.data() + static_cast<size_t>(i) * n_embd, hr,
                     static_cast<size_t>(n_embd) * sizeof(float));
     }
-    return mtp->process(tokens, h_rows.data(), nullptr, n_rows, pos0);
+    // |profile| reaches the drafter's own chrono snapshots: the OFF arm has to be
+    // real at BOTH levels or it still measures instrumentation-ON.
+    return mtp->process(tokens, h_rows.data(), nullptr, n_rows, pos0, profile);
 }
 
 // Classic single-token step. Returns false to stop the outer loop.
@@ -337,20 +489,59 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
                          DecodeLoopResult& out, bool& stop, bool& decode_ok) {
     stop = false;
     decode_ok = true;
-    if (emit_token(p, token, output_text)) {
+    if (emit_token(p, token, output_text, &out)) {
         out.ended_with_stop = true;
         ++out.n_generated;
         stop = true;
         log_output("[xllama] stop sequence after " + std::to_string(out.n_generated) + " tokens\n");
         return false;
     }
-    if (!decode_one(p.ctx, token)) {
+    const auto t_cls0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                         : std::chrono::steady_clock::time_point{};
+    ScopeTag scope("target", "classic");
+    const bool dec_ok = decode_one(p.ctx, token);
+    if (p.profile_phases)
+        out.t_classic_ms +=
+            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_cls0)
+                .count();
+    if (!dec_ok) {
         log_output("[xllama] decode failed at token, stopping generation\n");
         decode_ok = false;
         return false;
     }
-    accept_token(p, token);
+    account_maintain(p, token, out, p.profile_phases);
     ++out.n_generated;
+    // A classic token commits to the shared KV without a verify batch, so the
+    // drafter's pending row — and its mirror of the committed prefix — would
+    // drift one position behind the target. Replay the single row now, the
+    // same F2 catch-up the verify path runs, so the next draft round (or the
+    // next session turn) starts from the right carry. Fails closed: a refused
+    // replay leaves the drafter stale and the next round's catch-up disables
+    // it (F2.3).
+    if (p.mtp && p.mtp->ready()) {
+        const llama_pos pos = llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0);
+        // Snapshot delta: this catch-up's own decodes and time. Read as a
+        // cumulative total it would double-count the preceding draft and then be
+        // erased by the next reset_stats().
+        const MtpDraftStats before_cls = p.mtp->stats();
+        ScopeTag scope("draft", "catchup");
+        if (!detail::mtp_catchup_batch(p.mtp, p.ctx, &token, 1, pos, p.mtp_n_embd,
+                                       p.profile_phases)) {
+            log_output("[xllama] mtp: classic catch-up failed at pos " + std::to_string(pos) +
+                       "\n");
+        } else {
+            const MtpDraftStats after_cls = p.mtp->stats();
+            out.n_mtp_decodes += after_cls.n_decodes - before_cls.n_decodes;
+            // process() charges its llama_decode to decode_ms and the catch-up to
+            // catchup_ms, so a delta here lands in draft_ms — otherwise that
+            // second decode would be counted nowhere and inflate the residual.
+            out.mtp_draft_ms += after_cls.decode_ms - before_cls.decode_ms;
+            out.mtp_catchup_ms += after_cls.catchup_ms - before_cls.catchup_ms;
+            out.n_catchup_tokens += 1;
+            out.t_classic_catchup_ms += (after_cls.catchup_ms - before_cls.catchup_ms) +
+                                        (after_cls.decode_ms - before_cls.decode_ms);
+        }
+    }
     return true;
 }
 
@@ -376,6 +567,16 @@ inline bool classic_step(const DecodeLoopParams& p, llama_token token, std::stri
 // single-token decode of lead on this stack. Commit lead first, then speculate.
 inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& output_text) {
     DecodeLoopResult out;
+    // Same-interval accounting (plan 003 stage 2): every phase timer below is
+    // summed into t_decode_accounted_ms and compared against t_decode_ms, so a
+    // missing path shows up as residual instead of being invisible.
+    //
+    // This ONE clock, and t_first_token_ms, are deliberately NOT gated on
+    // profile_phases: they are the denominator and the published TTFT, and an OFF
+    // arm that dropped them could not be compared against the ON arm at all. The
+    // OFF arm removes the per-phase snapshots only, which is what the perturbation
+    // measurement is about.
+    const auto t_loop0 = std::chrono::steady_clock::now();
     const bool mtp_enabled = p.mtp != nullptr && p.mtp->ready();
     // Mutable: a catch-up or seq_rm failure leaves the private draft context in
     // an unknown state, and drafting on top of it is worse than not drafting
@@ -404,10 +605,12 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     if (mtp_carry_row < 0)
         mtp_carry_row = 0;
     auto set_carry_rows = [&](int n_rows) { mtp_carry_row = n_rows > 0 ? n_rows - 1 : 0; };
-    // The verify path only reads the two speculative counters, so whichever
-    // source produced the tokens, the numbers mean the same thing.
-    bool spec_enabled =
-        mtp_enabled || (p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0);
+    // Speculation is ON when either source is usable. The two are independent: the
+    // n-gram lookup is opt-in (p.prompt_lookup) and must stay opt-in even when MTP
+    // is active — with only this flag, MTP proposing nothing fell through to
+    // prompt_lookup_draft() and its tokens were counted as MTP drafts.
+    const bool lookup_enabled = p.prompt_lookup && p.token_history != nullptr && p.spec_k > 0;
+    bool spec_enabled = mtp_enabled || lookup_enabled;
 
     // F4.1 (plan 003): a corrected token from a rejected MTP draft is emitted
     // immediately but NOT decoded right away — it becomes the anchor of the next
@@ -422,9 +625,32 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
     llama_pos mtp_pending_pos = -1;
     std::vector<float> mtp_pending_h;
 
+    // Termination-state gate: 1-based round counter for stop/abort records.
+    int loop_iter = 0;
     while (out.n_generated < p.n_predict) {
-        if (p.abort_flag && p.abort_flag->load())
+        ++loop_iter;
+        if (p.abort_flag && p.abort_flag->load()) {
+            // Termination-state gate (plan 003): one line per armed abort so a
+            // headless run can prove WHERE the cancel landed (round boundary
+            // vs mid-round trim below). Log-only.
+            log_output("[xllama] abort: round boundary n_generated=" +
+                       std::to_string(out.n_generated) + "\n");
             break;
+        }
+
+        // Boundary trace (plan 004): every round's entry state when armed. The
+        // idx-specific decision traces below show WHAT was decided; these lines
+        // show the KV end each round started from, so untrimmed rejects or
+        // over-appends (kv growing past committed outputs) are visible as a
+        // drift between kv and the output index across rounds.
+        if (xllama::decode_trace::output_idx() >= 0) {
+            char rb[192];
+            snprintf(rb, sizeof(rb), "[xllama] TRACE round idx=%d anchor=%d kv=%d mtp_ok=%d\n",
+                     out.n_generated, mtp_pending_anchor ? 1 : 0,
+                     static_cast<int>(llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0)),
+                     mtp_ok ? 1 : 0);
+            log_output(rb);
+        }
 
         // The anchor of a pending correction was sampled from the target logits
         // of the previous batch; sampling again would consume the sampler's
@@ -434,10 +660,29 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         if (anchor_pending) {
             token = mtp_pending_tok;
         } else {
+            const auto t_sm0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                : std::chrono::steady_clock::time_point{};
             token = llama_sampler_sample(p.sampler, p.ctx, -1);
+            if (p.profile_phases)
+                out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                              std::chrono::steady_clock::now() - t_sm0)
+                                              .count();
             if (detail::stops_at_eog(p, token)) {
-                log_output("[xllama] EOG after " + std::to_string(out.n_generated) + " tokens\n");
+                out.eog_token = static_cast<int>(token);
+                out.eog_branch = "classic";
+                log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
+                           " tokens tok=" + std::to_string(token) + " branch=classic\n");
                 break;
+            }
+            // Boundary trace (plan 004): the logits just sampled for the output
+            // token about to be decided. Same row (-1) feeds the classic path
+            // and the MTP anchor alike, so this one point covers both.
+            if (!anchor_pending && out.n_generated == xllama::decode_trace::output_idx() &&
+                xllama::decode_trace::output_idx() >= 0) {
+                char tb[384];
+                snprintf(tb, sizeof(tb), "[xllama] TRACE pre idx=%d tok=%d top5(row -1)=%s\n",
+                         out.n_generated, token, detail::trace_topk(p.ctx, p.vocab, -1).c_str());
+                log_output(tb);
             }
         }
 
@@ -469,17 +714,24 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 int n_max_eff = p.mtp->params().n_max;
                 n_max_eff = std::min(n_max_eff, std::max(0, budget_left - 1));
                 n_max_eff = std::min(n_max_eff, std::max(0, ctx_left - 1));
+                // MtpDraftStats is CUMULATIVE until the next reset_stats(), so every read has to
+                // be a snapshot delta around the one call it belongs to. Adding the
+                // raw cumulative value at two points double-counted the draft
+                // decodes and then reset_stats() erased the catch-up's contribution
+                // before anything read it.
                 p.mtp->reset_stats();
+                detail::ScopeTag scope("draft", "draft");
                 const std::vector<llama_token> md =
-                    p.mtp->draft(token, P, h, p.mtp_n_embd, n_max_eff);
-                const MtpDraftStats& st = p.mtp->stats();
+                    p.mtp->draft(token, P, h, p.mtp_n_embd, n_max_eff, p.profile_phases);
+                const MtpDraftStats st = p.mtp->stats(); // snapshot AFTER draft()
                 out.n_mtp_decodes += st.n_decodes;
                 out.n_mtp_discarded += st.n_discarded;
                 out.mtp_draft_ms += st.decode_ms;
                 out.mtp_sample_ms += st.sample_ms;
                 out.mtp_top_prob_ms += st.top_prob_ms;
-                out.mtp_catchup_ms += st.catchup_ms;
                 if (!md.empty()) {
+                    ++out.n_mtp_rounds;
+                    out.n_mtp_drafted += static_cast<int>(md.size());
                     out.n_drafted += static_cast<int>(md.size());
                     feed.reserve(md.size() + 1);
                     feed.push_back(token); // anchor: sampled, not yet decoded
@@ -501,24 +753,28 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             // (it was emitted and counted already): decode it classically, then
             // continue with a fresh sample on the next iteration.
             if (anchor_pending) {
-                const auto t_c0 = std::chrono::steady_clock::now();
+                const auto t_c0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                   : std::chrono::steady_clock::time_point{};
                 const bool ok = detail::decode_one(p.ctx, token);
-                out.corrective_ms += std::chrono::duration<double, std::milli>(
-                                         std::chrono::steady_clock::now() - t_c0)
-                                         .count();
+                if (p.profile_phases)
+                    out.corrective_ms += std::chrono::duration<double, std::milli>(
+                                             std::chrono::steady_clock::now() - t_c0)
+                                             .count();
                 if (!ok) {
                     log_output("[xllama] decode failed after speculative reject\n");
                     break;
                 }
-                detail::accept_token(p, token);
+                detail::account_maintain(p, token, out, p.profile_phases);
                 mtp_pending_anchor = false;
                 mtp_pending_tok = LLAMA_TOKEN_NULL;
-                if (mtp_ok)
+                if (mtp_ok) {
+                    detail::ScopeTag scope("draft", "catchup");
                     detail::mtp_catchup_batch(
                         p.mtp, p.ctx, &token, 1,
                         mtp_pending_pos >= 0 ? mtp_pending_pos
                                              : llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0),
-                        p.mtp_n_embd);
+                        p.mtp_n_embd, p.profile_phases);
+                }
                 set_carry_rows(1);
                 if (out.n_generated >= p.n_predict)
                     break;
@@ -533,8 +789,13 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                                          .count();
             }
             bool stop = false, decode_ok = true;
-            if (!detail::classic_step(p, token, output_text, out, stop, decode_ok))
+            if (!detail::classic_step(p, token, output_text, out, stop, decode_ok)) {
+                if (stop) { // stop-sequence, not a decode failure
+                    out.stop_branch = "classic";
+                    out.stop_round = loop_iter;
+                }
                 break;
+            }
             set_carry_rows(1); // classic_step is a one-row decode
             if (out.n_generated >= p.n_predict)
                 break;
@@ -543,19 +804,33 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 continue;
 
             // Lead is already in token_history via accept_token. Draft from that
-            // alone (no extra lead argument).
+            // alone (no extra lead argument). Reached only when the lookup is
+            // explicitly enabled: with MTP alone, an empty proposal must fall
+            // through to the next classic step, never into a second drafter.
+            if (!lookup_enabled)
+                continue;
+
             std::vector<int32_t> draft32;
             if (p.token_history && static_cast<int>(p.token_history->size()) >= p.spec_n_gram) {
                 std::vector<int32_t> hist;
                 hist.reserve(p.token_history->size());
                 for (llama_token t : *p.token_history)
-                    hist.push_back(static_cast<int32_t>(t));
+                    hist.push_back(static_cast<int>(t));
+                const auto t_look0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                      : std::chrono::steady_clock::time_point{};
                 draft32 = prompt_lookup_draft(hist, p.spec_n_gram, p.spec_k);
+                if (p.profile_phases)
+                    out.t_lookup_ms += std::chrono::duration<double, std::milli>(
+                                           std::chrono::steady_clock::now() - t_look0)
+                                           .count();
             }
             if (draft32.empty())
                 continue; // decline: no draft evidence, no extra cost
 
-            out.n_drafted += static_cast<int>(draft32.size());
+            // Counted separately from MTP: n_drafted_aggregate alone cannot say
+            // which source proposed, and a gate that reads it as "MTP drafted"
+            // would pass on n-gram tokens alone.
+            out.n_lookup_drafted += static_cast<int>(draft32.size());
 
             // Verify draft[0] against the logits we already have after the lead
             // (same sample classic would take next). If it disagrees, that sample
@@ -563,16 +838,30 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
             // lead is already inside the batch there is nothing to pre-check: row 0 of
             // that batch is the first real verification.
             if (!lead_in_batch) {
+                const auto t_sm1 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                    : std::chrono::steady_clock::time_point{};
                 first = llama_sampler_sample(p.sampler, p.ctx, -1);
+                if (p.profile_phases)
+                    out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                  std::chrono::steady_clock::now() - t_sm1)
+                                                  .count();
                 if (detail::stops_at_eog(p, first)) {
+                    out.eog_token = static_cast<int>(first);
+                    out.eog_branch = "pre-draft";
                     log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
-                               " tokens (pre-draft)\n");
+                               " tokens (pre-draft) tok=" + std::to_string(first) +
+                               " branch=pre-draft\n");
                     break;
                 }
                 if (first != static_cast<llama_token>(draft32[0])) {
                     bool stop = false, decode_ok = true;
-                    if (!detail::classic_step(p, first, output_text, out, stop, decode_ok))
+                    if (!detail::classic_step(p, first, output_text, out, stop, decode_ok)) {
+                        if (stop) {
+                            out.stop_branch = "pre-draft";
+                            out.stop_round = loop_iter;
+                        }
                         break;
+                    }
                     continue;
                 }
             }
@@ -592,11 +881,34 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         const llama_pos pos_before = llama_memory_seq_pos_max(mem, 0);
 
         {
-            const auto t_v0 = std::chrono::steady_clock::now();
+            const auto t_v0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                               : std::chrono::steady_clock::time_point{};
+            // Per-round backend split (plan003): snapshot the D3D12
+            // backend's own wall/GPU around this verify call only — no other
+            // backend work interleaves inside the synchronous llama_decode.
+            double d3w0 = 0.0, d3g0 = 0.0, cpu0 = 0.0;
+            int32_t reuse0 = 0;
+            if (p.profile_phases) {
+                d3w0 = d3d12_wall_ms();
+                d3g0 = d3d12_gpu_ms();
+                cpu0 = process_cpu_ms();
+                reuse0 = llama_perf_context(p.ctx).n_reused; // rebuild vs reuse
+            }
+            detail::ScopeTag scope("target", "verify");
             const bool vok = detail::decode_verify_batch(p.ctx, feed);
-            out.verify_ms +=
-                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_v0)
-                    .count();
+            if (p.profile_phases) {
+                const double wall_v = std::chrono::duration<double, std::milli>(
+                                          std::chrono::steady_clock::now() - t_v0)
+                                          .count();
+                out.verify_ms += wall_v;
+                out.vr_width.push_back(n_feed);
+                out.vr_wall.push_back(wall_v);
+                out.vr_d3w.push_back(d3d12_wall_ms() - d3w0);
+                out.vr_d3g.push_back(d3d12_gpu_ms() - d3g0);
+                out.vr_cpu.push_back(process_cpu_ms() - cpu0);
+                out.vr_reuse.push_back(llama_perf_context(p.ctx).n_reused - reuse0);
+                out.vr_acc0.push_back(out.n_accepted);
+            }
             if (!vok) {
                 log_output("[xllama] speculative draft batch failed — classic for first "
                            "match\n");
@@ -607,37 +919,50 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 // Nothing entered the KV, so take one classic token. With the lead in
                 // the batch the trimmed logits are the pre-batch ones and |first| is
                 // stale, so resample; otherwise |first| already matched draft[0].
-                const llama_token next =
-                    lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
-                if (detail::stops_at_eog(p, next))
+                const llama_token next = [&] {
+                    const auto t_sm2 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                        : std::chrono::steady_clock::time_point{};
+                    const llama_token t =
+                        lead_in_batch ? llama_sampler_sample(p.sampler, p.ctx, -1) : first;
+                    if (p.profile_phases)
+                        out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                      std::chrono::steady_clock::now() - t_sm2)
+                                                      .count();
+                    return t;
+                }();
+                if (detail::stops_at_eog(p, next)) {
+                    out.eog_token = static_cast<int>(next);
+                    out.eog_branch = "spec-verify";
+                    log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
+                               " tokens (spec-verify) tok=" + std::to_string(next) +
+                               " branch=spec-verify\n");
                     break;
+                }
                 bool stop = false, decode_ok = true;
-                if (!detail::classic_step(p, next, output_text, out, stop, decode_ok))
+                if (!detail::classic_step(p, next, output_text, out, stop, decode_ok)) {
+                    if (stop) {
+                        out.stop_branch = "spec-verify";
+                        out.stop_round = loop_iter;
+                    }
                     break;
+                }
                 continue;
             }
         }
 
-        // F2 catch-up: replay this verified batch into the private draft context
-        // (tokens + the target's hidden rows, shifted), so the draft head attends
-        // to the same history the target just committed. The reference does the
-        // same in process(); without it the private cache drifts after a partial
-        // accept and the next proposals lose the accepted prefix. A failure
-        // disables drafting for the rest of the generation (F2.3: never
-        // speculate on an unknown state).
-        if (mtp_ok) {
-            if (!detail::mtp_catchup_batch(p.mtp, p.ctx, feed.data(), n_feed, pos_before + 1,
-                                           p.mtp_n_embd)) {
-                log_output("[xllama] mtp: catch-up failed — falling back to classic "
-                           "decoding\n");
-                mtp_ok = false;
-                spec_enabled = false;
-            } else {
-                out.n_catchup_tokens += n_feed;
-                const MtpDraftStats& st = p.mtp->stats();
-                out.n_mtp_decodes += st.n_decodes;
-                out.mtp_catchup_ms += st.catchup_ms;
-            }
+        // Boundary trace (plan 004): the exact verify-batch inputs behind the
+        // outputs about to be decided. Positions are explicit (pos_before+1+i,
+        // same formula the batch uses), so a replay harness can teacher-force
+        // the identical block instead of guessing drafts.
+        if (xllama::decode_trace::output_idx() >= 0) {
+            char fb[320];
+            int flen = snprintf(fb, sizeof(fb),
+                                "[xllama] TRACE feed idx=%d n=%d pos0=%d toks=", out.n_generated,
+                                n_feed, static_cast<int>(pos_before) + 1);
+            for (int fi = 0; fi < n_feed && flen < 280; ++fi)
+                flen += snprintf(fb + flen, sizeof(fb) - static_cast<size_t>(flen), "%s%d",
+                                 fi ? "," : "", feed[static_cast<size_t>(fi)]);
+            log_output((std::string(fb) + "\n").c_str());
         }
 
         auto fail_rewind = [&]() {
@@ -656,22 +981,31 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         auto commit_draft = [&](llama_token tok) -> bool {
             // returns false → stop outer loop
             if (detail::stops_at_eog(p, tok)) {
+                out.eog_token = static_cast<int>(tok);
+                out.eog_branch = "spec";
                 log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
-                           " tokens (spec)\n");
+                           " tokens (spec) tok=" + std::to_string(tok) + " branch=spec\n");
                 return false;
             }
-            if (detail::emit_token(p, tok, output_text)) {
+            if (detail::emit_token(p, tok, output_text, &out)) {
                 out.ended_with_stop = true;
+                out.stop_branch = "spec";
+                out.stop_round = loop_iter;
                 ++out.n_generated;
                 return false;
             }
-            detail::accept_token(p, tok);
+            detail::account_maintain(p, tok, out, p.profile_phases);
             ++out.n_generated;
             return true;
         };
 
+        // feed[0] is the anchor when MTP put it there, and the lead sample otherwise;
+        // either way this batch verified the tokens this round proposed, so the
+        // acceptance is attributed to whichever source filled the feed.
+        const bool batch_from_mtp = lead_in_batch;
         if (!lead_in_batch) {
             ++out.n_accepted;
+            ++out.n_lookup_accepted;
             if (!commit_draft(first)) {
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
                     fail_rewind();
@@ -691,7 +1025,7 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 // The anchor of a pending correction was emitted and counted in the
                 // previous round; this batch put it in the KV. Record it in the
                 // session bookkeeping without emitting or counting it again.
-                detail::accept_token(p, feed[0]);
+                detail::account_maintain(p, feed[0], out, p.profile_phases);
                 mtp_pending_anchor = false;
                 mtp_pending_tok = LLAMA_TOKEN_NULL;
             } else if (!commit_draft(feed[0])) {
@@ -709,17 +1043,62 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         bool tail_already_trimmed = false;
         for (size_t i = 1; i < feed.size(); ++i) {
             if (out.n_generated >= p.n_predict || (p.abort_flag && p.abort_flag->load())) {
+                // Termination-state gate: fires only for an armed abort, so
+                // "cancelled during a speculative round" is evidenced by this
+                // line plus the trim that follows (log-only).
+                if (p.abort_flag && p.abort_flag->load())
+                    log_output("[xllama] abort: mid-round trim i=" + std::to_string(i) + "/" +
+                               std::to_string(feed.size()) +
+                               " n_generated=" + std::to_string(out.n_generated) + "\n");
                 if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
                     fail_rewind();
                 stop_all = true;
                 break;
             }
             // Logits after feed[i-1] (batch index i-1) predict feed[i].
-            const llama_token cand =
-                llama_sampler_sample(p.sampler, p.ctx, static_cast<int32_t>(i - 1));
+            const llama_token cand = [&] {
+                const auto t_sm3 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                    : std::chrono::steady_clock::time_point{};
+                const llama_token t =
+                    llama_sampler_sample(p.sampler, p.ctx, static_cast<int32_t>(i - 1));
+                if (p.profile_phases)
+                    out.t_sample_target_ms += std::chrono::duration<double, std::milli>(
+                                                  std::chrono::steady_clock::now() - t_sm3)
+                                                  .count();
+                return t;
+            }();
             const llama_token drafted = feed[i];
-            if (cand == drafted) {
+            const bool accepted = (cand == drafted);
+            // Boundary trace (plan 004): the verify decision behind the output
+            // token about to be emitted (out.n_generated is exactly its index:
+            // every earlier feed slot was already emitted or counted). Carries
+            // the batch row, the draft, the sampled candidate, the verdict,
+            // and the row's top candidates with margin, so a mismatch against
+            // the sequential pre-trace attributes to batching numerics (same
+            // top-1, or different top-1 with a margin dwarfing drift) vs
+            // accept/rollback/state (verdict contradicts its own row).
+            // kv_end is read here, mid-walk: it must equal pos_before + n_feed
+            // (the batch fully appended, trim not yet run). The post-trim
+            // value is logged after the walk below; the two together prove KV
+            // accounting round-trips through accept AND trim.
+            if (out.n_generated == xllama::decode_trace::output_idx() &&
+                xllama::decode_trace::output_idx() >= 0) {
+                char tb[512];
+                snprintf(tb, sizeof(tb),
+                         "[xllama] TRACE verify idx=%d batch_row=%d tok=%d drafted=%d "
+                         "accepted=%d top5=%s feed_n=%d pos_before=%d n_keep=%d kv_end=%d\n",
+                         out.n_generated, static_cast<int>(i) - 1, cand, drafted, accepted ? 1 : 0,
+                         detail::trace_topk(p.ctx, p.vocab, static_cast<int32_t>(i) - 1).c_str(),
+                         n_feed, static_cast<int>(pos_before), n_keep,
+                         static_cast<int>(llama_memory_seq_pos_max(llama_get_memory(p.ctx), 0)));
+                log_output(tb);
+            }
+            if (accepted) {
                 ++out.n_accepted;
+                if (batch_from_mtp)
+                    ++out.n_mtp_accepted;
+                else
+                    ++out.n_lookup_accepted;
                 ++n_keep;
                 if (!commit_draft(cand)) {
                     if (!detail::trim_verify_tail(mem, pos_before, n_keep, n_feed))
@@ -736,13 +1115,18 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                 break;
             }
             if (detail::stops_at_eog(p, cand)) {
+                out.eog_token = static_cast<int>(cand);
+                out.eog_branch = "spec-reject";
                 log_output("[xllama] EOG after " + std::to_string(out.n_generated) +
-                           " tokens (spec reject)\n");
+                           " tokens (spec reject) tok=" + std::to_string(cand) +
+                           " branch=spec-reject\n");
                 stop_all = true;
                 break;
             }
-            if (detail::emit_token(p, cand, output_text)) {
+            if (detail::emit_token(p, cand, output_text, &out)) {
                 out.ended_with_stop = true;
+                out.stop_branch = "spec-reject";
+                out.stop_round = loop_iter;
                 ++out.n_generated;
                 stop_all = true;
                 break;
@@ -764,17 +1148,19 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
                     mtp_pending_h.clear();
                 }
             } else {
-                const auto t_c0 = std::chrono::steady_clock::now();
+                const auto t_c0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                                   : std::chrono::steady_clock::time_point{};
                 const bool ok = detail::decode_one(p.ctx, cand);
-                out.corrective_ms += std::chrono::duration<double, std::milli>(
-                                         std::chrono::steady_clock::now() - t_c0)
-                                         .count();
+                if (p.profile_phases)
+                    out.corrective_ms += std::chrono::duration<double, std::milli>(
+                                             std::chrono::steady_clock::now() - t_c0)
+                                             .count();
                 if (!ok) {
                     log_output("[xllama] decode failed after speculative reject\n");
                     stop_all = true;
                     break;
                 }
-                detail::accept_token(p, cand);
+                detail::account_maintain(p, cand, out, p.profile_phases);
             }
             ++out.n_generated;
             tail_already_trimmed = true;
@@ -796,23 +1182,90 @@ inline DecodeLoopResult decode_loop(const DecodeLoopParams& p, std::string& outp
         // single-token decode, so the carry is that one row; otherwise the whole
         // verify batch stands and its last row is the freshest.
         set_carry_rows(tail_already_trimmed ? 1 : n_feed);
+
+        // F2 catch-up (plan 003): replay into the private draft context the
+        // tokens this round actually committed — the verify batch may have
+        // rejected a tail, and replaying rejected tokens would make the draft
+        // head attend to a history the target never committed. The committed
+        // count is read back from the KV (the ground truth), so EOG/stop
+        // cut-offs inside the walk are covered too. The first replay row
+        // carries the drafter's pending row, which the last process() call
+        // left at the last committed position; a failure disables drafting for
+        // the rest of the generation (F2.3: never speculate on an unknown
+        // state).
+        if (mtp_ok && p.mtp != nullptr && !out.rewind_failed) {
+            const int n_committed = static_cast<int>(llama_memory_seq_pos_max(mem, 0) - pos_before);
+            // Delta against the post-draft() snapshot: only what THIS catch-up
+            // did, so the draft's decodes are not counted twice.
+            const MtpDraftStats before_cu = p.mtp->stats();
+            detail::ScopeTag scope("draft", "catchup");
+            if (!detail::mtp_catchup_batch(p.mtp, p.ctx, feed.data(), n_committed, pos_before + 1,
+                                           p.mtp_n_embd, p.profile_phases)) {
+                log_output("[xllama] mtp: catch-up failed — falling back to classic "
+                           "decoding\n");
+                mtp_ok = false;
+                spec_enabled = false;
+            } else if (n_committed > 0) {
+                const MtpDraftStats after_cu = p.mtp->stats();
+                out.n_catchup_tokens += n_committed;
+                out.n_mtp_decodes += after_cu.n_decodes - before_cu.n_decodes;
+                out.mtp_catchup_ms += after_cu.catchup_ms - before_cu.catchup_ms;
+            }
+        }
     }
 
     // F4.1 contract: a pending correction was emitted and counted but never
     // decoded. Satisfy the Session state (KV + m_kv_tokens) before returning.
     if (mtp_pending_anchor) {
-        const auto t_c0 = std::chrono::steady_clock::now();
+        const auto t_c0 = p.profile_phases ? std::chrono::steady_clock::now()
+                                           : std::chrono::steady_clock::time_point{};
         const bool ok = detail::decode_one(p.ctx, mtp_pending_tok);
-        out.corrective_ms +=
-            std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_c0)
-                .count();
+        if (p.profile_phases)
+            out.corrective_ms +=
+                std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_c0)
+                    .count();
         if (ok)
-            detail::accept_token(p, mtp_pending_tok);
+            detail::account_maintain(p, mtp_pending_tok, out, p.profile_phases);
         else
             log_output("[xllama] decode failed for pending correction at end of "
                        "generation\n");
         mtp_pending_anchor = false;
         mtp_pending_tok = LLAMA_TOKEN_NULL;
+    }
+
+    // Wall clock of the loop is always measured: t_decode_ms is the denominator the
+    // phases are reconciled against, so it must not depend on profile_phases.
+    out.t_decode_ms =
+        std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t_loop0)
+            .count();
+    // draft + sampling + top_prob + catch-up (verify AND classic) + verify +
+    // corrective + lookup + classic decode are disjoint by construction: each
+    // timer wraps exactly one call. t_classic_catchup_ms is a BREAKDOWN of the
+    // catch-up total, not an extra term, so it is deliberately not added here —
+    // adding both would double-count. The difference from t_decode_ms is the
+    // uninstrumented residual and is reported, not hidden.
+    out.t_decode_accounted_ms = out.mtp_draft_ms + out.mtp_sample_ms + out.mtp_top_prob_ms +
+                                out.mtp_catchup_ms + out.verify_ms + out.corrective_ms +
+                                out.t_lookup_ms + out.t_classic_ms + out.t_sample_target_ms +
+                                out.t_emit_ms + out.t_maintain_ms;
+    // Per-verify-round split (plan003): one line per verify round, profile
+    // only (zero work when OFF). Units: ms, nesting gpu <= d3w <= wall <=
+    // verify_ms — no double counting across the PHASE aggregates. accepted is
+    // derived from the cumulative acc0 snapshots (exact: only round i's
+    // accept walk lies between snapshot i and i+1).
+    if (p.profile_phases && !out.vr_width.empty()) {
+        for (size_t i = 0; i < out.vr_width.size(); ++i) {
+            const int acc_before = out.vr_acc0[i];
+            const int acc_after =
+                (i + 1 < out.vr_acc0.size()) ? out.vr_acc0[i + 1] : out.n_accepted;
+            char vlb[320];
+            snprintf(vlb, sizeof(vlb),
+                     "[xllama] VROUND width=%d wall=%.2f d3w=%.2f d3g=%.2f cpu=%.2f "
+                     "reuse=%d accepted=%d gen=%d\n",
+                     out.vr_width[i], out.vr_wall[i], out.vr_d3w[i], out.vr_d3g[i], out.vr_cpu[i],
+                     out.vr_reuse[i], acc_after - acc_before, out.n_generated);
+            log_output(vlb);
+        }
     }
     return out;
 }

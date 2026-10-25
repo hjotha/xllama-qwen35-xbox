@@ -56,7 +56,10 @@ namespace {
 
 // Runs one inference with |mutate| applied to a base config, and asserts the
 // two-armed contract: both succeed and MTP was really active when asked.
-InferenceResult mtp_run(const InferenceParams& base, bool mtp, const char* label) {
+// |expect_draft| is off only for scenarios that cannot draft (abort set before
+// the first token leaves nothing to propose).
+InferenceResult mtp_run(const InferenceParams& base, bool mtp, const char* label,
+                        bool expect_draft = true) {
     InferenceParams ip = base;
     ip.mtp = mtp;
     ip.mtp_n_max = 4;
@@ -70,8 +73,10 @@ InferenceResult mtp_run(const InferenceParams& base, bool mtp, const char* label
         const std::string msg1 = std::string(label) + ": MTP requested but drafter inactive "
                                                       "(model lacks the MTP head?)";
         REQUIRE_MESSAGE(r.mtp_active, msg1);
-        const std::string msg2 = std::string(label) + ": MTP active but drafted nothing";
-        CHECK_MESSAGE(r.n_drafted > 0, msg2);
+        if (expect_draft) {
+            const std::string msg2 = std::string(label) + ": MTP active but drafted nothing";
+            CHECK_MESSAGE(r.n_drafted > 0, msg2);
+        }
     }
     return r;
 }
@@ -198,7 +203,10 @@ TEST_CASE("mtp: abort flag stops mid-generation on both arms "
     abort.store(true); // abort before the first token
 
     const InferenceResult plain = mtp_run(base, false, "abort baseline");
-    const InferenceResult mtp = mtp_run(base, true, "abort mtp");
+    // Abort is set before the first token: nothing can be drafted, so the
+    // draft contract does not apply — what is under test is that both arms
+    // stop identically.
+    const InferenceResult mtp = mtp_run(base, true, "abort mtp", /*expect_draft=*/false);
     CHECK(plain.output_text == mtp.output_text);
     CHECK(plain.n_eval == mtp.n_eval);
 }

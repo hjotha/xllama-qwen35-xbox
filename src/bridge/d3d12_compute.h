@@ -62,10 +62,15 @@ struct FenceEvent {
 
 // Signal + wait on a queue. spin=true polls GetCompletedValue instead of
 // sleeping on the event (lower wake-up latency, burns one core).
+// spin_us >= 0 bounds that poll at the given microseconds before falling
+// back to the same event wait (0 = event wait immediately); -1 keeps the
+// historical unbounded spin. The default argument keeps every existing
+// caller bit-for-bit as before, and completion semantics are identical on
+// every path — this is a wait-policy/timing knob, numerics untouched.
 class QueueFence {
   public:
     bool init(ID3D12Device* device, std::string* err);
-    bool signal_and_wait(ID3D12CommandQueue* queue, bool spin);
+    bool signal_and_wait(ID3D12CommandQueue* queue, bool spin, int spin_us = -1);
 
   private:
     ComPtr<ID3D12Fence> fence_;
