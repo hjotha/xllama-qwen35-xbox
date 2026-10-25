@@ -135,51 +135,26 @@ $after = ([regex]::Match([System.IO.File]::ReadAllText($mf),
     'Microsoft\.VCLibs\.140\.00" MinVersion="([0-9.]*)"')).Groups[1].Value
 Log "VCLibs MinVersion: $before -> $after"
 
+foreach($dll in @('MSVCP140.dll','MSVCP140_1.dll','VCRUNTIME140.dll','VCRUNTIME140_1.dll')){
+  $c=Join-Path "$repo\uwp" $dll
+  if(-not(Test-Path $c)){Write-Exit 'missing-crt';exit 1}
+  Copy-Item $c (Join-Path $unpack $dll)
+  Log ("CRT "+$dll+" SHA256="+(Get-FileHash (Join-Path $unpack $dll)).Hash)
+}
 $fixed = "$work\xllama-q5k-fixed.msix"
 Remove-Item $fixed -Force -EA SilentlyContinue
 Log "4/4 makeappx pack + signtool sign"
 & $makeappx pack /d $unpack /p $fixed /o *>&1 | Select-Object -Last 3 | ForEach-Object { Log $_ }
 if ($LASTEXITCODE -ne 0) { Write-Exit "pack:$LASTEXITCODE"; exit 1 }
 
-$pfx = "$repo\uwp\xllama-test.pfx"
-if (Test-Path $pfx) {
-    & $signtool sign /f $pfx /p "xllama-test" /fd sha256 $fixed *>&1 | Select-Object -Last 4 | ForEach-Object { Log $_ }
-    $signExit = $LASTEXITCODE
-    if ($signExit -ne 0) {
-        Log "ABORT signtool sign exit=$signExit"
-        Write-Exit "sign:$signExit"
-        exit 1
-    }
-    $verifyOutput = & $signtool verify /pa $fixed *>&1
-    $verifyExit = $LASTEXITCODE
-    $verifyOutput | Select-Object -Last 8 | ForEach-Object { Log $_ }
-    if ($verifyExit -ne 0) {
-        $verifyText = ($verifyOutput | Out-String)
-        $untrustedRoot = ($verifyText -match 'terminated in a root') -and ($verifyText -match 'certificate which is not trusted by the trust provider')
-        $expectedCertPath = Join-Path $repo 'uwp\xllama-test.cer'
-        $expectedCert = if (Test-Path $expectedCertPath) { New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($expectedCertPath) } else { $null }
-        $auth = Get-AuthenticodeSignature -FilePath $fixed
-        $actualThumb = if ($auth.SignerCertificate) { $auth.SignerCertificate.Thumbprint } else { '' }
-        $rejectedStatuses = @('HashMismatch', 'NotSigned', 'NotSupportedFileFormat', 'Incompatible')
-        $isRejectedStatus = $rejectedStatuses -contains ([string]$auth.Status)
-        $hasSigner = ($auth.SignerCertificate -ne $null)
-        $thumbMatches = ($expectedCert -ne $null) -and ($actualThumb -eq $expectedCert.Thumbprint) -and ($actualThumb -ne '')
-        $statusOk = @('Valid', 'UnknownError', 'NotTrusted') -contains ([string]$auth.Status)
-
-        if (-not $untrustedRoot -or -not $hasSigner -or -not $thumbMatches -or $isRejectedStatus -or -not $statusOk) {
-            Log "ABORT signature verify exit=$verifyExit status=$($auth.Status) signer=$actualThumb expected=$(if($expectedCert){$expectedCert.Thumbprint}else{''})"
-            Write-Exit "verify:$verifyExit"
-            exit 1
-        }
-        Log "verify warning: untrusted self-signed root on build host; signer matches expected certificate (status=$($auth.Status))"
-    } else {
-        Log "signtool verify exit=0"
-    }
-} else {
-    Log "ABORT: test certificate missing"
-    Write-Exit "missing-certificate"
-    exit 1
-}
+$thumb='21E98358E40980181C8795919FE3C7D455E2B7FC'
+$cert=Get-Item ("Cert:\CurrentUser\My\"+$thumb) -ErrorAction Stop
+if(-not $cert.HasPrivateKey -or $cert.Subject -ne 'CN=xllama-dev'){throw 'Existing certificate unavailable'}
+& $signtool sign /sha1 $thumb /s My /fd sha256 $fixed *>&1 | ForEach-Object { Log $_ }
+if($LASTEXITCODE -ne 0){Write-Exit "sign:$LASTEXITCODE"; exit 1}
+$auth=Get-AuthenticodeSignature -FilePath $fixed
+Log ("signature status="+$auth.Status+" signer="+$auth.SignerCertificate.Thumbprint)
+if($auth.SignerCertificate.Thumbprint -ne $thumb -or @('Valid','UnknownError','NotTrusted') -notcontains [string]$auth.Status){Write-Exit 'signature-mismatch';exit 1}
 Log "sha256-fixed=$((Get-FileHash $fixed -Algorithm SHA256).Hash)"
 Set-Content "$work\fixed-msix-path.txt" $fixed
 Log ("elapsed_seconds=" + [math]::Round(((Get-Date)-$buildStarted).TotalSeconds,2))

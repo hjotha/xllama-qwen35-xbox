@@ -1,0 +1,97 @@
+diff --git a/llama.cpp/ggml/src/ggml-cpu/ops.cpp b/llama.cpp/ggml/src/ggml-cpu/ops.cpp
+index 2b66f69..041fb6b 100644
+--- a/llama.cpp/ggml/src/ggml-cpu/ops.cpp
++++ b/llama.cpp/ggml/src/ggml-cpu/ops.cpp
+@@ -8853,6 +8853,10 @@ static void ggml_compute_forward_flash_attn_ext_f16_one_chunk(
+     ggml_vec_dot_t    const kq_vec_dot     = ggml_get_type_traits_cpu(k->type)->vec_dot;
+     ggml_to_float_t   const v_to_float     = ggml_get_type_traits(v->type)->to_float;
+ 
++    const char * query_policy = getenv("GGML_FLASH_ATTN_NO_QUERY_TILING");
++    const bool use_f32_qk = query_policy && query_policy[0] == '4' && query_policy[1] == '\0' &&
++                            q->type == GGML_TYPE_F32 && k->type == GGML_TYPE_F16 && v->type == GGML_TYPE_F16;
++
+     GGML_ASSERT((                            q_to_vec_dot) && "fattn: unsupported K-type");
+     GGML_ASSERT((v->type == GGML_TYPE_F32 || v_to_float  ) && "fattn: unsupported V-type");
+ 
+@@ -8892,7 +8896,9 @@ static void ggml_compute_forward_flash_attn_ext_f16_one_chunk(
+         const int iv2 = iq2 / rv2;
+ 
+         const float * pq = (const float *) ((char *) q->data + (iq1*nbq1 + iq2*nbq2 + iq3*nbq3));
+-        q_to_vec_dot(pq, Q_q, DK);
++        if (!use_f32_qk) {
++            q_to_vec_dot(pq, Q_q, DK);
++        }
+ 
+         // online softmax / attention
+         // loop over n_kv and n_head_kv
+@@ -8907,7 +8913,13 @@ static void ggml_compute_forward_flash_attn_ext_f16_one_chunk(
+             float s; // KQ value
+ 
+             const char * k_data = (const char *) k->data + ( ic*nbk1 + ik2*nbk2 + ik3*nbk3);
+-            kq_vec_dot(DK, &s, 0, k_data, 0, Q_q, 0, 1);
++            if (use_f32_qk) {
++                float * k_f32 = (float *) Q_q;
++                ggml_cpu_fp16_to_fp32((const ggml_fp16_t *) k_data, k_f32, DK);
++                ggml_vec_dot_f32(DK, &s, 0, pq, 0, k_f32, 0, 1);
++            } else {
++                kq_vec_dot(DK, &s, 0, k_data, 0, Q_q, 0, 1);
++            }
+ 
+             s = s*scale; // scale KQ value
+ 
+@@ -9481,7 +9493,15 @@ static void ggml_compute_forward_flash_attn_ext_f16(
+         const int64_t dr = (nr + nchunk - 1) / nchunk;
+ 
+         static constexpr int64_t Q_TILE_SZ  = ggml_fa_tile_config::Q;
+-        bool use_tiled = !use_ref &&
++        // Explicit policies keep query-width changes from selecting a different reduction.
++        const char * query_policy = getenv("GGML_FLASH_ATTN_NO_QUERY_TILING");
++        const bool scalar_queries = query_policy &&
++                                    ((query_policy[0] == '1' && query_policy[1] == '\0') ||
++                                     (query_policy[0] == '4' && query_policy[1] == '\0' &&
++                                      q->type == GGML_TYPE_F32 &&
++                                      k->type == GGML_TYPE_F16 &&
++                                      v->type == GGML_TYPE_F16));
++        bool use_tiled = !scalar_queries && !use_ref &&
+                                (q->type == GGML_TYPE_F32 &&
+                                 kv_is_f32_or_f16 &&
+                                 k->type == v->type &&
+diff --git a/llama.cpp/include/llama.h b/llama.cpp/include/llama.h
+index 31a72ff..20b1f95 100644
+--- a/llama.cpp/include/llama.h
++++ b/llama.cpp/include/llama.h
+@@ -800,6 +800,16 @@ extern "C" {
+     // NOTE: After creating a llama_context, it is recommended to query the actual values using these functions
+     //       In some cases the requested values via llama_context_params may differ from the actual values used by the context
+     //       ref: https://github.com/ggml-org/llama.cpp/pull/17046#discussion_r2503085732
++    // Resolved RoPE/YaRN identity, after model defaults and context adjustments.
++    struct llama_context_rope_params {
++        int32_t scaling_type;
++        uint32_t orig_ctx;
++        float freq_base, freq_scale;
++        float ext_factor, attn_factor, beta_fast, beta_slow;
++    };
++    LLAMA_API struct llama_context_rope_params llama_get_context_rope_params(
++            const struct llama_context * ctx);
++
+     LLAMA_API uint32_t llama_n_ctx      (const struct llama_context * ctx);
+     LLAMA_API uint32_t llama_n_ctx_seq  (const struct llama_context * ctx);
+     LLAMA_API uint32_t llama_n_batch    (const struct llama_context * ctx);
+diff --git a/llama.cpp/src/llama-context.cpp b/llama.cpp/src/llama-context.cpp
+index 1469333..e2c3d8c 100644
+--- a/llama.cpp/src/llama-context.cpp
++++ b/llama.cpp/src/llama-context.cpp
+@@ -6536,6 +6536,13 @@ void llama_free(llama_context * ctx) {
+     delete ctx;
+ }
+ 
++llama_context_rope_params llama_get_context_rope_params(const llama_context * ctx) {
++    const auto & p = ctx->get_cparams();
++    return { static_cast<int32_t>(p.rope_scaling_type), p.n_ctx_orig_yarn,
++             p.rope_freq_base, p.rope_freq_scale, p.yarn_ext_factor,
++             p.yarn_attn_factor, p.yarn_beta_fast, p.yarn_beta_slow };
++}
++
+ uint32_t llama_n_ctx(const llama_context * ctx) {
+     return ctx->n_ctx();
+ }

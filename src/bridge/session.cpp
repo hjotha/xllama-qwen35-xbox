@@ -410,7 +410,9 @@ std::unique_ptr<Session> create_ort(const SessionParams& sp, std::string* err) {
 // ---------------------------------------------------------------------------
 #ifdef XLLAMA_USE_LLAMA
 
+    #include "ggml-backend.h"
     #include "llama.h"
+    #include "state_identity.h"
 
     #include "decode_loop.h" // shared prefill + generation loops; needs llama.h
     #include "llama_gpu.h"
@@ -484,6 +486,57 @@ class LlamaSession final : public Session {
           m_gpu_layers(gpu_layers), m_mtp(mtp), m_mtp_n_max(mtp_n_max), m_mtp_p_min(mtp_p_min),
           m_n_seq_max(n_seq_max > 0 ? n_seq_max : 1) {}
 
+    // Plan 009 diagnostic: one bounded first-attention capture per target context.
+    // Dormant unless fa-capture.flag is exactly "1"; never installed by default.
+    bool m_fa_captured = false;
+    int m_fa_query_policy = 0;
+    static bool capture_first_fa(ggml_tensor* t, bool ask, void* opaque) {
+        auto* self = static_cast<LlamaSession*>(opaque);
+        if (self->m_fa_captured || t->op != GGML_OP_FLASH_ATTN_EXT || !t->src[0] ||
+            t->src[0]->ne[1] <= 1)
+            return false;
+        if (ask)
+            return true;
+        self->m_fa_captured = true;
+        FILE* fp = open_state_file(resolve_local_path("fa-probe.bin"), "wb");
+        if (!fp) {
+            log_output("[xllama] fa-probe: open failed\n");
+            return true;
+        }
+        bool ok = true;
+        auto write = [&](const void* p, size_t n) {
+            if (ok && std::fwrite(p, 1, n, fp) != n)
+                ok = false;
+        };
+        const uint32_t header[2] = {0x31414658, 5}; // XFA1, q/k/v/mask/output
+        write(header, sizeof(header));
+        for (int i = 0; i < 5 && ok; ++i) {
+            ggml_tensor* node = i < 4 ? t->src[i] : t;
+            if (!node || !node->data || ggml_nbytes(node) > (8u << 20)) {
+                ok = false;
+                break;
+            }
+            const int32_t fields[3] = {i, static_cast<int32_t>(node->op),
+                                       static_cast<int32_t>(node->type)};
+            const uint64_t bytes = ggml_nbytes(node);
+            uint64_t strides[4];
+            for (int a = 0; a < 4; ++a)
+                strides[a] = node->nb[a];
+            write(fields, sizeof(fields));
+            write(node->ne, sizeof(node->ne));
+            write(strides, sizeof(strides));
+            write(&bytes, sizeof(bytes));
+            write(node->name, sizeof(node->name));
+            std::vector<uint8_t> raw(static_cast<size_t>(bytes));
+            ggml_backend_tensor_get(node, raw.data(), 0, raw.size());
+            write(raw.data(), raw.size());
+        }
+        if (std::fclose(fp) != 0)
+            ok = false;
+        log_output(ok ? "[xllama] fa-probe: complete\n" : "[xllama] fa-probe: FAILED\n");
+        return true;
+    }
+
     // Lazy context creation, shared by generate() and the state-file entry
     // points (#170b needs a context before the first turn). Returns false and
     // sets *err on failure; m_ctx stays null.
@@ -533,6 +586,10 @@ class LlamaSession final : public Session {
                            std::to_string(cparams.n_rs_seq) + "\n");
 
             apply_gguf_gpu_context(m_gpu_layers, cparams);
+            const char* no_tile = std::getenv("GGML_FLASH_ATTN_NO_QUERY_TILING");
+            m_fa_query_policy = no_tile && std::strcmp(no_tile, "4") == 0   ? 4
+                                : no_tile && std::strcmp(no_tile, "1") == 0 ? 1
+                                                                            : 0;
             if (for_embedding) {
                 // Non-causal embedding graphs cannot split a sequence into
                 // physical micro-batches (llama.cpp asserts instead of failing).
@@ -547,6 +604,18 @@ class LlamaSession final : public Session {
                 cparams.type_k = GGML_TYPE_Q8_0;
                 cparams.type_v = GGML_TYPE_Q8_0;
                 cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
+            }
+            if (m_mtp) {
+                FILE* flag = open_state_file(resolve_local_path("fa-capture.flag"), "rb");
+                if (flag) {
+                    const bool enabled = std::fgetc(flag) == '1' && std::fgetc(flag) == EOF;
+                    std::fclose(flag);
+                    if (enabled) {
+                        m_fa_captured = false;
+                        cparams.cb_eval = capture_first_fa;
+                        cparams.cb_eval_user_data = this;
+                    }
+                }
             }
             m_ctx.reset(llama_init_from_model(m_model.get(), cparams));
             if (!m_ctx && m_kv_q8) {
@@ -1439,11 +1508,9 @@ class LlamaSession final : public Session {
     // field validates; anything else falls back to the v2 prime path.
     static constexpr const char* kMtpMagic = "XLMTPST1"; // 8 bytes, no NUL
     static constexpr uint32_t kMtpTrailerVersion = 1;
-    // v2 (plan 009): the v1 fingerprint missed rope scale, YaRN-effective
-    // identity is model-side here (no session overrides), plus the effective
-    // K/V cache types and n_seq_max. A v1 file never matches a v2
-    // fingerprint, so old snapshots are refused, never misloaded.
-    static constexpr int kStateVersion = 2;
+    // v3 binds the resolved RoPE/YaRN parameters with exact float identity.
+    // Older v1/v2 snapshots fail closed before native state installation.
+    static constexpr int kStateVersion = 3;
     // AppContainer dislikes very large single reads: ORT's 1 GB
     // ReadFileIntoBuffer had to come down to 16 MB before errcode 1450
     // (ERROR_NO_SYSTEM_RESOURCES) stopped appearing (uwp-constraints §9), and
@@ -1463,12 +1530,17 @@ class LlamaSession final : public Session {
     #endif
     }
 
-    static bool io_chunked(FILE* fp, void* data, size_t n, bool write) {
+    static bool io_chunked(FILE* fp, void* data, size_t n, bool write,
+                           size_t* transferred = nullptr) {
+        if (transferred)
+            *transferred = 0;
         auto* p = static_cast<uint8_t*>(data);
         for (size_t off = 0; off < n;) {
             const size_t want = std::min(kIoChunk, n - off);
             const size_t got =
                 write ? std::fwrite(p + off, 1, want, fp) : std::fread(p + off, 1, want, fp);
+            if (transferred)
+                *transferred += got;
             if (got != want)
                 return false;
             off += want;
@@ -1583,15 +1655,9 @@ class LlamaSession final : public Session {
         return v;
     }
 
-    // Identity of the weights + context this cache was built on. Computed
-    // after ensure_ctx() so it reflects the kv_q8 fallback (#171), not the
-    // request. Cache K/V types are re-derived from m_kv_q8 exactly as the
-    // context creation does; rope identity is model-side (this session never
-    // overrides rope/yarn). MTP depth is deliberately NOT part of identity:
-    // the target blob holds target-context state only. The drafter trailer
-    // (plan 009 #170c) is validated separately — its own magic/version, its
-    // mirror extent, its carry position and its prefix proof — and a file
-    // without it stays a valid v2 snapshot for MTP on or off.
+    // Target context identity; the MTP trailer validates its own state.
+    // RoPE/YaRN values come from the resolved context, not rounded metadata.
+    // This is configuration identity, not a cryptographic weight checksum.
     std::string state_fingerprint() const {
         char desc[192] = {};
         llama_model_desc(m_model.get(), desc, sizeof(desc) - 1);
@@ -1599,14 +1665,14 @@ class LlamaSession final : public Session {
             static_cast<int>(m_kv_q8 ? GGML_TYPE_Q8_0 : llama_context_default_params().type_k);
         const int type_v =
             static_cast<int>(m_kv_q8 ? GGML_TYPE_Q8_0 : llama_context_default_params().type_v);
-        char buf[512];
+        const auto rope = state_rope_identity(llama_get_context_rope_params(m_ctx.get()));
+        char buf[768];
         snprintf(buf, sizeof(buf),
                  "v%d n_ctx=%d n_seq_max=%d kv_q8=%d type_k=%d type_v=%d rope_type=%d "
-                 "rope_scale=%.6g lora=%.4f params=%llu %s",
+                 "%s fa_query=%d lora=%08x params=%llu %s",
                  kStateVersion, m_n_ctx, m_n_seq_max, m_kv_q8 ? 1 : 0, type_k, type_v,
-                 static_cast<int>(llama_model_rope_type(m_model.get())),
-                 static_cast<double>(llama_model_rope_freq_scale_train(m_model.get())),
-                 m_adapter ? m_lora_scale : 0.0f,
+                 static_cast<int>(llama_model_rope_type(m_model.get())), rope.c_str(),
+                 m_fa_query_policy, state_float_bits(m_adapter ? m_lora_scale : 0.0f),
                  static_cast<unsigned long long>(llama_model_n_params(m_model.get())), desc);
         return buf;
     }
@@ -1702,7 +1768,7 @@ class LlamaSession final : public Session {
                 *err = "cannot open " + tmp;
             return false;
         }
-        char hdr[512];
+        char hdr[1024];
         const int hn = snprintf(hdr, sizeof(hdr), "%s\t%zu\t%zu\t%s\n", kStateMagic, n_state,
                                 m_kv_tokens.size(), state_fingerprint().c_str());
         bool ok = hn > 0 && static_cast<size_t>(hn) < sizeof(hdr) &&
@@ -1719,9 +1785,20 @@ class LlamaSession final : public Session {
             // Persist only up to the armed offset, then take the normal
             // failure path below (remove tmp, false -> HTTP 400). The final
             // <id>.kv is only ever touched by the rename, which is skipped.
+            size_t written = 0;
+            const bool write_ok = io_chunked(fp, blob.data(), fault, true, &written);
+            const int flush_result = std::fflush(fp);
+            std::error_code size_error;
+            const auto observed_size = std::filesystem::file_size(tmp, size_error);
             log_output("[xllama] session: fault probe — abort save after " + std::to_string(fault) +
-                       " bytes (test-only)\n");
-            ok = ok && io_chunked(fp, blob.data(), fault, /*write=*/true);
+                       " bytes (test-only); fwrite_bytes=" + std::to_string(written) +
+                       " write_ok=" + std::to_string(write_ok) +
+                       " flush_rc=" + std::to_string(flush_result) + " tmp_size=" +
+                       (size_error ? std::string("unavailable") : std::to_string(observed_size)) +
+                       " expected_size=" +
+                       std::to_string(static_cast<size_t>(hn) +
+                                      m_kv_tokens.size() * sizeof(llama_token) + written) +
+                       " (observed after fflush; not fsync durability)\n");
             ok = false;
         } else {
             ok = ok && io_chunked(fp, blob.data(), n_state, /*write=*/true);
@@ -1831,7 +1908,7 @@ class LlamaSession final : public Session {
             }
         } closer{fp};
 
-        char hdr[512] = {};
+        char hdr[1024] = {};
         if (!std::fgets(hdr, sizeof(hdr), fp)) {
             if (err)
                 *err = "empty state file";

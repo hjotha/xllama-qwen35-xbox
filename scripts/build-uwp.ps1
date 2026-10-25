@@ -72,40 +72,7 @@ if (-not (Test-Path $SlnPath)) {
 }
 
 # ---------------------------------------------------------------------------
-# Certificate handling: reuse existing cert unless -ForceNewCert is passed.
-# This avoids reinstalling the trust cert on the console every build.
-# ---------------------------------------------------------------------------
-$cert = $null
-if ((-not $ForceNewCert) -and (Test-Path $PfxPath) -and (Test-Path $CerPath)) {
-    Write-Host "Reusing existing test certificate ..."
-    $cert = Get-PfxCertificate -FilePath $PfxPath -Password (ConvertTo-SecureString -String $CertPwd -Force -AsPlainText) -ErrorAction SilentlyContinue
-    if (-not $cert) {
-        Write-Warning "Failed to load existing PFX; generating a new certificate."
-    }
-}
-
-if (-not $cert) {
-    Write-Host "Generating self-signed test certificate ..."
-    $cert = New-SelfSignedCertificate `
-        -Type Custom `
-        -Subject "CN=xllama-dev" `
-        -KeyUsage DigitalSignature `
-        -FriendlyName "xllama test cert" `
-        -CertStoreLocation "Cert:\CurrentUser\My" `
-        -TextExtension @("2.5.29.37={text}1.3.6.1.5.5.7.3.3", "2.5.29.19={text}")
-
-    $pwd = ConvertTo-SecureString -String $CertPwd -Force -AsPlainText
-    Export-PfxCertificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
-        -FilePath $PfxPath -Password $pwd | Out-Null
-    Export-Certificate -Cert "Cert:\CurrentUser\My\$($cert.Thumbprint)" `
-        -FilePath $CerPath | Out-Null
-}
-
-Write-Host "Certificate thumbprint: $($cert.Thumbprint)"
-Write-Host "PFX: $PfxPath"
-Write-Host "CER: $CerPath"
-
-# ---------------------------------------------------------------------------
+# Certificate generation disabled for authorized Final247 unsigned staging.
 # Locate MSBuild
 # ---------------------------------------------------------------------------
 $VsWhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -235,10 +202,7 @@ $MsBuildArgs = @(
     $SlnPath,
     "/p:Configuration=$Configuration",
     "/p:Platform=$Platform",
-    "/p:AppxPackageSigningEnabled=$(-not $Iteration)",
-    "/p:PackageCertificateKeyFile=$PfxPath",
-    "/p:PackageCertificatePassword=$CertPwd",
-    "/p:PackageCertificateThumbprint=$($cert.Thumbprint)",
+    "/p:AppxPackageSigningEnabled=False",
     "/m",
     "/nologo"
 )
