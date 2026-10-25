@@ -275,6 +275,7 @@ struct Sample {
     uint8_t alloc_grew = 0;
     uint8_t serial_prefix = 0; // native KVarN4 descriptor revision 3
     uint8_t q_tile = 0;        // multi-query tile (Q4_0/F16/Q8_0 2 or 4, KVarN4 2); 0 = per-query
+    uint8_t bulk_segment = 0;  // 1 if recorded as an individual segment of native bulk op 22
     uint32_t n_tokens = 0;
     uint32_t rows = 0; // upload rows, or attention active_count
     uint32_t split_k = 0;
@@ -306,6 +307,27 @@ struct Counters {
     uint64_t buffer_create_bytes = 0;
     uint64_t timestamp_resolves = 0;
     uint64_t timestamp_map_failures = 0;
+    uint64_t bulk_calls = 0;
+    uint64_t bulk_segments = 0;
+    uint64_t bulk_queries = 0;
+};
+
+struct BulkEnvelopeSample {
+    uint32_t segment_count = 0;
+    uint32_t total_queries = 0;
+    uint8_t gpu_valid = 0;
+    uint8_t fence_blocked = 0;
+    uint8_t alloc_grew = 0;
+    uint64_t upload_bytes = 0;
+    uint64_t query_bytes = 0;
+    uint64_t output_bytes = 0;
+    uint64_t cpu_ns[kCpuSpanCount] = {};
+    uint64_t gpu_upload_ticks = 0;
+    uint64_t gpu_pass1_ticks = 0;
+    uint64_t gpu_reduce_ticks = 0;
+    uint64_t gpu_copy_ticks = 0;
+    uint64_t gpu_total_ticks = 0;
+    uint64_t overhead_ns = 0;
 };
 
 struct MemoryInfo {
@@ -442,6 +464,7 @@ inline std::string json_escape(const std::string& in) {
 class Recorder {
   public:
     static constexpr size_t kDefaultCapacity = 16384;
+    static constexpr size_t kDefaultBulkCapacity = 2048;
 
     void configure(size_t capacity = kDefaultCapacity) {
         if (ring_.size() != capacity) {
@@ -449,11 +472,20 @@ class Recorder {
             next_ = 0;
             stored_ = 0;
         }
+        const size_t bulk_cap = std::min(capacity, kDefaultBulkCapacity);
+        if (bulk_ring_.size() != bulk_cap) {
+            bulk_ring_.assign(bulk_cap, BulkEnvelopeSample{});
+            bulk_next_ = 0;
+            bulk_stored_ = 0;
+        }
     }
     void reset() {
         next_ = 0;
         stored_ = 0;
         recorded_ = 0;
+        bulk_next_ = 0;
+        bulk_stored_ = 0;
+        bulk_recorded_ = 0;
         counters = Counters{};
     }
     void record(const Sample& sample) {
@@ -465,6 +497,15 @@ class Recorder {
         next_ = (next_ + 1) % ring_.size();
         stored_ = std::min(stored_ + 1, ring_.size());
     }
+    void record_bulk(const BulkEnvelopeSample& sample) {
+        ++bulk_recorded_;
+        if (bulk_ring_.empty()) {
+            return;
+        }
+        bulk_ring_[bulk_next_] = sample;
+        bulk_next_ = (bulk_next_ + 1) % bulk_ring_.size();
+        bulk_stored_ = std::min(bulk_stored_ + 1, bulk_ring_.size());
+    }
     size_t capacity() const {
         return ring_.size();
     }
@@ -473,6 +514,15 @@ class Recorder {
     }
     uint64_t recorded() const {
         return recorded_;
+    }
+    size_t bulk_capacity() const {
+        return bulk_ring_.size();
+    }
+    size_t bulk_stored() const {
+        return bulk_stored_;
+    }
+    uint64_t bulk_recorded() const {
+        return bulk_recorded_;
     }
 
     std::string json(const Header& h) const {
@@ -521,9 +571,11 @@ class Recorder {
         o += buf;
         std::snprintf(buf, sizeof(buf),
                       "\"buffer_creates\":%llu,\"buffer_create_bytes\":%llu,"
-                      "\"timestamp_resolves\":%llu,\"timestamp_map_failures\":%llu}",
+                      "\"timestamp_resolves\":%llu,\"timestamp_map_failures\":%llu,"
+                      "\"bulk_calls\":%llu,\"bulk_segments\":%llu,\"bulk_queries\":%llu}",
                       ull(c.buffer_creates), ull(c.buffer_create_bytes), ull(c.timestamp_resolves),
-                      ull(c.timestamp_map_failures));
+                      ull(c.timestamp_map_failures), ull(c.bulk_calls), ull(c.bulk_segments),
+                      ull(c.bulk_queries));
         o += buf;
         o += ",\"memory\":" + memory_json(h.memory);
         o += ",\"kvarn4_mq_qualified_precision_tail_tokens\":[128]";
@@ -596,6 +648,8 @@ class Recorder {
                       kOptMaxQueries, kKvarn4MqWaveLanes, h.kvarn4_mq_available ? "true" : "false",
                       json_escape(h.kvarn4_mq_status).c_str(), ull(c.kvarn4_mq_calls));
         o += buf;
+        o += ",\"bulk\":";
+        append_bulk_json(o, h);
 
         std::map<std::string, std::vector<const Sample*>> buckets;
         for (size_t i = 0; i < stored_; ++i) {
@@ -746,10 +800,122 @@ class Recorder {
         o += '}';
     }
 
+    void append_bulk_json(std::string& o, const Header& h) const {
+        char buf[512];
+        o += '{';
+        std::snprintf(buf, sizeof(buf),
+                      "\"bulk_calls\":%llu,\"bulk_segments\":%llu,\"bulk_queries\":%llu,"
+                      "\"samples_recorded\":%llu,\"samples_in_ring\":%llu,"
+                      "\"gpu_timestamps\":%s",
+                      ull(counters.bulk_calls), ull(counters.bulk_segments),
+                      ull(counters.bulk_queries), ull(bulk_recorded_), ull(bulk_stored_),
+                      (h.gpu_timestamps && h.gpu_timestamp_frequency) ? "true" : "false");
+        o += buf;
+
+        std::vector<double> v_val, v_alloc, v_mc, v_rec, v_sub, v_fw, v_rb, v_tot;
+        std::vector<double> v_gpu_u, v_gpu_p1, v_gpu_red, v_gpu_cp, v_gpu_tot, v_qw;
+        std::vector<double> v_b_up, v_b_q, v_b_out, v_b_tot;
+
+        const double us_per_tick = h.gpu_timestamp_frequency
+                                       ? (1e6 / static_cast<double>(h.gpu_timestamp_frequency))
+                                       : 0.0;
+
+        for (size_t i = 0; i < bulk_stored_; ++i) {
+            const size_t idx =
+                (bulk_next_ + bulk_ring_.size() - bulk_stored_ + i) % bulk_ring_.size();
+            const auto& b = bulk_ring_[idx];
+            v_val.push_back(double(b.cpu_ns[kCpuValidate]) / 1000.0);
+            v_alloc.push_back(double(b.cpu_ns[kCpuAlloc]) / 1000.0);
+            v_mc.push_back(double(b.cpu_ns[kCpuMapCopy]) / 1000.0);
+            v_rec.push_back(double(b.cpu_ns[kCpuRecord]) / 1000.0);
+            v_sub.push_back(double(b.cpu_ns[kCpuSubmit]) / 1000.0);
+            const double fw_us = double(b.cpu_ns[kCpuFenceWait]) / 1000.0;
+            v_fw.push_back(fw_us);
+            v_rb.push_back(double(b.cpu_ns[kCpuReadback]) / 1000.0);
+            uint64_t cpu_tot = 0;
+            for (uint32_t sp = 0; sp < kCpuSpanCount; ++sp) {
+                cpu_tot += b.cpu_ns[sp];
+            }
+            v_tot.push_back(double(cpu_tot) / 1000.0);
+
+            v_b_up.push_back(double(b.upload_bytes));
+            v_b_q.push_back(double(b.query_bytes));
+            v_b_out.push_back(double(b.output_bytes));
+            v_b_tot.push_back(double(b.upload_bytes + b.query_bytes + b.output_bytes));
+
+            if (b.gpu_valid && us_per_tick > 0.0) {
+                v_gpu_u.push_back(double(b.gpu_upload_ticks) * us_per_tick);
+                v_gpu_p1.push_back(double(b.gpu_pass1_ticks) * us_per_tick);
+                v_gpu_red.push_back(double(b.gpu_reduce_ticks) * us_per_tick);
+                v_gpu_cp.push_back(double(b.gpu_copy_ticks) * us_per_tick);
+                const double gpu_tot_us = double(b.gpu_total_ticks) * us_per_tick;
+                v_gpu_tot.push_back(gpu_tot_us);
+                v_qw.push_back(std::max(0.0, fw_us - gpu_tot_us));
+            }
+        }
+
+        o += ",\"timings\":{";
+        append_stats(o, "admission_cpu_us", v_val);
+        o += ',';
+        append_stats(o, "alloc_cpu_us", v_alloc);
+        o += ',';
+        append_stats(o, "map_copy_cpu_us", v_mc);
+        o += ',';
+        append_stats(o, "record_cpu_us", v_rec);
+        o += ',';
+        append_stats(o, "submit_cpu_us", v_sub);
+        o += ',';
+        append_stats(o, "fence_wait_cpu_us", v_fw);
+        o += ',';
+        append_stats(o, "readback_cpu_us", v_rb);
+        o += ',';
+        append_stats(o, "engine_total_cpu_us", v_tot);
+        if (h.gpu_timestamp_frequency) {
+            o += ',';
+            append_stats(o, "gpu_upload_us", v_gpu_u);
+            o += ',';
+            append_stats(o, "gpu_pass1_us", v_gpu_p1);
+            o += ',';
+            append_stats(o, "gpu_reduce_us", v_gpu_red);
+            o += ',';
+            append_stats(o, "gpu_readback_copy_us", v_gpu_cp);
+            o += ',';
+            append_stats(o, "gpu_total_us", v_gpu_tot);
+            o += ',';
+            append_stats(o, "queue_wait_us", v_qw);
+        }
+        o += "},\"bytes\":{";
+        append_stats(o, "upload_bytes", v_b_up);
+        o += ',';
+        append_stats(o, "query_bytes", v_b_q);
+        o += ',';
+        append_stats(o, "output_bytes", v_b_out);
+        o += ',';
+        append_stats(o, "total_bytes", v_b_tot);
+        o += "},\"timing_breakdown_notes\":{";
+        o += "\"inclusive_fence_wait\":\"fence_wait_cpu_us is inclusive host CPU wall time waiting "
+             "for fence completion.\",";
+        o += "\"exclusive_gpu_total\":\"gpu_total_us measures exclusive GPU execution duration "
+             "between first and last queries.\",";
+        o += "\"queue_wait\":\"queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us), capturing "
+             "scheduling delay.\",";
+        o += "\"cpu_copies\":\"CPU copy cost is map_copy_cpu_us + readback_cpu_us.\",";
+        o += "\"gpu_kernel\":\"GPU kernel cost is gpu_upload_us + gpu_pass1_us + gpu_reduce_us + "
+             "gpu_readback_copy_us.\",";
+        o += "\"unmeasurable_network_oneway\":\"One-way network transit over LAN is strictly "
+             "unmeasurable without synchronized clocks. Use transport payload_receive_us, "
+             "send_enqueue_us, and host RTT minus handle_us for network attribution.\"";
+        o += "}}";
+    }
+
     std::vector<Sample> ring_;
     size_t next_ = 0;
     size_t stored_ = 0;
     uint64_t recorded_ = 0;
+    std::vector<BulkEnvelopeSample> bulk_ring_;
+    size_t bulk_next_ = 0;
+    size_t bulk_stored_ = 0;
+    uint64_t bulk_recorded_ = 0;
 };
 
 } // namespace rkva_rprof

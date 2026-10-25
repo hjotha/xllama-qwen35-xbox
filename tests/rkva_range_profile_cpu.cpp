@@ -262,6 +262,31 @@ int main() {
     r.counters.calls[kUpload] = 3;
     r.counters.calls[kAttention] = 3;
 
+    BulkEnvelopeSample b;
+    b.segment_count = 4;
+    b.total_queries = 32;
+    b.gpu_valid = 1;
+    b.gpu_upload_ticks = 100;
+    b.gpu_pass1_ticks = 400;
+    b.gpu_reduce_ticks = 50;
+    b.gpu_copy_ticks = 30;
+    b.gpu_total_ticks = 650;
+    b.cpu_ns[kCpuValidate] = 15000;
+    b.cpu_ns[kCpuAlloc] = 5000;
+    b.cpu_ns[kCpuMapCopy] = 120000;
+    b.cpu_ns[kCpuRecord] = 80000;
+    b.cpu_ns[kCpuSubmit] = 20000;
+    b.cpu_ns[kCpuFenceWait] = 900000;
+    b.cpu_ns[kCpuReadback] = 40000;
+    b.upload_bytes = 65536;
+    b.query_bytes = 32768;
+    b.output_bytes = 32768;
+    r.record_bulk(b);
+    assert(r.bulk_recorded() == 1 && r.bulk_stored() == 1);
+    r.counters.bulk_calls = 1;
+    r.counters.bulk_segments = 4;
+    r.counters.bulk_queries = 32;
+
     Header h;
     h.profiling = true;
     h.q4_kernel_mode = 1;
@@ -344,12 +369,23 @@ int main() {
     assert(json.find("\"f16\":{\"available\":false,\"status\":\"\",\"optimized_calls\":0,"
                      "\"reference_calls\":2,\"fast_nq_max\":0}") != std::string::npos);
     assert(json.find("\\\"quoted\\\"\\u000a") != std::string::npos);
+    assert(json.find("\"bulk\":{") != std::string::npos);
+    assert(json.find("\"bulk_calls\":1") != std::string::npos);
+    assert(json.find("\"bulk_segments\":4") != std::string::npos);
+    assert(json.find("\"bulk_queries\":32") != std::string::npos);
+    assert(json.find("\"admission_cpu_us\":{\"n\":1,\"mean\":15.000") != std::string::npos);
+    assert(json.find("\"gpu_total_us\":{\"n\":1,\"mean\":650.000") != std::string::npos);
+    assert(json.find("\"queue_wait_us\":{\"n\":1,\"mean\":250.000") != std::string::npos);
+    assert(json.find("\"upload_bytes\":{\"n\":1,\"mean\":65536.000") != std::string::npos);
+    assert(json.find("\"timing_breakdown_notes\":{") != std::string::npos);
     std::printf("%s\n", json.c_str());
 
     // Reset clears samples and counters but keeps the reserved ring.
     r.reset();
     assert(r.recorded() == 0 && r.stored() == 0 && r.capacity() == 4);
+    assert(r.bulk_recorded() == 0 && r.bulk_stored() == 0);
     assert(r.counters.calls[kAttention] == 0);
+    assert(r.counters.bulk_calls == 0);
     const std::string empty = Recorder().json(Header{});
     assert(empty.find("\"buckets\":{}") != std::string::npos);
     std::fprintf(stderr, "rkva_range_profile_cpu: ok\n");

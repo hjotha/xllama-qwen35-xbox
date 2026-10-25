@@ -463,9 +463,19 @@ unconfirmed submission retains transfer resources. The host publishes its
 resident-row count and generation only after the complete response.
 
 Transport op-22 counters and the existing submission/fence counters account for
-the whole batch. Per-segment timestamp buckets are disabled inside a bulk
-command list; their fixed timestamp slots cannot represent 32 simultaneous
-segments. Use separate op 16/op 14 with profiling to inspect individual kernels.
+the whole batch (`submits` count equals 1 per bulk RPC; no per-segment fences).
+
+Opt-in native bulk profiling provides comprehensive attributable GPU and CPU metrics:
+
+- **Zero fastpath overhead**: profiling instrumentation is completely bypassed when profiling is disabled.
+- **Bounded timestamp slot allocation**: Query slots are allocated without in-flight reuse. The timestamp heap provides 256 slots per set (1024 total across 4 sets). Slot 0 records `kTsBulkEnvelopeBegin`. Each segment $i$ (0 to $S-1$, max 32) uses 6 contiguous slots starting at $1 + i \times 6$: upload begin, upload end, attention begin, attention pass 1, attention reduce, and readback copy. Slot $1 + S \times 6$ records `kTsBulkEnvelopeEnd`. The queries are dispatched in strict command-list order, ensuring monotonic timestamp progression. Max slots for 32 segments is $2 + 32 \times 6 = 194 \le 256$.
+- **Attributable aggregate metrics**: Profile JSON includes a dedicated `"bulk"` object with:
+  - Disjoint CPU breakdown: `admission_cpu_us`, `alloc_cpu_us`, `map_copy_cpu_us`, `record_cpu_us`, `submit_cpu_us`, `fence_wait_cpu_us`, `readback_cpu_us`, and `engine_total_cpu_us`.
+  - Attributable GPU breakdown: `gpu_upload_us`, `gpu_pass1_us`, `gpu_reduce_us`, `gpu_readback_copy_us`, and `gpu_total_us`.
+  - Explicit queue latency: `queue_wait_us = max(0, fence_wait_cpu_us - gpu_total_us)`. Here `fence_wait_cpu_us` is the inclusive CPU wait time for fence completion, while `gpu_total_us` is the exclusive GPU execution time from envelope begin to envelope end.
+  - Byte statistics: `upload_bytes`, `query_bytes`, `output_bytes`, `total_bytes`.
+- **Per-segment attribution**: Individual upload and attention samples are recorded into sample rings and categorized into standard buckets with `bulk_segment = 1`. To avoid inflating fence wait metrics in multi-segment batches, per-segment samples record `fence_wait = 0` and `submit = 0`, keeping the fence wait exclusively attributed to the bulk envelope sample.
+- **Capability fallback**: If hardware timestamp queries are unsupported or fail allocation, CPU span and byte telemetry continue operating gracefully with `gpu_timestamps: false`.
 
 Pure admission gate (no GPU):
 
