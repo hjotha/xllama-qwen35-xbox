@@ -157,20 +157,24 @@ int main() {
     assert(std::strcmp(format_mq_kernel_name(kStorageKvarn4, 2), "invalid") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageQ4, 4), "q4_mq4_balanced") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageQ8, 2), "q8_mq2_fine") == 0);
-    // Native KVarN4 revision-3 2-query tile (268): mode 2 only, nq 2..9; the
-    // F16/Q8_0 selector and names never return it.
+    // Native KVarN4 revision-3 multi-query tile (268/MQ4): mode 1 -> 4, mode 2 -> 2,
+    // nq 2..9, tail 128 only; the F16/Q8_0 selector and names never return it.
     for (uint32_t m = 0; m < kModeCount; ++m) {
         for (uint32_t nq = 0; nq <= 12; ++nq) {
-            const bool on = m == kModeOptFine && nq >= 2 && nq <= kOptMaxQueries;
-            assert(kvarn4_mq_tile(m, nq, 128) == (on ? 2u : 0u));
+            const uint32_t want = (nq >= 2 && nq <= kOptMaxQueries) ? (m == kModeOptBalanced ? 4u
+                                                                       : m == kModeOptFine   ? 2u
+                                                                                             : 0u)
+                                                                    : 0u;
+            assert(kvarn4_mq_tile(m, nq, 128) == want);
             assert(kvarn4_mq_tile(m, nq, 0) == 0);
             assert(kvarn4_mq_tile(m, nq, 64) == 0);
         }
     }
     assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 2), "kvarn4_mq2_fine") == 0);
-    assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 4), "invalid") == 0);
+    assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 4), "kvarn4_mq4_balanced") == 0);
     assert(std::strcmp(mq_kernel_name(kStorageKvarn4, 0), "invalid") == 0);
     assert(kKvarn4MqWaveLanes == 64);
+    assert(kKvarn4MqTileMax == 4);
 
     // Bucket keys separate warm decode from prefill and cold calls.
     Sample s;
@@ -204,6 +208,10 @@ int main() {
     s.q_tile = 2;
     assert(bucket_key(s) ==
            "attention/kvarn4-prefix/optimized-kvarn4_mq2_fine/nq2-16/r16k-32k/warm");
+    s.mode = 1;
+    s.q_tile = 4;
+    assert(bucket_key(s) ==
+           "attention/kvarn4-prefix/optimized-kvarn4_mq4_balanced/nq2-16/r16k-32k/warm");
     s.mode = 3;
     s.q_tile = 0;
     assert(bucket_key(s) ==
@@ -294,7 +302,10 @@ int main() {
     r.counters.fmt_mq_calls[kStorageF16][0] = 3;
     r.counters.fmt_mq_calls[kStorageQ8][1] = 11;
     h.kvarn4_mq_status = "requires wave lanes >= 64 (reported min 32)";
+    h.kvarn4_mq4_available = true;
+    h.kvarn4_mq4_status = "ready";
     r.counters.kvarn4_mq_calls = 13;
+    r.counters.kvarn4_mq4_calls = 5;
     h.memory.app_available = true;
     h.memory.app_usage_bytes = 123456789;
     h.memory.app_limit_bytes = 5ull * 1024 * 1024 * 1024;
@@ -305,11 +316,13 @@ int main() {
     assert(json.find("\"app_limit_bytes\":5368709120") != std::string::npos);
     assert(json.find("\"gpu_local_usage_bytes\":1075838976") != std::string::npos);
     assert(json.find("\"kvarn4_mq_qualified_precision_tail_tokens\":[128]") != std::string::npos);
-    assert(json.find("\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":9,"
-                     "\"descriptor_revision\":3,\"required_wave_lanes\":64,\"mode_map\":\"1:"
-                     "per-query kvarn4_gqa_balanced 2:kvarn4_mq2_fine 3:per-query "
-                     "kvarn4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"requires "
-                     "wave lanes >= 64 (reported min 32)\",\"calls\":13}}") != std::string::npos);
+    assert(
+        json.find("\"kvarn4_multi_query\":{\"nq_min\":2,\"nq_max\":9,"
+                  "\"descriptor_revision\":3,\"required_wave_lanes\":64,\"mode_map\":\"1:"
+                  "kvarn4_mq4_balanced 2:kvarn4_mq2_fine 3:per-query "
+                  "kvarn4_gqa_coarse\",\"mq2\":{\"available\":false,\"status\":\"requires "
+                  "wave lanes >= 64 (reported min 32)\",\"calls\":13},\"mq4\":{\"available\":true,"
+                  "\"status\":\"ready\",\"calls\":5}}") != std::string::npos);
     assert(json.find("\"format_multi_query\":{\"nq_min\":2,\"nq_max\":9,\"tile_rows\":64,"
                      "\"mode_map\":\"1:<fmt>_mq4_balanced 2:<fmt>_mq2_fine 3:per-query "
                      "<fmt>_gqa_coarse\",\"f16\":{\"mq2\":{\"available\":true,\"status\":"

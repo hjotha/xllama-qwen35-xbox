@@ -438,6 +438,72 @@ not be summed together. A `memory_before_destroy` log event samples the same
 values before releasing a session's buffers, outside measured attention calls.
 The diagnostic query holds no adapter references beyond the call.
 
+## Native KVarN4 multi-query prefill candidate (MQ4)
+
+Prefill segments in native bulk RPC (op 22) issue up to 8 queries per segment
+over tens of thousands of remote KV rows. While candidate 268 added a 2-query
+tile (`kvarn4_mq2_fine`) under mode 2 (`kModeOptFine`), mode 1 (`kModeOptBalanced`,
+target 128 rows, max 128 splits) now opts into a 4-query tile:
+`kvarn4_mq4_balanced` (`RKVA_MQ_QT=4`).
+
+### Mode Selection and Routing
+
+| Mode | Name               | nq 1                  | nq 2..9 (tail 128)        | Notes                                   |
+| ---- | ------------------ | --------------------- | ------------------------- | --------------------------------------- |
+| 0    | `reference`        | `reference`           | `reference`               | Reference uncompressed decode           |
+| 1    | `kModeOptBalanced` | `kvarn4_gqa_balanced` | **`kvarn4_mq4_balanced`** | Opt-in 4-query tile (prefill candidate) |
+| 2    | `kModeOptFine`     | `kvarn4_gqa_fine`     | **`kvarn4_mq2_fine`**     | Qualified 2-query tile (default)        |
+| 3    | `kModeOptCoarse`   | `kvarn4_gqa_coarse`   | `kvarn4_gqa_coarse`       | In-build A/B baseline                   |
+
+The gate requirements are identical to MQ2:
+
+- Storage is KVarN4 (`kStorageKvarn4`).
+- Descriptor revision 3 (serial-prefix) with qualified wave lanes >= 64.
+- `precision_tail_tokens == 128` (`tail=0` retains per-query kernel).
+- `2 <= n_tokens <= 9`.
+- Fail closed & graceful fallback: If `range_attn_kvarn4_mq4_pso_` is missing or fails to create, execution falls back automatically to `range_attn_kvarn4_mq_pso_` (MQ2, if available) or the per-query `range_attn_kvarn4_pso_`.
+
+### Shader Resource and Occupancy Analysis
+
+Scaling `RKVA_MQ_QT` from 2 to 4 naively would double accumulator registers and
+LDS, exceeding the RDNA2 hardware limit of 256 VGPRs and causing heavy scratch
+memory spilling. `shaders/rkva/rkva_range_attn_kvarn4_mq.hlsl` addresses this
+through four architectural techniques:
+
+1. **Constant LDS footprint (Zero Increase):**
+   The shared memory buffer `gs_vec` remains exactly 12,384 bytes (12.09 KiB),
+   identical to the 2-query tile. Queries 0..1 maintain their rotated projection in
+   `q_lo` (48 VGPRs), query 2 is staged in `gs_vec[1536..3071]`, and query 3 stays
+   in `gs_vec[0..1535]` after `wht256x6`.
+2. **Half-Tile Reduction & Score Register Reuse:**
+   Decodes 4 tokens of K and V once per half-tile; each query-head computes `s[4]`
+   locally, reducing score VGPRs from 96 down to 36.
+3. **Group Header Caching:**
+   `base`, `kscale`, `kzero`, and `vother` are cached in registers once per
+   128-row KVarN group, avoiding 8x redundant dword loads.
+4. **Split Non-Tail and Paired-Tail Residual Loops (`RKVA_PAIR_QG`):**
+   Pass 1 processes non-tail `STAGE` and `RECORD` rows across all queries while
+   `tail` registers are not yet live. Pass 2 processes `TAIL` rows in 2-query pairs,
+   dropping peak live VGPRs from ~432 down to ~228 (safely below RDNA2's 256-VGPR
+   limit with 0 register spills).
+
+### Prefill Impact
+
+At 102.4k–112.6k context (29k–40k remote rows), an 8-query prefill segment:
+
+- Reduces pass-1 dispatch groups by 2x (from 4 dispatches to 2 dispatches).
+- Reduces partial buffer writes and pass-2 reduction invocations by 2x.
+- Reuses dequantized KVarN records and WHT-transformed keys across 4 queries
+  simultaneously.
+
+### Profile Report Additions
+
+The `kvarn4_multi_query` object in `rkva-range-profile-v1` includes:
+
+- `mode_map`: `"1:kvarn4_mq4_balanced 2:kvarn4_mq2_fine 3:per-query kvarn4_gqa_coarse"`.
+- `mq4`: `{"available": bool, "status": string, "calls": uint64}`.
+- Bucket key naming: `attention/kvarn4-prefix/optimized-kvarn4_mq4_balanced/...`.
+
 ## Native KVarN4 bulk RPC (candidate 270)
 
 `RKVA_CAP_KVARN_BULK_ATTN` (bit 8) negotiates op 22,

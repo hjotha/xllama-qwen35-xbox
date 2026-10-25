@@ -258,10 +258,13 @@ class RemoteAttnEngine {
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_prefix_pso_;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_opt_prefix_pso_;
     std::string kvarn4_prefix_status_ = "not initialized";
-    // Native KVarN4 revision-3 2-query tile (268), selected only in mode 2 for nq
-    // 2..9 with the optimized prefix PSO; otherwise the per-query prefix kernel runs.
+    // Native KVarN4 revision-3 2-query (mode 2) and 4-query (mode 1) tiles for nq
+    // 2..9 with the optimized prefix PSO; a missing tile PSO falls back to the
+    // per-query prefix kernel.
     Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_mq_pso_;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> range_attn_kvarn4_mq4_pso_;
     std::string kvarn4_mq_status_ = "not initialized";
+    std::string kvarn4_mq4_status_ = "not initialized";
     std::string kvarn4_opt_prefix_status_ = "not initialized";
 
     // Profiling (default off). Timestamp slots are fixed per stage so a future
