@@ -1,0 +1,102 @@
+{
+  "server_log_sha256": "24ed8faad25f2747045ba0202b6f47814e9930d520670fd22c7a81d25ea2e272",
+  "server_log_path": "C:\\Users\\hjotha\\AppData\\Local\\Temp\\dflash-q2-parity-20260928\\dedicated-after-campaign.jsonl",
+  "modes": {
+    "gpu-sequential": {
+      "matched_rpc_calls": 205,
+      "effective_backend": "d3d12",
+      "backend_log_line": 11553,
+      "first_request_line": 11574,
+      "last_request_line": 11779,
+      "first_request": {
+        "phase": "request",
+        "cycleId": 6,
+        "op": 18,
+        "nTokens": 11,
+        "payloadBytes": 1228864,
+        "responseBytes": 102400,
+        "status": 0,
+        "mock": false,
+        "idleUs": 1070558,
+        "receiveUs": 11204,
+        "prepareUs": 941,
+        "computeUs": 113180,
+        "kvUs": 0,
+        "postUs": 323,
+        "responseUs": 110
+      },
+      "last_request": {
+        "phase": "request",
+        "cycleId": 211,
+        "op": 18,
+        "nTokens": 5,
+        "payloadBytes": 614440,
+        "responseBytes": 102400,
+        "status": 0,
+        "mock": false,
+        "idleUs": 55393,
+        "receiveUs": 5141,
+        "prepareUs": 422,
+        "computeUs": 107354,
+        "kvUs": 0,
+        "postUs": 156,
+        "responseUs": 100
+      },
+      "first_512_mean_ms": {
+        "total_cycle_us": 171.3816646706587,
+        "xbox_compute_us": 110.14904191616766,
+        "draft_rpc_us": 117.7239880239521,
+        "target_verify_us": 46.50504191616766,
+        "selector_us": 6.977041916167664
+      }
+    },
+    "gpu-pipeline": {
+      "matched_rpc_calls": 205,
+      "effective_backend": "d3d12",
+      "backend_log_line": 11553,
+      "first_request_line": 11786,
+      "last_request_line": 11995,
+      "first_request": {
+        "phase": "request",
+        "cycleId": 6,
+        "op": 18,
+        "nTokens": 11,
+        "payloadBytes": 1228864,
+        "responseBytes": 102400,
+        "status": 0,
+        "mock": false,
+        "idleUs": 793220,
+        "receiveUs": 10704,
+        "prepareUs": 854,
+        "computeUs": 112006,
+        "kvUs": 0,
+        "postUs": 336,
+        "responseUs": 107
+      },
+      "last_request": {
+        "phase": "request",
+        "cycleId": 215,
+        "op": 18,
+        "nTokens": 5,
+        "payloadBytes": 614440,
+        "responseBytes": 102400,
+        "status": 0,
+        "mock": false,
+        "idleUs": 54389,
+        "receiveUs": 5098,
+        "prepareUs": 424,
+        "computeUs": 107327,
+        "kvUs": 0,
+        "postUs": 156,
+        "responseUs": 98
+      },
+      "first_512_mean_ms": {
+        "total_cycle_us": 171.91652694610778,
+        "xbox_compute_us": 110.01088622754492,
+        "draft_rpc_us": 117.4848622754491,
+        "target_verify_us": 47.32518562874252,
+        "selector_us": 6.9310538922155684
+      }
+    }
+  }
+}

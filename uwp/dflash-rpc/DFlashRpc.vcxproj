@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C79B661C-16E5-4C27-A044-2CA6C270DC8E}</ProjectGuid>
+    <RootNamespace>XboxDFlashRpc</RootNamespace>
+    <DefaultLanguage>en-US</DefaultLanguage>
+    <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
+    <AppContainerApplication>true</AppContainerApplication>
+    <AppxPackage>true</AppxPackage>
+    <ApplicationType>Windows Store</ApplicationType>
+    <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
+    <WindowsTargetPlatformVersion>10.0.26100.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformMinVersion>10.0.19041.0</WindowsTargetPlatformMinVersion>
+    <CppWinRTGenerateWindowsMetadata>false</CppWinRTGenerateWindowsMetadata>
+    <AppxPackageSigningEnabled>false</AppxPackageSigningEnabled>
+    <AppxBundle>Never</AppxBundle>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <OutDir>$(ProjectDir)x64\Release-dflash2\</OutDir>
+    <IntDir>$(ProjectDir)DFlashRpc\x64\Release-dflash2\</IntDir>
+    <OutputPath>$(OutDir)</OutputPath>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <Optimization>MaxSpeed</Optimization>
+      <AdditionalIncludeDirectories>$(USERPROFILE)\.nuget\packages\microsoft.ai.directml\1.15.4\include;$(ProjectDir)..\..\include;$(ProjectDir)..\..\shaders\generated;$(ProjectDir)..\..\beellama.cpp\include;$(ProjectDir)..\..\beellama.cpp\src;$(ProjectDir)..\..\beellama.cpp\ggml\include;$(ProjectDir)..\..\beellama.cpp\ggml\src;$(ProjectDir)..\..\beellama.cpp\ggml\src\ggml-rpc;$(ProjectDir)..\generated;$(WindowsSdkDir)Include\$(WindowsTargetPlatformVersion)\cppwinrt;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>NOMINMAX;WIN32_LEAN_AND_MEAN;_CRT_SECURE_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;GGML_USE_CPU;GGML_STATIC;GGML_SCHED_MAX_COPIES=4;XLLAMA_DFLASH_HARDWARE_ONLY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/arch:AVX2 /utf-8 /bigobj %(AdditionalOptions)</AdditionalOptions>
+      <ObjectFileName>$(IntDir)%(RelativeDir)</ObjectFileName>
+      <ProgramDataBaseFileName>$(IntDir)DFlashRpc-dflash2.pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>WindowsApp.lib;Ws2_32.lib;Bcrypt.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="App.cpp" />
+    <ClCompile Include="dedicated.cpp" />
+    <ClCompile Include="remote-attn.cpp" />
+    <ClCompile Include="remote-attn-engine.cpp" />
+    <ClCompile Include="dflash-gpu-probe.cpp" />
+    <ClCompile Include="dflash-gpu-kv.cpp" />
+    <ClCompile Include="dflash-gpu-kv-probe.cpp" />
+    <ClCompile Include="dflash-gpu-conv-probe.cpp" />
+    <ClCompile Include="gpu-attention-probe.cpp" />
+    <ClCompile Include="dflash-gpu-engine.cpp" />
+    <ClCompile Include="dflash-gpu-sync-probe.cpp" />
+    <ClCompile Include="dflash-gpu-draft-engine.cpp" />
+    <ClCompile Include="dflash-gpu-draft-probe.cpp" />
+    <ClCompile Include="dflash-dml.cpp" />
+    <ClCompile Include="..\..\src\bridge\gpugemv.cpp" />
+    <ClCompile Include="..\..\beellama.cpp\ggml\src\ggml-rpc\ggml-rpc.cpp" />
+    <ClCompile Include="..\..\beellama.cpp\ggml\src\ggml-rpc\transport.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ggml-dflash-uwp.vcxproj">
+      <Project>{F285782C-2876-4B41-ADF4-1B1A067458DC}</Project>
+      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <SetConfiguration>Configuration=$(Configuration)</SetConfiguration>
+      <SetPlatform>Platform=$(Platform)</SetPlatform>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <AppxManifest Include="Package.appxmanifest" />
+    <None Include="$(USERPROFILE)\.nuget\packages\microsoft.ai.directml\1.15.4\bin\x64-win\DirectML.dll">
+      <DeploymentContent>true</DeploymentContent>
+      <TargetPath>DirectML.dll</TargetPath>
+    </None>
+    <Image Include="..\Assets\StoreLogo.png"><Link>Assets\StoreLogo.png</Link></Image>
+    <Image Include="..\Assets\Square150x150Logo.png"><Link>Assets\Square150x150Logo.png</Link></Image>
+    <Image Include="..\Assets\Square44x44Logo.png"><Link>Assets\Square44x44Logo.png</Link></Image>
+    <Image Include="..\Assets\Wide310x150Logo.png"><Link>Assets\Wide310x150Logo.png</Link></Image>
+    <Image Include="..\Assets\SplashScreen.png"><Link>Assets\SplashScreen.png</Link></Image>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>

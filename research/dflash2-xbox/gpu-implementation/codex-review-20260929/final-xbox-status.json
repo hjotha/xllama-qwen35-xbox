@@ -1,0 +1,6 @@
+{
+  "package": "HJotha.XboxDFlashRpc_1.0.0.82_x64__3hvcqmcd1t14m",
+  "dflash-backend.txt": "d3d12",
+  "dflash-model.txt": "dflash-q2.gguf",
+  "dflash-barrier-mode.txt": "minimal"
+}

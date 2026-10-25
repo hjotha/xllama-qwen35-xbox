@@ -1,0 +1,22 @@
+{
+  "service": {
+    "stdout": "active\n",
+    "stderr": "",
+    "exit": 0
+  },
+  "health": {
+    "stdout": "{\"status\":\"ok\"}",
+    "stderr": "",
+    "exit": 0
+  },
+  "temporary_listener": {
+    "stdout": "State Recv-Q Send-Q Local Address:Port Peer Address:PortProcess\n",
+    "stderr": "",
+    "exit": 0
+  },
+  "git_status": {
+    "stdout": "## fix/dflash-xbox-pipeline...origin/fix/dflash-xbox-pipeline\n",
+    "stderr": "",
+    "exit": 0
+  }
+}

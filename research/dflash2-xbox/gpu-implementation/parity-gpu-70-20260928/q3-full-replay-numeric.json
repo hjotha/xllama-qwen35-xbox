@@ -1,0 +1,3505 @@
+{
+  "package": "1.0.0.70",
+  "model": "dflash-q3.gguf",
+  "backend": "d3d12",
+  "source_sha256": "b55ef2a104eb37a89beb26810a31dad7a956c2039329bd41987b0b77ce58bd1f",
+  "records": [
+    {
+      "record": 0,
+      "cycle_id": 1,
+      "opcode": 1,
+      "tokens": 0,
+      "exact": true
+    },
+    {
+      "record": 1,
+      "cycle_id": 2,
+      "opcode": 2,
+      "tokens": 0,
+      "exact": true
+    },
+    {
+      "record": 2,
+      "cycle_id": 3,
+      "opcode": 6,
+      "tokens": 0,
+      "exact": true
+    },
+    {
+      "record": 3,
+      "cycle_id": 4,
+      "opcode": 7,
+      "tokens": 0,
+      "exact": true
+    },
+    {
+      "record": 4,
+      "cycle_id": 5,
+      "opcode": 3,
+      "tokens": 11,
+      "exact": true
+    },
+    {
+      "record": 5,
+      "cycle_id": 6,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 11
+    },
+    {
+      "record": 6,
+      "cycle_id": 7,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 7,
+      "cycle_id": 8,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 12
+    },
+    {
+      "record": 8,
+      "cycle_id": 9,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 9,
+      "cycle_id": 10,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 14
+    },
+    {
+      "record": 10,
+      "cycle_id": 11,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 11,
+      "cycle_id": 12,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 19
+    },
+    {
+      "record": 12,
+      "cycle_id": 13,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 13,
+      "cycle_id": 14,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8146886825561523,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24982,
+      "position": 24
+    },
+    {
+      "record": 14,
+      "cycle_id": 15,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 15,
+      "cycle_id": 16,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 29
+    },
+    {
+      "record": 16,
+      "cycle_id": 17,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 17,
+      "cycle_id": 18,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 30
+    },
+    {
+      "record": 18,
+      "cycle_id": 19,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 19,
+      "cycle_id": 20,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 33
+    },
+    {
+      "record": 20,
+      "cycle_id": 21,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 21,
+      "cycle_id": 22,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 34
+    },
+    {
+      "record": 22,
+      "cycle_id": 23,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 23,
+      "cycle_id": 24,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 38
+    },
+    {
+      "record": 24,
+      "cycle_id": 25,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 25,
+      "cycle_id": 26,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 43
+    },
+    {
+      "record": 26,
+      "cycle_id": 27,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 27,
+      "cycle_id": 28,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 48
+    },
+    {
+      "record": 28,
+      "cycle_id": 29,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 29,
+      "cycle_id": 30,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 53
+    },
+    {
+      "record": 30,
+      "cycle_id": 31,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 31,
+      "cycle_id": 32,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 54
+    },
+    {
+      "record": 32,
+      "cycle_id": 33,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 33,
+      "cycle_id": 34,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 56
+    },
+    {
+      "record": 34,
+      "cycle_id": 35,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 35,
+      "cycle_id": 36,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 57
+    },
+    {
+      "record": 36,
+      "cycle_id": 37,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 37,
+      "cycle_id": 38,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 60
+    },
+    {
+      "record": 38,
+      "cycle_id": 39,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 39,
+      "cycle_id": 40,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7918014526367188,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24962,
+      "position": 63
+    },
+    {
+      "record": 40,
+      "cycle_id": 41,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 41,
+      "cycle_id": 42,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5298147201538086,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24643,
+      "position": 68
+    },
+    {
+      "record": 42,
+      "cycle_id": 43,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 43,
+      "cycle_id": 44,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9455032348632812,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25016,
+      "position": 69
+    },
+    {
+      "record": 44,
+      "cycle_id": 45,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 45,
+      "cycle_id": 46,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6822032928466797,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24828,
+      "position": 72
+    },
+    {
+      "record": 46,
+      "cycle_id": 47,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 47,
+      "cycle_id": 48,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9266433715820312,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25035,
+      "position": 74
+    },
+    {
+      "record": 48,
+      "cycle_id": 49,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 49,
+      "cycle_id": 50,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.6108341217041016,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25105,
+      "position": 79
+    },
+    {
+      "record": 50,
+      "cycle_id": 51,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 51,
+      "cycle_id": 52,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2792682647705078,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23241,
+      "position": 80
+    },
+    {
+      "record": 52,
+      "cycle_id": 53,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 53,
+      "cycle_id": 54,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6975505352020264,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24981,
+      "position": 84
+    },
+    {
+      "record": 54,
+      "cycle_id": 55,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 55,
+      "cycle_id": 56,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5097116976976395,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24881,
+      "position": 88
+    },
+    {
+      "record": 56,
+      "cycle_id": 57,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 57,
+      "cycle_id": 58,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 92
+    },
+    {
+      "record": 58,
+      "cycle_id": 59,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 59,
+      "cycle_id": 60,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.7369403839111328,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25025,
+      "position": 94
+    },
+    {
+      "record": 60,
+      "cycle_id": 61,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 61,
+      "cycle_id": 62,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.40651893615722656,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24417,
+      "position": 96
+    },
+    {
+      "record": 62,
+      "cycle_id": 63,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 63,
+      "cycle_id": 64,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6251983642578125,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24617,
+      "position": 98
+    },
+    {
+      "record": 64,
+      "cycle_id": 65,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 65,
+      "cycle_id": 66,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.926295280456543,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25007,
+      "position": 99
+    },
+    {
+      "record": 66,
+      "cycle_id": 67,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 67,
+      "cycle_id": 68,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0279746800661087,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25014,
+      "position": 104
+    },
+    {
+      "record": 68,
+      "cycle_id": 69,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 69,
+      "cycle_id": 70,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6800003051757812,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24972,
+      "position": 109
+    },
+    {
+      "record": 70,
+      "cycle_id": 71,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 71,
+      "cycle_id": 72,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.207226276397705,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24793,
+      "position": 113
+    },
+    {
+      "record": 72,
+      "cycle_id": 73,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 73,
+      "cycle_id": 74,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6953029632568359,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24950,
+      "position": 115
+    },
+    {
+      "record": 74,
+      "cycle_id": 75,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 75,
+      "cycle_id": 76,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6373517513275146,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25017,
+      "position": 116
+    },
+    {
+      "record": 76,
+      "cycle_id": 77,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 77,
+      "cycle_id": 78,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7978434562683105,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25064,
+      "position": 118
+    },
+    {
+      "record": 78,
+      "cycle_id": 79,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 79,
+      "cycle_id": 80,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8505592346191406,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25037,
+      "position": 119
+    },
+    {
+      "record": 80,
+      "cycle_id": 81,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 81,
+      "cycle_id": 82,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 120
+    },
+    {
+      "record": 82,
+      "cycle_id": 83,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 83,
+      "cycle_id": 84,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 121
+    },
+    {
+      "record": 84,
+      "cycle_id": 85,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 85,
+      "cycle_id": 86,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5768680572509766,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24533,
+      "position": 122
+    },
+    {
+      "record": 86,
+      "cycle_id": 87,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 87,
+      "cycle_id": 88,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 127
+    },
+    {
+      "record": 88,
+      "cycle_id": 89,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 89,
+      "cycle_id": 90,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.40930747985839844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24499,
+      "position": 132
+    },
+    {
+      "record": 90,
+      "cycle_id": 91,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 91,
+      "cycle_id": 92,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3479499816894531,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23998,
+      "position": 133
+    },
+    {
+      "record": 92,
+      "cycle_id": 93,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 93,
+      "cycle_id": 94,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.224466323852539,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24984,
+      "position": 135
+    },
+    {
+      "record": 94,
+      "cycle_id": 95,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 95,
+      "cycle_id": 96,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 137
+    },
+    {
+      "record": 96,
+      "cycle_id": 97,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 97,
+      "cycle_id": 98,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2791004180908203,
+      "different": 25599,
+      "nonfinite": 0,
+      "outside_tolerance": 23709,
+      "position": 141
+    },
+    {
+      "record": 98,
+      "cycle_id": 99,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 99,
+      "cycle_id": 100,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 144
+    },
+    {
+      "record": 100,
+      "cycle_id": 101,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 101,
+      "cycle_id": 102,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 149
+    },
+    {
+      "record": 102,
+      "cycle_id": 103,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 103,
+      "cycle_id": 104,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.001055002212524414,
+      "different": 19618,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 154
+    },
+    {
+      "record": 104,
+      "cycle_id": 105,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 105,
+      "cycle_id": 106,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4691276550292969,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24412,
+      "position": 156
+    },
+    {
+      "record": 106,
+      "cycle_id": 107,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 107,
+      "cycle_id": 108,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6311616897583008,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24896,
+      "position": 157
+    },
+    {
+      "record": 108,
+      "cycle_id": 109,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 109,
+      "cycle_id": 110,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 160
+    },
+    {
+      "record": 110,
+      "cycle_id": 111,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 111,
+      "cycle_id": 112,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.48233509063720703,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24422,
+      "position": 164
+    },
+    {
+      "record": 112,
+      "cycle_id": 113,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 113,
+      "cycle_id": 114,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9678668975830078,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25107,
+      "position": 166
+    },
+    {
+      "record": 114,
+      "cycle_id": 115,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 115,
+      "cycle_id": 116,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.18052959442138672,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23766,
+      "position": 171
+    },
+    {
+      "record": 116,
+      "cycle_id": 117,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 117,
+      "cycle_id": 118,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.782928466796875,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24932,
+      "position": 175
+    },
+    {
+      "record": 118,
+      "cycle_id": 119,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 119,
+      "cycle_id": 120,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9317970275878906,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24843,
+      "position": 180
+    },
+    {
+      "record": 120,
+      "cycle_id": 121,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 121,
+      "cycle_id": 122,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6664600372314453,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24777,
+      "position": 183
+    },
+    {
+      "record": 122,
+      "cycle_id": 123,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 123,
+      "cycle_id": 124,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 8.58306884765625e-06,
+      "different": 9102,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 186
+    },
+    {
+      "record": 124,
+      "cycle_id": 125,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 125,
+      "cycle_id": 126,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7905707359313965,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25005,
+      "position": 187
+    },
+    {
+      "record": 126,
+      "cycle_id": 127,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 127,
+      "cycle_id": 128,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 190
+    },
+    {
+      "record": 128,
+      "cycle_id": 129,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 129,
+      "cycle_id": 130,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.23212623596191406,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23731,
+      "position": 195
+    },
+    {
+      "record": 130,
+      "cycle_id": 131,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 131,
+      "cycle_id": 132,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.24110126495361328,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23578,
+      "position": 200
+    },
+    {
+      "record": 132,
+      "cycle_id": 133,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 133,
+      "cycle_id": 134,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7700080871582031,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24711,
+      "position": 205
+    },
+    {
+      "record": 134,
+      "cycle_id": 135,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 135,
+      "cycle_id": 136,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8583126068115234,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24786,
+      "position": 207
+    },
+    {
+      "record": 136,
+      "cycle_id": 137,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 137,
+      "cycle_id": 138,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 209
+    },
+    {
+      "record": 138,
+      "cycle_id": 139,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 139,
+      "cycle_id": 140,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3942680358886719,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24458,
+      "position": 212
+    },
+    {
+      "record": 140,
+      "cycle_id": 141,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 141,
+      "cycle_id": 142,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 214
+    },
+    {
+      "record": 142,
+      "cycle_id": 143,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 143,
+      "cycle_id": 144,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5790061950683594,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24971,
+      "position": 216
+    },
+    {
+      "record": 144,
+      "cycle_id": 145,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 145,
+      "cycle_id": 146,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4394683837890625,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24353,
+      "position": 217
+    },
+    {
+      "record": 146,
+      "cycle_id": 147,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 147,
+      "cycle_id": 148,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8036794662475586,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24928,
+      "position": 218
+    },
+    {
+      "record": 148,
+      "cycle_id": 149,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 149,
+      "cycle_id": 150,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.048915863037109375,
+      "different": 5120,
+      "nonfinite": 0,
+      "outside_tolerance": 3798,
+      "position": 219
+    },
+    {
+      "record": 150,
+      "cycle_id": 151,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 151,
+      "cycle_id": 152,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": true,
+      "max_abs": 0.0,
+      "different": 0,
+      "nonfinite": 0,
+      "outside_tolerance": 0,
+      "position": 222
+    },
+    {
+      "record": 152,
+      "cycle_id": 153,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 153,
+      "cycle_id": 154,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9181962013244629,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24919,
+      "position": 223
+    },
+    {
+      "record": 154,
+      "cycle_id": 155,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 155,
+      "cycle_id": 156,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5798200368881226,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24829,
+      "position": 226
+    },
+    {
+      "record": 156,
+      "cycle_id": 157,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 157,
+      "cycle_id": 158,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.231966495513916,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24885,
+      "position": 230
+    },
+    {
+      "record": 158,
+      "cycle_id": 159,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 159,
+      "cycle_id": 160,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7076330184936523,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24778,
+      "position": 231
+    },
+    {
+      "record": 160,
+      "cycle_id": 161,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 161,
+      "cycle_id": 162,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7749123573303223,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24689,
+      "position": 232
+    },
+    {
+      "record": 162,
+      "cycle_id": 163,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 163,
+      "cycle_id": 164,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7022924423217773,
+      "different": 25599,
+      "nonfinite": 0,
+      "outside_tolerance": 24874,
+      "position": 233
+    },
+    {
+      "record": 164,
+      "cycle_id": 165,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 165,
+      "cycle_id": 166,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3580436706542969,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24335,
+      "position": 236
+    },
+    {
+      "record": 166,
+      "cycle_id": 167,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 167,
+      "cycle_id": 168,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.37582874298095703,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24363,
+      "position": 237
+    },
+    {
+      "record": 168,
+      "cycle_id": 169,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 169,
+      "cycle_id": 170,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6686506271362305,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24907,
+      "position": 242
+    },
+    {
+      "record": 170,
+      "cycle_id": 171,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 171,
+      "cycle_id": 172,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2219552993774414,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23966,
+      "position": 244
+    },
+    {
+      "record": 172,
+      "cycle_id": 173,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 173,
+      "cycle_id": 174,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.247955322265625,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23963,
+      "position": 245
+    },
+    {
+      "record": 174,
+      "cycle_id": 175,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 175,
+      "cycle_id": 176,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6716151237487793,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24964,
+      "position": 248
+    },
+    {
+      "record": 176,
+      "cycle_id": 177,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 177,
+      "cycle_id": 178,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.29595947265625,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24195,
+      "position": 252
+    },
+    {
+      "record": 178,
+      "cycle_id": 179,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 179,
+      "cycle_id": 180,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3251868188381195,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24412,
+      "position": 254
+    },
+    {
+      "record": 180,
+      "cycle_id": 181,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 181,
+      "cycle_id": 182,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6022729873657227,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24718,
+      "position": 256
+    },
+    {
+      "record": 182,
+      "cycle_id": 183,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 183,
+      "cycle_id": 184,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4605064392089844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24513,
+      "position": 261
+    },
+    {
+      "record": 184,
+      "cycle_id": 185,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 185,
+      "cycle_id": 186,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8449711799621582,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24892,
+      "position": 266
+    },
+    {
+      "record": 186,
+      "cycle_id": 187,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 187,
+      "cycle_id": 188,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6431007385253906,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24654,
+      "position": 267
+    },
+    {
+      "record": 188,
+      "cycle_id": 189,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 189,
+      "cycle_id": 190,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.61224365234375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24441,
+      "position": 268
+    },
+    {
+      "record": 190,
+      "cycle_id": 191,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 191,
+      "cycle_id": 192,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.32601165771484375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24530,
+      "position": 270
+    },
+    {
+      "record": 192,
+      "cycle_id": 193,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 193,
+      "cycle_id": 194,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7202434539794922,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25045,
+      "position": 271
+    },
+    {
+      "record": 194,
+      "cycle_id": 195,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 195,
+      "cycle_id": 196,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.504669189453125,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24432,
+      "position": 275
+    },
+    {
+      "record": 196,
+      "cycle_id": 197,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 197,
+      "cycle_id": 198,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.896331787109375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24951,
+      "position": 276
+    },
+    {
+      "record": 198,
+      "cycle_id": 199,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 199,
+      "cycle_id": 200,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7334814071655273,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24918,
+      "position": 279
+    },
+    {
+      "record": 200,
+      "cycle_id": 201,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 201,
+      "cycle_id": 202,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7176151275634766,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24939,
+      "position": 280
+    },
+    {
+      "record": 202,
+      "cycle_id": 203,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 203,
+      "cycle_id": 204,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6025562286376953,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24750,
+      "position": 283
+    },
+    {
+      "record": 204,
+      "cycle_id": 205,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 205,
+      "cycle_id": 206,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7345361709594727,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25061,
+      "position": 285
+    },
+    {
+      "record": 206,
+      "cycle_id": 207,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 207,
+      "cycle_id": 208,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7440704107284546,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24996,
+      "position": 286
+    },
+    {
+      "record": 208,
+      "cycle_id": 209,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 209,
+      "cycle_id": 210,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4749107360839844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24564,
+      "position": 288
+    },
+    {
+      "record": 210,
+      "cycle_id": 211,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 211,
+      "cycle_id": 212,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8297843933105469,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24969,
+      "position": 290
+    },
+    {
+      "record": 212,
+      "cycle_id": 213,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 213,
+      "cycle_id": 214,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5498547554016113,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24570,
+      "position": 294
+    },
+    {
+      "record": 214,
+      "cycle_id": 215,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 215,
+      "cycle_id": 216,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6099262237548828,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24882,
+      "position": 296
+    },
+    {
+      "record": 216,
+      "cycle_id": 217,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 217,
+      "cycle_id": 218,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.4392108917236328,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25162,
+      "position": 297
+    },
+    {
+      "record": 218,
+      "cycle_id": 219,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 219,
+      "cycle_id": 220,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0708286762237549,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25090,
+      "position": 300
+    },
+    {
+      "record": 220,
+      "cycle_id": 221,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 221,
+      "cycle_id": 222,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.609959602355957,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24872,
+      "position": 302
+    },
+    {
+      "record": 222,
+      "cycle_id": 223,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 223,
+      "cycle_id": 224,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0585823059082031,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24950,
+      "position": 303
+    },
+    {
+      "record": 224,
+      "cycle_id": 225,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 225,
+      "cycle_id": 226,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.233837604522705,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25093,
+      "position": 305
+    },
+    {
+      "record": 226,
+      "cycle_id": 227,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 227,
+      "cycle_id": 228,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.2718324661254883,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25088,
+      "position": 307
+    },
+    {
+      "record": 228,
+      "cycle_id": 229,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 229,
+      "cycle_id": 230,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.47728490829467773,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24685,
+      "position": 310
+    },
+    {
+      "record": 230,
+      "cycle_id": 231,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 231,
+      "cycle_id": 232,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6364603042602539,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24675,
+      "position": 311
+    },
+    {
+      "record": 232,
+      "cycle_id": 233,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 233,
+      "cycle_id": 234,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5822360515594482,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24753,
+      "position": 313
+    },
+    {
+      "record": 234,
+      "cycle_id": 235,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 235,
+      "cycle_id": 236,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5259361267089844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24757,
+      "position": 318
+    },
+    {
+      "record": 236,
+      "cycle_id": 237,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 237,
+      "cycle_id": 238,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3421974182128906,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24356,
+      "position": 322
+    },
+    {
+      "record": 238,
+      "cycle_id": 239,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 239,
+      "cycle_id": 240,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6371773928403854,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24913,
+      "position": 326
+    },
+    {
+      "record": 240,
+      "cycle_id": 241,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 241,
+      "cycle_id": 242,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7218971252441406,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24848,
+      "position": 327
+    },
+    {
+      "record": 242,
+      "cycle_id": 243,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 243,
+      "cycle_id": 244,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.134903907775879,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24870,
+      "position": 328
+    },
+    {
+      "record": 244,
+      "cycle_id": 245,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 245,
+      "cycle_id": 246,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.4365179538726807,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25019,
+      "position": 330
+    },
+    {
+      "record": 246,
+      "cycle_id": 247,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 247,
+      "cycle_id": 248,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4851256012916565,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24470,
+      "position": 332
+    },
+    {
+      "record": 248,
+      "cycle_id": 249,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 249,
+      "cycle_id": 250,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.42925453186035156,
+      "different": 25599,
+      "nonfinite": 0,
+      "outside_tolerance": 24533,
+      "position": 334
+    },
+    {
+      "record": 250,
+      "cycle_id": 251,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 251,
+      "cycle_id": 252,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.424471378326416,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24751,
+      "position": 336
+    },
+    {
+      "record": 252,
+      "cycle_id": 253,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 253,
+      "cycle_id": 254,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.1973714828491211,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23818,
+      "position": 339
+    },
+    {
+      "record": 254,
+      "cycle_id": 255,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 255,
+      "cycle_id": 256,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8072071075439453,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24826,
+      "position": 341
+    },
+    {
+      "record": 256,
+      "cycle_id": 257,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 257,
+      "cycle_id": 258,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7445487976074219,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24829,
+      "position": 345
+    },
+    {
+      "record": 258,
+      "cycle_id": 259,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 259,
+      "cycle_id": 260,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7170801162719727,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24928,
+      "position": 350
+    },
+    {
+      "record": 260,
+      "cycle_id": 261,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 261,
+      "cycle_id": 262,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5684661865234375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24624,
+      "position": 354
+    },
+    {
+      "record": 262,
+      "cycle_id": 263,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 263,
+      "cycle_id": 264,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.1403250694274902,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25085,
+      "position": 355
+    },
+    {
+      "record": 264,
+      "cycle_id": 265,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 265,
+      "cycle_id": 266,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.22243785858154297,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23734,
+      "position": 356
+    },
+    {
+      "record": 266,
+      "cycle_id": 267,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 267,
+      "cycle_id": 268,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6181169152259827,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24867,
+      "position": 360
+    },
+    {
+      "record": 268,
+      "cycle_id": 269,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 269,
+      "cycle_id": 270,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.072174072265625,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 21194,
+      "position": 364
+    },
+    {
+      "record": 270,
+      "cycle_id": 271,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 271,
+      "cycle_id": 272,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7881593704223633,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25121,
+      "position": 369
+    },
+    {
+      "record": 272,
+      "cycle_id": 273,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 273,
+      "cycle_id": 274,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.40566062927246094,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24706,
+      "position": 374
+    },
+    {
+      "record": 274,
+      "cycle_id": 275,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 275,
+      "cycle_id": 276,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3912162780761719,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24324,
+      "position": 377
+    },
+    {
+      "record": 276,
+      "cycle_id": 277,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 277,
+      "cycle_id": 278,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0967826843261719,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25078,
+      "position": 382
+    },
+    {
+      "record": 278,
+      "cycle_id": 279,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 279,
+      "cycle_id": 280,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7670725584030151,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24966,
+      "position": 384
+    },
+    {
+      "record": 280,
+      "cycle_id": 281,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 281,
+      "cycle_id": 282,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8538169860839844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24864,
+      "position": 386
+    },
+    {
+      "record": 282,
+      "cycle_id": 283,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 283,
+      "cycle_id": 284,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0610542297363281,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24936,
+      "position": 387
+    },
+    {
+      "record": 284,
+      "cycle_id": 285,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 285,
+      "cycle_id": 286,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9837207794189453,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24860,
+      "position": 392
+    },
+    {
+      "record": 286,
+      "cycle_id": 287,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 287,
+      "cycle_id": 288,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8832359313964844,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24784,
+      "position": 393
+    },
+    {
+      "record": 288,
+      "cycle_id": 289,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 289,
+      "cycle_id": 290,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0096244812011719,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25104,
+      "position": 397
+    },
+    {
+      "record": 290,
+      "cycle_id": 291,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 291,
+      "cycle_id": 292,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5957040786743164,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24760,
+      "position": 402
+    },
+    {
+      "record": 292,
+      "cycle_id": 293,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 293,
+      "cycle_id": 294,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4000377655029297,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24272,
+      "position": 404
+    },
+    {
+      "record": 294,
+      "cycle_id": 295,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 295,
+      "cycle_id": 296,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.1971654891967773,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 25108,
+      "position": 405
+    },
+    {
+      "record": 296,
+      "cycle_id": 297,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 297,
+      "cycle_id": 298,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.26547813415527344,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 22822,
+      "position": 410
+    },
+    {
+      "record": 298,
+      "cycle_id": 299,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 299,
+      "cycle_id": 300,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6922054290771484,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24914,
+      "position": 415
+    },
+    {
+      "record": 300,
+      "cycle_id": 301,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 301,
+      "cycle_id": 302,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5839920043945312,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24787,
+      "position": 417
+    },
+    {
+      "record": 302,
+      "cycle_id": 303,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 303,
+      "cycle_id": 304,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9484875798225403,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24912,
+      "position": 418
+    },
+    {
+      "record": 304,
+      "cycle_id": 305,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 305,
+      "cycle_id": 306,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7508087158203125,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24966,
+      "position": 419
+    },
+    {
+      "record": 306,
+      "cycle_id": 307,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 307,
+      "cycle_id": 308,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.1972951889038086,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23663,
+      "position": 424
+    },
+    {
+      "record": 308,
+      "cycle_id": 309,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 309,
+      "cycle_id": 310,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2935218811035156,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24270,
+      "position": 426
+    },
+    {
+      "record": 310,
+      "cycle_id": 311,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 311,
+      "cycle_id": 312,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.9045463427901268,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24964,
+      "position": 429
+    },
+    {
+      "record": 312,
+      "cycle_id": 313,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 313,
+      "cycle_id": 314,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.96331787109375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24878,
+      "position": 430
+    },
+    {
+      "record": 314,
+      "cycle_id": 315,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 315,
+      "cycle_id": 316,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6229743957519531,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24529,
+      "position": 432
+    },
+    {
+      "record": 316,
+      "cycle_id": 317,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 317,
+      "cycle_id": 318,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.65558260679245,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24857,
+      "position": 433
+    },
+    {
+      "record": 318,
+      "cycle_id": 319,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 319,
+      "cycle_id": 320,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.400238037109375,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24252,
+      "position": 436
+    },
+    {
+      "record": 320,
+      "cycle_id": 321,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 321,
+      "cycle_id": 322,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0431461334228516,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24872,
+      "position": 438
+    },
+    {
+      "record": 322,
+      "cycle_id": 323,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 323,
+      "cycle_id": 324,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3819913864135742,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24291,
+      "position": 439
+    },
+    {
+      "record": 324,
+      "cycle_id": 325,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 325,
+      "cycle_id": 326,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.08388328552246094,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 21902,
+      "position": 442
+    },
+    {
+      "record": 326,
+      "cycle_id": 327,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 327,
+      "cycle_id": 328,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.078399658203125,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24847,
+      "position": 443
+    },
+    {
+      "record": 328,
+      "cycle_id": 329,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 329,
+      "cycle_id": 330,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.20317459106445312,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 23503,
+      "position": 446
+    },
+    {
+      "record": 330,
+      "cycle_id": 331,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 331,
+      "cycle_id": 332,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.40677452087402344,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24286,
+      "position": 448
+    },
+    {
+      "record": 332,
+      "cycle_id": 333,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 333,
+      "cycle_id": 334,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6759834289550781,
+      "different": 25599,
+      "nonfinite": 0,
+      "outside_tolerance": 24600,
+      "position": 452
+    },
+    {
+      "record": 334,
+      "cycle_id": 335,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 335,
+      "cycle_id": 336,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2729063034057617,
+      "different": 25599,
+      "nonfinite": 0,
+      "outside_tolerance": 23439,
+      "position": 457
+    },
+    {
+      "record": 336,
+      "cycle_id": 337,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 337,
+      "cycle_id": 338,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.7950913906097412,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24900,
+      "position": 462
+    },
+    {
+      "record": 338,
+      "cycle_id": 339,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 339,
+      "cycle_id": 340,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.6108827590942383,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24949,
+      "position": 464
+    },
+    {
+      "record": 340,
+      "cycle_id": 341,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 341,
+      "cycle_id": 342,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.2975902557373047,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24235,
+      "position": 466
+    },
+    {
+      "record": 342,
+      "cycle_id": 343,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 343,
+      "cycle_id": 344,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.3391561508178711,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24359,
+      "position": 471
+    },
+    {
+      "record": 344,
+      "cycle_id": 345,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 345,
+      "cycle_id": 346,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.12160682678222656,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 22188,
+      "position": 475
+    },
+    {
+      "record": 346,
+      "cycle_id": 347,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 347,
+      "cycle_id": 348,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0563087463378906,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24896,
+      "position": 480
+    },
+    {
+      "record": 348,
+      "cycle_id": 349,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 349,
+      "cycle_id": 350,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.60516357421875,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24851,
+      "position": 481
+    },
+    {
+      "record": 350,
+      "cycle_id": 351,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 351,
+      "cycle_id": 352,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8357820510864258,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24890,
+      "position": 486
+    },
+    {
+      "record": 352,
+      "cycle_id": 353,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 353,
+      "cycle_id": 354,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.33447134494781494,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24474,
+      "position": 491
+    },
+    {
+      "record": 354,
+      "cycle_id": 355,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 355,
+      "cycle_id": 356,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8438682556152344,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24973,
+      "position": 494
+    },
+    {
+      "record": 356,
+      "cycle_id": 357,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 357,
+      "cycle_id": 358,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.8375568389892578,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24927,
+      "position": 499
+    },
+    {
+      "record": 358,
+      "cycle_id": 359,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 359,
+      "cycle_id": 360,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4739265441894531,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24802,
+      "position": 504
+    },
+    {
+      "record": 360,
+      "cycle_id": 361,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 361,
+      "cycle_id": 362,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.6265091896057129,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24893,
+      "position": 508
+    },
+    {
+      "record": 362,
+      "cycle_id": 363,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 363,
+      "cycle_id": 364,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.4013690948486328,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24598,
+      "position": 513
+    },
+    {
+      "record": 364,
+      "cycle_id": 365,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 365,
+      "cycle_id": 366,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 0.5125808715820312,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24583,
+      "position": 517
+    },
+    {
+      "record": 366,
+      "cycle_id": 367,
+      "opcode": 7,
+      "tokens": 5,
+      "exact": true
+    },
+    {
+      "record": 367,
+      "cycle_id": 368,
+      "opcode": 4,
+      "tokens": 5,
+      "exact": false,
+      "max_abs": 1.0028495788574219,
+      "different": 25600,
+      "nonfinite": 0,
+      "outside_tolerance": 24865,
+      "position": 519
+    },
+    {
+      "record": 368,
+      "cycle_id": 369,
+      "opcode": 7,
+      "tokens": 3,
+      "exact": true
+    }
+  ],
+  "source": {
+    "path": "C:\\Users\\hjotha\\AppData\\Local\\Temp\\dflash-q2-parity-20260928\\q3-gpu-70-full-numeric.json",
+    "sha256": "f6b65a4153e1c743a3fec7b81134a08413d7ffdbaa6f232641e107fb905d20ab"
+  }
+}

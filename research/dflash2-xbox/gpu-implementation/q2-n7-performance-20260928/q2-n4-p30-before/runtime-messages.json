@@ -1,0 +1,8 @@
+{
+  "gpu-sequential-server.log": [
+    "0.08.251.063 I DFlash2 Xbox fused TRIM/SYNC: enabled",
+    "0.08.251.263 I DFlash2 Xbox fused SYNC/DRAFT: enabled",
+    "0.08.251.266 I DFlash2 Xbox async pre-draft pipeline: disabled",
+    "0.08.253.083 I DFlash2 Xbox RPC connected to 192.168.1.26:50053 (protocol=2, model_bytes=705430880, ctx=49152)"
+  ]
+}
