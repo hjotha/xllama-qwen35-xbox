@@ -6,6 +6,7 @@
 #ifdef XLLAMA_UWP
 
     #include "chat-history.h"
+    #include "dashboard.h"
     #include "inference-bridge.h"
     #include "model-downloader.h"
     #include "pch.h"
@@ -87,6 +88,15 @@ class MainPageController : public std::enable_shared_from_this<MainPageControlle
     void SetRunning(bool running);
     void FlushTokenBuffer(); // flush m_token_buffer to RichTextBlock on UI thread
 
+    // TV dashboard (the default surface; the chat view stays one press away).
+    void ShowDashboard();
+    void ShowChatView();
+    void RefreshDashboard(); // 1 Hz DispatcherTimer tick
+    ui::DashboardInputs BuildDashboardInputs();
+    // Clear per-turn TPS/context values when the conversation changes or a new
+    // turn starts, so the dashboard never labels an old turn as current.
+    void ResetDashboardTurnMetrics();
+
     // Multi-turn chat
     void NewChat();
     winrt::fire_and_forget ShowHistory();
@@ -166,8 +176,30 @@ class MainPageController : public std::enable_shared_from_this<MainPageControlle
     winrt::Windows::UI::Xaml::Controls::Button m_historyButton{nullptr};
     winrt::Windows::UI::Xaml::Controls::Button m_settingsButton{nullptr};
     winrt::Windows::UI::Xaml::Controls::Button m_imageButton{nullptr};
+    winrt::Windows::UI::Xaml::Controls::Button m_dashboardButton{nullptr};
     winrt::Windows::UI::Xaml::DispatcherTimer m_flush_timer{nullptr};
     winrt::event_token m_flush_tick_token{};
+
+    // TV dashboard: a second root view over the same controller. The dashboard
+    // is the default surface; the chat grid is kept intact and hidden.
+    winrt::Windows::UI::Xaml::Controls::Grid m_viewHost{nullptr};
+    winrt::Windows::UI::Xaml::Controls::Grid m_chatView{nullptr};
+    std::unique_ptr<::xllama::ui::Dashboard> m_dashboard;
+    winrt::Windows::UI::Xaml::DispatcherTimer m_dashboardTimer{nullptr};
+    winrt::event_token m_dashboard_tick_token{};
+    bool m_dashboard_visible{true};
+    StatusKind m_status_kind{StatusKind::Info};
+    // Local turn measurements. These are the only TPS values the dashboard may
+    // show without the host endpoint; they are never used while RKVA is in a
+    // split session.
+    double m_live_decode_tps{0.0};
+    double m_last_prefill_tps{0.0};
+    double m_last_decode_tps{0.0};
+    bool m_local_turn_fresh{false};
+    int m_last_prompt_tokens{0};
+    size_t m_last_peak_mb{0};
+    int m_dash_ctx_capacity{0};
+    std::chrono::steady_clock::time_point m_app_started_at{};
 
     // The persistent inference session lives in xllama::session_hub() — one
     // process-wide owner shared with the LAN API ("never 2× model in RAM").

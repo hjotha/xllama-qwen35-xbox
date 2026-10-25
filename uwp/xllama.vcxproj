@@ -363,6 +363,7 @@
     <ClCompile Include="rkva\remote-attn.cpp" Condition="'$(XllamaStoreSku)' != 'true'" />
     <ClCompile Include="rkva\remote-attn-engine.cpp" Condition="'$(XllamaStoreSku)' != 'true'" />
     <ClCompile Include="chat-history.cpp" />
+    <ClCompile Include="dashboard.cpp" />
     <ClCompile Include="MainPage.cpp" />
     <ClCompile Include="model-downloader.cpp" />
     <!-- module.cpp includes Generated Files\module.g.cpp (cppwinrt 2.0 factory
@@ -381,7 +382,7 @@
   </ItemDefinitionGroup>
   <ItemGroup Condition="'$(XllamaIteration)' == 'true'">
     <ClCompile Include="pch.cpp"><PrecompiledHeader>Create</PrecompiledHeader><Optimization>Disabled</Optimization></ClCompile>
-    <ClCompile Update="App.cpp;MainPage.cpp;module.cpp;api-server.cpp;chat-history.cpp;model-downloader.cpp;native_capture.cpp">
+    <ClCompile Update="App.cpp;MainPage.cpp;dashboard.cpp;module.cpp;api-server.cpp;chat-history.cpp;model-downloader.cpp;native_capture.cpp">
       <PrecompiledHeader>Use</PrecompiledHeader>
       <ForcedIncludeFiles>pch.h;%(ForcedIncludeFiles)</ForcedIncludeFiles>
       <Optimization>Disabled</Optimization>

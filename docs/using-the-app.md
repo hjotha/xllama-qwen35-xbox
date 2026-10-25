@@ -14,11 +14,64 @@ chat model (**LFM2.5-350M** QAD Q4_0, ~219 MB download, on unified shipping
 builds; ORT-only builds still use SmolLM2-360M-Instruct INT4, ~421 MB) from the
 allowlisted catalogue (`uwp/models/manifest.json`; LiquidAI Hugging Face for the
 default LFM) with a progress bar, writes it to `LocalState\models\`, and opens
-the chat.
+the **server dashboard**. Press **Open chat** to reach the chat surface
+described below.
 The console needs internet access for this step; afterwards everything runs
 offline. If the download fails, provisioning via Device Portal or USB
 (`E:\xllama\models\<name>`) is described in
 [model-selection.md](./model-selection.md).
+
+## Server dashboard (default screen)
+
+The console is meant to sit on a shelf and serve a host, so the first screen is
+a read-only TV dashboard rather than a prompt box. It shows the model (host
+alias in a split session, local selection otherwise), online/offline/error
+status, a large decode rate, a fixed five-minute history with **decode and
+prefill on separate rows and scales**, app memory, context, and the
+network/activity state. History is kept in memory only (300 one-second
+samples); a background sampler does the I/O and the UI repaints at 1 Hz.
+
+Metric sources are deliberate:
+
+- **Decode / prefill tok/s** — while the RKVA listener has a host connected, the
+  only accepted source is the host `llama-server` Prometheus endpoint
+  (`llamacpp:predicted_tokens_seconds` / `llamacpp:prompt_tokens_seconds`).
+  These are end-to-end host rates. The console's RPC/attention counters are
+  link activity, not tokens, and are never substituted. Without the endpoint
+  the hero shows `--` and says the host metrics are unavailable.
+- **Local decode / prefill** — a completed chat turn measured on this console
+  (`n_eval/t_eval_ms`, `n_p_eval/t_p_eval_ms`). This is used only when RKVA is
+  not in a split session. Requests served purely through the LAN API are not
+  fed into this dashboard card.
+- **Memory** — `Windows.System.MemoryManager` app usage and app limit.
+- **Context** — in a split session, the host's `llamacpp:n_tokens_max`
+  high-watermark against the host `n_ctx` from `/props` (labelled **peak**, not
+  current KV occupancy); otherwise the resident session's exact `n_ctx` and the
+  exact prompt-token count of the last local turn. Never a chars/token estimate.
+- **Network / activity** — LAN API state from `server_status()`, RKVA listener /
+  host-connection state tailed from `LocalState\remote-attn.jsonl`, and app
+  uptime. No prompt or conversation content is read or displayed.
+
+Optional host endpoint. Create `LocalState\dashboard.json`:
+
+```json
+{ "host_metrics_url": "http://192.168.1.57:8090/metrics" }
+```
+
+This is a read-only HTTP GET every 10 seconds (0.1 Hz), using the same LAN capability the API
+listener already needs, with no credentials stored and no new inbound route.
+The URL must end in `/metrics` (a router-mode `?model=<id>` query is kept).
+The host must run `llama-server` with `--metrics` (plan 010); the same base is
+queried at `/props` every 30 seconds
+for the host model alias and `n_ctx` (an existing llama-server endpoint, no
+credentials). A missing file, unreachable URL, or missing metric is rendered as
+unavailable, never guessed. In a split session the header names the host model
+from `/props`; if that read fails it says the model is not exposed.
+If the host is protected by an API key, this read-only client is unsupported
+and the card stays unavailable; no header or token is invented.
+
+Gamepad: **Open chat** enters the existing chat surface, and **Y** does the
+same; **Dashboard** in the chat toolbar returns here.
 
 ## Chat
 

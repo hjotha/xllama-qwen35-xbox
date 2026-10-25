@@ -34,6 +34,9 @@
     <ClCompile Include="MainPage.cpp">
       <Filter>xllama</Filter>
     </ClCompile>
+    <ClCompile Include="dashboard.cpp">
+      <Filter>xllama</Filter>
+    </ClCompile>
     <ClCompile Include="llama-bridge.cpp">
       <Filter>xllama</Filter>
     </ClCompile>
@@ -209,6 +212,9 @@
       <Filter>xllama</Filter>
     </ClInclude>
     <ClInclude Include="MainPage.h">
+      <Filter>xllama</Filter>
+    </ClInclude>
+    <ClInclude Include="dashboard.h">
       <Filter>xllama</Filter>
     </ClInclude>
     <ClInclude Include="llama-bridge.h">
