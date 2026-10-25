@@ -209,8 +209,8 @@ void apply_swiglu_mtp_diag_knob(const char* who) {
 void apply_swiglu_range_knob(const char* who) {
     const bool on = read_local_file("d3d12swiglurange.txt") == "1";
     ::xllama::d3d12_set_swiglu_range_diag(on);
-    log_output(std::string("[xllama] ") + who + ": d3d12swiglurange.txt=" +
-               (on ? "1 (range sampling on)\n" : "(absent)\n"));
+    log_output(std::string("[xllama] ") + who +
+               ": d3d12swiglurange.txt=" + (on ? "1 (range sampling on)\n" : "(absent)\n"));
 }
 
 // Existing-instrumentation switch (plan004 rev102): ggmlprof.txt strict
@@ -888,6 +888,9 @@ static void apply_q8_knob(const char* who) {
     const bool flash = flash_mode == "1" || flash_mode == "2";
     _putenv(flash ? "XLLAMA_FLASH_ATTN=1" : "XLLAMA_FLASH_ATTN=0");
     _putenv(flash_mode == "2" ? "GGML_FLASH_ATTN_NO_SPLIT_KV=1" : "GGML_FLASH_ATTN_NO_SPLIT_KV=0");
+    // Consistent-query mode preserves F32 queries in scalar attention QK.
+    _putenv(flash_mode == "2" ? "GGML_FLASH_ATTN_NO_QUERY_TILING=4"
+                              : "GGML_FLASH_ATTN_NO_QUERY_TILING=0");
     log_output(std::string("[xllama] ") + who + ": fused attention=" + (flash ? "forced" : "auto") +
                "\n");
     log_output(std::string("[xllama] ") + who + ": attention split-KV=" +
@@ -2611,7 +2614,8 @@ void run_elembench() {
             ggml_tensor* eo = ggml_dup(ec, e);
             ggml_cgraph* eg = ggml_new_graph(ec);
             ggml_build_forward_expand(eg, eo);
-            ggml_backend_buffer_t eb = ggml_backend_alloc_ctx_tensors_from_buft(ec, ggml_backend_cpu_buffer_type());
+            ggml_backend_buffer_t eb =
+                ggml_backend_alloc_ctx_tensors_from_buft(ec, ggml_backend_cpu_buffer_type());
             if (eb) {
                 for (int i = 0; i < 3; ++i)
                     (void)ggml_backend_graph_compute(cpu, eg);
@@ -2619,13 +2623,17 @@ void run_elembench() {
                 for (int i = 0; i < reps; ++i) {
                     const auto t0 = std::chrono::steady_clock::now();
                     (void)ggml_backend_graph_compute(cpu, eg);
-                    ts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+                    ts.push_back(std::chrono::duration<double, std::nano>(
+                                     std::chrono::steady_clock::now() - t0)
+                                     .count());
                 }
                 const double floor_ns = median(ts);
                 if (fp)
                     fprintf(fp, "empty,0,1,%.0f,0,0,0,0\n", floor_ns);
                 char lb[160];
-                snprintf(lb, sizeof(lb), "[xllama] elembench: empty-graph floor=%.0fns (n_threads=2, pool)\n", floor_ns);
+                snprintf(lb, sizeof(lb),
+                         "[xllama] elembench: empty-graph floor=%.0fns (n_threads=2, pool)\n",
+                         floor_ns);
                 log_output(lb);
                 ggml_backend_buffer_free(eb);
             }
@@ -2655,7 +2663,8 @@ void run_elembench() {
                 out = ggml_dup(ctx, a);
             ggml_cgraph* g = ggml_new_graph(ctx);
             ggml_build_forward_expand(g, out);
-            ggml_backend_buffer_t buf = ggml_backend_alloc_ctx_tensors_from_buft(ctx, ggml_backend_cpu_buffer_type());
+            ggml_backend_buffer_t buf =
+                ggml_backend_alloc_ctx_tensors_from_buft(ctx, ggml_backend_cpu_buffer_type());
             if (!buf) {
                 ggml_free(ctx);
                 continue;
@@ -2663,9 +2672,12 @@ void run_elembench() {
             std::vector<float> av(n), bv(n), wv(n_embd), ov(n);
             std::mt19937 rng(42u);
             std::uniform_real_distribution<float> uni(-1.0f, 1.0f);
-            for (auto& v : av) v = uni(rng);
-            for (auto& v : bv) v = uni(rng);
-            for (auto& v : wv) v = uni(rng) + 1.0f;
+            for (auto& v : av)
+                v = uni(rng);
+            for (auto& v : bv)
+                v = uni(rng);
+            for (auto& v : wv)
+                v = uni(rng) + 1.0f;
             ggml_backend_tensor_set(a, av.data(), 0, n * sizeof(float));
             ggml_backend_tensor_set(b, bv.data(), 0, n * sizeof(float));
             ggml_backend_tensor_set(w, wv.data(), 0, n_embd * sizeof(float));
@@ -2675,7 +2687,9 @@ void run_elembench() {
             for (int i = 0; i < reps; ++i) {
                 const auto t0 = std::chrono::steady_clock::now();
                 (void)ggml_backend_graph_compute(cpu, g);
-                gts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+                gts.push_back(
+                    std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0)
+                        .count());
             }
             const double gns = median(gts);
             std::vector<double> mts;
@@ -2683,24 +2697,30 @@ void run_elembench() {
             for (int i = 0; i < reps; ++i) {
                 const auto t0 = std::chrono::steady_clock::now();
                 if (strcmp(op_name, "add") == 0) {
-                    for (size_t k = 0; k < n; ++k) ov[k] = av[k] + bv[k];
+                    for (size_t k = 0; k < n; ++k)
+                        ov[k] = av[k] + bv[k];
                 } else if (strcmp(op_name, "mul") == 0) {
-                    for (size_t k = 0; k < n; ++k) ov[k] = av[k] * wv[k % n_embd];
+                    for (size_t k = 0; k < n; ++k)
+                        ov[k] = av[k] * wv[k % n_embd];
                 } else if (strcmp(op_name, "rms_norm") == 0) {
                     for (int r = 0; r < rows; ++r) {
                         double sum = 0.0;
                         const float* xr = av.data() + static_cast<size_t>(r) * n_embd;
-                        for (int j = 0; j < n_embd; ++j) sum += static_cast<double>(xr[j]) * static_cast<double>(xr[j]);
+                        for (int j = 0; j < n_embd; ++j)
+                            sum += static_cast<double>(xr[j]) * static_cast<double>(xr[j]);
                         const float mean = static_cast<float>(sum / n_embd);
                         const float sc = 1.0f / std::sqrt(mean + 1e-5f);
                         float* yr = ov.data() + static_cast<size_t>(r) * n_embd;
-                        for (int j = 0; j < n_embd; ++j) yr[j] = xr[j] * sc;
+                        for (int j = 0; j < n_embd; ++j)
+                            yr[j] = xr[j] * sc;
                     }
                 } else {
                     memcpy(ov.data(), av.data(), n * sizeof(float));
                 }
                 chk += ov[i % n];
-                mts.push_back(std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0).count());
+                mts.push_back(
+                    std::chrono::duration<double, std::nano>(std::chrono::steady_clock::now() - t0)
+                        .count());
             }
             const double mns = median(mts);
             if (fp) {
@@ -2720,7 +2740,8 @@ void run_elembench() {
     }
     if (fp) {
         fclose(fp);
-        FILE* done = _wfopen(utf8_to_wstring(resolve_local_path("elembench-result.csv.done")).c_str(), L"w");
+        FILE* done =
+            _wfopen(utf8_to_wstring(resolve_local_path("elembench-result.csv.done")).c_str(), L"w");
         if (done) {
             fputs("done\n", done);
             fclose(done);

@@ -44,3 +44,25 @@ that redundant patch. The CPU backend remains statically linked on UWP.
 Regenerate each maintained patch against the new pin. Check whether the fork
 already carries the fix before retaining it, then verify clean application and
 compilation on Linux and both UWP variants.
+
+Patch 0007-context-rope-identity.patch exports a read-only copy of the resolved
+context RoPE/YaRN parameters. Snapshot fingerprint v3 uses exact float bits;
+no inference arithmetic or model defaults change.
+
+For an imported Windows checkout where llama.cpp is a directory inside the
+parent Git repository, apply 0007 from that parent with
+`git apply --directory=llama.cpp patches/0007-context-rope-identity.patch`.
+A reverse check invoked inside the directory can skip every patch path and
+misreport success. Verify the declaration, definition and source hashes;
+the ordinary standalone-submodule workflow is unchanged.
+
+Patch 0008-flash-attn-query-consistency.patch adds
+`GGML_FLASH_ATTN_NO_QUERY_TILING=1`. It keeps CPU flash attention on its
+per-query reduction path at every query width. UWP `flashattn.txt=2` selects
+this together with the existing split-KV control. Native modes are unchanged.
+Snapshot identity includes `fa_query` so older/different reduction-policy
+snapshots are refused before import. The Xbox249 capture in
+`bench/results/qwen4b-maxperf/slots-rev211/segmentation-diagnosis/` proves
+identical Q/K/V/mask inputs but different first-attention outputs for widths
+40 and 64; capture-on/off logits match exactly. Apply this patch from the
+parent of imported Windows llama.cpp with `git apply --directory=llama.cpp`.

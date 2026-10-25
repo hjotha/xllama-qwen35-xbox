@@ -1,10 +1,12 @@
 // Copyright (c) 2024 Gianluca Mazza
 // SPDX-License-Identifier: MIT
 
+#include "../src/bridge/state_identity.h"
 #include "xllama/api_policy.h"
 #include "xllama/path_utils.h"
 #include "xllama/session.h"
 #include "xllama/session_hub.h"
+#include <cmath>
 
 #include <algorithm>
 #include <array>
@@ -670,11 +672,11 @@ TEST_CASE("Session: save_state fails cleanly when the write dies mid-blob (T18)"
     REQUIRE(n_state > 0);
     REQUIRE(n_tokens > 0);
 
-    // The header fits in its 512-byte buffer and the token-id array in
+    // The header fits in its 1024-byte buffer and the token-id array in
     // n_ctx * 8 bytes of slack (sizeof(llama_token) == 4). With
     // n_state > 4 * pre_bound the fault cannot land before the blob starts,
     // and L < full_size keeps it before the blob ends: strictly mid-blob.
-    const unsigned long long pre_bound = 512ull + 8ull * sp.n_ctx;
+    const unsigned long long pre_bound = 1024ull + 8ull * sp.n_ctx;
     REQUIRE(n_state > 4 * pre_bound);
     const rlim_t limit = static_cast<rlim_t>(pre_bound + n_state / 2);
     REQUIRE(static_cast<unsigned long long>(limit) < full_size);
@@ -1253,3 +1255,103 @@ TEST_CASE("Session: fault probe binds exact nonce and slot before claiming (T18)
     CHECK(cont.success);
 }
 #endif // __linux__
+
+// Every resolved field is part of the persisted identity, including adjacent
+// float values that previously collapsed under %.6g / %.4f formatting.
+TEST_CASE("Session: RoPE identity preserves every resolved field exactly") {
+    llama_context_rope_params p{1, 2048, 10000.0f, 1.0f, 0.0f, 1.0f, 32.0f, 1.0f};
+    const auto reference = xllama::state_rope_identity(p);
+    auto q = p;
+    ++q.scaling_type;
+    CHECK(xllama::state_rope_identity(q) != reference);
+    q = p;
+    ++q.orig_ctx;
+    CHECK(xllama::state_rope_identity(q) != reference);
+    for (auto field :
+         {&llama_context_rope_params::freq_base, &llama_context_rope_params::freq_scale,
+          &llama_context_rope_params::ext_factor, &llama_context_rope_params::attn_factor,
+          &llama_context_rope_params::beta_fast, &llama_context_rope_params::beta_slow}) {
+        q = p;
+        q.*field = std::nextafter(q.*field, INFINITY);
+        CHECK(xllama::state_rope_identity(q) != reference);
+    }
+    CHECK(xllama::state_rope_identity(p) == reference);
+}
+
+TEST_CASE("Session: changed GGUF RoPE identity refuses snapshot before import (opt-in)") {
+    const char* fixtures = std::getenv("XLLAMA_TEST_ROPE_FIXTURES");
+    if (!fixtures)
+        return;
+    const std::filesystem::path dir(fixtures);
+    const auto state = dir / "identity-test.kv";
+    REQUIRE_FALSE(std::filesystem::exists(state));
+    struct Cleanup {
+        std::filesystem::path path;
+        ~Cleanup() {
+            std::error_code ec;
+            std::filesystem::remove(path, ec);
+        }
+    } cleanup{state};
+    xllama::SessionParams sp;
+    sp.model_path = (dir / "base.gguf").string();
+    sp.n_ctx = 512;
+    std::string err;
+    auto original = xllama::Session::create(sp, &err);
+    REQUIRE_MESSAGE(original, err);
+    xllama::GenerateParams gp;
+    gp.prompt = "The harbour master filed a report.";
+    gp.n_predict = 2;
+    gp.temperature = 0;
+    gp.reuse_kv = true;
+    gp.reset_kv = true;
+    REQUIRE(original->generate(gp).success);
+    REQUIRE_MESSAGE(original->save_state(state.string(), &err), err);
+    // The same model remains compatible, including a fresh session.
+    auto same = xllama::Session::create(sp, &err);
+    REQUIRE_MESSAGE(same, err);
+    REQUIRE_MESSAGE(same->load_state(state.string(), &err), err);
+    for (const char* variant : {"base-adjacent", "scale", "orig", "scaling", "attention"}) {
+        INFO("GGUF variant: " << variant);
+        sp.model_path = (dir / (std::string(variant) + ".gguf")).string();
+        auto changed = xllama::Session::create(sp, &err);
+        REQUIRE_MESSAGE(changed, err);
+        err.clear();
+        CHECK_FALSE(changed->load_state(state.string(), &err));
+        CHECK(err == "state file belongs to a different model or context");
+        CHECK(changed->generate(gp).success);
+    }
+    // Version transition refuses v2 without deleting or rewriting the source.
+    std::ifstream in(state, std::ios::binary);
+    std::string bytes((std::istreambuf_iterator<char>(in)), {});
+    // A different FA reduction policy, or an older identity without the policy,
+    // must fail before importing state computed with different arithmetic.
+    const auto policy = bytes.find(" fa_query=");
+    REQUIRE(policy != std::string::npos);
+    for (bool legacy : {false, true}) {
+        auto incompatible = bytes;
+        if (legacy)
+            incompatible.erase(policy, std::string(" fa_query=0").size());
+        else
+            incompatible[policy + std::string(" fa_query=").size()] =
+                bytes[policy + std::string(" fa_query=").size()] == '0' ? '1' : '0';
+        {
+            std::ofstream out(state, std::ios::binary);
+            out.write(incompatible.data(), incompatible.size());
+        }
+        err.clear();
+        CHECK_FALSE(same->load_state(state.string(), &err));
+        CHECK(err == "state file belongs to a different model or context");
+        CHECK(same->generate(gp).success);
+    }
+    auto pos = bytes.find("\tv3 ");
+    REQUIRE(pos != std::string::npos);
+    bytes[pos + 2] = '2';
+    {
+        std::ofstream out(state, std::ios::binary);
+        out.write(bytes.data(), bytes.size());
+    }
+    err.clear();
+    CHECK_FALSE(same->load_state(state.string(), &err));
+    CHECK(err == "state file belongs to a different model or context");
+    CHECK(same->generate(gp).success);
+}

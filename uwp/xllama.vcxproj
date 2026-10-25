@@ -116,6 +116,7 @@
         $(IntDir)Generated Files;
         $(ProjectDir)..\include;
         $(ProjectDir)..\shaders\generated;
+        $(ProjectDir)rkva;
         $(ProjectDir)..\llama.cpp\include;
         $(ProjectDir)..\llama.cpp\ggml\include;
         $(ProjectDir)packages\Microsoft.ML.OnnxRuntimeGenAI.DirectML.0.14.1\build\native\include;
@@ -359,6 +360,8 @@
     <ClCompile Include="App.cpp" />
     <!-- LAN API is Dev Mode only; omit from Store SKU link (docs/store-readiness.md). -->
     <ClCompile Include="api-server.cpp" Condition="'$(XllamaStoreSku)' != 'true'" />
+    <ClCompile Include="rkva\remote-attn.cpp" Condition="'$(XllamaStoreSku)' != 'true'" />
+    <ClCompile Include="rkva\remote-attn-engine.cpp" Condition="'$(XllamaStoreSku)' != 'true'" />
     <ClCompile Include="chat-history.cpp" />
     <ClCompile Include="MainPage.cpp" />
     <ClCompile Include="model-downloader.cpp" />
