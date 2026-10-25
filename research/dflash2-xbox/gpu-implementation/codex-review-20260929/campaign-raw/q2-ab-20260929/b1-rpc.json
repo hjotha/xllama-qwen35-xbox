@@ -1,0 +1,86 @@
+{
+  "kind": "dflash2_xbox_dedicated_rpc_fused",
+  "mode": "fused",
+  "limitations": "Synthetic features and embeddings; no target verification or acceptance; backend must be verified from server logs",
+  "host": "192.168.1.26",
+  "port": 50053,
+  "model": {
+    "bytes": 705430880,
+    "n_ctx": 49152,
+    "encoder_width": 25600,
+    "decoder_width": 5120,
+    "top_k": 16,
+    "mask_id": 248070,
+    "kv_bits_k": 4,
+    "kv_bits_v": 4
+  },
+  "warmup": 20,
+  "iterations": 100,
+  "sync_tokens": 1,
+  "drafts": 4,
+  "hello_rtt_us": 1254.0,
+  "first_cycle_after_model_load": {
+    "cycle_rtt_us": 124180.6,
+    "fused": {
+      "rtt_us": 124180.6,
+      "xbox_receive_us": 2960,
+      "xbox_prepare_us": 465,
+      "xbox_compute_us": 117457,
+      "prior_response_us": 48
+    }
+  },
+  "first_output_sha256": "ace5a673ab393d90ca477fa2458cbbc2be7d5555013ec9c49dc57d11d0f20e5c",
+  "differing_outputs": 0,
+  "phases_us": {
+    "cycle_rtt_us": {
+      "count": 100,
+      "mean": 122205.994,
+      "min": 121307.6,
+      "p50": 122009.4,
+      "p90": 123245.86,
+      "p95": 124173.8,
+      "p99": 124991.488,
+      "max": 125000.2
+    },
+    "fused_rtt_us": {
+      "count": 100,
+      "mean": 122205.994,
+      "min": 121307.6,
+      "p50": 122009.4,
+      "p90": 123245.86,
+      "p95": 124173.8,
+      "p99": 124991.488,
+      "max": 125000.2
+    },
+    "fused_xbox_compute_us": {
+      "count": 100,
+      "mean": 117731.55,
+      "min": 116967,
+      "p50": 117552.5,
+      "p90": 118268.09999999999,
+      "p95": 119673.6,
+      "p99": 120529.46,
+      "max": 120674
+    },
+    "fused_xbox_prepare_us": {
+      "count": 100,
+      "mean": 448.93,
+      "min": 441,
+      "p50": 448.0,
+      "p90": 456.0,
+      "p95": 457.1,
+      "p99": 462.1900000000001,
+      "max": 481
+    },
+    "fused_xbox_receive_us": {
+      "count": 100,
+      "mean": 1902.92,
+      "min": 1705,
+      "p50": 1897.5,
+      "p90": 1920.1,
+      "p95": 1931.1,
+      "p99": 2095.010000000005,
+      "max": 3086
+    }
+  }
+}

@@ -1,0 +1,259 @@
+{
+  "sequence": [
+    "b1",
+    "a1",
+    "b2",
+    "a2",
+    "b3"
+  ],
+  "capture_sha256": "5ff0aeb6e85c4deb4b473905513a2e166480cb9033deeb0589033a5aa835508e",
+  "phases": {
+    "b1": {
+      "package": "85",
+      "probe_files": 3,
+      "probe_batch8_initial_gpu_ms": [
+        31.983857,
+        32.047685,
+        32.009666,
+        32.07166,
+        32.005476,
+        31.985249
+      ],
+      "probe_batch8_initial_median_ms": 32.007571
+    },
+    "a1": {
+      "package": "83",
+      "probe_files": 3,
+      "probe_batch8_initial_gpu_ms": [
+        38.997205,
+        39.023295,
+        39.076458,
+        39.009162,
+        39.020679,
+        39.015667
+      ],
+      "probe_batch8_initial_median_ms": 39.018173000000004
+    },
+    "b2": {
+      "package": "85",
+      "probe_files": 3,
+      "probe_batch8_initial_gpu_ms": [
+        31.964471,
+        32.016853,
+        32.03697,
+        31.979316,
+        32.012042,
+        32.035105
+      ],
+      "probe_batch8_initial_median_ms": 32.0144475
+    },
+    "a2": {
+      "package": "83",
+      "probe_files": 1,
+      "probe_batch8_initial_gpu_ms": [
+        39.002277,
+        38.999731
+      ],
+      "probe_batch8_initial_median_ms": 39.001003999999995
+    },
+    "b3": {
+      "package": "85",
+      "probe_files": 1,
+      "probe_batch8_initial_gpu_ms": [
+        32.05015,
+        32.078465
+      ],
+      "probe_batch8_initial_median_ms": 32.0643075
+    }
+  },
+  "probe_batch8_initial_gpu_ms": {
+    "a83_median_of_phase_medians": 39.0095885,
+    "b85_median_of_phase_medians": 32.0144475,
+    "latency_reduction_percent": 17.931850268043704
+  },
+  "discarded_control": "Initial synthetic RPC measurements used backend=cpu; raw files are retained but excluded from GPU claims.",
+  "gpu_rpc": {
+    "n4": {
+      "phases": {
+        "b1": {
+          "package": 85,
+          "cycle_p50_ms": 36.7079,
+          "xbox_compute_p50_ms": 32.562
+        },
+        "a1": {
+          "package": 83,
+          "cycle_p50_ms": 44.6427,
+          "xbox_compute_p50_ms": 40.0715
+        },
+        "b2": {
+          "package": 85,
+          "cycle_p50_ms": 36.73495,
+          "xbox_compute_p50_ms": 32.5835
+        },
+        "a2": {
+          "package": 83,
+          "cycle_p50_ms": 44.285650000000004,
+          "xbox_compute_p50_ms": 40.061
+        },
+        "b3": {
+          "package": 85,
+          "cycle_p50_ms": 36.743550000000006,
+          "xbox_compute_p50_ms": 32.5815
+        }
+      },
+      "median_83_ms": 44.464175,
+      "median_85_ms": 36.73495,
+      "latency_reduction_pct": 17.383039267005405,
+      "same_output_sha256": "ace5a673ab393d90ca477fa2458cbbc2be7d5555013ec9c49dc57d11d0f20e5c",
+      "backend": "d3d12",
+      "warmup_per_phase": 20,
+      "iterations_per_phase": 100,
+      "synthetic": true
+    },
+    "n7": {
+      "phases": {
+        "b1": {
+          "package": 85,
+          "cycle_p50_ms": 39.52405,
+          "xbox_compute_p50_ms": 34.1565
+        },
+        "a1": {
+          "package": 83,
+          "cycle_p50_ms": 47.6142,
+          "xbox_compute_p50_ms": 41.703
+        },
+        "b2": {
+          "package": 85,
+          "cycle_p50_ms": 39.534949999999995,
+          "xbox_compute_p50_ms": 34.1735
+        },
+        "a2": {
+          "package": 83,
+          "cycle_p50_ms": 47.092699999999994,
+          "xbox_compute_p50_ms": 41.721
+        },
+        "b3": {
+          "package": 85,
+          "cycle_p50_ms": 39.48125,
+          "xbox_compute_p50_ms": 34.1625
+        }
+      },
+      "median_83_ms": 47.353449999999995,
+      "median_85_ms": 39.52405,
+      "latency_reduction_pct": 16.5339589829252,
+      "same_output_sha256": "c27a1539b151a1729bdf8e6d2e88c21f37263ec6752f6500d9a30e7a734a036d",
+      "backend": "d3d12",
+      "warmup_per_phase": 20,
+      "iterations_per_phase": 100,
+      "synthetic": true
+    }
+  },
+  "f6_generation": {
+    "n512_t1": {
+      "phases": {
+        "b1": {
+          "package": 85,
+          "tps": 31.821038974981438,
+          "wall_s": 16.30333208301454,
+          "xbox_compute_ms_mean": 39.584969325153374
+        },
+        "a1": {
+          "package": 83,
+          "tps": 29.35610739164954,
+          "wall_s": 17.680096344003687,
+          "xbox_compute_ms_mean": 47.621981595092024
+        },
+        "b2": {
+          "package": 85,
+          "tps": 32.78266370626169,
+          "wall_s": 15.834906926989788,
+          "xbox_compute_ms_mean": 39.563840490797546
+        },
+        "a2": {
+          "package": 83,
+          "tps": 29.334159358767906,
+          "wall_s": 17.65510116002406,
+          "xbox_compute_ms_mean": 47.578208588957054
+        },
+        "b3": {
+          "package": 85,
+          "tps": 31.75466063340543,
+          "wall_s": 16.32893315399997,
+          "xbox_compute_ms_mean": 39.59731901840491
+        }
+      },
+      "median_83_tps": 29.345133375208725,
+      "median_85_tps": 31.821038974981438,
+      "tps_gain_pct": 8.437193207185768,
+      "median_83_wall_s": 17.667598752013873,
+      "median_85_wall_s": 16.30333208301454,
+      "wall_reduction_pct": 7.721856762475015,
+      "same_content_sha256": "e0f983f380db74b90b940e299306aa67dafeeb7f1d936169546333075a7ef504",
+      "draft_proposed_accepted_cycles": [
+        647,
+        346,
+        163
+      ],
+      "rpc_failures": 0
+    },
+    "n128_t0": {
+      "phases": {
+        "b1": {
+          "package": 85,
+          "tps": 35.442081359948936,
+          "wall_s": 3.653626648010686,
+          "xbox_compute_ms_mean": 36.36589473684211
+        },
+        "a1": {
+          "package": 83,
+          "tps": 32.588418537934714,
+          "wall_s": 3.9685257179953624,
+          "xbox_compute_ms_mean": 44.36328947368421
+        },
+        "b2": {
+          "package": 85,
+          "tps": 36.54355516997789,
+          "wall_s": 3.5407785910065286,
+          "xbox_compute_ms_mean": 36.325105263157894
+        },
+        "a2": {
+          "package": 83,
+          "tps": 32.648922791210396,
+          "wall_s": 3.96112840299611,
+          "xbox_compute_ms_mean": 44.383526315789474
+        },
+        "b3": {
+          "package": 85,
+          "tps": 35.374990216169046,
+          "wall_s": 3.660241910984041,
+          "xbox_compute_ms_mean": 36.379763157894736
+        }
+      },
+      "median_83_tps": 32.618670664572555,
+      "median_85_tps": 35.442081359948936,
+      "tps_gain_pct": 8.655811649746092,
+      "median_83_wall_s": 3.964827060495736,
+      "median_85_wall_s": 3.653626648010686,
+      "wall_reduction_pct": 7.849028664724145,
+      "same_content_sha256": "2b6aea88cd82d6c226ef8741bc32e15b00036b1a4117d0b654f0bb3564700eb0",
+      "draft_proposed_accepted_cycles": [
+        149,
+        88,
+        38
+      ],
+      "rpc_failures": 0
+    }
+  },
+  "f6_controls": {
+    "same_host_binary_sha256": "bda17a8cb9beee2bb7de875d11401374f3cff538fc8bf7b1ecbac2b5388d3585",
+    "same_host_command": true,
+    "same_source_commit": "3d4128354880b345eb87f1ab4c70d9acc5cbe93c",
+    "backend": "d3d12",
+    "n_max": 4,
+    "p_min": 0.25,
+    "pipeline": false,
+    "target_only_comparison": "pending",
+    "xbox_temperature_sensor": "unavailable",
+    "package_83_benchmark_identity": "HJotha.XboxDFlashRpcBench83_1.0.0.84; DFlashRpc.exe byte-identical to original 1.0.0.83"
+  }
+}

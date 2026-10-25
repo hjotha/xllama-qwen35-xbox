@@ -1,0 +1,92 @@
+[
+  {
+    "mode": "gpu-sequential",
+    "count": 512,
+    "temperature": 1.0,
+    "wall_s": 17.680096344003687,
+    "timings": {
+      "cache_n": 0,
+      "cache_lcp_n": 0,
+      "cache_planned_n": 0,
+      "cache_reprocessed_n": 11,
+      "cache_source": "none",
+      "cache_reason": "disabled",
+      "prompt_n": 11,
+      "prompt_ms": 242.15,
+      "prompt_per_token_ms": 22.013636363636365,
+      "prompt_per_second": 45.42638860210613,
+      "predicted_n": 512,
+      "predicted_ms": 17406.94,
+      "predicted_per_token_ms": 34.06446183953033,
+      "predicted_per_second": 29.35610739164954,
+      "draft_n": 647,
+      "draft_n_accepted": 346
+    },
+    "content_sha256": "e0f983f380db74b90b940e299306aa67dafeeb7f1d936169546333075a7ef504",
+    "cycles": 163,
+    "rpc_failures": 0,
+    "pipeline_used": 0,
+    "pipeline_discarded": 0,
+    "pipeline_attempts": 0,
+    "xbox_compute_ms_mean": 47.621981595092024,
+    "metrics_lines": [
+      0,
+      165
+    ],
+    "cycle_mean_ms": {
+      "total_cycle_us": 105.29435582822086,
+      "draft_rpc_us": 55.01873619631902,
+      "sync_rpc_us": 0.0,
+      "xbox_compute_us": 47.621981595092024,
+      "sync_xbox_compute_us": 0.0,
+      "target_verify_us": 43.40038650306749,
+      "selector_us": 6.699871165644172,
+      "pipeline_wait_us": 0.0
+    }
+  },
+  {
+    "mode": "gpu-sequential",
+    "count": 128,
+    "temperature": 0.0,
+    "wall_s": 3.9685257179953624,
+    "timings": {
+      "cache_n": 0,
+      "cache_lcp_n": 0,
+      "cache_planned_n": 0,
+      "cache_reprocessed_n": 11,
+      "cache_source": "none",
+      "cache_reason": "disabled",
+      "prompt_n": 11,
+      "prompt_ms": 69.313,
+      "prompt_per_token_ms": 6.301181818181818,
+      "prompt_per_second": 158.70038809458543,
+      "predicted_n": 128,
+      "predicted_ms": 3897.09,
+      "predicted_per_token_ms": 30.685748031496065,
+      "predicted_per_second": 32.588418537934714,
+      "draft_n": 149,
+      "draft_n_accepted": 88
+    },
+    "content_sha256": "2b6aea88cd82d6c226ef8741bc32e15b00036b1a4117d0b654f0bb3564700eb0",
+    "cycles": 38,
+    "rpc_failures": 0,
+    "pipeline_used": 0,
+    "pipeline_discarded": 0,
+    "pipeline_attempts": 0,
+    "xbox_compute_ms_mean": 44.36328947368421,
+    "metrics_lines": [
+      165,
+      203
+    ],
+    "cycle_mean_ms": {
+      "total_cycle_us": 101.23707894736843,
+      "draft_rpc_us": 51.94789473684211,
+      "sync_rpc_us": 0.15368421052631578,
+      "xbox_compute_us": 44.36328947368421,
+      "sync_xbox_compute_us": 0.08444736842105263,
+      "target_verify_us": 42.29342105263158,
+      "selector_us": 6.808868421052631,
+      "pipeline_wait_us": 0.0
+    }
+  }
+]
