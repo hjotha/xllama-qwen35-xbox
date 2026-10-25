@@ -3,12 +3,12 @@
 Same fixed workload as the F6 campaign, target on CUDA0 (.57), Xbox app
 1.0.0.42 with backend=d3d12, spec-draft-n-max varied. 512 tokens, seed 1234.
 
-| n_max | tps | content sha256 |
-|---|---|---|
-| 2 | 20.818 | e9f989d14d83dee386ee2c014215e12825eab935be89269eca9dfec99cd955b3 |
-| 4 | 21.318 / 21.195 / 21.273 (3 rounds) | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
-| 6 | 18.446 | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
-| 7 | not feasible | target-side CUDA OOM: extra 981.45 MiB compute buffer, cudaMalloc failed |
+| n_max | tps                                 | content sha256                                                           |
+| ----- | ----------------------------------- | ------------------------------------------------------------------------ |
+| 2     | 20.818                              | e9f989d14d83dee386ee2c014215e12825eab935be89269eca9dfec99cd955b3         |
+| 4     | 21.318 / 21.195 / 21.273 (3 rounds) | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc         |
+| 6     | 18.446                              | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc         |
+| 7     | not feasible                        | target-side CUDA OOM: extra 981.45 MiB compute buffer, cudaMalloc failed |
 
 The d3d12 Xbox sweet spot in this configuration is n_max=4; n_max=6 lowers TPS
 (more positions per cycle without compensating acceptance) and n_max=7 does

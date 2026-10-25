@@ -7,8 +7,9 @@ on TCP 50052.
 
 ## Build
 
-Clone the repository with its `llama.cpp` submodule, which points to the matching
-beellama fork commit. On the HPBEATS build host, run
+The DFlash RPC projects use the `llama.cpp/` source tree already present in
+this repository. The app uses a separate `ggml-dflash-uwp.vcxproj`. On the
+HPBEATS build host, run
 `research/dflash2-xbox/build-dflash-rpc.cmd` with Visual Studio 2022,
 `C:\BuildTools` C++ tools, Windows SDK 26100, and Microsoft.AI.DirectML 1.15.4
 in the local NuGet cache. The build produces an unsigned
@@ -19,17 +20,18 @@ not stored in Git.
 
 ## Execution and diagnostics
 
-Version 1.0.0.17 still runs SYNC and DRAFT through ggml CPU by default
-(`n_gpu_layers=0`, context 49152, Q4_0 KV). GPU operations are opt-in
-diagnostics and never change the DFL2 sequence:
+The target GGUF remains CPU-owned (`n_gpu_layers=0`, context 49152, Q4_0 KV),
+while DFL2 SYNC and DRAFT use the D3D12 executor by default. Set
+`LocalState\dflash-backend.txt` to `cpu` to override it; failed D3D12
+initialization falls back to CPU before the sequence starts.
 
-| Op | Operation |
-| -- | --------- |
-| 8 | Synthetic Q4_K D3D12 probe and adapter capabilities |
-| 9 | Real GGUF Q4_K FFN-down matrix, HLSL and ggml CPU |
-| 10 | Same Q4_K matrix converted once to FP16, DirectML GEMM |
-| 11 | Real GGUF Q3_K `fc.weight`, HLSL and ggml CPU, batch 1–64 |
-| 12 | Real GGUF Q5_K attention V matrix, HLSL and ggml CPU, batch 1–64 |
+| Op  | Operation                                                        |
+| --- | ---------------------------------------------------------------- |
+| 8   | Synthetic Q4_K D3D12 probe and adapter capabilities              |
+| 9   | Real GGUF Q4_K FFN-down matrix, HLSL and ggml CPU                |
+| 10  | Same Q4_K matrix converted once to FP16, DirectML GEMM           |
+| 11  | Real GGUF Q3_K `fc.weight`, HLSL and ggml CPU, batch 1–64        |
+| 12  | Real GGUF Q5_K attention V matrix, HLSL and ggml CPU, batch 1–64 |
 
 The real-matrix probes use 50 warmups and three sets of 200 measurements.
 They report GPU timestamps separately from host time including readback.

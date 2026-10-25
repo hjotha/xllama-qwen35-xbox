@@ -22,15 +22,38 @@ ByteAddressBuffer queries          : register(t0); // F32 [query][32][128]
 ByteAddressBuffer kv               : register(t1); // DflashGpuKv raw buffer
 ByteAddressBuffer query_positions  : register(t2); // U32 [query]
 ByteAddressBuffer active_positions : register(t3); // U32 [active_count]
-ByteAddressBuffer sinks            : register(t4); // F32 [32], virtual zero-V row
+ByteAddressBuffer sinks            : register(t4); // F32 [32] then UCRT exp table [64] F64
 RWByteAddressBuffer output         : register(u0); // F32 [query][32][128]
+
+#include "ggml_float.hlsli"
+
+// UCRT x64 expf normal path from the host ucrtbase.dll, valid for x in [-104,0].
+// The 64 double table values follow the 32 F32 sink values in t4.
+float ggml_exp_neg(float x) {
+    if (x < -104.0f) return 0.0f;
+    precise double y = (double)x * asdouble(0x652b82feu,0x40571547u);
+    int n = int((float)y);
+    const double fraction = y - (double)(float)n;
+    if (fraction < -0.5 || (fraction == -0.5 && (n & 1))) --n;
+    const int j = n & 63;
+    const int k = (n - j) >> 6;
+    precise double r = (-(double)(float)n * asdouble(0xfefa39efu,0x3f862e42u) + (double)x);
+    precise double p = (r * asdouble(0x55555555u,0x3fc55555u) + 0.5);
+    precise double z = ((r*r) * p + r);
+    const double t = asdouble(sinks.Load(128u + uint(j)*8u), sinks.Load(128u + uint(j)*8u+4u));
+    precise double v = (z*t+t);
+    precise double out_value = v * asdouble(0u,uint(k+1023)<<20u);
+    return ggml_round_f32(out_value);
+}
+
 
 // GGML CPU Flash Attention quantizes each 32-element Q block to Q8_0 before
 // calling ggml_vec_dot_q4_0_q8_0 for a Q4_0 KV row. Keep the integer dot and
 // both FP16 scales: F32 Q times dequantized K changes the softmax scores.
 groupshared float q_amax[128];
 groupshared int dot_parts[128];
-groupshared float score_parts[4];
+groupshared float q_scales[4];
+groupshared float score_parts[8];
 
 // Match the round-to-nearest-even FP16 scale stored by GGML Q8_0. DXC's
 // f32tof16 can truncate on the console; this is the same conversion used by
@@ -110,13 +133,16 @@ void CSMain(uint3 group_id : SV_GroupID, uint lane : SV_GroupIndex) {
         GroupMemoryBarrierWithGroupSync();
     }
     const float q_max = q_amax[(lane / 32u) * 32u];
-    const float q_scale = f16tof32(ggml_half_bits(q_max / 127.0f));
+    const float q_scale = f16tof32(ggml_half_bits(ggml_round_f32((double)q_max / 127.0)));
     // GGML uses the unrounded max to quantize, not the stored FP16 scale.
-    const float inv_q_scale = q_max != 0.0f ? 127.0f / q_max : 0.0f;
-    const int q8 = clamp(nearest_even(q * inv_q_scale), -127, 127);
-    float max_score = asfloat(sinks.Load(head * 4u));
-    float denominator = 1.0f; // attention sink has no V
-    float numerator = 0.0f;
+    const float inv_q_scale = q_max != 0.0f ? ggml_round_f32(127.0 / (double)q_max) : 0.0f;
+    precise float scaled_q = q * inv_q_scale;
+    dot_parts[lane] = clamp(nearest_even(scaled_q), -127, 127);
+    if ((lane & 31u) == 0u) q_scales[lane / 32u] = q_scale;
+    GroupMemoryBarrierWithGroupSync();
+    float max_score = asfloat(0xff800000u);
+    precise float denominator = 0.0f;
+    precise float numerator = 0.0f;
 
     [loop] for (uint j = 0; j < active_count; ++j) {
         const uint key_position = active_positions.Load(j * 4u);
@@ -126,32 +152,52 @@ void CSMain(uint3 group_id : SV_GroupID, uint lane : SV_GroupIndex) {
         }
 
         const uint row_base = kv_layer_byte_offset + key_position * 1280u;
-        dot_parts[lane] = q8 * kv_q4(row_base, kv_head, lane, 0u);
-        GroupMemoryBarrierWithGroupSync();
-        [unroll] for (uint step = 16u; step > 0u; step >>= 1u) {
-            if ((lane & 31u) < step) dot_parts[lane] += dot_parts[lane + step];
-            GroupMemoryBarrierWithGroupSync();
+        if (lane < 8u) {
+            float acc = 0.0f;
+            [unroll] for (uint block = 0; block < 4u; ++block) {
+                int dot = 0;
+                [unroll] for (uint part = 0; part < 4u; ++part) {
+                    const uint d = block * 32u + lane * 4u + part;
+                    dot += dot_parts[d] * kv_q4(row_base, kv_head, d, 0u);
+                }
+                const uint key_block = kv_block_offset(row_base, kv_head, block * 32u, 0u);
+                precise float scale = f16tof32(kv.Load(key_block) & 0xffffu) * q_scales[block];
+                acc = ggml_fma_f32(scale, float(dot), acc);
+            }
+            score_parts[lane] = acc;
         }
-        if ((lane & 31u) == 0u) {
-            const uint key_block = kv_block_offset(row_base, kv_head, lane, 0u);
-            const float key_scale = f16tof32(kv.Load(key_block) & 0xffffu);
-            score_parts[lane / 32u] = float(dot_parts[lane]) * (key_scale * q_scale);
-        }
         GroupMemoryBarrierWithGroupSync();
-        const float score = (score_parts[0] + score_parts[1] +
-                             score_parts[2] + score_parts[3]) *
-                            0.08838834764831845f; // 1/sqrt(128)
+        precise float p0 = score_parts[0] + score_parts[4];
+        precise float p1 = score_parts[1] + score_parts[5];
+        precise float p2 = score_parts[2] + score_parts[6];
+        precise float p3 = score_parts[3] + score_parts[7];
+        precise float score = ((p0 + p2) + (p1 + p3)) * 0.08838834764831845f;
         GroupMemoryBarrierWithGroupSync();
 
-        const float next_max = max(max_score, score);
-        const float old_weight = exp(max_score - next_max);
-        const float new_weight = exp(score - next_max);
+        float old_weight = 1.0f, new_weight = 1.0f;
+        if (score > max_score) {
+            old_weight = ggml_exp_neg(max_score - score);
+            numerator *= old_weight;
+            max_score = score;
+        } else {
+            new_weight = ggml_exp_neg(score - max_score);
+        }
         denominator = denominator * old_weight + new_weight;
-        numerator = numerator * old_weight + new_weight *
-                    kv_element(row_base, kv_head, lane, 1u);
-        max_score = next_max;
+        numerator = ggml_fma_f32(kv_element(row_base, kv_head, lane, 1u),
+                                 new_weight, numerator);
     }
 
+    // GGML adds the virtual zero-V sink after all physical KV rows.
+    const float sink = asfloat(sinks.Load(head * 4u));
+    if (sink > max_score) {
+        const float weight = ggml_exp_neg(max_score - sink);
+        numerator *= weight;
+        denominator = denominator * weight + 1.0f;
+    } else {
+        denominator += ggml_exp_neg(sink - max_score);
+    }
+    const float inverse = denominator == 0.0f ? 0.0f : ggml_round_f32(1.0 / (double)denominator);
+    precise float result = numerator * inverse;
     output.Store(((qi * 32u + head) * 128u + lane) * 4u,
-                 asuint(numerator / denominator));
+                 asuint(result));
 }

@@ -1,0 +1,15 @@
+{
+  "gpu-pipeline-server.log": [
+    "0.06.774.295 I DFlash2 Xbox fused TRIM/SYNC: enabled",
+    "0.06.774.652 I DFlash2 Xbox fused SYNC/DRAFT: enabled",
+    "0.06.774.653 I DFlash2 Xbox async pre-draft pipeline: enabled (greedy only)",
+    "0.06.776.022 I DFlash2 Xbox RPC connected to 192.168.1.26:50053 (protocol=2, model_bytes=705430880, ctx=49152)",
+    "0.13.153.190 I DFlash2 Xbox pre-draft disabled after 17 attempts and 4 reused drafts"
+  ],
+  "gpu-sequential-server.log": [
+    "0.06.682.320 I DFlash2 Xbox fused TRIM/SYNC: enabled",
+    "0.06.682.665 I DFlash2 Xbox fused SYNC/DRAFT: enabled",
+    "0.06.682.667 I DFlash2 Xbox async pre-draft pipeline: disabled",
+    "0.06.684.810 I DFlash2 Xbox RPC connected to 192.168.1.26:50053 (protocol=2, model_bytes=705430880, ctx=49152)"
+  ]
+}

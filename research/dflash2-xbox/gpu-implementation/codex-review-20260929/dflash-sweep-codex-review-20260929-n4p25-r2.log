@@ -1,0 +1,2505 @@
+0.00.116.984 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.117.666 W srv  llama_server: -----------------
+0.00.117.668 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.117.669 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.117.669 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.117.670 W srv  llama_server: -----------------
+0.00.119.103 I srv    load_model: loading model '/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf'
+0.00.721.987 W model has unused tensor blk.64.attn_norm.weight (size = 20480 bytes) -- ignoring
+0.00.721.999 W model has unused tensor blk.64.post_attention_norm.weight (size = 20480 bytes) -- ignoring
+0.00.722.011 W model has unused tensor blk.64.attn_q.weight (size = 51609600 bytes) -- ignoring
+0.00.722.017 W model has unused tensor blk.64.attn_k.weight (size = 4300800 bytes) -- ignoring
+0.00.722.024 W model has unused tensor blk.64.attn_v.weight (size = 4300800 bytes) -- ignoring
+0.00.722.041 W model has unused tensor blk.64.attn_output.weight (size = 25804800 bytes) -- ignoring
+0.00.722.047 W model has unused tensor blk.64.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+0.00.722.054 W model has unused tensor blk.64.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+0.00.722.060 W model has unused tensor blk.64.ffn_gate.weight (size = 73113600 bytes) -- ignoring
+0.00.722.066 W model has unused tensor blk.64.ffn_down.weight (size = 73113600 bytes) -- ignoring
+0.00.722.073 W model has unused tensor blk.64.ffn_up.weight (size = 73113600 bytes) -- ignoring
+0.00.722.081 W model has unused tensor blk.64.nextn.eh_proj.weight (size = 43008000 bytes) -- ignoring
+0.00.722.092 W model has unused tensor blk.64.nextn.enorm.weight (size = 20480 bytes) -- ignoring
+0.00.722.101 W model has unused tensor blk.64.nextn.hnorm.weight (size = 20480 bytes) -- ignoring
+0.00.722.113 W model has unused tensor blk.64.nextn.shared_head_norm.weight (size = 20480 bytes) -- ignoring
+0.05.887.028 I cmn          init: llama threadpool init, n_threads = 8
+0.05.969.286 I common_speculative_init_result: loading draft model '/home/hjotha/models/Qwen3.8-27B-DFlash2-Q8_0.gguf'
+0.07.301.131 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false', elastic_paged_context = false
+0.07.301.796 I common_speculative_impl_draft_dflash: adding speculative implementation 'draft-dflash'
+0.07.301.799 I common_speculative_impl_draft_dflash: DFlash2 uses its fixed block limit and selector confidence; Bee adaptive draft-max is disabled
+0.07.301.800 I common_speculative_impl_draft_dflash: - n_max=4, n_min=0, p_min=0.25
+0.07.301.801 I common_speculative_impl_draft_dflash: - block_size=8, mask_token_id=248070, n_extract=5, sample_from_anchor=true, lineage=dflash
+0.07.305.087 I DFlash2 Xbox fused TRIM/SYNC: enabled
+0.07.305.288 I DFlash2 Xbox fused SYNC/DRAFT: enabled
+0.07.305.289 I DFlash2 Xbox async pre-draft pipeline: enabled (greedy only)
+0.07.305.292 W llama_init_from_model: model default pooling_type is [-1], but [0] was specified
+0.07.305.343 W llama_kv_cache_iswa: using full-size SWA cache (ref: https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+0.07.307.423 I DFlash2 Xbox RPC connected to 192.168.1.26:50053 (protocol=2, model_bytes=705430880, ctx=49152)
+0.07.515.487 W srv          init: chat template supports preserving reasoning, it is enabled by default (may use more tokens, disable via --no-reasoning-preserve)
+0.07.515.741 I srv  llama_server: model loaded
+0.07.515.750 I srv  llama_server: listening on http://127.0.0.1:59567
+0.07.518.056 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.07.518.085 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+DFTRACE stage=batch_from_sample start_us=129205645700 end_us=129205645700 n=0
+DFTRACE stage=target_submit start_us=129205645971 end_us=129205828849 n=11
+DFTRACE stage=target_sync start_us=129205828849 end_us=129205851295 n=11
+DFTRACE stage=target_decode_total start_us=129205645969 end_us=129205851436 n=11
+MTPTGT n_tokens=11 us=205490
+DFTRACE stage=sync_process start_us=129205851462 end_us=129205852289 n=11
+MTPPHASE phase=sync us=832 n_tokens=11
+DFTRACE stage=draft_call start_us=129205854442 end_us=129205908327 n=1
+MTPPHASE phase=draft us=53901 drafted=4
+DFTRACE stage=batch_from_sample start_us=129205908391 end_us=129205908397 n=1
+DFTRACE stage=target_submit start_us=129205908414 end_us=129205944990 n=5
+DFTRACE stage=target_sync start_us=129205944990 end_us=129205965188 n=5
+DFTRACE stage=target_decode_total start_us=129205908412 end_us=129205965290 n=5
+MTPTGT n_tokens=5 us=56883
+DFTRACE stage=sync_process start_us=129205965297 end_us=129205965552 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129205966157 end_us=129205966716 n=4
+DFTRACE stage=remote_trim start_us=129205966725 end_us=129205966781 n=4
+MTPPHASE phase=verify us=1228 n_draft=4
+DFTRACE stage=commit_prompt start_us=129205966800 end_us=129205966801 n=0
+DFTRACE stage=kv_remove start_us=129205966802 end_us=129205966884 n=4
+DFTRACE stage=emit_tokens start_us=129205966886 end_us=129205966896 n=1
+DFTRACE stage=draft_call start_us=129205966914 end_us=129206010216 n=1
+MTPPHASE phase=draft us=43318 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206010275 end_us=129206010278 n=1
+DFTRACE stage=target_submit start_us=129206010293 end_us=129206033395 n=5
+DFTRACE stage=target_sync start_us=129206033395 end_us=129206053580 n=5
+DFTRACE stage=target_decode_total start_us=129206010291 end_us=129206053661 n=5
+MTPTGT n_tokens=5 us=43373
+DFTRACE stage=sync_process start_us=129206053666 end_us=129206053874 n=5
+MTPPHASE phase=sync us=211 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206054139 end_us=129206055856 n=4
+DFTRACE stage=remote_trim start_us=129206055864 end_us=129206055896 n=4
+MTPPHASE phase=verify us=2022 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206055905 end_us=129206055906 n=2
+DFTRACE stage=kv_remove start_us=129206055907 end_us=129206055980 n=4
+DFTRACE stage=emit_tokens start_us=129206055981 end_us=129206055990 n=3
+DFTRACE stage=draft_call start_us=129206056016 end_us=129206098547 n=1
+MTPPHASE phase=draft us=42546 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206098598 end_us=129206098601 n=1
+DFTRACE stage=target_submit start_us=129206098616 end_us=129206121731 n=5
+DFTRACE stage=target_sync start_us=129206121731 end_us=129206141353 n=5
+DFTRACE stage=target_decode_total start_us=129206098614 end_us=129206141427 n=5
+MTPTGT n_tokens=5 us=42815
+DFTRACE stage=sync_process start_us=129206141431 end_us=129206141634 n=5
+MTPPHASE phase=sync us=205 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206141930 end_us=129206144841 n=4
+DFTRACE stage=remote_trim start_us=129206144850 end_us=129206144884 n=4
+MTPPHASE phase=verify us=3251 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206144895 end_us=129206144896 n=4
+DFTRACE stage=kv_remove start_us=129206144897 end_us=129206144971 n=4
+DFTRACE stage=emit_tokens start_us=129206144972 end_us=129206144983 n=5
+DFTRACE stage=draft_call start_us=129206145007 end_us=129206186923 n=1
+MTPPHASE phase=draft us=41939 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206186992 end_us=129206186995 n=1
+DFTRACE stage=target_submit start_us=129206187029 end_us=129206208675 n=5
+DFTRACE stage=target_sync start_us=129206208675 end_us=129206227588 n=5
+DFTRACE stage=target_decode_total start_us=129206187025 end_us=129206227708 n=5
+MTPTGT n_tokens=5 us=40691
+DFTRACE stage=sync_process start_us=129206227718 end_us=129206227942 n=5
+MTPPHASE phase=sync us=227 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206228261 end_us=129206231334 n=4
+DFTRACE stage=remote_trim start_us=129206231345 end_us=129206231392 n=4
+MTPPHASE phase=verify us=3450 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206231405 end_us=129206231406 n=4
+DFTRACE stage=kv_remove start_us=129206231407 end_us=129206231488 n=4
+DFTRACE stage=emit_tokens start_us=129206231489 end_us=129206231499 n=5
+DFTRACE stage=draft_call start_us=129206231518 end_us=129206274052 n=1
+MTPPHASE phase=draft us=42563 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206274115 end_us=129206274118 n=1
+DFTRACE stage=target_submit start_us=129206274133 end_us=129206296599 n=5
+DFTRACE stage=target_sync start_us=129206296599 end_us=129206332971 n=5
+DFTRACE stage=target_decode_total start_us=129206274131 end_us=129206333066 n=5
+MTPTGT n_tokens=5 us=58939
+DFTRACE stage=sync_process start_us=129206333074 end_us=129206333564 n=5
+MTPPHASE phase=sync us=499 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206334910 end_us=129206336103 n=4
+DFTRACE stage=remote_trim start_us=129206336113 end_us=129206346983 n=4
+MTPPHASE phase=verify us=13417 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206346999 end_us=129206347010 n=1
+DFTRACE stage=kv_remove start_us=129206347012 end_us=129206347100 n=4
+DFTRACE stage=emit_tokens start_us=129206347101 end_us=129206347112 n=2
+DFTRACE stage=draft_call start_us=129206347131 end_us=129206351815 n=1
+MTPPHASE phase=draft us=4688 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206351841 end_us=129206351842 n=1
+DFTRACE stage=target_submit start_us=129206351853 end_us=129206352867 n=5
+DFTRACE stage=target_sync start_us=129206352867 end_us=129206391196 n=5
+DFTRACE stage=target_decode_total start_us=129206351851 end_us=129206391326 n=5
+MTPTGT n_tokens=5 us=39482
+DFTRACE stage=sync_process start_us=129206391335 end_us=129206391546 n=5
+MTPPHASE phase=sync us=215 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206391783 end_us=129206392968 n=4
+DFTRACE stage=remote_trim start_us=129206392975 end_us=129206392999 n=4
+MTPPHASE phase=verify us=1459 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206393015 end_us=129206393016 n=1
+DFTRACE stage=kv_remove start_us=129206393018 end_us=129206393092 n=4
+DFTRACE stage=emit_tokens start_us=129206393094 end_us=129206393099 n=2
+DFTRACE stage=draft_call start_us=129206393113 end_us=129206435206 n=1
+MTPPHASE phase=draft us=42111 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206435258 end_us=129206435260 n=1
+DFTRACE stage=target_submit start_us=129206435274 end_us=129206436359 n=5
+DFTRACE stage=target_sync start_us=129206436359 end_us=129206474220 n=5
+DFTRACE stage=target_decode_total start_us=129206435272 end_us=129206474312 n=5
+MTPTGT n_tokens=5 us=39043
+DFTRACE stage=sync_process start_us=129206474317 end_us=129206474560 n=5
+MTPPHASE phase=sync us=251 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206475094 end_us=129206475675 n=4
+DFTRACE stage=remote_trim start_us=129206475683 end_us=129206484961 n=4
+MTPPHASE phase=verify us=10401 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206484978 end_us=129206484978 n=0
+DFTRACE stage=kv_remove start_us=129206484980 end_us=129206485104 n=4
+DFTRACE stage=emit_tokens start_us=129206485107 end_us=129206485114 n=1
+DFTRACE stage=draft_call start_us=129206485135 end_us=129206489779 n=1
+MTPPHASE phase=draft us=4648 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206489805 end_us=129206489807 n=1
+DFTRACE stage=target_submit start_us=129206489817 end_us=129206490905 n=5
+DFTRACE stage=target_sync start_us=129206490905 end_us=129206529443 n=5
+DFTRACE stage=target_decode_total start_us=129206489816 end_us=129206529563 n=5
+MTPTGT n_tokens=5 us=39756
+DFTRACE stage=sync_process start_us=129206529573 end_us=129206529780 n=5
+MTPPHASE phase=sync us=210 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206530039 end_us=129206532280 n=4
+DFTRACE stage=remote_trim start_us=129206532290 end_us=129206532320 n=4
+MTPPHASE phase=verify us=2540 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206532330 end_us=129206532331 n=3
+DFTRACE stage=kv_remove start_us=129206532332 end_us=129206532415 n=4
+DFTRACE stage=emit_tokens start_us=129206532416 end_us=129206532425 n=4
+DFTRACE stage=draft_call start_us=129206532442 end_us=129206574829 n=1
+MTPPHASE phase=draft us=42404 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206574880 end_us=129206574883 n=1
+DFTRACE stage=target_submit start_us=129206574897 end_us=129206575966 n=5
+DFTRACE stage=target_sync start_us=129206575966 end_us=129206613964 n=5
+DFTRACE stage=target_decode_total start_us=129206574895 end_us=129206614064 n=5
+MTPTGT n_tokens=5 us=39175
+DFTRACE stage=sync_process start_us=129206614072 end_us=129206614286 n=5
+MTPPHASE phase=sync us=217 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206614579 end_us=129206617477 n=4
+DFTRACE stage=remote_trim start_us=129206617486 end_us=129206617518 n=4
+MTPPHASE phase=verify us=3231 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206617529 end_us=129206617530 n=4
+DFTRACE stage=kv_remove start_us=129206617531 end_us=129206617612 n=4
+DFTRACE stage=emit_tokens start_us=129206617614 end_us=129206617623 n=5
+DFTRACE stage=draft_call start_us=129206617641 end_us=129206659697 n=1
+MTPPHASE phase=draft us=42070 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206659744 end_us=129206659746 n=1
+DFTRACE stage=target_submit start_us=129206659761 end_us=129206660805 n=5
+DFTRACE stage=target_sync start_us=129206660805 end_us=129206698663 n=5
+DFTRACE stage=target_decode_total start_us=129206659758 end_us=129206698791 n=5
+MTPTGT n_tokens=5 us=39041
+DFTRACE stage=sync_process start_us=129206698801 end_us=129206699087 n=5
+MTPPHASE phase=sync us=295 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206699351 end_us=129206702258 n=4
+DFTRACE stage=remote_trim start_us=129206702266 end_us=129206702308 n=4
+MTPPHASE phase=verify us=3216 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206702319 end_us=129206702320 n=4
+DFTRACE stage=kv_remove start_us=129206702321 end_us=129206702404 n=4
+DFTRACE stage=emit_tokens start_us=129206702406 end_us=129206702417 n=5
+DFTRACE stage=draft_call start_us=129206702435 end_us=129206745503 n=1
+MTPPHASE phase=draft us=43082 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206745555 end_us=129206745557 n=1
+DFTRACE stage=target_submit start_us=129206745572 end_us=129206746629 n=5
+DFTRACE stage=target_sync start_us=129206746629 end_us=129206784669 n=5
+DFTRACE stage=target_decode_total start_us=129206745570 end_us=129206784757 n=5
+MTPTGT n_tokens=5 us=39190
+DFTRACE stage=sync_process start_us=129206784763 end_us=129206785019 n=5
+MTPPHASE phase=sync us=265 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206785291 end_us=129206787580 n=4
+DFTRACE stage=remote_trim start_us=129206787589 end_us=129206797054 n=4
+MTPPHASE phase=verify us=12033 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206797069 end_us=129206797071 n=3
+DFTRACE stage=kv_remove start_us=129206797072 end_us=129206797169 n=4
+DFTRACE stage=emit_tokens start_us=129206797170 end_us=129206797179 n=4
+DFTRACE stage=draft_call start_us=129206797199 end_us=129206830708 n=1
+MTPPHASE phase=draft us=33524 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206830762 end_us=129206830764 n=1
+DFTRACE stage=target_submit start_us=129206830779 end_us=129206831878 n=5
+DFTRACE stage=target_sync start_us=129206831878 end_us=129206869621 n=5
+DFTRACE stage=target_decode_total start_us=129206830777 end_us=129206869713 n=5
+MTPTGT n_tokens=5 us=38939
+DFTRACE stage=sync_process start_us=129206869717 end_us=129206869965 n=5
+MTPPHASE phase=sync us=256 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206870271 end_us=129206871412 n=4
+DFTRACE stage=remote_trim start_us=129206871420 end_us=129206871452 n=4
+MTPPHASE phase=verify us=1481 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206871462 end_us=129206871463 n=1
+DFTRACE stage=kv_remove start_us=129206871464 end_us=129206871550 n=4
+DFTRACE stage=emit_tokens start_us=129206871552 end_us=129206871559 n=2
+DFTRACE stage=draft_call start_us=129206871576 end_us=129206914481 n=1
+MTPPHASE phase=draft us=42923 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206914534 end_us=129206914537 n=1
+DFTRACE stage=target_submit start_us=129206914554 end_us=129206915705 n=5
+DFTRACE stage=target_sync start_us=129206915705 end_us=129206953401 n=5
+DFTRACE stage=target_decode_total start_us=129206914551 end_us=129206953490 n=5
+MTPTGT n_tokens=5 us=38942
+DFTRACE stage=sync_process start_us=129206953495 end_us=129206953638 n=5
+MTPPHASE phase=sync us=145 n_tokens=5
+DFTRACE stage=sample_accept start_us=129206953982 end_us=129206954576 n=4
+DFTRACE stage=remote_trim start_us=129206954592 end_us=129206963880 n=4
+MTPPHASE phase=verify us=10247 n_draft=4
+DFTRACE stage=commit_prompt start_us=129206963898 end_us=129206963899 n=0
+DFTRACE stage=kv_remove start_us=129206963901 end_us=129206964045 n=4
+DFTRACE stage=emit_tokens start_us=129206964049 end_us=129206964065 n=1
+DFTRACE stage=draft_call start_us=129206964091 end_us=129206968696 n=1
+MTPPHASE phase=draft us=4609 drafted=4
+DFTRACE stage=batch_from_sample start_us=129206968722 end_us=129206968723 n=1
+DFTRACE stage=target_submit start_us=129206968732 end_us=129206969709 n=5
+DFTRACE stage=target_sync start_us=129206969709 end_us=129207007361 n=5
+DFTRACE stage=target_decode_total start_us=129206968731 end_us=129207007489 n=5
+MTPTGT n_tokens=5 us=38767
+DFTRACE stage=sync_process start_us=129207007499 end_us=129207007715 n=5
+MTPPHASE phase=sync us=219 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207007956 end_us=129207010346 n=4
+DFTRACE stage=remote_trim start_us=129207010354 end_us=129207010381 n=4
+MTPPHASE phase=verify us=2666 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207010391 end_us=129207010392 n=3
+DFTRACE stage=kv_remove start_us=129207010393 end_us=129207010475 n=4
+DFTRACE stage=emit_tokens start_us=129207010477 end_us=129207010485 n=4
+DFTRACE stage=draft_call start_us=129207010502 end_us=129207053111 n=1
+MTPPHASE phase=draft us=42638 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207053187 end_us=129207053190 n=1
+DFTRACE stage=target_submit start_us=129207053205 end_us=129207054289 n=5
+DFTRACE stage=target_sync start_us=129207054289 end_us=129207092363 n=5
+DFTRACE stage=target_decode_total start_us=129207053203 end_us=129207092449 n=5
+MTPTGT n_tokens=5 us=39250
+DFTRACE stage=sync_process start_us=129207092455 end_us=129207092706 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207092996 end_us=129207093587 n=4
+DFTRACE stage=remote_trim start_us=129207093595 end_us=129207093626 n=4
+MTPPHASE phase=verify us=914 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207093636 end_us=129207093637 n=0
+DFTRACE stage=kv_remove start_us=129207093638 end_us=129207093725 n=4
+DFTRACE stage=emit_tokens start_us=129207093727 end_us=129207093733 n=1
+DFTRACE stage=draft_call start_us=129207093750 end_us=129207135931 n=1
+MTPPHASE phase=draft us=42200 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207135984 end_us=129207135986 n=1
+DFTRACE stage=target_submit start_us=129207136010 end_us=129207137098 n=5
+DFTRACE stage=target_sync start_us=129207137098 end_us=129207175045 n=5
+DFTRACE stage=target_decode_total start_us=129207135999 end_us=129207175171 n=5
+MTPTGT n_tokens=5 us=39180
+DFTRACE stage=sync_process start_us=129207175181 end_us=129207175403 n=5
+MTPPHASE phase=sync us=225 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207175663 end_us=129207178857 n=4
+DFTRACE stage=remote_trim start_us=129207178871 end_us=129207178917 n=4
+MTPPHASE phase=verify us=3515 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207178930 end_us=129207178931 n=4
+DFTRACE stage=kv_remove start_us=129207178932 end_us=129207179027 n=4
+DFTRACE stage=emit_tokens start_us=129207179029 end_us=129207179037 n=5
+DFTRACE stage=draft_call start_us=129207179057 end_us=129207221631 n=1
+MTPPHASE phase=draft us=42589 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207221681 end_us=129207221684 n=1
+DFTRACE stage=target_submit start_us=129207221701 end_us=129207222821 n=5
+DFTRACE stage=target_sync start_us=129207222821 end_us=129207260456 n=5
+DFTRACE stage=target_decode_total start_us=129207221697 end_us=129207260547 n=5
+MTPTGT n_tokens=5 us=38854
+DFTRACE stage=sync_process start_us=129207260554 end_us=129207260804 n=5
+MTPPHASE phase=sync us=258 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207261085 end_us=129207262276 n=4
+DFTRACE stage=remote_trim start_us=129207262284 end_us=129207262315 n=4
+MTPPHASE phase=verify us=1506 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207262326 end_us=129207262327 n=1
+DFTRACE stage=kv_remove start_us=129207262328 end_us=129207262417 n=4
+DFTRACE stage=emit_tokens start_us=129207262418 end_us=129207262425 n=2
+DFTRACE stage=draft_call start_us=129207262454 end_us=129207305212 n=1
+MTPPHASE phase=draft us=42781 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207305280 end_us=129207305284 n=1
+DFTRACE stage=target_submit start_us=129207305308 end_us=129207306594 n=5
+DFTRACE stage=target_sync start_us=129207306594 end_us=129207344950 n=5
+DFTRACE stage=target_decode_total start_us=129207305303 end_us=129207345060 n=5
+MTPTGT n_tokens=5 us=39761
+DFTRACE stage=sync_process start_us=129207345067 end_us=129207345333 n=5
+MTPPHASE phase=sync us=274 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207345596 end_us=129207347947 n=4
+DFTRACE stage=remote_trim start_us=129207347957 end_us=129207347988 n=4
+MTPPHASE phase=verify us=2649 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207347999 end_us=129207348000 n=3
+DFTRACE stage=kv_remove start_us=129207348005 end_us=129207348099 n=4
+DFTRACE stage=emit_tokens start_us=129207348100 end_us=129207348108 n=4
+DFTRACE stage=draft_call start_us=129207348127 end_us=129207390477 n=1
+MTPPHASE phase=draft us=42368 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207390529 end_us=129207390531 n=1
+DFTRACE stage=target_submit start_us=129207390546 end_us=129207391624 n=5
+DFTRACE stage=target_sync start_us=129207391624 end_us=129207429257 n=5
+DFTRACE stage=target_decode_total start_us=129207390544 end_us=129207429337 n=5
+MTPTGT n_tokens=5 us=38797
+DFTRACE stage=sync_process start_us=129207429343 end_us=129207429549 n=5
+MTPPHASE phase=sync us=212 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207429983 end_us=129207431379 n=4
+DFTRACE stage=remote_trim start_us=129207431389 end_us=129207431423 n=4
+MTPPHASE phase=verify us=1871 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207431434 end_us=129207431435 n=1
+DFTRACE stage=kv_remove start_us=129207431436 end_us=129207431539 n=4
+DFTRACE stage=emit_tokens start_us=129207431544 end_us=129207431560 n=2
+DFTRACE stage=draft_call start_us=129207433257 end_us=129207475416 n=1
+MTPPHASE phase=draft us=42168 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207475450 end_us=129207475452 n=1
+DFTRACE stage=target_submit start_us=129207475464 end_us=129207476306 n=5
+DFTRACE stage=target_sync start_us=129207476306 end_us=129207514603 n=5
+DFTRACE stage=target_decode_total start_us=129207475462 end_us=129207514692 n=5
+MTPTGT n_tokens=5 us=39232
+DFTRACE stage=sync_process start_us=129207514695 end_us=129207514844 n=5
+MTPPHASE phase=sync us=151 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207515189 end_us=129207516929 n=4
+DFTRACE stage=remote_trim start_us=129207516940 end_us=129207526364 n=4
+MTPPHASE phase=verify us=11528 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207526382 end_us=129207526384 n=2
+DFTRACE stage=kv_remove start_us=129207526386 end_us=129207526490 n=4
+DFTRACE stage=emit_tokens start_us=129207526492 end_us=129207526500 n=3
+DFTRACE stage=draft_call start_us=129207526520 end_us=129207560576 n=1
+MTPPHASE phase=draft us=34073 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207560627 end_us=129207560630 n=1
+DFTRACE stage=target_submit start_us=129207560645 end_us=129207561736 n=5
+DFTRACE stage=target_sync start_us=129207561736 end_us=129207599527 n=5
+DFTRACE stage=target_decode_total start_us=129207560642 end_us=129207599616 n=5
+MTPTGT n_tokens=5 us=38980
+DFTRACE stage=sync_process start_us=129207599624 end_us=129207599885 n=5
+MTPPHASE phase=sync us=269 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207600170 end_us=129207603163 n=4
+DFTRACE stage=remote_trim start_us=129207603173 end_us=129207603205 n=4
+MTPPHASE phase=verify us=3314 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207603215 end_us=129207603216 n=4
+DFTRACE stage=kv_remove start_us=129207603218 end_us=129207603312 n=4
+DFTRACE stage=emit_tokens start_us=129207603314 end_us=129207603326 n=5
+DFTRACE stage=draft_call start_us=129207603344 end_us=129207646524 n=1
+MTPPHASE phase=draft us=43195 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207646573 end_us=129207646575 n=1
+DFTRACE stage=target_submit start_us=129207646592 end_us=129207647684 n=5
+DFTRACE stage=target_sync start_us=129207647684 end_us=129207686342 n=5
+DFTRACE stage=target_decode_total start_us=129207646588 end_us=129207686428 n=5
+MTPTGT n_tokens=5 us=39845
+DFTRACE stage=sync_process start_us=129207686435 end_us=129207686670 n=5
+MTPPHASE phase=sync us=243 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207686933 end_us=129207690044 n=4
+DFTRACE stage=remote_trim start_us=129207690052 end_us=129207699414 n=4
+MTPPHASE phase=verify us=12743 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207699429 end_us=129207699431 n=4
+DFTRACE stage=kv_remove start_us=129207699433 end_us=129207699536 n=4
+DFTRACE stage=emit_tokens start_us=129207699537 end_us=129207699546 n=5
+DFTRACE stage=draft_call start_us=129207699565 end_us=129207733916 n=1
+MTPPHASE phase=draft us=34365 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207733968 end_us=129207733970 n=1
+DFTRACE stage=target_submit start_us=129207733985 end_us=129207735232 n=5
+DFTRACE stage=target_sync start_us=129207735232 end_us=129207773426 n=5
+DFTRACE stage=target_decode_total start_us=129207733983 end_us=129207773518 n=5
+MTPTGT n_tokens=5 us=39540
+DFTRACE stage=sync_process start_us=129207773525 end_us=129207773780 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207774094 end_us=129207775875 n=4
+DFTRACE stage=remote_trim start_us=129207775884 end_us=129207775915 n=4
+MTPPHASE phase=verify us=2131 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207775926 end_us=129207775927 n=2
+DFTRACE stage=kv_remove start_us=129207775928 end_us=129207776036 n=4
+DFTRACE stage=emit_tokens start_us=129207776039 end_us=129207776046 n=3
+DFTRACE stage=draft_call start_us=129207776073 end_us=129207818953 n=1
+MTPPHASE phase=draft us=42907 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207819030 end_us=129207819033 n=1
+DFTRACE stage=target_submit start_us=129207819056 end_us=129207820286 n=5
+DFTRACE stage=target_sync start_us=129207820286 end_us=129207857996 n=5
+DFTRACE stage=target_decode_total start_us=129207819053 end_us=129207858135 n=5
+MTPTGT n_tokens=5 us=39090
+DFTRACE stage=sync_process start_us=129207858145 end_us=129207858362 n=5
+MTPPHASE phase=sync us=221 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207858651 end_us=129207861106 n=4
+DFTRACE stage=remote_trim start_us=129207861116 end_us=129207861148 n=4
+MTPPHASE phase=verify us=2785 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207861158 end_us=129207861159 n=3
+DFTRACE stage=kv_remove start_us=129207861160 end_us=129207861264 n=4
+DFTRACE stage=emit_tokens start_us=129207861266 end_us=129207861274 n=4
+DFTRACE stage=draft_call start_us=129207861292 end_us=129207904651 n=1
+MTPPHASE phase=draft us=43386 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207904726 end_us=129207904730 n=1
+DFTRACE stage=target_submit start_us=129207904753 end_us=129207905916 n=5
+DFTRACE stage=target_sync start_us=129207905916 end_us=129207943492 n=5
+DFTRACE stage=target_decode_total start_us=129207904751 end_us=129207943537 n=5
+MTPTGT n_tokens=5 us=38790
+DFTRACE stage=sync_process start_us=129207943542 end_us=129207943833 n=5
+MTPPHASE phase=sync us=300 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207944137 end_us=129207944734 n=4
+DFTRACE stage=remote_trim start_us=129207944743 end_us=129207954140 n=4
+MTPPHASE phase=verify us=10304 n_draft=4
+DFTRACE stage=commit_prompt start_us=129207954155 end_us=129207954156 n=0
+DFTRACE stage=kv_remove start_us=129207954158 end_us=129207954266 n=4
+DFTRACE stage=emit_tokens start_us=129207954268 end_us=129207954275 n=1
+DFTRACE stage=draft_call start_us=129207954294 end_us=129207958911 n=1
+MTPPHASE phase=draft us=4626 drafted=4
+DFTRACE stage=batch_from_sample start_us=129207958943 end_us=129207958944 n=1
+DFTRACE stage=target_submit start_us=129207958954 end_us=129207959989 n=5
+DFTRACE stage=target_sync start_us=129207959989 end_us=129207998596 n=5
+DFTRACE stage=target_decode_total start_us=129207958952 end_us=129207998718 n=5
+MTPTGT n_tokens=5 us=39773
+DFTRACE stage=sync_process start_us=129207998727 end_us=129207998935 n=5
+MTPPHASE phase=sync us=225 n_tokens=5
+DFTRACE stage=sample_accept start_us=129207999206 end_us=129208001511 n=4
+DFTRACE stage=remote_trim start_us=129208001518 end_us=129208001545 n=4
+MTPPHASE phase=verify us=2596 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208001555 end_us=129208001555 n=3
+DFTRACE stage=kv_remove start_us=129208001557 end_us=129208001652 n=4
+DFTRACE stage=emit_tokens start_us=129208001653 end_us=129208001660 n=4
+DFTRACE stage=draft_call start_us=129208001675 end_us=129208045175 n=1
+MTPPHASE phase=draft us=43521 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208045233 end_us=129208045237 n=1
+DFTRACE stage=target_submit start_us=129208045252 end_us=129208046375 n=5
+DFTRACE stage=target_sync start_us=129208046375 end_us=129208084369 n=5
+DFTRACE stage=target_decode_total start_us=129208045250 end_us=129208084460 n=5
+MTPTGT n_tokens=5 us=39213
+DFTRACE stage=sync_process start_us=129208084464 end_us=129208084603 n=5
+MTPPHASE phase=sync us=141 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208084901 end_us=129208087892 n=4
+DFTRACE stage=remote_trim start_us=129208087902 end_us=129208097369 n=4
+MTPPHASE phase=verify us=12773 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208097386 end_us=129208097387 n=4
+DFTRACE stage=kv_remove start_us=129208097389 end_us=129208097499 n=4
+DFTRACE stage=emit_tokens start_us=129208097501 end_us=129208097510 n=5
+DFTRACE stage=draft_call start_us=129208097530 end_us=129208131700 n=1
+MTPPHASE phase=draft us=34191 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208131755 end_us=129208131758 n=1
+DFTRACE stage=target_submit start_us=129208131772 end_us=129208132848 n=5
+DFTRACE stage=target_sync start_us=129208132848 end_us=129208170751 n=5
+DFTRACE stage=target_decode_total start_us=129208131770 end_us=129208170878 n=5
+MTPTGT n_tokens=5 us=39116
+DFTRACE stage=sync_process start_us=129208170888 end_us=129208171091 n=5
+MTPPHASE phase=sync us=208 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208171407 end_us=129208173787 n=4
+DFTRACE stage=remote_trim start_us=129208173796 end_us=129208183022 n=4
+MTPPHASE phase=verify us=11933 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208183039 end_us=129208183040 n=3
+DFTRACE stage=kv_remove start_us=129208183042 end_us=129208183156 n=4
+DFTRACE stage=emit_tokens start_us=129208183157 end_us=129208183166 n=4
+DFTRACE stage=draft_call start_us=129208183185 end_us=129208217437 n=1
+MTPPHASE phase=draft us=34264 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208217488 end_us=129208217490 n=1
+DFTRACE stage=target_submit start_us=129208217507 end_us=129208218621 n=5
+DFTRACE stage=target_sync start_us=129208218621 end_us=129208257464 n=5
+DFTRACE stage=target_decode_total start_us=129208217504 end_us=129208257564 n=5
+MTPTGT n_tokens=5 us=40066
+DFTRACE stage=sync_process start_us=129208257572 end_us=129208257823 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208258124 end_us=129208260512 n=4
+DFTRACE stage=remote_trim start_us=129208260522 end_us=129208269961 n=4
+MTPPHASE phase=verify us=12138 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208269978 end_us=129208269979 n=3
+DFTRACE stage=kv_remove start_us=129208269981 end_us=129208270113 n=4
+DFTRACE stage=emit_tokens start_us=129208270115 end_us=129208270126 n=4
+DFTRACE stage=draft_call start_us=129208270147 end_us=129208304691 n=1
+MTPPHASE phase=draft us=34560 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208304743 end_us=129208304745 n=1
+DFTRACE stage=target_submit start_us=129208304759 end_us=129208305860 n=5
+DFTRACE stage=target_sync start_us=129208305860 end_us=129208343852 n=5
+DFTRACE stage=target_decode_total start_us=129208304757 end_us=129208343979 n=5
+MTPTGT n_tokens=5 us=39230
+DFTRACE stage=sync_process start_us=129208343989 end_us=129208344277 n=5
+MTPPHASE phase=sync us=297 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208344536 end_us=129208347474 n=4
+DFTRACE stage=remote_trim start_us=129208347482 end_us=129208347514 n=4
+MTPPHASE phase=verify us=3231 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208347525 end_us=129208347525 n=4
+DFTRACE stage=kv_remove start_us=129208347538 end_us=129208347658 n=4
+DFTRACE stage=emit_tokens start_us=129208347660 end_us=129208347668 n=5
+DFTRACE stage=draft_call start_us=129208347687 end_us=129208391038 n=1
+MTPPHASE phase=draft us=43374 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208391119 end_us=129208391123 n=1
+DFTRACE stage=target_submit start_us=129208391142 end_us=129208392311 n=5
+DFTRACE stage=target_sync start_us=129208392311 end_us=129208430291 n=5
+DFTRACE stage=target_decode_total start_us=129208391139 end_us=129208430383 n=5
+MTPTGT n_tokens=5 us=39251
+DFTRACE stage=sync_process start_us=129208430392 end_us=129208430598 n=5
+MTPPHASE phase=sync us=209 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208430862 end_us=129208432616 n=4
+DFTRACE stage=remote_trim start_us=129208432625 end_us=129208432668 n=4
+MTPPHASE phase=verify us=2072 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208432679 end_us=129208432680 n=2
+DFTRACE stage=kv_remove start_us=129208432681 end_us=129208432788 n=4
+DFTRACE stage=emit_tokens start_us=129208432790 end_us=129208432797 n=3
+DFTRACE stage=draft_call start_us=129208432815 end_us=129208475784 n=1
+MTPPHASE phase=draft us=42985 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208475837 end_us=129208475839 n=1
+DFTRACE stage=target_submit start_us=129208475854 end_us=129208476940 n=5
+DFTRACE stage=target_sync start_us=129208476940 end_us=129208515354 n=5
+DFTRACE stage=target_decode_total start_us=129208475852 end_us=129208515442 n=5
+MTPTGT n_tokens=5 us=39596
+DFTRACE stage=sync_process start_us=129208515450 end_us=129208515664 n=5
+MTPPHASE phase=sync us=216 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208515934 end_us=129208518842 n=4
+DFTRACE stage=remote_trim start_us=129208518852 end_us=129208518885 n=4
+MTPPHASE phase=verify us=3221 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208518895 end_us=129208518897 n=4
+DFTRACE stage=kv_remove start_us=129208518898 end_us=129208519020 n=4
+DFTRACE stage=emit_tokens start_us=129208519022 end_us=129208519030 n=5
+DFTRACE stage=draft_call start_us=129208519048 end_us=129208562299 n=1
+MTPPHASE phase=draft us=43266 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208562348 end_us=129208562350 n=1
+DFTRACE stage=target_submit start_us=129208562367 end_us=129208563491 n=5
+DFTRACE stage=target_sync start_us=129208563491 end_us=129208601730 n=5
+DFTRACE stage=target_decode_total start_us=129208562363 end_us=129208601826 n=5
+MTPTGT n_tokens=5 us=39470
+DFTRACE stage=sync_process start_us=129208601835 end_us=129208602089 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208602357 end_us=129208604626 n=4
+DFTRACE stage=remote_trim start_us=129208604636 end_us=129208604668 n=4
+MTPPHASE phase=verify us=2573 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208604678 end_us=129208604679 n=3
+DFTRACE stage=kv_remove start_us=129208604680 end_us=129208604797 n=4
+DFTRACE stage=emit_tokens start_us=129208604798 end_us=129208604806 n=4
+DFTRACE stage=draft_call start_us=129208604823 end_us=129208648336 n=1
+MTPPHASE phase=draft us=43529 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208648386 end_us=129208648389 n=1
+DFTRACE stage=target_submit start_us=129208648405 end_us=129208649565 n=5
+DFTRACE stage=target_sync start_us=129208649565 end_us=129208688304 n=5
+DFTRACE stage=target_decode_total start_us=129208648402 end_us=129208688435 n=5
+MTPTGT n_tokens=5 us=40041
+DFTRACE stage=sync_process start_us=129208688445 end_us=129208688713 n=5
+MTPPHASE phase=sync us=276 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208688979 end_us=129208691326 n=4
+DFTRACE stage=remote_trim start_us=129208691335 end_us=129208691366 n=4
+MTPPHASE phase=verify us=2647 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208691376 end_us=129208691377 n=3
+DFTRACE stage=kv_remove start_us=129208691378 end_us=129208691496 n=4
+DFTRACE stage=emit_tokens start_us=129208691497 end_us=129208691505 n=4
+DFTRACE stage=draft_call start_us=129208691524 end_us=129208735206 n=1
+MTPPHASE phase=draft us=43697 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208735268 end_us=129208735271 n=1
+DFTRACE stage=target_submit start_us=129208735286 end_us=129208736423 n=5
+DFTRACE stage=target_sync start_us=129208736423 end_us=129208775131 n=5
+DFTRACE stage=target_decode_total start_us=129208735284 end_us=129208775219 n=5
+MTPTGT n_tokens=5 us=39937
+DFTRACE stage=sync_process start_us=129208775223 end_us=129208775472 n=5
+MTPPHASE phase=sync us=257 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208775745 end_us=129208776915 n=4
+DFTRACE stage=remote_trim start_us=129208776924 end_us=129208786124 n=4
+MTPPHASE phase=verify us=10651 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208786139 end_us=129208786141 n=1
+DFTRACE stage=kv_remove start_us=129208786142 end_us=129208786265 n=4
+DFTRACE stage=emit_tokens start_us=129208786266 end_us=129208786273 n=2
+DFTRACE stage=draft_call start_us=129208786293 end_us=129208820752 n=1
+MTPPHASE phase=draft us=34475 drafted=3
+DFTRACE stage=batch_from_sample start_us=129208820805 end_us=129208820808 n=1
+DFTRACE stage=target_submit start_us=129208820823 end_us=129208846862 n=4
+DFTRACE stage=target_sync start_us=129208846862 end_us=129208865794 n=4
+DFTRACE stage=target_decode_total start_us=129208820821 end_us=129208865890 n=4
+MTPTGT n_tokens=4 us=45078
+DFTRACE stage=sync_process start_us=129208865900 end_us=129208866121 n=4
+MTPPHASE phase=sync us=224 n_tokens=4
+DFTRACE stage=sample_accept start_us=129208866453 end_us=129208868854 n=3
+DFTRACE stage=remote_trim start_us=129208868864 end_us=129208868897 n=3
+MTPPHASE phase=verify us=2775 n_draft=3
+DFTRACE stage=commit_prompt start_us=129208868908 end_us=129208868910 n=3
+DFTRACE stage=kv_remove start_us=129208868911 end_us=129208869044 n=3
+DFTRACE stage=emit_tokens start_us=129208869047 end_us=129208869055 n=4
+0.10.741.458 I slot print_timing: id  0 | task 0 | n_gen =    124, tg =  40.80 t/s, tg_3s =  41.13 t/s
+DFTRACE stage=draft_call start_us=129208869091 end_us=129208910872 n=1
+MTPPHASE phase=draft us=41795 drafted=4
+DFTRACE stage=batch_from_sample start_us=129208910923 end_us=129208910926 n=1
+DFTRACE stage=target_submit start_us=129208910940 end_us=129208937832 n=5
+DFTRACE stage=target_sync start_us=129208937832 end_us=129208957746 n=5
+DFTRACE stage=target_decode_total start_us=129208910938 end_us=129208957879 n=5
+MTPTGT n_tokens=5 us=46949
+DFTRACE stage=sync_process start_us=129208957890 end_us=129208958185 n=5
+MTPPHASE phase=sync us=303 n_tokens=5
+DFTRACE stage=sample_accept start_us=129208958499 end_us=129208960287 n=4
+DFTRACE stage=remote_trim start_us=129208960297 end_us=129208960329 n=4
+MTPPHASE phase=verify us=2138 n_draft=4
+DFTRACE stage=commit_prompt start_us=129208960340 end_us=129208960342 n=2
+DFTRACE stage=kv_remove start_us=129208960343 end_us=129208960467 n=4
+DFTRACE stage=emit_tokens start_us=129208960469 end_us=129208960477 n=3
+DFTRACE stage=draft_call start_us=129208960497 end_us=129209004016 n=1
+MTPPHASE phase=draft us=43544 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209004086 end_us=129209004089 n=1
+DFTRACE stage=target_submit start_us=129209004111 end_us=129209026196 n=5
+DFTRACE stage=target_sync start_us=129209026196 end_us=129209045604 n=5
+DFTRACE stage=target_decode_total start_us=129209004108 end_us=129209045693 n=5
+MTPTGT n_tokens=5 us=41588
+DFTRACE stage=sync_process start_us=129209045697 end_us=129209045951 n=5
+MTPPHASE phase=sync us=262 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209046234 end_us=129209049130 n=4
+DFTRACE stage=remote_trim start_us=129209049140 end_us=129209049184 n=4
+MTPPHASE phase=verify us=3228 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209049195 end_us=129209049196 n=4
+DFTRACE stage=kv_remove start_us=129209049197 end_us=129209049314 n=4
+DFTRACE stage=emit_tokens start_us=129209049316 end_us=129209049329 n=5
+DFTRACE stage=draft_call start_us=129209049348 end_us=129209093493 n=1
+MTPPHASE phase=draft us=44161 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209093543 end_us=129209093546 n=1
+DFTRACE stage=target_submit start_us=129209093560 end_us=129209115463 n=5
+DFTRACE stage=target_sync start_us=129209115463 end_us=129209134820 n=5
+DFTRACE stage=target_decode_total start_us=129209093558 end_us=129209134940 n=5
+MTPTGT n_tokens=5 us=41391
+DFTRACE stage=sync_process start_us=129209134950 end_us=129209135115 n=5
+MTPPHASE phase=sync us=169 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209135412 end_us=129209137272 n=4
+DFTRACE stage=remote_trim start_us=129209137281 end_us=129209137313 n=4
+MTPPHASE phase=verify us=2203 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209137334 end_us=129209137338 n=2
+DFTRACE stage=kv_remove start_us=129209137340 end_us=129209137462 n=4
+DFTRACE stage=emit_tokens start_us=129209137463 end_us=129209137471 n=3
+DFTRACE stage=draft_call start_us=129209137489 end_us=129209181395 n=1
+MTPPHASE phase=draft us=43922 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209181446 end_us=129209181449 n=1
+DFTRACE stage=target_submit start_us=129209181466 end_us=129209203591 n=5
+DFTRACE stage=target_sync start_us=129209203591 end_us=129209223062 n=5
+DFTRACE stage=target_decode_total start_us=129209181462 end_us=129209223116 n=5
+MTPTGT n_tokens=5 us=41656
+DFTRACE stage=sync_process start_us=129209223120 end_us=129209223326 n=5
+MTPPHASE phase=sync us=209 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209223625 end_us=129209224897 n=4
+DFTRACE stage=remote_trim start_us=129209224907 end_us=129209234375 n=4
+MTPPHASE phase=verify us=11051 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209234391 end_us=129209234393 n=1
+DFTRACE stage=kv_remove start_us=129209234394 end_us=129209234522 n=4
+DFTRACE stage=emit_tokens start_us=129209234524 end_us=129209234531 n=2
+DFTRACE stage=draft_call start_us=129209234552 end_us=129209239320 n=1
+MTPPHASE phase=draft us=4778 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209239356 end_us=129209239358 n=1
+DFTRACE stage=target_submit start_us=129209239370 end_us=129209251064 n=5
+DFTRACE stage=target_sync start_us=129209251064 end_us=129209291202 n=5
+DFTRACE stage=target_decode_total start_us=129209239368 end_us=129209291333 n=5
+MTPTGT n_tokens=5 us=51973
+DFTRACE stage=sync_process start_us=129209291343 end_us=129209291778 n=5
+MTPPHASE phase=sync us=439 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209293169 end_us=129209293735 n=4
+DFTRACE stage=remote_trim start_us=129209293745 end_us=129209293782 n=4
+MTPPHASE phase=verify us=2002 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209293793 end_us=129209293795 n=0
+DFTRACE stage=kv_remove start_us=129209293796 end_us=129209293926 n=4
+DFTRACE stage=emit_tokens start_us=129209293927 end_us=129209293934 n=1
+DFTRACE stage=draft_call start_us=129209293954 end_us=129209337513 n=1
+MTPPHASE phase=draft us=43576 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209337565 end_us=129209337567 n=1
+DFTRACE stage=target_submit start_us=129209337585 end_us=129209338783 n=5
+DFTRACE stage=target_sync start_us=129209338783 end_us=129209377843 n=5
+DFTRACE stage=target_decode_total start_us=129209337581 end_us=129209377952 n=5
+MTPTGT n_tokens=5 us=40378
+DFTRACE stage=sync_process start_us=129209377961 end_us=129209378218 n=5
+MTPPHASE phase=sync us=266 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209378478 end_us=129209379127 n=4
+DFTRACE stage=remote_trim start_us=129209379134 end_us=129209379165 n=4
+MTPPHASE phase=verify us=942 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209379175 end_us=129209379176 n=0
+DFTRACE stage=kv_remove start_us=129209379177 end_us=129209379295 n=4
+DFTRACE stage=emit_tokens start_us=129209379297 end_us=129209379303 n=1
+DFTRACE stage=draft_call start_us=129209379321 end_us=129209423516 n=1
+MTPPHASE phase=draft us=44223 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209423591 end_us=129209423595 n=1
+DFTRACE stage=target_submit start_us=129209423632 end_us=129209424783 n=5
+DFTRACE stage=target_sync start_us=129209424783 end_us=129209463522 n=5
+DFTRACE stage=target_decode_total start_us=129209423629 end_us=129209463651 n=5
+MTPTGT n_tokens=5 us=40030
+DFTRACE stage=sync_process start_us=129209463661 end_us=129209463881 n=5
+MTPPHASE phase=sync us=224 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209464350 end_us=129209464937 n=4
+DFTRACE stage=remote_trim start_us=129209464946 end_us=129209474187 n=4
+MTPPHASE phase=verify us=10294 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209474202 end_us=129209474203 n=0
+DFTRACE stage=kv_remove start_us=129209474205 end_us=129209474328 n=4
+DFTRACE stage=emit_tokens start_us=129209474329 end_us=129209474336 n=1
+DFTRACE stage=draft_call start_us=129209474357 end_us=129209509514 n=1
+MTPPHASE phase=draft us=35176 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209509568 end_us=129209509571 n=1
+DFTRACE stage=target_submit start_us=129209509586 end_us=129209510716 n=5
+DFTRACE stage=target_sync start_us=129209510716 end_us=129209549295 n=5
+DFTRACE stage=target_decode_total start_us=129209509584 end_us=129209549425 n=5
+MTPTGT n_tokens=5 us=39848
+DFTRACE stage=sync_process start_us=129209549434 end_us=129209549658 n=5
+MTPPHASE phase=sync us=227 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209549956 end_us=129209551173 n=4
+DFTRACE stage=remote_trim start_us=129209551181 end_us=129209560450 n=4
+MTPPHASE phase=verify us=10795 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209560465 end_us=129209560466 n=1
+DFTRACE stage=kv_remove start_us=129209560468 end_us=129209560588 n=4
+DFTRACE stage=emit_tokens start_us=129209560589 end_us=129209560597 n=2
+DFTRACE stage=draft_call start_us=129209560616 end_us=129209595559 n=1
+MTPPHASE phase=draft us=34959 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209595614 end_us=129209595617 n=1
+DFTRACE stage=target_submit start_us=129209595632 end_us=129209596759 n=5
+DFTRACE stage=target_sync start_us=129209596759 end_us=129209635879 n=5
+DFTRACE stage=target_decode_total start_us=129209595630 end_us=129209635947 n=5
+MTPTGT n_tokens=5 us=40318
+DFTRACE stage=sync_process start_us=129209635950 end_us=129209636145 n=5
+MTPPHASE phase=sync us=198 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209636401 end_us=129209636969 n=4
+DFTRACE stage=remote_trim start_us=129209636975 end_us=129209637010 n=4
+MTPPHASE phase=verify us=867 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209637020 end_us=129209637021 n=0
+DFTRACE stage=kv_remove start_us=129209637022 end_us=129209637136 n=4
+DFTRACE stage=emit_tokens start_us=129209637137 end_us=129209637143 n=1
+DFTRACE stage=draft_call start_us=129209637160 end_us=129209680931 n=1
+MTPPHASE phase=draft us=43791 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209680985 end_us=129209680988 n=1
+DFTRACE stage=target_submit start_us=129209681008 end_us=129209682141 n=5
+DFTRACE stage=target_sync start_us=129209682141 end_us=129209721462 n=5
+DFTRACE stage=target_decode_total start_us=129209681006 end_us=129209721555 n=5
+MTPTGT n_tokens=5 us=40556
+DFTRACE stage=sync_process start_us=129209721564 end_us=129209721819 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209722094 end_us=129209724951 n=4
+DFTRACE stage=remote_trim start_us=129209724961 end_us=129209724993 n=4
+MTPPHASE phase=verify us=3175 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209725011 end_us=129209725012 n=4
+DFTRACE stage=kv_remove start_us=129209725013 end_us=129209725133 n=4
+DFTRACE stage=emit_tokens start_us=129209725134 end_us=129209725144 n=5
+DFTRACE stage=draft_call start_us=129209725163 end_us=129209769347 n=1
+MTPPHASE phase=draft us=44207 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209769415 end_us=129209769419 n=1
+DFTRACE stage=target_submit start_us=129209769452 end_us=129209770626 n=5
+DFTRACE stage=target_sync start_us=129209770626 end_us=129209809372 n=5
+DFTRACE stage=target_decode_total start_us=129209769448 end_us=129209809505 n=5
+MTPTGT n_tokens=5 us=40065
+DFTRACE stage=sync_process start_us=129209809515 end_us=129209809777 n=5
+MTPPHASE phase=sync us=270 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209810070 end_us=129209811901 n=4
+DFTRACE stage=remote_trim start_us=129209811910 end_us=129209811953 n=4
+MTPPHASE phase=verify us=2172 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209811965 end_us=129209811966 n=2
+DFTRACE stage=kv_remove start_us=129209811969 end_us=129209812096 n=4
+DFTRACE stage=emit_tokens start_us=129209812098 end_us=129209812106 n=3
+DFTRACE stage=draft_call start_us=129209812124 end_us=129209856196 n=1
+MTPPHASE phase=draft us=44087 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209856250 end_us=129209856252 n=1
+DFTRACE stage=target_submit start_us=129209856268 end_us=129209857433 n=5
+DFTRACE stage=target_sync start_us=129209857433 end_us=129209896166 n=5
+DFTRACE stage=target_decode_total start_us=129209856266 end_us=129209896257 n=5
+MTPTGT n_tokens=5 us=39994
+DFTRACE stage=sync_process start_us=129209896261 end_us=129209896513 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209896883 end_us=129209899789 n=4
+DFTRACE stage=remote_trim start_us=129209899798 end_us=129209909207 n=4
+MTPPHASE phase=verify us=12693 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209909223 end_us=129209909225 n=4
+DFTRACE stage=kv_remove start_us=129209909226 end_us=129209909355 n=4
+DFTRACE stage=emit_tokens start_us=129209909356 end_us=129209909366 n=5
+DFTRACE stage=draft_call start_us=129209909386 end_us=129209944563 n=1
+MTPPHASE phase=draft us=35192 drafted=4
+DFTRACE stage=batch_from_sample start_us=129209944617 end_us=129209944620 n=1
+DFTRACE stage=target_submit start_us=129209944635 end_us=129209945764 n=5
+DFTRACE stage=target_sync start_us=129209945764 end_us=129209984336 n=5
+DFTRACE stage=target_decode_total start_us=129209944633 end_us=129209984425 n=5
+MTPTGT n_tokens=5 us=39795
+DFTRACE stage=sync_process start_us=129209984429 end_us=129209984680 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129209984965 end_us=129209987861 n=4
+DFTRACE stage=remote_trim start_us=129209987870 end_us=129209987901 n=4
+MTPPHASE phase=verify us=3216 n_draft=4
+DFTRACE stage=commit_prompt start_us=129209987911 end_us=129209987912 n=4
+DFTRACE stage=kv_remove start_us=129209987913 end_us=129209988045 n=4
+DFTRACE stage=emit_tokens start_us=129209988047 end_us=129209988056 n=5
+DFTRACE stage=draft_call start_us=129209988074 end_us=129210032386 n=1
+MTPPHASE phase=draft us=44331 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210032441 end_us=129210032444 n=1
+DFTRACE stage=target_submit start_us=129210032461 end_us=129210033598 n=5
+DFTRACE stage=target_sync start_us=129210033598 end_us=129210073204 n=5
+DFTRACE stage=target_decode_total start_us=129210032457 end_us=129210073296 n=5
+MTPTGT n_tokens=5 us=40845
+DFTRACE stage=sync_process start_us=129210073305 end_us=129210073562 n=5
+MTPPHASE phase=sync us=265 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210073824 end_us=129210076791 n=4
+DFTRACE stage=remote_trim start_us=129210076800 end_us=129210076846 n=4
+MTPPHASE phase=verify us=3280 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210076857 end_us=129210076858 n=4
+DFTRACE stage=kv_remove start_us=129210076859 end_us=129210076978 n=4
+DFTRACE stage=emit_tokens start_us=129210076980 end_us=129210076988 n=5
+DFTRACE stage=draft_call start_us=129210077011 end_us=129210121445 n=1
+MTPPHASE phase=draft us=44449 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210121495 end_us=129210121498 n=1
+DFTRACE stage=target_submit start_us=129210121513 end_us=129210122622 n=5
+DFTRACE stage=target_sync start_us=129210122622 end_us=129210161422 n=5
+DFTRACE stage=target_decode_total start_us=129210121510 end_us=129210161546 n=5
+MTPTGT n_tokens=5 us=40044
+DFTRACE stage=sync_process start_us=129210161556 end_us=129210161775 n=5
+MTPPHASE phase=sync us=222 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210162097 end_us=129210163284 n=4
+DFTRACE stage=remote_trim start_us=129210163293 end_us=129210172627 n=4
+MTPPHASE phase=verify us=10856 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210172642 end_us=129210172643 n=1
+DFTRACE stage=kv_remove start_us=129210172645 end_us=129210172769 n=4
+DFTRACE stage=emit_tokens start_us=129210172770 end_us=129210172778 n=2
+DFTRACE stage=draft_call start_us=129210172798 end_us=129210177530 n=1
+MTPPHASE phase=draft us=4739 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210177563 end_us=129210177564 n=1
+DFTRACE stage=target_submit start_us=129210177584 end_us=129210178639 n=5
+DFTRACE stage=target_sync start_us=129210178639 end_us=129210218569 n=5
+DFTRACE stage=target_decode_total start_us=129210177583 end_us=129210218701 n=5
+MTPTGT n_tokens=5 us=41125
+DFTRACE stage=sync_process start_us=129210218711 end_us=129210218974 n=5
+MTPPHASE phase=sync us=271 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210219241 end_us=129210220400 n=4
+DFTRACE stage=remote_trim start_us=129210220408 end_us=129210220435 n=4
+MTPPHASE phase=verify us=1456 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210220445 end_us=129210220445 n=1
+DFTRACE stage=kv_remove start_us=129210220446 end_us=129210220558 n=4
+DFTRACE stage=emit_tokens start_us=129210220560 end_us=129210220565 n=2
+DFTRACE stage=draft_call start_us=129210220580 end_us=129210264652 n=1
+MTPPHASE phase=draft us=44090 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210264721 end_us=129210264727 n=1
+DFTRACE stage=target_submit start_us=129210264778 end_us=129210265876 n=5
+DFTRACE stage=target_sync start_us=129210265876 end_us=129210304605 n=5
+DFTRACE stage=target_decode_total start_us=129210264773 end_us=129210304729 n=5
+MTPTGT n_tokens=5 us=39964
+DFTRACE stage=sync_process start_us=129210304739 end_us=129210305025 n=5
+MTPPHASE phase=sync us=295 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210305356 end_us=129210306636 n=4
+DFTRACE stage=remote_trim start_us=129210306646 end_us=129210316102 n=4
+MTPPHASE phase=verify us=11076 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210316117 end_us=129210316118 n=1
+DFTRACE stage=kv_remove start_us=129210316120 end_us=129210316245 n=4
+DFTRACE stage=emit_tokens start_us=129210316247 end_us=129210316254 n=2
+DFTRACE stage=draft_call start_us=129210316274 end_us=129210352255 n=1
+MTPPHASE phase=draft us=36000 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210352314 end_us=129210352316 n=1
+DFTRACE stage=target_submit start_us=129210352332 end_us=129210353483 n=5
+DFTRACE stage=target_sync start_us=129210353483 end_us=129210392068 n=5
+DFTRACE stage=target_decode_total start_us=129210352330 end_us=129210392156 n=5
+MTPTGT n_tokens=5 us=39828
+DFTRACE stage=sync_process start_us=129210392160 end_us=129210392371 n=5
+MTPPHASE phase=sync us=214 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210392632 end_us=129210395501 n=4
+DFTRACE stage=remote_trim start_us=129210395511 end_us=129210404934 n=4
+MTPPHASE phase=verify us=12569 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210404951 end_us=129210404952 n=4
+DFTRACE stage=kv_remove start_us=129210404954 end_us=129210405095 n=4
+DFTRACE stage=emit_tokens start_us=129210405097 end_us=129210405107 n=5
+DFTRACE stage=draft_call start_us=129210405128 end_us=129210441427 n=1
+MTPPHASE phase=draft us=36325 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210441488 end_us=129210441491 n=1
+DFTRACE stage=target_submit start_us=129210441506 end_us=129210442636 n=5
+DFTRACE stage=target_sync start_us=129210442636 end_us=129210481423 n=5
+DFTRACE stage=target_decode_total start_us=129210441504 end_us=129210481502 n=5
+MTPTGT n_tokens=5 us=40000
+DFTRACE stage=sync_process start_us=129210481506 end_us=129210481714 n=5
+MTPPHASE phase=sync us=210 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210481972 end_us=129210483154 n=4
+DFTRACE stage=remote_trim start_us=129210483162 end_us=129210492644 n=4
+MTPPHASE phase=verify us=10937 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210492660 end_us=129210492661 n=1
+DFTRACE stage=kv_remove start_us=129210492663 end_us=129210492784 n=4
+DFTRACE stage=emit_tokens start_us=129210492786 end_us=129210492793 n=2
+DFTRACE stage=draft_call start_us=129210492812 end_us=129210528349 n=1
+MTPPHASE phase=draft us=35553 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210528399 end_us=129210528402 n=1
+DFTRACE stage=target_submit start_us=129210528417 end_us=129210529564 n=5
+DFTRACE stage=target_sync start_us=129210529564 end_us=129210568764 n=5
+DFTRACE stage=target_decode_total start_us=129210528415 end_us=129210568857 n=5
+MTPTGT n_tokens=5 us=40460
+DFTRACE stage=sync_process start_us=129210568877 end_us=129210569088 n=5
+MTPPHASE phase=sync us=214 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210569368 end_us=129210572150 n=4
+DFTRACE stage=remote_trim start_us=129210572159 end_us=129210581659 n=4
+MTPPHASE phase=verify us=12578 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210581677 end_us=129210581678 n=4
+DFTRACE stage=kv_remove start_us=129210581680 end_us=129210581803 n=4
+DFTRACE stage=emit_tokens start_us=129210581805 end_us=129210581814 n=5
+DFTRACE stage=draft_call start_us=129210581834 end_us=129210617523 n=1
+MTPPHASE phase=draft us=35708 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210617575 end_us=129210617578 n=1
+DFTRACE stage=target_submit start_us=129210617592 end_us=129210618696 n=5
+DFTRACE stage=target_sync start_us=129210618696 end_us=129210657301 n=5
+DFTRACE stage=target_decode_total start_us=129210617590 end_us=129210657427 n=5
+MTPTGT n_tokens=5 us=39845
+DFTRACE stage=sync_process start_us=129210657437 end_us=129210657704 n=5
+MTPPHASE phase=sync us=275 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210657969 end_us=129210660821 n=4
+DFTRACE stage=remote_trim start_us=129210660831 end_us=129210660862 n=4
+MTPPHASE phase=verify us=3154 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210660873 end_us=129210660874 n=4
+DFTRACE stage=kv_remove start_us=129210660875 end_us=129210660994 n=4
+DFTRACE stage=emit_tokens start_us=129210660995 end_us=129210661015 n=5
+DFTRACE stage=draft_call start_us=129210661034 end_us=129210705347 n=1
+MTPPHASE phase=draft us=44332 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210705401 end_us=129210705403 n=1
+DFTRACE stage=target_submit start_us=129210705419 end_us=129210706557 n=5
+DFTRACE stage=target_sync start_us=129210706557 end_us=129210745154 n=5
+DFTRACE stage=target_decode_total start_us=129210705417 end_us=129210745234 n=5
+MTPTGT n_tokens=5 us=39819
+DFTRACE stage=sync_process start_us=129210745237 end_us=129210745454 n=5
+MTPPHASE phase=sync us=220 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210745716 end_us=129210748623 n=4
+DFTRACE stage=remote_trim start_us=129210748633 end_us=129210748665 n=4
+MTPPHASE phase=verify us=3212 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210748676 end_us=129210748677 n=4
+DFTRACE stage=kv_remove start_us=129210748678 end_us=129210748799 n=4
+DFTRACE stage=emit_tokens start_us=129210748801 end_us=129210748809 n=5
+DFTRACE stage=draft_call start_us=129210748827 end_us=129210793451 n=1
+MTPPHASE phase=draft us=44643 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210793511 end_us=129210793513 n=1
+DFTRACE stage=target_submit start_us=129210793529 end_us=129210794670 n=5
+DFTRACE stage=target_sync start_us=129210794670 end_us=129210833679 n=5
+DFTRACE stage=target_decode_total start_us=129210793527 end_us=129210833761 n=5
+MTPTGT n_tokens=5 us=40238
+DFTRACE stage=sync_process start_us=129210833766 end_us=129210833973 n=5
+MTPPHASE phase=sync us=210 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210834248 end_us=129210835984 n=4
+DFTRACE stage=remote_trim start_us=129210835994 end_us=129210845263 n=4
+MTPPHASE phase=verify us=11295 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210845279 end_us=129210845280 n=2
+DFTRACE stage=kv_remove start_us=129210845282 end_us=129210845409 n=4
+DFTRACE stage=emit_tokens start_us=129210845411 end_us=129210845419 n=3
+DFTRACE stage=draft_call start_us=129210845439 end_us=129210881137 n=1
+MTPPHASE phase=draft us=35713 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210881190 end_us=129210881193 n=1
+DFTRACE stage=target_submit start_us=129210881208 end_us=129210882330 n=5
+DFTRACE stage=target_sync start_us=129210882330 end_us=129210921506 n=5
+DFTRACE stage=target_decode_total start_us=129210881206 end_us=129210921631 n=5
+MTPTGT n_tokens=5 us=40433
+DFTRACE stage=sync_process start_us=129210921641 end_us=129210921865 n=5
+MTPPHASE phase=sync us=227 n_tokens=5
+DFTRACE stage=sample_accept start_us=129210922149 end_us=129210922733 n=4
+DFTRACE stage=remote_trim start_us=129210922740 end_us=129210922772 n=4
+MTPPHASE phase=verify us=919 n_draft=4
+DFTRACE stage=commit_prompt start_us=129210922794 end_us=129210922795 n=0
+DFTRACE stage=kv_remove start_us=129210922796 end_us=129210922917 n=4
+DFTRACE stage=emit_tokens start_us=129210922918 end_us=129210922924 n=1
+DFTRACE stage=draft_call start_us=129210922942 end_us=129210967729 n=1
+MTPPHASE phase=draft us=44803 drafted=4
+DFTRACE stage=batch_from_sample start_us=129210967779 end_us=129210967781 n=1
+DFTRACE stage=target_submit start_us=129210967799 end_us=129210968953 n=5
+DFTRACE stage=target_sync start_us=129210968953 end_us=129211007638 n=5
+DFTRACE stage=target_decode_total start_us=129210967795 end_us=129211007764 n=5
+MTPTGT n_tokens=5 us=39976
+DFTRACE stage=sync_process start_us=129211007773 end_us=129211008048 n=5
+MTPPHASE phase=sync us=284 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211008309 end_us=129211011310 n=4
+DFTRACE stage=remote_trim start_us=129211011319 end_us=129211011350 n=4
+MTPPHASE phase=verify us=3296 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211011360 end_us=129211011361 n=4
+DFTRACE stage=kv_remove start_us=129211011362 end_us=129211011481 n=4
+DFTRACE stage=emit_tokens start_us=129211011483 end_us=129211011493 n=5
+DFTRACE stage=draft_call start_us=129211011512 end_us=129211057226 n=1
+MTPPHASE phase=draft us=45734 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211057280 end_us=129211057283 n=1
+DFTRACE stage=target_submit start_us=129211057299 end_us=129211058427 n=5
+DFTRACE stage=target_sync start_us=129211058427 end_us=129211097471 n=5
+DFTRACE stage=target_decode_total start_us=129211057296 end_us=129211097569 n=5
+MTPTGT n_tokens=5 us=40279
+DFTRACE stage=sync_process start_us=129211097577 end_us=129211097827 n=5
+MTPPHASE phase=sync us=258 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211098124 end_us=129211099312 n=4
+DFTRACE stage=remote_trim start_us=129211099320 end_us=129211108690 n=4
+MTPPHASE phase=verify us=10863 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211108706 end_us=129211108707 n=1
+DFTRACE stage=kv_remove start_us=129211108709 end_us=129211108837 n=4
+DFTRACE stage=emit_tokens start_us=129211108838 end_us=129211108847 n=2
+DFTRACE stage=draft_call start_us=129211108868 end_us=129211114232 n=1
+MTPPHASE phase=draft us=5372 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211114265 end_us=129211114266 n=1
+DFTRACE stage=target_submit start_us=129211114277 end_us=129211115433 n=5
+DFTRACE stage=target_sync start_us=129211115433 end_us=129211155463 n=5
+DFTRACE stage=target_decode_total start_us=129211114275 end_us=129211155584 n=5
+MTPTGT n_tokens=5 us=41317
+DFTRACE stage=sync_process start_us=129211155594 end_us=129211155848 n=5
+MTPPHASE phase=sync us=262 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211156129 end_us=129211157271 n=4
+DFTRACE stage=remote_trim start_us=129211157279 end_us=129211157308 n=4
+MTPPHASE phase=verify us=1455 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211157317 end_us=129211157318 n=1
+DFTRACE stage=kv_remove start_us=129211157319 end_us=129211157442 n=4
+DFTRACE stage=emit_tokens start_us=129211157443 end_us=129211157450 n=2
+DFTRACE stage=draft_call start_us=129211157465 end_us=129211202570 n=1
+MTPPHASE phase=draft us=45122 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211202626 end_us=129211202629 n=1
+DFTRACE stage=target_submit start_us=129211202644 end_us=129211203793 n=5
+DFTRACE stage=target_sync start_us=129211203793 end_us=129211242517 n=5
+DFTRACE stage=target_decode_total start_us=129211202642 end_us=129211242639 n=5
+MTPTGT n_tokens=5 us=40004
+DFTRACE stage=sync_process start_us=129211242649 end_us=129211242934 n=5
+MTPPHASE phase=sync us=386 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211243330 end_us=129211245828 n=4
+DFTRACE stage=remote_trim start_us=129211245838 end_us=129211255258 n=4
+MTPPHASE phase=verify us=12229 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211255275 end_us=129211255276 n=3
+DFTRACE stage=kv_remove start_us=129211255278 end_us=129211255409 n=4
+DFTRACE stage=emit_tokens start_us=129211255411 end_us=129211255419 n=4
+DFTRACE stage=draft_call start_us=129211255455 end_us=129211291502 n=1
+MTPPHASE phase=draft us=36062 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211291552 end_us=129211291554 n=1
+DFTRACE stage=target_submit start_us=129211291572 end_us=129211292737 n=5
+DFTRACE stage=target_sync start_us=129211292737 end_us=129211331640 n=5
+DFTRACE stage=target_decode_total start_us=129211291568 end_us=129211331767 n=5
+MTPTGT n_tokens=5 us=40207
+DFTRACE stage=sync_process start_us=129211331777 end_us=129211332050 n=5
+MTPPHASE phase=sync us=286 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211332314 end_us=129211335187 n=4
+DFTRACE stage=remote_trim start_us=129211335195 end_us=129211335247 n=4
+MTPPHASE phase=verify us=3187 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211335259 end_us=129211335260 n=4
+DFTRACE stage=kv_remove start_us=129211335261 end_us=129211335381 n=4
+DFTRACE stage=emit_tokens start_us=129211335383 end_us=129211335392 n=5
+DFTRACE stage=draft_call start_us=129211335410 end_us=129211380408 n=1
+MTPPHASE phase=draft us=45014 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211380462 end_us=129211380464 n=1
+DFTRACE stage=target_submit start_us=129211380479 end_us=129211381579 n=5
+DFTRACE stage=target_sync start_us=129211381579 end_us=129211420378 n=5
+DFTRACE stage=target_decode_total start_us=129211380477 end_us=129211420466 n=5
+MTPTGT n_tokens=5 us=39992
+DFTRACE stage=sync_process start_us=129211420471 end_us=129211420721 n=5
+MTPPHASE phase=sync us=258 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211420987 end_us=129211422163 n=4
+DFTRACE stage=remote_trim start_us=129211422171 end_us=129211422203 n=4
+MTPPHASE phase=verify us=1476 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211422212 end_us=129211422213 n=1
+DFTRACE stage=kv_remove start_us=129211422214 end_us=129211422332 n=4
+DFTRACE stage=emit_tokens start_us=129211422334 end_us=129211422340 n=2
+DFTRACE stage=draft_call start_us=129211422358 end_us=129211467497 n=1
+MTPPHASE phase=draft us=45154 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211467546 end_us=129211467549 n=1
+DFTRACE stage=target_submit start_us=129211467609 end_us=129211468993 n=5
+DFTRACE stage=target_sync start_us=129211468993 end_us=129211507662 n=5
+DFTRACE stage=target_decode_total start_us=129211467599 end_us=129211507747 n=5
+MTPTGT n_tokens=5 us=40151
+DFTRACE stage=sync_process start_us=129211507751 end_us=129211507999 n=5
+MTPPHASE phase=sync us=267 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211508277 end_us=129211511236 n=4
+DFTRACE stage=remote_trim start_us=129211511245 end_us=129211520659 n=4
+MTPPHASE phase=verify us=12648 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211520675 end_us=129211520676 n=4
+DFTRACE stage=kv_remove start_us=129211520678 end_us=129211520802 n=4
+DFTRACE stage=emit_tokens start_us=129211520804 end_us=129211520813 n=5
+DFTRACE stage=draft_call start_us=129211520834 end_us=129211557186 n=1
+MTPPHASE phase=draft us=36372 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211557245 end_us=129211557248 n=1
+DFTRACE stage=target_submit start_us=129211557263 end_us=129211558398 n=5
+DFTRACE stage=target_sync start_us=129211558398 end_us=129211597443 n=5
+DFTRACE stage=target_decode_total start_us=129211557261 end_us=129211597536 n=5
+MTPTGT n_tokens=5 us=40279
+DFTRACE stage=sync_process start_us=129211597542 end_us=129211597785 n=5
+MTPPHASE phase=sync us=251 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211598060 end_us=129211600883 n=4
+DFTRACE stage=remote_trim start_us=129211600891 end_us=129211610436 n=4
+MTPPHASE phase=verify us=12651 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211610451 end_us=129211610453 n=4
+DFTRACE stage=kv_remove start_us=129211610454 end_us=129211610579 n=4
+DFTRACE stage=emit_tokens start_us=129211610581 end_us=129211610590 n=5
+DFTRACE stage=draft_call start_us=129211610610 end_us=129211646755 n=1
+MTPPHASE phase=draft us=36168 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211646812 end_us=129211646815 n=1
+DFTRACE stage=target_submit start_us=129211646830 end_us=129211647970 n=5
+DFTRACE stage=target_sync start_us=129211647970 end_us=129211686950 n=5
+DFTRACE stage=target_decode_total start_us=129211646828 end_us=129211687079 n=5
+MTPTGT n_tokens=5 us=40259
+DFTRACE stage=sync_process start_us=129211687090 end_us=129211687371 n=5
+MTPPHASE phase=sync us=289 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211687646 end_us=129211690591 n=4
+DFTRACE stage=remote_trim start_us=129211690601 end_us=129211690632 n=4
+MTPPHASE phase=verify us=3255 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211690642 end_us=129211690643 n=4
+DFTRACE stage=kv_remove start_us=129211690644 end_us=129211690765 n=4
+DFTRACE stage=emit_tokens start_us=129211690767 end_us=129211690775 n=5
+DFTRACE stage=draft_call start_us=129211690794 end_us=129211736223 n=1
+MTPPHASE phase=draft us=45450 drafted=2
+DFTRACE stage=batch_from_sample start_us=129211736278 end_us=129211736280 n=1
+DFTRACE stage=target_submit start_us=129211736296 end_us=129211759903 n=3
+DFTRACE stage=target_sync start_us=129211759903 end_us=129211777087 n=3
+DFTRACE stage=target_decode_total start_us=129211736293 end_us=129211777214 n=3
+MTPTGT n_tokens=3 us=40929
+DFTRACE stage=sync_process start_us=129211777224 end_us=129211777456 n=3
+MTPPHASE phase=sync us=240 n_tokens=3
+DFTRACE stage=sample_accept start_us=129211777776 end_us=129211779514 n=2
+DFTRACE stage=remote_trim start_us=129211779524 end_us=129211779556 n=2
+MTPPHASE phase=verify us=2095 n_draft=2
+DFTRACE stage=commit_prompt start_us=129211779568 end_us=129211779569 n=2
+DFTRACE stage=kv_remove start_us=129211779570 end_us=129211779693 n=2
+DFTRACE stage=emit_tokens start_us=129211779695 end_us=129211779702 n=3
+DFTRACE stage=draft_call start_us=129211779722 end_us=129211822083 n=1
+MTPPHASE phase=draft us=42385 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211822155 end_us=129211822160 n=1
+DFTRACE stage=target_submit start_us=129211822183 end_us=129211849414 n=5
+DFTRACE stage=target_sync start_us=129211849414 end_us=129211868830 n=5
+DFTRACE stage=target_decode_total start_us=129211822179 end_us=129211868959 n=5
+MTPTGT n_tokens=5 us=46788
+DFTRACE stage=sync_process start_us=129211868970 end_us=129211869214 n=5
+MTPPHASE phase=sync us=247 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211869627 end_us=129211870204 n=4
+DFTRACE stage=remote_trim start_us=129211870211 end_us=129211870242 n=4
+MTPPHASE phase=verify us=1028 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211870254 end_us=129211870255 n=0
+DFTRACE stage=kv_remove start_us=129211870256 end_us=129211870383 n=4
+DFTRACE stage=emit_tokens start_us=129211870385 end_us=129211870391 n=1
+0.13.742.793 I slot print_timing: id  0 | task 0 | n_gen =    237, tg =  39.23 t/s, tg_3s =  37.65 t/s
+DFTRACE stage=draft_call start_us=129211870421 end_us=129211916135 n=1
+MTPPHASE phase=draft us=45734 drafted=4
+DFTRACE stage=batch_from_sample start_us=129211916193 end_us=129211916196 n=1
+DFTRACE stage=target_submit start_us=129211916211 end_us=129211938171 n=5
+DFTRACE stage=target_sync start_us=129211938171 end_us=129211958075 n=5
+DFTRACE stage=target_decode_total start_us=129211916209 end_us=129211958171 n=5
+MTPTGT n_tokens=5 us=41968
+DFTRACE stage=sync_process start_us=129211958179 end_us=129211958419 n=5
+MTPPHASE phase=sync us=248 n_tokens=5
+DFTRACE stage=sample_accept start_us=129211958698 end_us=129211961565 n=4
+DFTRACE stage=remote_trim start_us=129211961576 end_us=129211970879 n=4
+MTPPHASE phase=verify us=12460 n_draft=4
+DFTRACE stage=commit_prompt start_us=129211970895 end_us=129211970896 n=4
+DFTRACE stage=kv_remove start_us=129211970898 end_us=129211971038 n=4
+DFTRACE stage=emit_tokens start_us=129211971041 end_us=129211971050 n=5
+DFTRACE stage=draft_call start_us=129211971071 end_us=129212007794 n=1
+MTPPHASE phase=draft us=36745 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212007862 end_us=129212007865 n=1
+DFTRACE stage=target_submit start_us=129212007889 end_us=129212041069 n=5
+DFTRACE stage=target_sync start_us=129212041069 end_us=129212064697 n=5
+DFTRACE stage=target_decode_total start_us=129212007885 end_us=129212064790 n=5
+MTPTGT n_tokens=5 us=56910
+DFTRACE stage=sync_process start_us=129212064810 end_us=129212065074 n=5
+MTPPHASE phase=sync us=273 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212065375 end_us=129212067118 n=4
+DFTRACE stage=remote_trim start_us=129212067127 end_us=129212067159 n=4
+MTPPHASE phase=verify us=2079 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212067170 end_us=129212067171 n=2
+DFTRACE stage=kv_remove start_us=129212067172 end_us=129212067297 n=4
+DFTRACE stage=emit_tokens start_us=129212067299 end_us=129212067306 n=3
+DFTRACE stage=draft_call start_us=129212067325 end_us=129212113214 n=1
+MTPPHASE phase=draft us=45904 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212113265 end_us=129212113267 n=1
+DFTRACE stage=target_submit start_us=129212113283 end_us=129212140687 n=5
+DFTRACE stage=target_sync start_us=129212140687 end_us=129212164578 n=5
+DFTRACE stage=target_decode_total start_us=129212113280 end_us=129212164669 n=5
+MTPTGT n_tokens=5 us=51391
+DFTRACE stage=sync_process start_us=129212164673 end_us=129212164920 n=5
+MTPPHASE phase=sync us=255 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212165197 end_us=129212168055 n=4
+DFTRACE stage=remote_trim start_us=129212168065 end_us=129212177433 n=4
+MTPPHASE phase=verify us=12513 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212177449 end_us=129212177450 n=4
+DFTRACE stage=kv_remove start_us=129212177452 end_us=129212177579 n=4
+DFTRACE stage=emit_tokens start_us=129212177581 end_us=129212177589 n=5
+DFTRACE stage=draft_call start_us=129212177609 end_us=129212214288 n=1
+MTPPHASE phase=draft us=36695 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212214339 end_us=129212214341 n=1
+DFTRACE stage=target_submit start_us=129212214358 end_us=129212236379 n=5
+DFTRACE stage=target_sync start_us=129212236379 end_us=129212256189 n=5
+DFTRACE stage=target_decode_total start_us=129212214354 end_us=129212256317 n=5
+MTPTGT n_tokens=5 us=41971
+DFTRACE stage=sync_process start_us=129212256327 end_us=129212256597 n=5
+MTPPHASE phase=sync us=278 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212256883 end_us=129212259981 n=4
+DFTRACE stage=remote_trim start_us=129212259997 end_us=129212260045 n=4
+MTPPHASE phase=verify us=3452 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212260070 end_us=129212260071 n=4
+DFTRACE stage=kv_remove start_us=129212260073 end_us=129212260202 n=4
+DFTRACE stage=emit_tokens start_us=129212260203 end_us=129212260212 n=5
+DFTRACE stage=draft_call start_us=129212260233 end_us=129212305974 n=1
+MTPPHASE phase=draft us=45762 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212306036 end_us=129212306038 n=1
+DFTRACE stage=target_submit start_us=129212306055 end_us=129212328017 n=5
+DFTRACE stage=target_sync start_us=129212328017 end_us=129212347383 n=5
+DFTRACE stage=target_decode_total start_us=129212306053 end_us=129212347507 n=5
+MTPTGT n_tokens=5 us=41461
+DFTRACE stage=sync_process start_us=129212347516 end_us=129212347791 n=5
+MTPPHASE phase=sync us=284 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212348125 end_us=129212350532 n=4
+DFTRACE stage=remote_trim start_us=129212350543 end_us=129212359845 n=4
+MTPPHASE phase=verify us=12046 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212359856 end_us=129212359857 n=3
+DFTRACE stage=kv_remove start_us=129212359858 end_us=129212359955 n=4
+DFTRACE stage=emit_tokens start_us=129212359955 end_us=129212359967 n=4
+DFTRACE stage=draft_call start_us=129212359981 end_us=129212396918 n=1
+MTPPHASE phase=draft us=36952 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212396967 end_us=129212396970 n=1
+DFTRACE stage=target_submit start_us=129212396984 end_us=129212408613 n=5
+DFTRACE stage=target_sync start_us=129212408613 end_us=129212446843 n=5
+DFTRACE stage=target_decode_total start_us=129212396983 end_us=129212446895 n=5
+MTPTGT n_tokens=5 us=49914
+DFTRACE stage=sync_process start_us=129212446899 end_us=129212447061 n=5
+MTPPHASE phase=sync us=166 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212447400 end_us=129212448254 n=4
+0.14.329.909 I DFlash2 Xbox pre-draft disabled after 29 attempts and 7 reused drafts
+DFTRACE stage=remote_trim start_us=129212448267 end_us=129212457546 n=4
+MTPPHASE phase=verify us=10493 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212457566 end_us=129212457567 n=1
+DFTRACE stage=kv_remove start_us=129212457568 end_us=129212457694 n=4
+DFTRACE stage=emit_tokens start_us=129212457695 end_us=129212457704 n=2
+DFTRACE stage=draft_call start_us=129212457727 end_us=129212493883 n=1
+MTPPHASE phase=draft us=36166 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212493917 end_us=129212493920 n=1
+DFTRACE stage=target_submit start_us=129212493932 end_us=129212494915 n=5
+DFTRACE stage=target_sync start_us=129212494915 end_us=129212533796 n=5
+DFTRACE stage=target_decode_total start_us=129212493931 end_us=129212533928 n=5
+MTPTGT n_tokens=5 us=40005
+DFTRACE stage=sync_process start_us=129212533938 end_us=129212534190 n=5
+MTPPHASE phase=sync us=264 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212534653 end_us=129212538253 n=4
+DFTRACE stage=remote_trim start_us=129212538264 end_us=129212538306 n=4
+MTPPHASE phase=verify us=4102 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212538318 end_us=129212538320 n=4
+DFTRACE stage=kv_remove start_us=129212538321 end_us=129212538453 n=4
+DFTRACE stage=emit_tokens start_us=129212538455 end_us=129212538466 n=5
+DFTRACE stage=draft_call start_us=129212538489 end_us=129212585115 n=1
+MTPPHASE phase=draft us=46646 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212585169 end_us=129212585172 n=1
+DFTRACE stage=target_submit start_us=129212585187 end_us=129212586376 n=5
+DFTRACE stage=target_sync start_us=129212586376 end_us=129212624955 n=5
+DFTRACE stage=target_decode_total start_us=129212585185 end_us=129212625085 n=5
+MTPTGT n_tokens=5 us=39908
+DFTRACE stage=sync_process start_us=129212625095 end_us=129212625309 n=5
+MTPPHASE phase=sync us=217 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212625616 end_us=129212626209 n=4
+DFTRACE stage=remote_trim start_us=129212626216 end_us=129212626247 n=4
+MTPPHASE phase=verify us=938 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212626256 end_us=129212626257 n=0
+DFTRACE stage=kv_remove start_us=129212626258 end_us=129212626379 n=4
+DFTRACE stage=emit_tokens start_us=129212626380 end_us=129212626387 n=1
+DFTRACE stage=draft_call start_us=129212626405 end_us=129212671775 n=1
+MTPPHASE phase=draft us=45385 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212671825 end_us=129212671828 n=1
+DFTRACE stage=target_submit start_us=129212671842 end_us=129212673036 n=5
+DFTRACE stage=target_sync start_us=129212673036 end_us=129212711798 n=5
+DFTRACE stage=target_decode_total start_us=129212671840 end_us=129212711925 n=5
+MTPTGT n_tokens=5 us=40092
+DFTRACE stage=sync_process start_us=129212711934 end_us=129212712204 n=5
+MTPPHASE phase=sync us=279 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212712460 end_us=129212713045 n=4
+DFTRACE stage=remote_trim start_us=129212713052 end_us=129212713084 n=4
+MTPPHASE phase=verify us=874 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212713094 end_us=129212713095 n=0
+DFTRACE stage=kv_remove start_us=129212713096 end_us=129212713218 n=4
+DFTRACE stage=emit_tokens start_us=129212713220 end_us=129212713226 n=1
+DFTRACE stage=draft_call start_us=129212713243 end_us=129212758991 n=1
+MTPPHASE phase=draft us=45778 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212759055 end_us=129212759058 n=1
+DFTRACE stage=target_submit start_us=129212759073 end_us=129212760271 n=5
+DFTRACE stage=target_sync start_us=129212760271 end_us=129212799248 n=5
+DFTRACE stage=target_decode_total start_us=129212759070 end_us=129212799354 n=5
+MTPTGT n_tokens=5 us=40288
+DFTRACE stage=sync_process start_us=129212799360 end_us=129212799595 n=5
+MTPPHASE phase=sync us=244 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212799861 end_us=129212801612 n=4
+DFTRACE stage=remote_trim start_us=129212801621 end_us=129212801666 n=4
+MTPPHASE phase=verify us=2066 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212801677 end_us=129212801678 n=2
+DFTRACE stage=kv_remove start_us=129212801679 end_us=129212801802 n=4
+DFTRACE stage=emit_tokens start_us=129212801803 end_us=129212801811 n=3
+DFTRACE stage=draft_call start_us=129212801840 end_us=129212847789 n=1
+MTPPHASE phase=draft us=45964 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212847838 end_us=129212847840 n=1
+DFTRACE stage=target_submit start_us=129212847857 end_us=129212849179 n=5
+DFTRACE stage=target_sync start_us=129212849179 end_us=129212887685 n=5
+DFTRACE stage=target_decode_total start_us=129212847853 end_us=129212887820 n=5
+MTPTGT n_tokens=5 us=39975
+DFTRACE stage=sync_process start_us=129212887830 end_us=129212888089 n=5
+MTPPHASE phase=sync us=267 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212888349 end_us=129212888934 n=4
+DFTRACE stage=remote_trim start_us=129212888941 end_us=129212888971 n=4
+MTPPHASE phase=verify us=876 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212888981 end_us=129212888981 n=0
+DFTRACE stage=kv_remove start_us=129212888983 end_us=129212889127 n=4
+DFTRACE stage=emit_tokens start_us=129212889129 end_us=129212889136 n=1
+DFTRACE stage=draft_call start_us=129212889154 end_us=129212935259 n=1
+MTPPHASE phase=draft us=46129 drafted=4
+DFTRACE stage=batch_from_sample start_us=129212935330 end_us=129212935334 n=1
+DFTRACE stage=target_submit start_us=129212935356 end_us=129212936885 n=5
+DFTRACE stage=target_sync start_us=129212936885 end_us=129212975870 n=5
+DFTRACE stage=target_decode_total start_us=129212935353 end_us=129212975975 n=5
+MTPTGT n_tokens=5 us=40629
+DFTRACE stage=sync_process start_us=129212975984 end_us=129212976245 n=5
+MTPPHASE phase=sync us=269 n_tokens=5
+DFTRACE stage=sample_accept start_us=129212976510 end_us=129212978318 n=4
+DFTRACE stage=remote_trim start_us=129212978327 end_us=129212978358 n=4
+MTPPHASE phase=verify us=2107 n_draft=4
+DFTRACE stage=commit_prompt start_us=129212978368 end_us=129212978369 n=2
+DFTRACE stage=kv_remove start_us=129212978370 end_us=129212978494 n=4
+DFTRACE stage=emit_tokens start_us=129212978496 end_us=129212978504 n=3
+DFTRACE stage=draft_call start_us=129212978523 end_us=129213024352 n=1
+MTPPHASE phase=draft us=45849 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213024407 end_us=129213024409 n=1
+DFTRACE stage=target_submit start_us=129213024425 end_us=129213025628 n=5
+DFTRACE stage=target_sync start_us=129213025628 end_us=129213064139 n=5
+DFTRACE stage=target_decode_total start_us=129213024423 end_us=129213064262 n=5
+MTPTGT n_tokens=5 us=39847
+DFTRACE stage=sync_process start_us=129213064273 end_us=129213064491 n=5
+MTPPHASE phase=sync us=222 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213064763 end_us=129213065954 n=4
+DFTRACE stage=remote_trim start_us=129213065963 end_us=129213066012 n=4
+MTPPHASE phase=verify us=1519 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213066022 end_us=129213066023 n=1
+DFTRACE stage=kv_remove start_us=129213066024 end_us=129213066152 n=4
+DFTRACE stage=emit_tokens start_us=129213066153 end_us=129213066161 n=2
+DFTRACE stage=draft_call start_us=129213066179 end_us=129213112280 n=1
+MTPPHASE phase=draft us=46127 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213112353 end_us=129213112357 n=1
+DFTRACE stage=target_submit start_us=129213112379 end_us=129213113783 n=5
+DFTRACE stage=target_sync start_us=129213113783 end_us=129213154303 n=5
+DFTRACE stage=target_decode_total start_us=129213112376 end_us=129213154355 n=5
+MTPTGT n_tokens=5 us=41982
+DFTRACE stage=sync_process start_us=129213154359 end_us=129213154499 n=5
+MTPPHASE phase=sync us=142 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213154768 end_us=129213157256 n=4
+DFTRACE stage=remote_trim start_us=129213157265 end_us=129213157295 n=4
+MTPPHASE phase=verify us=2797 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213157306 end_us=129213157307 n=3
+DFTRACE stage=kv_remove start_us=129213157308 end_us=129213157435 n=4
+DFTRACE stage=emit_tokens start_us=129213157437 end_us=129213157446 n=4
+DFTRACE stage=draft_call start_us=129213157465 end_us=129213203251 n=1
+MTPPHASE phase=draft us=45801 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213203300 end_us=129213203303 n=1
+DFTRACE stage=target_submit start_us=129213203320 end_us=129213204592 n=5
+DFTRACE stage=target_sync start_us=129213204592 end_us=129213243244 n=5
+DFTRACE stage=target_decode_total start_us=129213203316 end_us=129213243341 n=5
+MTPTGT n_tokens=5 us=40030
+DFTRACE stage=sync_process start_us=129213243348 end_us=129213243584 n=5
+MTPPHASE phase=sync us=245 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213243862 end_us=129213245065 n=4
+DFTRACE stage=remote_trim start_us=129213245075 end_us=129213245106 n=4
+MTPPHASE phase=verify us=1515 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213245116 end_us=129213245117 n=1
+DFTRACE stage=kv_remove start_us=129213245119 end_us=129213245244 n=4
+DFTRACE stage=emit_tokens start_us=129213245245 end_us=129213245253 n=2
+DFTRACE stage=draft_call start_us=129213245272 end_us=129213291079 n=1
+MTPPHASE phase=draft us=45818 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213291119 end_us=129213291122 n=1
+DFTRACE stage=target_submit start_us=129213291137 end_us=129213292355 n=5
+DFTRACE stage=target_sync start_us=129213292355 end_us=129213331035 n=5
+DFTRACE stage=target_decode_total start_us=129213291134 end_us=129213331166 n=5
+MTPTGT n_tokens=5 us=40040
+DFTRACE stage=sync_process start_us=129213331177 end_us=129213331430 n=5
+MTPPHASE phase=sync us=261 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213331715 end_us=129213334668 n=4
+DFTRACE stage=remote_trim start_us=129213334679 end_us=129213334721 n=4
+MTPPHASE phase=verify us=3287 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213334733 end_us=129213334734 n=4
+DFTRACE stage=kv_remove start_us=129213334735 end_us=129213334857 n=4
+DFTRACE stage=emit_tokens start_us=129213334858 end_us=129213334867 n=5
+DFTRACE stage=draft_call start_us=129213334886 end_us=129213380904 n=1
+MTPPHASE phase=draft us=46031 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213380955 end_us=129213380957 n=1
+DFTRACE stage=target_submit start_us=129213380972 end_us=129213382339 n=5
+DFTRACE stage=target_sync start_us=129213382339 end_us=129213421141 n=5
+DFTRACE stage=target_decode_total start_us=129213380970 end_us=129213421229 n=5
+MTPTGT n_tokens=5 us=40263
+DFTRACE stage=sync_process start_us=129213421236 end_us=129213421474 n=5
+MTPPHASE phase=sync us=246 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213421733 end_us=129213422330 n=4
+DFTRACE stage=remote_trim start_us=129213422338 end_us=129213422367 n=4
+MTPPHASE phase=verify us=888 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213422377 end_us=129213422378 n=0
+DFTRACE stage=kv_remove start_us=129213422379 end_us=129213422500 n=4
+DFTRACE stage=emit_tokens start_us=129213422502 end_us=129213422508 n=1
+DFTRACE stage=draft_call start_us=129213422526 end_us=129213468501 n=1
+MTPPHASE phase=draft us=45991 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213468551 end_us=129213468554 n=1
+DFTRACE stage=target_submit start_us=129213468571 end_us=129213469790 n=5
+DFTRACE stage=target_sync start_us=129213469790 end_us=129213508849 n=5
+DFTRACE stage=target_decode_total start_us=129213468567 end_us=129213508982 n=5
+MTPTGT n_tokens=5 us=40423
+DFTRACE stage=sync_process start_us=129213508992 end_us=129213509265 n=5
+MTPPHASE phase=sync us=281 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213509527 end_us=129213510132 n=4
+DFTRACE stage=remote_trim start_us=129213510140 end_us=129213510169 n=4
+MTPPHASE phase=verify us=899 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213510179 end_us=129213510180 n=0
+DFTRACE stage=kv_remove start_us=129213510181 end_us=129213510303 n=4
+DFTRACE stage=emit_tokens start_us=129213510304 end_us=129213510311 n=1
+DFTRACE stage=draft_call start_us=129213510329 end_us=129213556380 n=1
+MTPPHASE phase=draft us=46067 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213556431 end_us=129213556434 n=1
+DFTRACE stage=target_submit start_us=129213556449 end_us=129213557647 n=5
+DFTRACE stage=target_sync start_us=129213557647 end_us=129213596252 n=5
+DFTRACE stage=target_decode_total start_us=129213556447 end_us=129213596385 n=5
+MTPTGT n_tokens=5 us=39945
+DFTRACE stage=sync_process start_us=129213596394 end_us=129213596608 n=5
+MTPPHASE phase=sync us=233 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213596922 end_us=129213599781 n=4
+DFTRACE stage=remote_trim start_us=129213599791 end_us=129213599826 n=4
+MTPPHASE phase=verify us=3201 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213599836 end_us=129213599837 n=4
+DFTRACE stage=kv_remove start_us=129213599838 end_us=129213599961 n=4
+DFTRACE stage=emit_tokens start_us=129213599963 end_us=129213599972 n=5
+DFTRACE stage=draft_call start_us=129213599991 end_us=129213646303 n=1
+MTPPHASE phase=draft us=46336 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213646372 end_us=129213646376 n=1
+DFTRACE stage=target_submit start_us=129213646398 end_us=129213647936 n=5
+DFTRACE stage=target_sync start_us=129213647936 end_us=129213687152 n=5
+DFTRACE stage=target_decode_total start_us=129213646395 end_us=129213687281 n=5
+MTPTGT n_tokens=5 us=40893
+DFTRACE stage=sync_process start_us=129213687290 end_us=129213687545 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213687829 end_us=129213688969 n=4
+DFTRACE stage=remote_trim start_us=129213688978 end_us=129213689014 n=4
+MTPPHASE phase=verify us=1464 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213689024 end_us=129213689025 n=1
+DFTRACE stage=kv_remove start_us=129213689026 end_us=129213689152 n=4
+DFTRACE stage=emit_tokens start_us=129213689153 end_us=129213689160 n=2
+DFTRACE stage=draft_call start_us=129213689178 end_us=129213735182 n=1
+MTPPHASE phase=draft us=46020 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213735232 end_us=129213735234 n=1
+DFTRACE stage=target_submit start_us=129213735251 end_us=129213736541 n=5
+DFTRACE stage=target_sync start_us=129213736541 end_us=129213775518 n=5
+DFTRACE stage=target_decode_total start_us=129213735248 end_us=129213775647 n=5
+MTPTGT n_tokens=5 us=40406
+DFTRACE stage=sync_process start_us=129213775657 end_us=129213775868 n=5
+MTPPHASE phase=sync us=214 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213776150 end_us=129213776785 n=4
+DFTRACE stage=remote_trim start_us=129213776795 end_us=129213776833 n=4
+MTPPHASE phase=verify us=965 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213776846 end_us=129213776848 n=0
+DFTRACE stage=kv_remove start_us=129213776850 end_us=129213776991 n=4
+DFTRACE stage=emit_tokens start_us=129213776992 end_us=129213776999 n=1
+DFTRACE stage=draft_call start_us=129213777024 end_us=129213823348 n=1
+MTPPHASE phase=draft us=46352 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213823420 end_us=129213823424 n=1
+DFTRACE stage=target_submit start_us=129213823446 end_us=129213825060 n=5
+DFTRACE stage=target_sync start_us=129213825060 end_us=129213863862 n=5
+DFTRACE stage=target_decode_total start_us=129213823444 end_us=129213863954 n=5
+MTPTGT n_tokens=5 us=40514
+DFTRACE stage=sync_process start_us=129213863960 end_us=129213864177 n=5
+MTPPHASE phase=sync us=219 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213864457 end_us=129213866148 n=4
+DFTRACE stage=remote_trim start_us=129213866157 end_us=129213866199 n=4
+MTPPHASE phase=verify us=2022 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213866209 end_us=129213866210 n=2
+DFTRACE stage=kv_remove start_us=129213866211 end_us=129213866334 n=4
+DFTRACE stage=emit_tokens start_us=129213866335 end_us=129213866343 n=3
+DFTRACE stage=draft_call start_us=129213866362 end_us=129213912478 n=1
+MTPPHASE phase=draft us=46133 drafted=4
+DFTRACE stage=batch_from_sample start_us=129213912533 end_us=129213912536 n=1
+DFTRACE stage=target_submit start_us=129213912551 end_us=129213913763 n=5
+DFTRACE stage=target_sync start_us=129213913763 end_us=129213952451 n=5
+DFTRACE stage=target_decode_total start_us=129213912549 end_us=129213952519 n=5
+MTPTGT n_tokens=5 us=39972
+DFTRACE stage=sync_process start_us=129213952523 end_us=129213952702 n=5
+MTPPHASE phase=sync us=181 n_tokens=5
+DFTRACE stage=sample_accept start_us=129213952989 end_us=129213953594 n=4
+DFTRACE stage=remote_trim start_us=129213953599 end_us=129213953629 n=4
+MTPPHASE phase=verify us=928 n_draft=4
+DFTRACE stage=commit_prompt start_us=129213953639 end_us=129213953639 n=0
+DFTRACE stage=kv_remove start_us=129213953652 end_us=129213953772 n=4
+DFTRACE stage=emit_tokens start_us=129213953774 end_us=129213953780 n=1
+DFTRACE stage=draft_call start_us=129213953798 end_us=129213999808 n=1
+MTPPHASE phase=draft us=46025 drafted=1
+DFTRACE stage=batch_from_sample start_us=129213999858 end_us=129213999860 n=1
+DFTRACE stage=target_submit start_us=129213999878 end_us=129214021880 n=2
+DFTRACE stage=target_sync start_us=129214021880 end_us=129214037733 n=2
+DFTRACE stage=target_decode_total start_us=129213999874 end_us=129214037829 n=2
+MTPTGT n_tokens=2 us=37961
+DFTRACE stage=sync_process start_us=129214037837 end_us=129214038040 n=2
+MTPPHASE phase=sync us=211 n_tokens=2
+DFTRACE stage=sample_accept start_us=129214038351 end_us=129214038999 n=1
+DFTRACE stage=remote_trim start_us=129214039021 end_us=129214039053 n=1
+MTPPHASE phase=verify us=1009 n_draft=1
+DFTRACE stage=commit_prompt start_us=129214039067 end_us=129214039068 n=0
+DFTRACE stage=kv_remove start_us=129214039070 end_us=129214039202 n=1
+DFTRACE stage=emit_tokens start_us=129214039204 end_us=129214039210 n=1
+DFTRACE stage=draft_call start_us=129214039230 end_us=129214081475 n=1
+MTPPHASE phase=draft us=42261 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214081528 end_us=129214081531 n=1
+DFTRACE stage=target_submit start_us=129214081546 end_us=129214107568 n=5
+DFTRACE stage=target_sync start_us=129214107568 end_us=129214126912 n=5
+DFTRACE stage=target_decode_total start_us=129214081544 end_us=129214127022 n=5
+MTPTGT n_tokens=5 us=45480
+DFTRACE stage=sync_process start_us=129214127026 end_us=129214127279 n=5
+MTPPHASE phase=sync us=261 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214127603 end_us=129214128796 n=4
+DFTRACE stage=remote_trim start_us=129214128806 end_us=129214128849 n=4
+MTPPHASE phase=verify us=1565 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214128861 end_us=129214128862 n=1
+DFTRACE stage=kv_remove start_us=129214128863 end_us=129214128991 n=4
+DFTRACE stage=emit_tokens start_us=129214128993 end_us=129214129010 n=2
+DFTRACE stage=draft_call start_us=129214129030 end_us=129214175504 n=1
+MTPPHASE phase=draft us=46497 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214175564 end_us=129214175566 n=1
+DFTRACE stage=target_submit start_us=129214175582 end_us=129214197762 n=5
+DFTRACE stage=target_sync start_us=129214197762 end_us=129214217226 n=5
+DFTRACE stage=target_decode_total start_us=129214175580 end_us=129214217357 n=5
+MTPTGT n_tokens=5 us=41785
+DFTRACE stage=sync_process start_us=129214217367 end_us=129214217580 n=5
+MTPPHASE phase=sync us=217 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214217855 end_us=129214218477 n=4
+DFTRACE stage=remote_trim start_us=129214218485 end_us=129214218516 n=4
+MTPPHASE phase=verify us=936 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214218527 end_us=129214218528 n=0
+DFTRACE stage=kv_remove start_us=129214218529 end_us=129214218658 n=4
+DFTRACE stage=emit_tokens start_us=129214218659 end_us=129214218666 n=1
+DFTRACE stage=draft_call start_us=129214218685 end_us=129214264676 n=1
+MTPPHASE phase=draft us=46003 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214264722 end_us=129214264724 n=1
+DFTRACE stage=target_submit start_us=129214264740 end_us=129214286711 n=5
+DFTRACE stage=target_sync start_us=129214286711 end_us=129214306076 n=5
+DFTRACE stage=target_decode_total start_us=129214264736 end_us=129214306206 n=5
+MTPTGT n_tokens=5 us=41478
+DFTRACE stage=sync_process start_us=129214306216 end_us=129214306434 n=5
+MTPPHASE phase=sync us=222 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214306704 end_us=129214307340 n=4
+DFTRACE stage=remote_trim start_us=129214307349 end_us=129214307380 n=4
+MTPPHASE phase=verify us=945 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214307391 end_us=129214307392 n=0
+DFTRACE stage=kv_remove start_us=129214307394 end_us=129214307522 n=4
+DFTRACE stage=emit_tokens start_us=129214307523 end_us=129214307530 n=1
+DFTRACE stage=draft_call start_us=129214307550 end_us=129214354407 n=1
+MTPPHASE phase=draft us=46871 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214354473 end_us=129214354475 n=1
+DFTRACE stage=target_submit start_us=129214354490 end_us=129214376417 n=5
+DFTRACE stage=target_sync start_us=129214376417 end_us=129214396039 n=5
+DFTRACE stage=target_decode_total start_us=129214354487 end_us=129214396129 n=5
+MTPTGT n_tokens=5 us=41646
+DFTRACE stage=sync_process start_us=129214396136 end_us=129214396376 n=5
+MTPPHASE phase=sync us=248 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214396647 end_us=129214399309 n=4
+DFTRACE stage=remote_trim start_us=129214399325 end_us=129214399367 n=4
+MTPPHASE phase=verify us=2987 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214399380 end_us=129214399381 n=3
+DFTRACE stage=kv_remove start_us=129214399383 end_us=129214399509 n=4
+DFTRACE stage=emit_tokens start_us=129214399511 end_us=129214399519 n=4
+DFTRACE stage=draft_call start_us=129214399541 end_us=129214446011 n=1
+MTPPHASE phase=draft us=46486 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214446063 end_us=129214446065 n=1
+DFTRACE stage=target_submit start_us=129214446081 end_us=129214460115 n=5
+DFTRACE stage=target_sync start_us=129214460115 end_us=129214499027 n=5
+DFTRACE stage=target_decode_total start_us=129214446079 end_us=129214499116 n=5
+MTPTGT n_tokens=5 us=53045
+DFTRACE stage=sync_process start_us=129214499127 end_us=129214499398 n=5
+MTPPHASE phase=sync us=280 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214499699 end_us=129214502183 n=4
+DFTRACE stage=remote_trim start_us=129214502199 end_us=129214502231 n=4
+MTPPHASE phase=verify us=2833 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214502250 end_us=129214502252 n=3
+DFTRACE stage=kv_remove start_us=129214502253 end_us=129214502385 n=4
+DFTRACE stage=emit_tokens start_us=129214502386 end_us=129214502394 n=4
+DFTRACE stage=draft_call start_us=129214502416 end_us=129214548948 n=1
+MTPPHASE phase=draft us=46548 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214548998 end_us=129214549010 n=1
+DFTRACE stage=target_submit start_us=129214549030 end_us=129214550258 n=5
+DFTRACE stage=target_sync start_us=129214550258 end_us=129214588935 n=5
+DFTRACE stage=target_decode_total start_us=129214549026 end_us=129214589084 n=5
+MTPTGT n_tokens=5 us=40066
+DFTRACE stage=sync_process start_us=129214589094 end_us=129214589354 n=5
+MTPPHASE phase=sync us=268 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214589636 end_us=129214592524 n=4
+DFTRACE stage=remote_trim start_us=129214592534 end_us=129214592565 n=4
+MTPPHASE phase=verify us=3206 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214592576 end_us=129214592577 n=4
+DFTRACE stage=kv_remove start_us=129214592578 end_us=129214592705 n=4
+DFTRACE stage=emit_tokens start_us=129214592706 end_us=129214592716 n=5
+DFTRACE stage=draft_call start_us=129214592736 end_us=129214639313 n=1
+MTPPHASE phase=draft us=46593 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214639368 end_us=129214639370 n=1
+DFTRACE stage=target_submit start_us=129214639385 end_us=129214640580 n=5
+DFTRACE stage=target_sync start_us=129214640580 end_us=129214679496 n=5
+DFTRACE stage=target_decode_total start_us=129214639383 end_us=129214679590 n=5
+MTPTGT n_tokens=5 us=40212
+DFTRACE stage=sync_process start_us=129214679597 end_us=129214679780 n=5
+MTPPHASE phase=sync us=186 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214680045 end_us=129214682395 n=4
+DFTRACE stage=remote_trim start_us=129214682403 end_us=129214682447 n=4
+MTPPHASE phase=verify us=2668 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214682457 end_us=129214682457 n=3
+DFTRACE stage=kv_remove start_us=129214682458 end_us=129214682582 n=4
+DFTRACE stage=emit_tokens start_us=129214682584 end_us=129214682592 n=4
+DFTRACE stage=draft_call start_us=129214682610 end_us=129214729104 n=1
+MTPPHASE phase=draft us=46519 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214729185 end_us=129214729188 n=1
+DFTRACE stage=target_submit start_us=129214729204 end_us=129214730416 n=5
+DFTRACE stage=target_sync start_us=129214730416 end_us=129214769679 n=5
+DFTRACE stage=target_decode_total start_us=129214729202 end_us=129214769771 n=5
+MTPTGT n_tokens=5 us=40587
+DFTRACE stage=sync_process start_us=129214769791 end_us=129214770042 n=5
+MTPPHASE phase=sync us=260 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214770302 end_us=129214773115 n=4
+DFTRACE stage=remote_trim start_us=129214773123 end_us=129214773154 n=4
+MTPPHASE phase=verify us=3107 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214773165 end_us=129214773166 n=4
+DFTRACE stage=kv_remove start_us=129214773167 end_us=129214773289 n=4
+DFTRACE stage=emit_tokens start_us=129214773291 end_us=129214773300 n=5
+DFTRACE stage=draft_call start_us=129214773319 end_us=129214819922 n=1
+MTPPHASE phase=draft us=46619 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214819978 end_us=129214819980 n=1
+DFTRACE stage=target_submit start_us=129214819995 end_us=129214821188 n=5
+DFTRACE stage=target_sync start_us=129214821188 end_us=129214859776 n=5
+DFTRACE stage=target_decode_total start_us=129214819993 end_us=129214859873 n=5
+MTPTGT n_tokens=5 us=39885
+DFTRACE stage=sync_process start_us=129214859881 end_us=129214860136 n=5
+MTPPHASE phase=sync us=264 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214860392 end_us=129214863253 n=4
+DFTRACE stage=remote_trim start_us=129214863261 end_us=129214863292 n=4
+MTPPHASE phase=verify us=3151 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214863303 end_us=129214863304 n=4
+DFTRACE stage=kv_remove start_us=129214863305 end_us=129214863427 n=4
+DFTRACE stage=emit_tokens start_us=129214863428 end_us=129214863438 n=5
+DFTRACE stage=draft_call start_us=129214863457 end_us=129214910475 n=1
+MTPPHASE phase=draft us=47039 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214910530 end_us=129214910532 n=1
+DFTRACE stage=target_submit start_us=129214910548 end_us=129214912043 n=5
+DFTRACE stage=target_sync start_us=129214912043 end_us=129214950609 n=5
+DFTRACE stage=target_decode_total start_us=129214910545 end_us=129214950692 n=5
+MTPTGT n_tokens=5 us=40151
+DFTRACE stage=sync_process start_us=129214950698 end_us=129214950888 n=5
+MTPPHASE phase=sync us=193 n_tokens=5
+DFTRACE stage=sample_accept start_us=129214951160 end_us=129214951773 n=4
+DFTRACE stage=remote_trim start_us=129214951779 end_us=129214951822 n=4
+MTPPHASE phase=verify us=934 n_draft=4
+DFTRACE stage=commit_prompt start_us=129214951832 end_us=129214951833 n=0
+DFTRACE stage=kv_remove start_us=129214951834 end_us=129214951960 n=4
+DFTRACE stage=emit_tokens start_us=129214951961 end_us=129214951967 n=1
+0.16.824.370 I slot print_timing: id  0 | task 0 | n_gen =    335, tg =  36.71 t/s, tg_3s =  31.80 t/s
+DFTRACE stage=draft_call start_us=129214951997 end_us=129214998839 n=1
+MTPPHASE phase=draft us=46857 drafted=4
+DFTRACE stage=batch_from_sample start_us=129214998890 end_us=129214998892 n=1
+DFTRACE stage=target_submit start_us=129214998910 end_us=129215000157 n=5
+DFTRACE stage=target_sync start_us=129215000157 end_us=129215039077 n=5
+DFTRACE stage=target_decode_total start_us=129214998906 end_us=129215039178 n=5
+MTPTGT n_tokens=5 us=40278
+DFTRACE stage=sync_process start_us=129215039187 end_us=129215039429 n=5
+MTPPHASE phase=sync us=250 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215039689 end_us=129215040289 n=4
+DFTRACE stage=remote_trim start_us=129215040297 end_us=129215040327 n=4
+MTPPHASE phase=verify us=893 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215040337 end_us=129215040338 n=0
+DFTRACE stage=kv_remove start_us=129215040339 end_us=129215040462 n=4
+DFTRACE stage=emit_tokens start_us=129215040463 end_us=129215040469 n=1
+DFTRACE stage=draft_call start_us=129215040488 end_us=129215087255 n=1
+MTPPHASE phase=draft us=46784 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215087312 end_us=129215087314 n=1
+DFTRACE stage=target_submit start_us=129215087328 end_us=129215088524 n=5
+DFTRACE stage=target_sync start_us=129215088524 end_us=129215127117 n=5
+DFTRACE stage=target_decode_total start_us=129215087326 end_us=129215127218 n=5
+MTPTGT n_tokens=5 us=39899
+DFTRACE stage=sync_process start_us=129215127227 end_us=129215127437 n=5
+MTPPHASE phase=sync us=213 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215127723 end_us=129215129512 n=4
+DFTRACE stage=remote_trim start_us=129215129521 end_us=129215129552 n=4
+MTPPHASE phase=verify us=2092 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215129562 end_us=129215129563 n=2
+DFTRACE stage=kv_remove start_us=129215129564 end_us=129215129692 n=4
+DFTRACE stage=emit_tokens start_us=129215129693 end_us=129215129701 n=3
+DFTRACE stage=draft_call start_us=129215129720 end_us=129215176139 n=1
+MTPPHASE phase=draft us=46435 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215176191 end_us=129215176194 n=1
+DFTRACE stage=target_submit start_us=129215176210 end_us=129215177417 n=5
+DFTRACE stage=target_sync start_us=129215177417 end_us=129215216320 n=5
+DFTRACE stage=target_decode_total start_us=129215176208 end_us=129215216446 n=5
+MTPTGT n_tokens=5 us=40247
+DFTRACE stage=sync_process start_us=129215216456 end_us=129215216668 n=5
+MTPPHASE phase=sync us=216 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215216939 end_us=129215219520 n=4
+DFTRACE stage=remote_trim start_us=129215219534 end_us=129215219565 n=4
+MTPPHASE phase=verify us=2898 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215219578 end_us=129215219579 n=3
+DFTRACE stage=kv_remove start_us=129215219580 end_us=129215219708 n=4
+DFTRACE stage=emit_tokens start_us=129215219709 end_us=129215219718 n=4
+DFTRACE stage=draft_call start_us=129215219738 end_us=129215266594 n=1
+MTPPHASE phase=draft us=46874 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215266646 end_us=129215266649 n=1
+DFTRACE stage=target_submit start_us=129215266664 end_us=129215267940 n=5
+DFTRACE stage=target_sync start_us=129215267940 end_us=129215306415 n=5
+DFTRACE stage=target_decode_total start_us=129215266662 end_us=129215306465 n=5
+MTPTGT n_tokens=5 us=39805
+DFTRACE stage=sync_process start_us=129215306469 end_us=129215306607 n=5
+MTPPHASE phase=sync us=141 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215306912 end_us=129215307546 n=4
+DFTRACE stage=remote_trim start_us=129215307554 end_us=129215307595 n=4
+MTPPHASE phase=verify us=990 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215307605 end_us=129215307606 n=0
+DFTRACE stage=kv_remove start_us=129215307608 end_us=129215307745 n=4
+DFTRACE stage=emit_tokens start_us=129215307746 end_us=129215307753 n=1
+DFTRACE stage=draft_call start_us=129215307772 end_us=129215354956 n=1
+MTPPHASE phase=draft us=47206 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215355029 end_us=129215355032 n=1
+DFTRACE stage=target_submit start_us=129215355057 end_us=129215356556 n=5
+DFTRACE stage=target_sync start_us=129215356556 end_us=129215396670 n=5
+DFTRACE stage=target_decode_total start_us=129215355052 end_us=129215396760 n=5
+MTPTGT n_tokens=5 us=41713
+DFTRACE stage=sync_process start_us=129215396766 end_us=129215397016 n=5
+MTPPHASE phase=sync us=257 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215397269 end_us=129215397845 n=4
+DFTRACE stage=remote_trim start_us=129215397852 end_us=129215397882 n=4
+MTPPHASE phase=verify us=860 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215397892 end_us=129215397892 n=0
+DFTRACE stage=kv_remove start_us=129215397894 end_us=129215398022 n=4
+DFTRACE stage=emit_tokens start_us=129215398023 end_us=129215398030 n=1
+DFTRACE stage=draft_call start_us=129215398048 end_us=129215444848 n=1
+MTPPHASE phase=draft us=46815 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215444899 end_us=129215444901 n=1
+DFTRACE stage=target_submit start_us=129215444916 end_us=129215446148 n=5
+DFTRACE stage=target_sync start_us=129215446148 end_us=129215484727 n=5
+DFTRACE stage=target_decode_total start_us=129215444914 end_us=129215484814 n=5
+MTPTGT n_tokens=5 us=39903
+DFTRACE stage=sync_process start_us=129215484818 end_us=129215485070 n=5
+MTPPHASE phase=sync us=260 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215485332 end_us=129215487675 n=4
+DFTRACE stage=remote_trim start_us=129215487684 end_us=129215487716 n=4
+MTPPHASE phase=verify us=2640 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215487726 end_us=129215487727 n=3
+DFTRACE stage=kv_remove start_us=129215487728 end_us=129215487856 n=4
+DFTRACE stage=emit_tokens start_us=129215487869 end_us=129215487879 n=4
+DFTRACE stage=draft_call start_us=129215487897 end_us=129215534810 n=1
+MTPPHASE phase=draft us=46929 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215534860 end_us=129215534862 n=1
+DFTRACE stage=target_submit start_us=129215534879 end_us=129215536194 n=5
+DFTRACE stage=target_sync start_us=129215536194 end_us=129215574663 n=5
+DFTRACE stage=target_decode_total start_us=129215534876 end_us=129215574747 n=5
+MTPTGT n_tokens=5 us=39877
+DFTRACE stage=sync_process start_us=129215574753 end_us=129215574998 n=5
+MTPPHASE phase=sync us=265 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215575268 end_us=129215576444 n=4
+DFTRACE stage=remote_trim start_us=129215576451 end_us=129215576495 n=4
+MTPPHASE phase=verify us=1480 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215576505 end_us=129215576506 n=1
+DFTRACE stage=kv_remove start_us=129215576507 end_us=129215576631 n=4
+DFTRACE stage=emit_tokens start_us=129215576632 end_us=129215576640 n=2
+DFTRACE stage=draft_call start_us=129215576658 end_us=129215623462 n=1
+MTPPHASE phase=draft us=46819 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215623517 end_us=129215623520 n=1
+DFTRACE stage=target_submit start_us=129215623534 end_us=129215624731 n=5
+DFTRACE stage=target_sync start_us=129215624731 end_us=129215663384 n=5
+DFTRACE stage=target_decode_total start_us=129215623532 end_us=129215663486 n=5
+MTPTGT n_tokens=5 us=39963
+DFTRACE stage=sync_process start_us=129215663496 end_us=129215663744 n=5
+MTPPHASE phase=sync us=256 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215664020 end_us=129215664603 n=4
+DFTRACE stage=remote_trim start_us=129215664611 end_us=129215664641 n=4
+MTPPHASE phase=verify us=892 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215664651 end_us=129215664652 n=0
+DFTRACE stage=kv_remove start_us=129215664653 end_us=129215664777 n=4
+DFTRACE stage=emit_tokens start_us=129215664779 end_us=129215664785 n=1
+DFTRACE stage=draft_call start_us=129215664803 end_us=129215711508 n=1
+MTPPHASE phase=draft us=46719 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215711559 end_us=129215711561 n=1
+DFTRACE stage=target_submit start_us=129215711576 end_us=129215712773 n=5
+DFTRACE stage=target_sync start_us=129215712773 end_us=129215751776 n=5
+DFTRACE stage=target_decode_total start_us=129215711574 end_us=129215751905 n=5
+MTPTGT n_tokens=5 us=40339
+DFTRACE stage=sync_process start_us=129215751915 end_us=129215752189 n=5
+MTPPHASE phase=sync us=283 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215752446 end_us=129215753035 n=4
+DFTRACE stage=remote_trim start_us=129215753042 end_us=129215753075 n=4
+MTPPHASE phase=verify us=881 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215753086 end_us=129215753087 n=0
+DFTRACE stage=kv_remove start_us=129215753088 end_us=129215753213 n=4
+DFTRACE stage=emit_tokens start_us=129215753214 end_us=129215753221 n=1
+DFTRACE stage=draft_call start_us=129215753239 end_us=129215800376 n=1
+MTPPHASE phase=draft us=47152 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215800430 end_us=129215800433 n=1
+DFTRACE stage=target_submit start_us=129215800448 end_us=129215801667 n=5
+DFTRACE stage=target_sync start_us=129215801667 end_us=129215840266 n=5
+DFTRACE stage=target_decode_total start_us=129215800446 end_us=129215840359 n=5
+MTPTGT n_tokens=5 us=39919
+DFTRACE stage=sync_process start_us=129215840367 end_us=129215840602 n=5
+MTPPHASE phase=sync us=243 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215840873 end_us=129215842097 n=4
+DFTRACE stage=remote_trim start_us=129215842106 end_us=129215842147 n=4
+MTPPHASE phase=verify us=1539 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215842158 end_us=129215842159 n=1
+DFTRACE stage=kv_remove start_us=129215842160 end_us=129215842285 n=4
+DFTRACE stage=emit_tokens start_us=129215842287 end_us=129215842294 n=2
+DFTRACE stage=draft_call start_us=129215842313 end_us=129215889241 n=1
+MTPPHASE phase=draft us=46953 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215889299 end_us=129215889302 n=1
+DFTRACE stage=target_submit start_us=129215889330 end_us=129215890559 n=5
+DFTRACE stage=target_sync start_us=129215890559 end_us=129215929120 n=5
+DFTRACE stage=target_decode_total start_us=129215889327 end_us=129215929245 n=5
+MTPTGT n_tokens=5 us=39926
+DFTRACE stage=sync_process start_us=129215929255 end_us=129215929466 n=5
+MTPPHASE phase=sync us=214 n_tokens=5
+DFTRACE stage=sample_accept start_us=129215929724 end_us=129215932724 n=4
+DFTRACE stage=remote_trim start_us=129215932733 end_us=129215932766 n=4
+MTPPHASE phase=verify us=3300 n_draft=4
+DFTRACE stage=commit_prompt start_us=129215932777 end_us=129215932777 n=4
+DFTRACE stage=kv_remove start_us=129215932779 end_us=129215932904 n=4
+DFTRACE stage=emit_tokens start_us=129215932906 end_us=129215932915 n=5
+DFTRACE stage=draft_call start_us=129215932934 end_us=129215980286 n=1
+MTPPHASE phase=draft us=47372 drafted=4
+DFTRACE stage=batch_from_sample start_us=129215980340 end_us=129215980342 n=1
+DFTRACE stage=target_submit start_us=129215980358 end_us=129215981557 n=5
+DFTRACE stage=target_sync start_us=129215981557 end_us=129216020384 n=5
+DFTRACE stage=target_decode_total start_us=129215980356 end_us=129216020471 n=5
+MTPTGT n_tokens=5 us=40119
+DFTRACE stage=sync_process start_us=129216020477 end_us=129216020719 n=5
+MTPPHASE phase=sync us=250 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216020985 end_us=129216022723 n=4
+DFTRACE stage=remote_trim start_us=129216022731 end_us=129216022763 n=4
+MTPPHASE phase=verify us=2039 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216022773 end_us=129216022773 n=2
+DFTRACE stage=kv_remove start_us=129216022775 end_us=129216022898 n=4
+DFTRACE stage=emit_tokens start_us=129216022900 end_us=129216022907 n=3
+DFTRACE stage=draft_call start_us=129216022925 end_us=129216069856 n=1
+MTPPHASE phase=draft us=46949 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216069909 end_us=129216069912 n=1
+DFTRACE stage=target_submit start_us=129216069927 end_us=129216071129 n=5
+DFTRACE stage=target_sync start_us=129216071129 end_us=129216109734 n=5
+DFTRACE stage=target_decode_total start_us=129216069925 end_us=129216109823 n=5
+MTPTGT n_tokens=5 us=39901
+DFTRACE stage=sync_process start_us=129216109828 end_us=129216110088 n=5
+MTPPHASE phase=sync us=269 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216110346 end_us=129216113262 n=4
+DFTRACE stage=remote_trim start_us=129216113271 end_us=129216113315 n=4
+MTPPHASE phase=verify us=3221 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216113325 end_us=129216113326 n=4
+DFTRACE stage=kv_remove start_us=129216113327 end_us=129216113453 n=4
+DFTRACE stage=emit_tokens start_us=129216113454 end_us=129216113463 n=5
+DFTRACE stage=draft_call start_us=129216113483 end_us=129216161036 n=1
+MTPPHASE phase=draft us=47576 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216161113 end_us=129216161119 n=1
+DFTRACE stage=target_submit start_us=129216161138 end_us=129216162495 n=5
+DFTRACE stage=target_sync start_us=129216162495 end_us=129216201502 n=5
+DFTRACE stage=target_decode_total start_us=129216161136 end_us=129216201570 n=5
+MTPTGT n_tokens=5 us=40436
+DFTRACE stage=sync_process start_us=129216201574 end_us=129216201757 n=5
+MTPPHASE phase=sync us=185 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216202021 end_us=129216203707 n=4
+DFTRACE stage=remote_trim start_us=129216203716 end_us=129216203746 n=4
+MTPPHASE phase=verify us=1990 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216203756 end_us=129216203757 n=2
+DFTRACE stage=kv_remove start_us=129216203758 end_us=129216203880 n=4
+DFTRACE stage=emit_tokens start_us=129216203881 end_us=129216203889 n=3
+DFTRACE stage=draft_call start_us=129216203906 end_us=129216251335 n=1
+MTPPHASE phase=draft us=47444 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216251390 end_us=129216251392 n=1
+DFTRACE stage=target_submit start_us=129216251407 end_us=129216252619 n=5
+DFTRACE stage=target_sync start_us=129216252619 end_us=129216301160 n=5
+DFTRACE stage=target_decode_total start_us=129216251405 end_us=129216301250 n=5
+MTPTGT n_tokens=5 us=49849
+DFTRACE stage=sync_process start_us=129216301263 end_us=129216301462 n=5
+MTPPHASE phase=sync us=202 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216301725 end_us=129216304649 n=4
+DFTRACE stage=remote_trim start_us=129216304660 end_us=129216304690 n=4
+MTPPHASE phase=verify us=3228 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216304701 end_us=129216304702 n=4
+DFTRACE stage=kv_remove start_us=129216304703 end_us=129216304828 n=4
+DFTRACE stage=emit_tokens start_us=129216304830 end_us=129216304838 n=5
+DFTRACE stage=draft_call start_us=129216304858 end_us=129216352016 n=1
+MTPPHASE phase=draft us=47172 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216352067 end_us=129216352069 n=1
+DFTRACE stage=target_submit start_us=129216352089 end_us=129216353318 n=5
+DFTRACE stage=target_sync start_us=129216353318 end_us=129216391944 n=5
+DFTRACE stage=target_decode_total start_us=129216352087 end_us=129216392098 n=5
+MTPTGT n_tokens=5 us=40019
+DFTRACE stage=sync_process start_us=129216392109 end_us=129216392372 n=5
+MTPPHASE phase=sync us=271 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216392633 end_us=129216393892 n=4
+DFTRACE stage=remote_trim start_us=129216393900 end_us=129216393943 n=4
+MTPPHASE phase=verify us=1566 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216393954 end_us=129216393955 n=1
+DFTRACE stage=kv_remove start_us=129216393956 end_us=129216394088 n=4
+DFTRACE stage=emit_tokens start_us=129216394090 end_us=129216394098 n=2
+DFTRACE stage=draft_call start_us=129216394116 end_us=129216441532 n=1
+MTPPHASE phase=draft us=47431 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216441582 end_us=129216441585 n=1
+DFTRACE stage=target_submit start_us=129216441600 end_us=129216442808 n=5
+DFTRACE stage=target_sync start_us=129216442808 end_us=129216482089 n=5
+DFTRACE stage=target_decode_total start_us=129216441597 end_us=129216482219 n=5
+MTPTGT n_tokens=5 us=40629
+DFTRACE stage=sync_process start_us=129216482228 end_us=129216482451 n=5
+MTPPHASE phase=sync us=227 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216482735 end_us=129216484502 n=4
+DFTRACE stage=remote_trim start_us=129216484510 end_us=129216484541 n=4
+MTPPHASE phase=verify us=2088 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216484551 end_us=129216484553 n=2
+DFTRACE stage=kv_remove start_us=129216484554 end_us=129216484679 n=4
+DFTRACE stage=emit_tokens start_us=129216484680 end_us=129216484688 n=3
+DFTRACE stage=draft_call start_us=129216484706 end_us=129216532986 n=1
+MTPPHASE phase=draft us=48299 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216533041 end_us=129216533043 n=1
+DFTRACE stage=target_submit start_us=129216533058 end_us=129216534282 n=5
+DFTRACE stage=target_sync start_us=129216534282 end_us=129216573100 n=5
+DFTRACE stage=target_decode_total start_us=129216533056 end_us=129216573227 n=5
+MTPTGT n_tokens=5 us=40179
+DFTRACE stage=sync_process start_us=129216573237 end_us=129216573448 n=5
+MTPPHASE phase=sync us=216 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216573745 end_us=129216576677 n=4
+DFTRACE stage=remote_trim start_us=129216576687 end_us=129216576719 n=4
+MTPPHASE phase=verify us=3269 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216576730 end_us=129216576731 n=4
+DFTRACE stage=kv_remove start_us=129216576733 end_us=129216576861 n=4
+DFTRACE stage=emit_tokens start_us=129216576862 end_us=129216576870 n=5
+DFTRACE stage=draft_call start_us=129216576890 end_us=129216624124 n=1
+MTPPHASE phase=draft us=47250 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216624175 end_us=129216624178 n=1
+DFTRACE stage=target_submit start_us=129216624194 end_us=129216625376 n=5
+DFTRACE stage=target_sync start_us=129216625376 end_us=129216664434 n=5
+DFTRACE stage=target_decode_total start_us=129216624192 end_us=129216664567 n=5
+MTPTGT n_tokens=5 us=40383
+DFTRACE stage=sync_process start_us=129216664577 end_us=129216664839 n=5
+MTPPHASE phase=sync us=270 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216665121 end_us=129216665700 n=4
+DFTRACE stage=remote_trim start_us=129216665708 end_us=129216665749 n=4
+MTPPHASE phase=verify us=906 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216665763 end_us=129216665763 n=0
+DFTRACE stage=kv_remove start_us=129216665765 end_us=129216665889 n=4
+DFTRACE stage=emit_tokens start_us=129216665891 end_us=129216665897 n=1
+DFTRACE stage=draft_call start_us=129216665915 end_us=129216713364 n=1
+MTPPHASE phase=draft us=47472 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216713434 end_us=129216713438 n=1
+DFTRACE stage=target_submit start_us=129216713460 end_us=129216714803 n=5
+DFTRACE stage=target_sync start_us=129216714803 end_us=129216753473 n=5
+DFTRACE stage=target_decode_total start_us=129216713458 end_us=129216753562 n=5
+MTPTGT n_tokens=5 us=40109
+DFTRACE stage=sync_process start_us=129216753570 end_us=129216753808 n=5
+MTPPHASE phase=sync us=246 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216754079 end_us=129216755257 n=4
+DFTRACE stage=remote_trim start_us=129216755265 end_us=129216755296 n=4
+MTPPHASE phase=verify us=1484 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216755306 end_us=129216755307 n=1
+DFTRACE stage=kv_remove start_us=129216755308 end_us=129216755431 n=4
+DFTRACE stage=emit_tokens start_us=129216755433 end_us=129216755440 n=2
+DFTRACE stage=draft_call start_us=129216755458 end_us=129216803050 n=1
+MTPPHASE phase=draft us=47607 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216803118 end_us=129216803121 n=1
+DFTRACE stage=target_submit start_us=129216803149 end_us=129216804557 n=5
+DFTRACE stage=target_sync start_us=129216804557 end_us=129216843206 n=5
+DFTRACE stage=target_decode_total start_us=129216803144 end_us=129216843301 n=5
+MTPTGT n_tokens=5 us=40163
+DFTRACE stage=sync_process start_us=129216843309 end_us=129216843552 n=5
+MTPPHASE phase=sync us=251 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216843806 end_us=129216844961 n=4
+DFTRACE stage=remote_trim start_us=129216844969 end_us=129216845007 n=4
+MTPPHASE phase=verify us=1449 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216845017 end_us=129216845017 n=1
+DFTRACE stage=kv_remove start_us=129216845019 end_us=129216845140 n=4
+DFTRACE stage=emit_tokens start_us=129216845141 end_us=129216845151 n=2
+DFTRACE stage=draft_call start_us=129216845170 end_us=129216892658 n=1
+MTPPHASE phase=draft us=47507 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216892712 end_us=129216892715 n=1
+DFTRACE stage=target_submit start_us=129216892729 end_us=129216893929 n=5
+DFTRACE stage=target_sync start_us=129216893929 end_us=129216934394 n=5
+DFTRACE stage=target_decode_total start_us=129216892727 end_us=129216934487 n=5
+MTPTGT n_tokens=5 us=41767
+DFTRACE stage=sync_process start_us=129216934496 end_us=129216934734 n=5
+MTPPHASE phase=sync us=246 n_tokens=5
+DFTRACE stage=sample_accept start_us=129216934988 end_us=129216935584 n=4
+DFTRACE stage=remote_trim start_us=129216935591 end_us=129216935633 n=4
+MTPPHASE phase=verify us=894 n_draft=4
+DFTRACE stage=commit_prompt start_us=129216935642 end_us=129216935643 n=0
+DFTRACE stage=kv_remove start_us=129216935644 end_us=129216935767 n=4
+DFTRACE stage=emit_tokens start_us=129216935768 end_us=129216935774 n=1
+DFTRACE stage=draft_call start_us=129216935792 end_us=129216983477 n=1
+MTPPHASE phase=draft us=47703 drafted=4
+DFTRACE stage=batch_from_sample start_us=129216983529 end_us=129216983532 n=1
+DFTRACE stage=target_submit start_us=129216983550 end_us=129216984782 n=5
+DFTRACE stage=target_sync start_us=129216984782 end_us=129217023574 n=5
+DFTRACE stage=target_decode_total start_us=129216983546 end_us=129217023665 n=5
+MTPTGT n_tokens=5 us=40126
+DFTRACE stage=sync_process start_us=129217023674 end_us=129217023899 n=5
+MTPPHASE phase=sync us=227 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217024161 end_us=129217024725 n=4
+DFTRACE stage=remote_trim start_us=129217024731 end_us=129217024763 n=4
+MTPPHASE phase=verify us=863 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217024772 end_us=129217024773 n=0
+DFTRACE stage=kv_remove start_us=129217024774 end_us=129217024895 n=4
+DFTRACE stage=emit_tokens start_us=129217024897 end_us=129217024903 n=1
+DFTRACE stage=draft_call start_us=129217024920 end_us=129217072990 n=1
+MTPPHASE phase=draft us=48104 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217073062 end_us=129217073065 n=1
+DFTRACE stage=target_submit start_us=129217073080 end_us=129217074256 n=5
+DFTRACE stage=target_sync start_us=129217074256 end_us=129217112920 n=5
+DFTRACE stage=target_decode_total start_us=129217073078 end_us=129217113021 n=5
+MTPTGT n_tokens=5 us=39945
+DFTRACE stage=sync_process start_us=129217113025 end_us=129217113271 n=5
+MTPPHASE phase=sync us=254 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217113529 end_us=129217115308 n=4
+DFTRACE stage=remote_trim start_us=129217115316 end_us=129217115347 n=4
+MTPPHASE phase=verify us=2070 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217115357 end_us=129217115358 n=2
+DFTRACE stage=kv_remove start_us=129217115359 end_us=129217115481 n=4
+DFTRACE stage=emit_tokens start_us=129217115483 end_us=129217115491 n=3
+DFTRACE stage=draft_call start_us=129217115510 end_us=129217163351 n=1
+MTPPHASE phase=draft us=47858 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217163419 end_us=129217163422 n=1
+DFTRACE stage=target_submit start_us=129217163445 end_us=129217164495 n=5
+DFTRACE stage=target_sync start_us=129217164495 end_us=129217203537 n=5
+DFTRACE stage=target_decode_total start_us=129217163438 end_us=129217203636 n=5
+MTPTGT n_tokens=5 us=40204
+DFTRACE stage=sync_process start_us=129217203644 end_us=129217203895 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217204180 end_us=129217207182 n=4
+DFTRACE stage=remote_trim start_us=129217207192 end_us=129217207236 n=4
+MTPPHASE phase=verify us=3336 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217207247 end_us=129217207248 n=4
+DFTRACE stage=kv_remove start_us=129217207250 end_us=129217207376 n=4
+DFTRACE stage=emit_tokens start_us=129217207377 end_us=129217207387 n=5
+DFTRACE stage=draft_call start_us=129217207408 end_us=129217255662 n=1
+MTPPHASE phase=draft us=48271 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217255712 end_us=129217255715 n=1
+DFTRACE stage=target_submit start_us=129217255733 end_us=129217257008 n=5
+DFTRACE stage=target_sync start_us=129217257008 end_us=129217295855 n=5
+DFTRACE stage=target_decode_total start_us=129217255729 end_us=129217295992 n=5
+MTPTGT n_tokens=5 us=40270
+DFTRACE stage=sync_process start_us=129217296013 end_us=129217296233 n=5
+MTPPHASE phase=sync us=224 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217296511 end_us=129217298416 n=4
+DFTRACE stage=remote_trim start_us=129217298426 end_us=129217298457 n=4
+MTPPHASE phase=verify us=2222 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217298469 end_us=129217298470 n=2
+DFTRACE stage=kv_remove start_us=129217298471 end_us=129217298607 n=4
+DFTRACE stage=emit_tokens start_us=129217298608 end_us=129217298616 n=3
+DFTRACE stage=draft_call start_us=129217298636 end_us=129217346816 n=1
+MTPPHASE phase=draft us=48195 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217346870 end_us=129217346873 n=1
+DFTRACE stage=target_submit start_us=129217346888 end_us=129217348092 n=5
+DFTRACE stage=target_sync start_us=129217348092 end_us=129217386676 n=5
+DFTRACE stage=target_decode_total start_us=129217346886 end_us=129217386773 n=5
+MTPTGT n_tokens=5 us=39890
+DFTRACE stage=sync_process start_us=129217386777 end_us=129217387028 n=5
+MTPPHASE phase=sync us=260 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217387294 end_us=129217389568 n=4
+DFTRACE stage=remote_trim start_us=129217389577 end_us=129217389607 n=4
+MTPPHASE phase=verify us=2574 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217389618 end_us=129217389619 n=3
+DFTRACE stage=kv_remove start_us=129217389620 end_us=129217389746 n=4
+DFTRACE stage=emit_tokens start_us=129217389748 end_us=129217389756 n=4
+DFTRACE stage=draft_call start_us=129217389774 end_us=129217438100 n=1
+MTPPHASE phase=draft us=48372 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217438206 end_us=129217438208 n=1
+DFTRACE stage=target_submit start_us=129217438221 end_us=129217439382 n=5
+DFTRACE stage=target_sync start_us=129217439382 end_us=129217478392 n=5
+DFTRACE stage=target_decode_total start_us=129217438218 end_us=129217478453 n=5
+MTPTGT n_tokens=5 us=40237
+DFTRACE stage=sync_process start_us=129217478457 end_us=129217478584 n=5
+MTPPHASE phase=sync us=131 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217478852 end_us=129217479944 n=4
+DFTRACE stage=remote_trim start_us=129217479956 end_us=129217479986 n=4
+MTPPHASE phase=verify us=1400 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217479996 end_us=129217479997 n=2
+DFTRACE stage=kv_remove start_us=129217479998 end_us=129217480123 n=4
+DFTRACE stage=emit_tokens start_us=129217480125 end_us=129217480133 n=3
+DFTRACE stage=draft_call start_us=129217480150 end_us=129217527725 n=1
+MTPPHASE phase=draft us=47592 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217527774 end_us=129217527776 n=1
+DFTRACE stage=target_submit start_us=129217527791 end_us=129217528926 n=5
+DFTRACE stage=target_sync start_us=129217528926 end_us=129217568178 n=5
+DFTRACE stage=target_decode_total start_us=129217527788 end_us=129217568230 n=5
+MTPTGT n_tokens=5 us=40446
+DFTRACE stage=sync_process start_us=129217568236 end_us=129217568381 n=5
+MTPPHASE phase=sync us=148 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217568655 end_us=129217569905 n=4
+DFTRACE stage=remote_trim start_us=129217569913 end_us=129217569940 n=4
+MTPPHASE phase=verify us=1559 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217569950 end_us=129217569951 n=1
+DFTRACE stage=kv_remove start_us=129217569952 end_us=129217570072 n=4
+DFTRACE stage=emit_tokens start_us=129217570074 end_us=129217570080 n=2
+DFTRACE stage=draft_call start_us=129217570096 end_us=129217617485 n=1
+MTPPHASE phase=draft us=47397 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217617517 end_us=129217617518 n=1
+DFTRACE stage=target_submit start_us=129217617530 end_us=129217618579 n=5
+DFTRACE stage=target_sync start_us=129217618579 end_us=129217657487 n=5
+DFTRACE stage=target_decode_total start_us=129217617527 end_us=129217657596 n=5
+MTPTGT n_tokens=5 us=40074
+DFTRACE stage=sync_process start_us=129217657603 end_us=129217657817 n=5
+MTPPHASE phase=sync us=220 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217658063 end_us=129217658516 n=4
+DFTRACE stage=remote_trim start_us=129217658523 end_us=129217658549 n=4
+MTPPHASE phase=verify us=729 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217658557 end_us=129217658558 n=0
+DFTRACE stage=kv_remove start_us=129217658559 end_us=129217658665 n=4
+DFTRACE stage=emit_tokens start_us=129217658666 end_us=129217658672 n=1
+DFTRACE stage=draft_call start_us=129217658687 end_us=129217706070 n=1
+MTPPHASE phase=draft us=47391 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217706099 end_us=129217706101 n=1
+DFTRACE stage=target_submit start_us=129217706112 end_us=129217707064 n=5
+DFTRACE stage=target_sync start_us=129217707064 end_us=129217746405 n=5
+DFTRACE stage=target_decode_total start_us=129217706110 end_us=129217746508 n=5
+MTPTGT n_tokens=5 us=40403
+DFTRACE stage=sync_process start_us=129217746514 end_us=129217746718 n=5
+MTPPHASE phase=sync us=210 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217746942 end_us=129217748097 n=4
+DFTRACE stage=remote_trim start_us=129217748105 end_us=129217748140 n=4
+MTPPHASE phase=verify us=1418 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217748148 end_us=129217748149 n=2
+DFTRACE stage=kv_remove start_us=129217748150 end_us=129217748248 n=4
+DFTRACE stage=emit_tokens start_us=129217748248 end_us=129217748254 n=3
+DFTRACE stage=draft_call start_us=129217748271 end_us=129217795793 n=1
+MTPPHASE phase=draft us=47531 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217795821 end_us=129217795823 n=1
+DFTRACE stage=target_submit start_us=129217795834 end_us=129217796742 n=5
+DFTRACE stage=target_sync start_us=129217796742 end_us=129217835762 n=5
+DFTRACE stage=target_decode_total start_us=129217795832 end_us=129217835865 n=5
+MTPTGT n_tokens=5 us=40037
+DFTRACE stage=sync_process start_us=129217835871 end_us=129217836074 n=5
+MTPPHASE phase=sync us=210 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217836294 end_us=129217836670 n=4
+DFTRACE stage=remote_trim start_us=129217836684 end_us=129217836708 n=4
+MTPPHASE phase=verify us=628 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217836715 end_us=129217836716 n=0
+DFTRACE stage=kv_remove start_us=129217836716 end_us=129217836819 n=4
+DFTRACE stage=emit_tokens start_us=129217836821 end_us=129217836832 n=1
+DFTRACE stage=draft_call start_us=129217836846 end_us=129217883960 n=1
+MTPPHASE phase=draft us=47121 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217883985 end_us=129217883987 n=1
+DFTRACE stage=target_submit start_us=129217883997 end_us=129217884861 n=5
+DFTRACE stage=target_sync start_us=129217884861 end_us=129217923903 n=5
+DFTRACE stage=target_decode_total start_us=129217883995 end_us=129217924006 n=5
+MTPTGT n_tokens=5 us=40015
+DFTRACE stage=sync_process start_us=129217924012 end_us=129217924210 n=5
+MTPPHASE phase=sync us=202 n_tokens=5
+DFTRACE stage=sample_accept start_us=129217924428 end_us=129217925929 n=4
+DFTRACE stage=remote_trim start_us=129217925938 end_us=129217925961 n=4
+MTPPHASE phase=verify us=1750 n_draft=4
+DFTRACE stage=commit_prompt start_us=129217925969 end_us=129217925970 n=4
+DFTRACE stage=kv_remove start_us=129217925971 end_us=129217926065 n=4
+DFTRACE stage=emit_tokens start_us=129217926066 end_us=129217926073 n=5
+DFTRACE stage=draft_call start_us=129217926090 end_us=129217973361 n=1
+MTPPHASE phase=draft us=47278 drafted=4
+DFTRACE stage=batch_from_sample start_us=129217973386 end_us=129217973387 n=1
+DFTRACE stage=target_submit start_us=129217973397 end_us=129217974225 n=5
+DFTRACE stage=target_sync start_us=129217974225 end_us=129218013007 n=5
+DFTRACE stage=target_decode_total start_us=129217973395 end_us=129218013104 n=5
+MTPTGT n_tokens=5 us=39713
+DFTRACE stage=sync_process start_us=129218013109 end_us=129218013296 n=5
+MTPPHASE phase=sync us=191 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218013515 end_us=129218014874 n=4
+DFTRACE stage=remote_trim start_us=129218014882 end_us=129218014912 n=4
+MTPPHASE phase=verify us=1614 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218014919 end_us=129218014920 n=4
+DFTRACE stage=kv_remove start_us=129218014921 end_us=129218015012 n=4
+DFTRACE stage=emit_tokens start_us=129218015013 end_us=129218015019 n=5
+0.19.887.418 I slot print_timing: id  0 | task 0 | n_gen =    428, tg =  35.11 t/s, tg_3s =  30.36 t/s
+DFTRACE stage=draft_call start_us=129218015042 end_us=129218062848 n=1
+MTPPHASE phase=draft us=47823 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218062904 end_us=129218062907 n=1
+DFTRACE stage=target_submit start_us=129218062926 end_us=129218064332 n=5
+DFTRACE stage=target_sync start_us=129218064332 end_us=129218103024 n=5
+DFTRACE stage=target_decode_total start_us=129218062924 end_us=129218103130 n=5
+MTPTGT n_tokens=5 us=40211
+DFTRACE stage=sync_process start_us=129218103136 end_us=129218103343 n=5
+MTPPHASE phase=sync us=213 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218103557 end_us=129218103947 n=4
+DFTRACE stage=remote_trim start_us=129218103952 end_us=129218103976 n=4
+MTPPHASE phase=verify us=630 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218103984 end_us=129218103985 n=0
+DFTRACE stage=kv_remove start_us=129218103985 end_us=129218104098 n=4
+DFTRACE stage=emit_tokens start_us=129218104099 end_us=129218104105 n=1
+DFTRACE stage=draft_call start_us=129218104119 end_us=129218153052 n=1
+MTPPHASE phase=draft us=48948 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218153102 end_us=129218153104 n=1
+DFTRACE stage=target_submit start_us=129218153121 end_us=129218154341 n=5
+DFTRACE stage=target_sync start_us=129218154341 end_us=129218194174 n=5
+DFTRACE stage=target_decode_total start_us=129218153117 end_us=129218194305 n=5
+MTPTGT n_tokens=5 us=41196
+DFTRACE stage=sync_process start_us=129218194315 end_us=129218194528 n=5
+MTPPHASE phase=sync us=218 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218194793 end_us=129218195396 n=4
+DFTRACE stage=remote_trim start_us=129218195405 end_us=129218195437 n=4
+MTPPHASE phase=verify us=906 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218195448 end_us=129218195448 n=0
+DFTRACE stage=kv_remove start_us=129218195463 end_us=129218195593 n=4
+DFTRACE stage=emit_tokens start_us=129218195595 end_us=129218195601 n=1
+DFTRACE stage=draft_call start_us=129218195620 end_us=129218243582 n=1
+MTPPHASE phase=draft us=47978 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218243639 end_us=129218243641 n=1
+DFTRACE stage=target_submit start_us=129218243657 end_us=129218244872 n=5
+DFTRACE stage=target_sync start_us=129218244872 end_us=129218283572 n=5
+DFTRACE stage=target_decode_total start_us=129218243655 end_us=129218283665 n=5
+MTPTGT n_tokens=5 us=40014
+DFTRACE stage=sync_process start_us=129218283671 end_us=129218283914 n=5
+MTPPHASE phase=sync us=251 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218284189 end_us=129218287142 n=4
+DFTRACE stage=remote_trim start_us=129218287154 end_us=129218287198 n=4
+MTPPHASE phase=verify us=3281 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218287212 end_us=129218287213 n=4
+DFTRACE stage=kv_remove start_us=129218287214 end_us=129218287396 n=4
+DFTRACE stage=emit_tokens start_us=129218287398 end_us=129218287412 n=5
+DFTRACE stage=draft_call start_us=129218287442 end_us=129218335720 n=1
+MTPPHASE phase=draft us=48289 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218335760 end_us=129218335762 n=1
+DFTRACE stage=target_submit start_us=129218335778 end_us=129218337033 n=5
+DFTRACE stage=target_sync start_us=129218337033 end_us=129218375607 n=5
+DFTRACE stage=target_decode_total start_us=129218335774 end_us=129218375734 n=5
+MTPTGT n_tokens=5 us=39968
+DFTRACE stage=sync_process start_us=129218375744 end_us=129218375999 n=5
+MTPPHASE phase=sync us=280 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218376283 end_us=129218379113 n=4
+DFTRACE stage=remote_trim start_us=129218379123 end_us=129218379184 n=4
+MTPPHASE phase=verify us=3164 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218379196 end_us=129218379198 n=4
+DFTRACE stage=kv_remove start_us=129218379199 end_us=129218379418 n=4
+DFTRACE stage=emit_tokens start_us=129218379421 end_us=129218379435 n=5
+DFTRACE stage=draft_call start_us=129218379461 end_us=129218427923 n=1
+MTPPHASE phase=draft us=48484 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218427992 end_us=129218427996 n=1
+DFTRACE stage=target_submit start_us=129218428026 end_us=129218429345 n=5
+DFTRACE stage=target_sync start_us=129218429345 end_us=129218468453 n=5
+DFTRACE stage=target_decode_total start_us=129218428023 end_us=129218468585 n=5
+MTPTGT n_tokens=5 us=40570
+DFTRACE stage=sync_process start_us=129218468595 end_us=129218468849 n=5
+MTPPHASE phase=sync us=262 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218469126 end_us=129218471485 n=4
+DFTRACE stage=remote_trim start_us=129218471494 end_us=129218471525 n=4
+MTPPHASE phase=verify us=2670 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218471535 end_us=129218471536 n=3
+DFTRACE stage=kv_remove start_us=129218471537 end_us=129218471662 n=4
+DFTRACE stage=emit_tokens start_us=129218471664 end_us=129218471672 n=4
+DFTRACE stage=draft_call start_us=129218471691 end_us=129218519958 n=1
+MTPPHASE phase=draft us=48283 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218520019 end_us=129218520021 n=1
+DFTRACE stage=target_submit start_us=129218520037 end_us=129218521242 n=5
+DFTRACE stage=target_sync start_us=129218521242 end_us=129218560059 n=5
+DFTRACE stage=target_decode_total start_us=129218520035 end_us=129218560158 n=5
+MTPTGT n_tokens=5 us=40127
+DFTRACE stage=sync_process start_us=129218560164 end_us=129218560405 n=5
+MTPPHASE phase=sync us=249 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218560665 end_us=129218561843 n=4
+DFTRACE stage=remote_trim start_us=129218561851 end_us=129218561882 n=4
+MTPPHASE phase=verify us=1471 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218561892 end_us=129218561893 n=1
+DFTRACE stage=kv_remove start_us=129218561894 end_us=129218562025 n=4
+DFTRACE stage=emit_tokens start_us=129218562027 end_us=129218562034 n=2
+DFTRACE stage=draft_call start_us=129218562052 end_us=129218610483 n=1
+MTPPHASE phase=draft us=48446 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218610547 end_us=129218610549 n=1
+DFTRACE stage=target_submit start_us=129218610564 end_us=129218611764 n=5
+DFTRACE stage=target_sync start_us=129218611764 end_us=129218650444 n=5
+DFTRACE stage=target_decode_total start_us=129218610562 end_us=129218650538 n=5
+MTPTGT n_tokens=5 us=39981
+DFTRACE stage=sync_process start_us=129218650546 end_us=129218650781 n=5
+MTPPHASE phase=sync us=243 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218651042 end_us=129218652248 n=4
+DFTRACE stage=remote_trim start_us=129218652257 end_us=129218652296 n=4
+MTPPHASE phase=verify us=1510 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218652306 end_us=129218652307 n=1
+DFTRACE stage=kv_remove start_us=129218652308 end_us=129218652432 n=4
+DFTRACE stage=emit_tokens start_us=129218652433 end_us=129218652441 n=2
+DFTRACE stage=draft_call start_us=129218652461 end_us=129218700950 n=1
+MTPPHASE phase=draft us=48505 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218700999 end_us=129218701011 n=1
+DFTRACE stage=target_submit start_us=129218701031 end_us=129218702274 n=5
+DFTRACE stage=target_sync start_us=129218702274 end_us=129218741080 n=5
+DFTRACE stage=target_decode_total start_us=129218701027 end_us=129218741208 n=5
+MTPTGT n_tokens=5 us=40188
+DFTRACE stage=sync_process start_us=129218741218 end_us=129218741471 n=5
+MTPPHASE phase=sync us=261 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218741733 end_us=129218744634 n=4
+DFTRACE stage=remote_trim start_us=129218744645 end_us=129218744677 n=4
+MTPPHASE phase=verify us=3201 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218744688 end_us=129218744689 n=4
+DFTRACE stage=kv_remove start_us=129218744690 end_us=129218744815 n=4
+DFTRACE stage=emit_tokens start_us=129218744817 end_us=129218744825 n=5
+DFTRACE stage=draft_call start_us=129218744844 end_us=129218793613 n=1
+MTPPHASE phase=draft us=48792 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218793681 end_us=129218793685 n=1
+DFTRACE stage=target_submit start_us=129218793708 end_us=129218795164 n=5
+DFTRACE stage=target_sync start_us=129218795164 end_us=129218834475 n=5
+DFTRACE stage=target_decode_total start_us=129218793703 end_us=129218834605 n=5
+MTPTGT n_tokens=5 us=40909
+DFTRACE stage=sync_process start_us=129218834614 end_us=129218834869 n=5
+MTPPHASE phase=sync us=263 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218835144 end_us=129218838024 n=4
+DFTRACE stage=remote_trim start_us=129218838032 end_us=129218838067 n=4
+MTPPHASE phase=verify us=3194 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218838078 end_us=129218838079 n=4
+DFTRACE stage=kv_remove start_us=129218838080 end_us=129218838210 n=4
+DFTRACE stage=emit_tokens start_us=129218838211 end_us=129218838220 n=5
+DFTRACE stage=draft_call start_us=129218838239 end_us=129218886967 n=1
+MTPPHASE phase=draft us=48743 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218887025 end_us=129218887027 n=1
+DFTRACE stage=target_submit start_us=129218887045 end_us=129218888266 n=5
+DFTRACE stage=target_sync start_us=129218888266 end_us=129218926875 n=5
+DFTRACE stage=target_decode_total start_us=129218887041 end_us=129218927016 n=5
+MTPTGT n_tokens=5 us=39983
+DFTRACE stage=sync_process start_us=129218927026 end_us=129218927284 n=5
+MTPPHASE phase=sync us=266 n_tokens=5
+DFTRACE stage=sample_accept start_us=129218927548 end_us=129218928149 n=4
+DFTRACE stage=remote_trim start_us=129218928156 end_us=129218928197 n=4
+MTPPHASE phase=verify us=908 n_draft=4
+DFTRACE stage=commit_prompt start_us=129218928207 end_us=129218928207 n=0
+DFTRACE stage=kv_remove start_us=129218928209 end_us=129218928336 n=4
+DFTRACE stage=emit_tokens start_us=129218928337 end_us=129218928343 n=1
+DFTRACE stage=draft_call start_us=129218928362 end_us=129218976981 n=1
+MTPPHASE phase=draft us=48634 drafted=4
+DFTRACE stage=batch_from_sample start_us=129218977042 end_us=129218977045 n=1
+DFTRACE stage=target_submit start_us=129218977061 end_us=129218978253 n=5
+DFTRACE stage=target_sync start_us=129218978253 end_us=129219017290 n=5
+DFTRACE stage=target_decode_total start_us=129218977059 end_us=129219017391 n=5
+MTPTGT n_tokens=5 us=40360
+DFTRACE stage=sync_process start_us=129219017421 end_us=129219017634 n=5
+MTPPHASE phase=sync us=216 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219017917 end_us=129219019731 n=4
+DFTRACE stage=remote_trim start_us=129219019739 end_us=129219019771 n=4
+MTPPHASE phase=verify us=2138 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219019782 end_us=129219019783 n=2
+DFTRACE stage=kv_remove start_us=129219019784 end_us=129219019914 n=4
+DFTRACE stage=emit_tokens start_us=129219019916 end_us=129219019924 n=3
+DFTRACE stage=draft_call start_us=129219019943 end_us=129219068341 n=1
+MTPPHASE phase=draft us=48419 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219068408 end_us=129219068411 n=1
+DFTRACE stage=target_submit start_us=129219068433 end_us=129219069941 n=5
+DFTRACE stage=target_sync start_us=129219069941 end_us=129219108840 n=5
+DFTRACE stage=target_decode_total start_us=129219068431 end_us=129219108967 n=5
+MTPTGT n_tokens=5 us=40545
+DFTRACE stage=sync_process start_us=129219108978 end_us=129219109228 n=5
+MTPPHASE phase=sync us=255 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219109503 end_us=129219112595 n=4
+DFTRACE stage=remote_trim start_us=129219112608 end_us=129219112639 n=4
+MTPPHASE phase=verify us=3410 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219112651 end_us=129219112652 n=4
+DFTRACE stage=kv_remove start_us=129219112654 end_us=129219112784 n=4
+DFTRACE stage=emit_tokens start_us=129219112785 end_us=129219112793 n=5
+DFTRACE stage=draft_call start_us=129219112814 end_us=129219161379 n=1
+MTPPHASE phase=draft us=48588 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219161449 end_us=129219161452 n=1
+DFTRACE stage=target_submit start_us=129219161475 end_us=129219162795 n=5
+DFTRACE stage=target_sync start_us=129219162795 end_us=129219201406 n=5
+DFTRACE stage=target_decode_total start_us=129219161472 end_us=129219201499 n=5
+MTPTGT n_tokens=5 us=40033
+DFTRACE stage=sync_process start_us=129219201506 end_us=129219201748 n=5
+MTPPHASE phase=sync us=250 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219202023 end_us=129219204897 n=4
+DFTRACE stage=remote_trim start_us=129219204906 end_us=129219204950 n=4
+MTPPHASE phase=verify us=3197 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219204962 end_us=129219204963 n=4
+DFTRACE stage=kv_remove start_us=129219204964 end_us=129219205104 n=4
+DFTRACE stage=emit_tokens start_us=129219205107 end_us=129219205116 n=5
+DFTRACE stage=draft_call start_us=129219205136 end_us=129219254332 n=1
+MTPPHASE phase=draft us=49211 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219254382 end_us=129219254385 n=1
+DFTRACE stage=target_submit start_us=129219254401 end_us=129219255636 n=5
+DFTRACE stage=target_sync start_us=129219255636 end_us=129219294529 n=5
+DFTRACE stage=target_decode_total start_us=129219254398 end_us=129219294628 n=5
+MTPTGT n_tokens=5 us=40234
+DFTRACE stage=sync_process start_us=129219294635 end_us=129219294871 n=5
+MTPPHASE phase=sync us=244 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219295145 end_us=129219298173 n=4
+DFTRACE stage=remote_trim start_us=129219298182 end_us=129219298214 n=4
+MTPPHASE phase=verify us=3341 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219298232 end_us=129219298235 n=4
+DFTRACE stage=kv_remove start_us=129219298237 end_us=129219298413 n=4
+DFTRACE stage=emit_tokens start_us=129219298415 end_us=129219298423 n=5
+DFTRACE stage=draft_call start_us=129219298443 end_us=129219346993 n=1
+MTPPHASE phase=draft us=48572 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219347049 end_us=129219347051 n=1
+DFTRACE stage=target_submit start_us=129219347069 end_us=129219348270 n=5
+DFTRACE stage=target_sync start_us=129219348270 end_us=129219387033 n=5
+DFTRACE stage=target_decode_total start_us=129219347065 end_us=129219387104 n=5
+MTPTGT n_tokens=5 us=40041
+DFTRACE stage=sync_process start_us=129219387107 end_us=129219387293 n=5
+MTPPHASE phase=sync us=188 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219387562 end_us=129219389902 n=4
+DFTRACE stage=remote_trim start_us=129219389911 end_us=129219389942 n=4
+MTPPHASE phase=verify us=2662 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219389965 end_us=129219389971 n=3
+DFTRACE stage=kv_remove start_us=129219389972 end_us=129219390170 n=4
+DFTRACE stage=emit_tokens start_us=129219390171 end_us=129219390183 n=4
+DFTRACE stage=draft_call start_us=129219390207 end_us=129219438969 n=1
+MTPPHASE phase=draft us=48778 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219439033 end_us=129219439036 n=1
+DFTRACE stage=target_submit start_us=129219439056 end_us=129219440284 n=5
+DFTRACE stage=target_sync start_us=129219440284 end_us=129219478883 n=5
+DFTRACE stage=target_decode_total start_us=129219439049 end_us=129219479028 n=5
+MTPTGT n_tokens=5 us=39987
+DFTRACE stage=sync_process start_us=129219479038 end_us=129219479289 n=5
+MTPPHASE phase=sync us=259 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219479550 end_us=129219482504 n=4
+DFTRACE stage=remote_trim start_us=129219482514 end_us=129219482557 n=4
+MTPPHASE phase=verify us=3264 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219482568 end_us=129219482569 n=4
+DFTRACE stage=kv_remove start_us=129219482570 end_us=129219482698 n=4
+DFTRACE stage=emit_tokens start_us=129219482699 end_us=129219482708 n=5
+DFTRACE stage=draft_call start_us=129219482728 end_us=129219531707 n=1
+MTPPHASE phase=draft us=48998 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219531761 end_us=129219531763 n=1
+DFTRACE stage=target_submit start_us=129219531780 end_us=129219533009 n=5
+DFTRACE stage=target_sync start_us=129219533009 end_us=129219571747 n=5
+DFTRACE stage=target_decode_total start_us=129219531776 end_us=129219571869 n=5
+MTPTGT n_tokens=5 us=40099
+DFTRACE stage=sync_process start_us=129219571877 end_us=129219572092 n=5
+MTPPHASE phase=sync us=223 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219572357 end_us=129219575219 n=4
+DFTRACE stage=remote_trim start_us=129219575228 end_us=129219575259 n=4
+MTPPHASE phase=verify us=3162 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219575270 end_us=129219575271 n=4
+DFTRACE stage=kv_remove start_us=129219575272 end_us=129219575399 n=4
+DFTRACE stage=emit_tokens start_us=129219575400 end_us=129219575409 n=5
+DFTRACE stage=draft_call start_us=129219575427 end_us=129219624619 n=1
+MTPPHASE phase=draft us=49208 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219624673 end_us=129219624676 n=1
+DFTRACE stage=target_submit start_us=129219624692 end_us=129219625908 n=5
+DFTRACE stage=target_sync start_us=129219625908 end_us=129219664601 n=5
+DFTRACE stage=target_decode_total start_us=129219624690 end_us=129219664702 n=5
+MTPTGT n_tokens=5 us=40018
+DFTRACE stage=sync_process start_us=129219664710 end_us=129219664953 n=5
+MTPPHASE phase=sync us=358 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219665335 end_us=129219665926 n=4
+DFTRACE stage=remote_trim start_us=129219665934 end_us=129219665965 n=4
+MTPPHASE phase=verify us=898 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219665978 end_us=129219665978 n=0
+DFTRACE stage=kv_remove start_us=129219665980 end_us=129219666112 n=4
+DFTRACE stage=emit_tokens start_us=129219666115 end_us=129219666122 n=1
+DFTRACE stage=draft_call start_us=129219666141 end_us=129219715269 n=1
+MTPPHASE phase=draft us=49142 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219715317 end_us=129219715319 n=1
+DFTRACE stage=target_submit start_us=129219715336 end_us=129219716561 n=5
+DFTRACE stage=target_sync start_us=129219716561 end_us=129219755215 n=5
+DFTRACE stage=target_decode_total start_us=129219715332 end_us=129219755299 n=5
+MTPTGT n_tokens=5 us=39973
+DFTRACE stage=sync_process start_us=129219755307 end_us=129219755519 n=5
+MTPPHASE phase=sync us=214 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219755774 end_us=129219756953 n=4
+DFTRACE stage=remote_trim start_us=129219756961 end_us=129219757011 n=4
+MTPPHASE phase=verify us=1492 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219757022 end_us=129219757022 n=1
+DFTRACE stage=kv_remove start_us=129219757024 end_us=129219757151 n=4
+DFTRACE stage=emit_tokens start_us=129219757152 end_us=129219757160 n=2
+DFTRACE stage=draft_call start_us=129219757182 end_us=129219806573 n=1
+MTPPHASE phase=draft us=49427 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219806644 end_us=129219806647 n=1
+DFTRACE stage=target_submit start_us=129219806665 end_us=129219807940 n=5
+DFTRACE stage=target_sync start_us=129219807940 end_us=129219847248 n=5
+DFTRACE stage=target_decode_total start_us=129219806661 end_us=129219847379 n=5
+MTPTGT n_tokens=5 us=40726
+DFTRACE stage=sync_process start_us=129219847389 end_us=129219847632 n=5
+MTPPHASE phase=sync us=247 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219847896 end_us=129219850790 n=4
+DFTRACE stage=remote_trim start_us=129219850800 end_us=129219850836 n=4
+MTPPHASE phase=verify us=3209 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219850854 end_us=129219850855 n=4
+DFTRACE stage=kv_remove start_us=129219850856 end_us=129219850985 n=4
+DFTRACE stage=emit_tokens start_us=129219850987 end_us=129219850996 n=5
+DFTRACE stage=draft_call start_us=129219851021 end_us=129219900052 n=1
+MTPPHASE phase=draft us=49047 drafted=4
+DFTRACE stage=batch_from_sample start_us=129219900106 end_us=129219900110 n=1
+DFTRACE stage=target_submit start_us=129219900130 end_us=129219932932 n=5
+DFTRACE stage=target_sync start_us=129219932932 end_us=129219956503 n=5
+DFTRACE stage=target_decode_total start_us=129219900126 end_us=129219956600 n=5
+MTPTGT n_tokens=5 us=56480
+DFTRACE stage=sync_process start_us=129219956607 end_us=129219956855 n=5
+MTPPHASE phase=sync us=255 n_tokens=5
+DFTRACE stage=sample_accept start_us=129219957176 end_us=129219959959 n=4
+DFTRACE stage=remote_trim start_us=129219959970 end_us=129219960011 n=4
+MTPPHASE phase=verify us=3149 n_draft=4
+DFTRACE stage=commit_prompt start_us=129219960022 end_us=129219960023 n=4
+DFTRACE stage=kv_remove start_us=129219960024 end_us=129219960160 n=4
+DFTRACE stage=emit_tokens start_us=129219960161 end_us=129219960170 n=5
+DFTRACE stage=draft_call start_us=129219960189 end_us=129220009566 n=1
+MTPPHASE phase=draft us=49392 drafted=4
+DFTRACE stage=batch_from_sample start_us=129220009616 end_us=129220009618 n=1
+DFTRACE stage=target_submit start_us=129220009636 end_us=129220031640 n=5
+DFTRACE stage=target_sync start_us=129220031640 end_us=129220051023 n=5
+DFTRACE stage=target_decode_total start_us=129220009632 end_us=129220051127 n=5
+MTPTGT n_tokens=5 us=41498
+DFTRACE stage=sync_process start_us=129220051132 end_us=129220051368 n=5
+MTPPHASE phase=sync us=244 n_tokens=5
+DFTRACE stage=sample_accept start_us=129220051649 end_us=129220053973 n=4
+DFTRACE stage=remote_trim start_us=129220053983 end_us=129220054032 n=4
+MTPPHASE phase=verify us=2659 n_draft=4
+DFTRACE stage=commit_prompt start_us=129220054042 end_us=129220054044 n=3
+DFTRACE stage=kv_remove start_us=129220054045 end_us=129220054176 n=4
+DFTRACE stage=emit_tokens start_us=129220054177 end_us=129220054185 n=4
+DFTRACE stage=draft_call start_us=129220054205 end_us=129220103964 n=1
+MTPPHASE phase=draft us=49775 drafted=3
+DFTRACE stage=batch_from_sample start_us=129220104025 end_us=129220104027 n=1
+DFTRACE stage=target_submit start_us=129220104043 end_us=129220129961 n=4
+DFTRACE stage=target_sync start_us=129220129961 end_us=129220148886 n=4
+DFTRACE stage=target_decode_total start_us=129220104040 end_us=129220148985 n=4
+MTPTGT n_tokens=4 us=44950
+DFTRACE stage=sync_process start_us=129220148993 end_us=129220149238 n=4
+MTPPHASE phase=sync us=254 n_tokens=4
+DFTRACE stage=sample_accept start_us=129220149569 end_us=129220150168 n=3
+DFTRACE stage=remote_trim start_us=129220150175 end_us=129220150208 n=3
+MTPPHASE phase=verify us=964 n_draft=3
+DFTRACE stage=commit_prompt start_us=129220150219 end_us=129220150221 n=0
+DFTRACE stage=kv_remove start_us=129220150222 end_us=129220150357 n=3
+DFTRACE stage=emit_tokens start_us=129220150359 end_us=129220150365 n=1
+DFTRACE stage=draft_call start_us=129220150385 end_us=129220197974 n=1
+MTPPHASE phase=draft us=47604 drafted=2
+DFTRACE stage=batch_from_sample start_us=129220198036 end_us=129220198038 n=1
+DFTRACE stage=target_submit start_us=129220198056 end_us=129220221448 n=3
+DFTRACE stage=target_sync start_us=129220221448 end_us=129220238679 n=3
+DFTRACE stage=target_decode_total start_us=129220198052 end_us=129220238779 n=3
+MTPTGT n_tokens=3 us=40733
+DFTRACE stage=sync_process start_us=129220238788 end_us=129220238990 n=3
+MTPPHASE phase=sync us=210 n_tokens=3
+DFTRACE stage=sample_accept start_us=129220239333 end_us=129220241114 n=2
+DFTRACE stage=remote_trim start_us=129220241124 end_us=129220241157 n=2
+MTPPHASE phase=verify us=2143 n_draft=2
+DFTRACE stage=commit_prompt start_us=129220241168 end_us=129220241169 n=2
+DFTRACE stage=kv_remove start_us=129220241170 end_us=129220241300 n=2
+0.22.113.836 I slot print_timing: id  0 | task 0 | prompt eval time =     208.34 ms /    11 tokens (   18.94 ms per token,    52.80 tokens per second)
+0.22.113.860 I slot print_timing: id  0 | task 0 |        eval time =   14387.02 ms /   512 tokens (   28.15 ms per token,    35.52 tokens per second)
+0.22.113.862 I slot print_timing: id  0 | task 0 |       total time =   14595.36 ms /   523 tokens
+0.22.113.935 I slot print_timing: id  0 | task 0 |    graphs reused =        152
+0.22.113.946 I slot print_timing: id  0 | task 0 | draft acceptance = 0.54121 (  348 accepted /   643 generated), mean len =  3.13
+MTPSTATS type=draft-dflash steps=163 gen_drafts=163 acc_drafts=126 gen_tokens=643 acc_tokens=348 gen_per_pos=[163,162,160,158] acc_per_pos=[126,97,74,51]
+0.22.114.042 I slot      release: id  0 | task 0 | stop processing: n_tokens = 522, truncated = 0
+0.22.119.412 I srv    operator(): operator(): cleaning up before exit...
+0.22.128.614 W ~llama_context:        CPU compute buffer size of   2.1436 MiB, does not match expectation of   1.5334 MiB

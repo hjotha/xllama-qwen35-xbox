@@ -1,9 +1,9 @@
-"""Check DFlash Q3_K/Q4_K/Q5_K shader layouts against this checkout's GGML DLL.
+"""Check DFlash Q2_K/Q3_K/Q4_K/Q5_K shader layouts against this checkout's GGML DLL.
 
 Build native ggml-base from the current llama.cpp/ggml source and pass its DLL:
   python test_quant_kernels.py --ggml-base C:/path/to/ggml-base.dll
 
-Optional --q3/--q4/--q5 files hold one or more raw GGUF tensor blocks.
+Optional --q2/--q3/--q4/--q5 files hold one or more raw GGUF tensor blocks.
 Optional --f32 is a real [5120,2,2] convolution-base tensor, tested as a
 4x5120 diagnostic matrix. The byte-level decode and host reduction checks do
 not claim that an Xbox shader or the complete DFlash convolution has executed.
@@ -19,6 +19,7 @@ import struct
 from pathlib import Path
 
 QK_K = 256
+Q2_BYTES = 84
 Q3_BYTES = 110
 Q4_BYTES = 144
 Q5_BYTES = 176
@@ -38,6 +39,46 @@ def load_u16(raw: bytes, even_offset: int) -> int:
     aligned = even_offset & ~3
     word = int.from_bytes(raw[aligned : aligned + 4], "little")
     return (word >> ((even_offset & 2) * 8)) & 65535
+
+
+def q2_element(raw: bytes, base: int, element: int) -> float:
+    quant, minimum = q2_integers(raw, base, element)
+    d, dmin = struct.unpack_from("<ee", raw, base + 80)
+    return f32(f32(d * quant) - f32(dmin * minimum))
+
+
+def q2_integers(raw: bytes, base: int, element: int) -> tuple[int, int]:
+    packed = load_u8(raw, base + 16 + (element >> 7) * 32 + (element & 31))
+    quant = (packed >> (((element >> 5) & 3) * 2)) & 3
+    scale = load_u8(raw, base + (element >> 4))
+    return (scale & 15) * quant, scale >> 4
+
+
+def check_q2_dot(dll: ctypes.CDLL, raw: bytes) -> None:
+    # Exercise signed Q8 values, both affine terms, multiple blocks and wave sizes.
+    reference = ggml_decode(dll, "q2", raw)
+    rng = random.Random(20260928)
+    for batch in (1, 5, 8):
+        for _ in range(batch):
+            x = [rng.randrange(-128, 128) for _ in reference]
+            expected = sum(w * q * 0.03125 for w, q in zip(reference, x))
+            for wave_size in (32, 64):
+                actual = 0.0
+                for block in range(len(raw) // Q2_BYTES):
+                    base = block * Q2_BYTES
+                    partial = []
+                    for wave in range(256 // wave_size):
+                        sq = sm = 0
+                        for lane in range(wave * wave_size, (wave + 1) * wave_size):
+                            q, m = q2_integers(raw, base, lane)
+                            sq += q * x[block * 256 + lane]
+                            sm += m * x[block * 256 + lane]
+                        partial.append((sq, sm))
+                    d, dmin = struct.unpack_from("<ee", raw, base + 80)
+                    actual += 0.03125 * (d * sum(q for q, _ in partial) -
+                                        dmin * sum(m for _, m in partial))
+                assert math.isclose(actual, expected, abs_tol=5e-5, rel_tol=1e-6), (actual, expected)
+    print("q2 integer dot: batch 1/5/8, wave32/64 match GGML dequantized reference")
 
 
 def q3_element(raw: bytes, base: int, element: int) -> float:
@@ -99,7 +140,7 @@ def q4_element(raw: bytes, base: int, element: int) -> float:
 
 
 def ggml_decode(dll: ctypes.CDLL, kind: str, raw: bytes) -> list[float]:
-    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
+    block_bytes = {"q2": Q2_BYTES, "q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
     if len(raw) == 0 or len(raw) % block_bytes:
         raise ValueError(f"{kind} length must be a nonzero multiple of {block_bytes}")
     func = getattr(dll, f"dequantize_row_{kind}_K")
@@ -112,8 +153,8 @@ def ggml_decode(dll: ctypes.CDLL, kind: str, raw: bytes) -> list[float]:
 
 
 def check_case(dll: ctypes.CDLL, kind: str, raw: bytes, label: str) -> tuple[int, float]:
-    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
-    decode = {"q3": q3_element, "q4": q4_element, "q5": q5_element}[kind]
+    block_bytes = {"q2": Q2_BYTES, "q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
+    decode = {"q2": q2_element, "q3": q3_element, "q4": q4_element, "q5": q5_element}[kind]
     reference = ggml_decode(dll, kind, raw)
     exact = 0
     max_error = 0.0
@@ -136,11 +177,13 @@ def check_case(dll: ctypes.CDLL, kind: str, raw: bytes, label: str) -> tuple[int
 
 def random_blocks(kind: str, count: int, seed: int) -> bytes:
     rng = random.Random(seed)
-    block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
+    block_bytes = {"q2": Q2_BYTES, "q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
     data = bytearray(rng.randbytes(block_bytes * count))
     for block in range(count):
         base = block * block_bytes
-        if kind == "q3":
+        if kind == "q2":
+            struct.pack_into("<ee", data, base + 80, rng.uniform(-2, 2), rng.uniform(-2, 2))
+        elif kind == "q3":
             struct.pack_into("<e", data, base + 108, rng.uniform(-2, 2))
         else:
             struct.pack_into("<ee", data, base, rng.uniform(-2, 2), rng.uniform(-2, 2))
@@ -186,27 +229,33 @@ def check_f32_conv_base(raw: bytes) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ggml-base", required=True, type=Path)
+    parser.add_argument("--q2", type=Path, help="raw GGUF Q2_K tensor blocks")
     parser.add_argument("--q3", type=Path, help="raw GGUF Q3_K tensor blocks")
     parser.add_argument("--q4", type=Path, help="raw GGUF Q4_K tensor blocks")
     parser.add_argument("--q5", type=Path, help="raw GGUF Q5_K tensor blocks")
     parser.add_argument("--f32", type=Path, help="raw GGUF [5120,2,2] F32 conv-base tensor")
     args = parser.parse_args()
     dll = ctypes.CDLL(str(args.ggml_base.resolve()))
-    for kind in ("q3", "q4", "q5"):
+    for kind in ("q2", "q3", "q4", "q5"):
         check_case(dll, kind, random_blocks(kind, 19, 0xD5A53), "random")
-        block_bytes = {"q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
+        block_bytes = {"q2": Q2_BYTES, "q3": Q3_BYTES, "q4": Q4_BYTES, "q5": Q5_BYTES}[kind]
         edge = bytearray(block_bytes * 2)
         # Exercise zero/all-one high masks and the alternating 2-byte Q3_K
         # block alignment while keeping fp16 scales finite.
         edge[block_bytes : block_bytes * 2] = b"\xff" * block_bytes
         for block in range(2):
             base = block * block_bytes
-            if kind == "q3":
+            if kind == "q2":
+                struct.pack_into("<ee", edge, base + 80, 0.5, -0.25)
+            elif kind == "q3":
                 struct.pack_into("<e", edge, base + 108, 0.5)
             else:
                 struct.pack_into("<ee", edge, base, 0.5, -0.25)
         check_case(dll, kind, bytes(edge), "edge")
-        sample = {"q3": args.q3, "q4": args.q4, "q5": args.q5}[kind]
+        if kind == "q2":
+            check_q2_dot(dll, random_blocks(kind, 19, 0xD5A53))
+            check_q2_dot(dll, bytes(edge))
+        sample = {"q2": args.q2, "q3": args.q3, "q4": args.q4, "q5": args.q5}[kind]
         if sample:
             check_case(dll, kind, sample.read_bytes(), sample.name)
     if args.f32:

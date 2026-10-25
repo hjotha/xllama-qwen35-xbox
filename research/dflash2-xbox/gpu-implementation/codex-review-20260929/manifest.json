@@ -1,0 +1,11 @@
+{
+  "started_unix": 1790661864.4409735,
+  "pipeline": "1",
+  "temperature": 0.0,
+  "xbox_package": "1.0.0.82",
+  "xbox_model": "dflash-q2.gguf",
+  "purpose": "Diagnostic performance only; GPU parity gate is failing",
+  "server_sha256": "bda17a8cb9beee2bb7de875d11401374f3cff538fc8bf7b1ecbac2b5388d3585",
+  "sweep_sha256": "a6af69c2dc48bc918989660832fd7cb4fd802f04fa3f9d7834f0093b776232aa",
+  "git_head": "12231b55ec77ee5b9729b7cf09ba68cdbf0174d2"
+}

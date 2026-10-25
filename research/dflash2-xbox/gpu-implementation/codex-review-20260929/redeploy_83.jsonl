@@ -1,0 +1,6 @@
+{"step": "before", "setting": {"Name": "DefaultUWPContentTypeToGame", "Value": "true", "Category": "Preferences", "RequiresReboot": "Yes", "Disabled": "No", "Type": "Bool"}}
+{"step": "during", "setting": {"Name": "DefaultUWPContentTypeToGame", "Value": "true", "Category": "Preferences", "RequiresReboot": "Yes", "Disabled": "No", "Type": "Bool"}}
+{"step": "install", "reply": {"http_status": 202, "data": {"Reason": "Deploy request accepted and being processed"}}}
+{"step": "install_state", "reply": {"http_status": 204, "data": ""}}
+{"step": "after", "setting": {"Name": "DefaultUWPContentTypeToGame", "Value": "true", "Category": "Preferences", "RequiresReboot": "Yes", "Disabled": "No", "Type": "Bool"}}
+{"step": "install_state_final", "reply": {"http_status": 204, "data": ""}}

@@ -1,6 +1,8 @@
 // Q4_0 KV cache. One GPU block is 5 uints: fp16 d in low 16 bits, then
 // 16 GGML qs bytes in little-endian order. GGML's file block omits 2 padding
 // bytes after d; the aligned GPU stride is 20 rather than 18 bytes.
+#include "ggml_float.hlsli"
+
 cbuffer Params : register(b0) {
     uint block_count;
 };
@@ -68,16 +70,20 @@ void Pack(uint3 tid : SV_DispatchThreadID) {
         }
     }
     const float d = max_value / -8.0f;
-    const float inv_d = d != 0.0f ? 1.0f / d : 0.0f;
+    // Match quantize_row_q4_0_ref: rounded reciprocal, then separate F32
+    // multiply and add. An approximate reciprocal can cross a nibble boundary.
+    const float inv_d = d != 0.0f ? ggml_round_f32(1.0 / (double)d) : 0.0f;
     destination.Store(dst, ggml_half_bits(d));
     [unroll] for (uint word = 0; word < 4; ++word) {
         uint packed = 0;
         [unroll] for (uint byte_index = 0; byte_index < 4; ++byte_index) {
             const uint j = word * 4 + byte_index;
-            const float lo = asfloat(source.Load(src + j * 4)) * inv_d;
-            const float hi = asfloat(source.Load(src + (j + 16) * 4)) * inv_d;
-            const uint qlo = min(15u, (uint)(int)(lo + 8.5f));
-            const uint qhi = min(15u, (uint)(int)(hi + 8.5f));
+            precise float lo = asfloat(source.Load(src + j * 4)) * inv_d;
+            precise float hi = asfloat(source.Load(src + (j + 16) * 4)) * inv_d;
+            // Round the addition before truncation. Fast fadd followed by
+            // fptosi can otherwise lose a carry into the next integer.
+            const uint qlo = min(15u, (uint)(int)ggml_round_f32((double)lo + 8.5));
+            const uint qhi = min(15u, (uint)(int)ggml_round_f32((double)hi + 8.5));
             packed |= (qlo | (qhi << 4)) << (byte_index * 8);
         }
         destination.Store(dst + 4 + word * 4, packed);

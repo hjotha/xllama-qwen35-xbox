@@ -1,0 +1,32 @@
+0.00.071.382 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.071.767 W srv  llama_server: -----------------
+0.00.071.768 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.071.768 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.071.769 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.071.769 W srv  llama_server: -----------------
+0.00.073.062 I srv    load_model: loading model '/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf'
+0.00.581.801 W model has unused tensor blk.64.attn_norm.weight (size = 20480 bytes) -- ignoring
+0.00.581.812 W model has unused tensor blk.64.post_attention_norm.weight (size = 20480 bytes) -- ignoring
+0.00.581.823 W model has unused tensor blk.64.attn_q.weight (size = 51609600 bytes) -- ignoring
+0.00.581.829 W model has unused tensor blk.64.attn_k.weight (size = 4300800 bytes) -- ignoring
+0.00.581.835 W model has unused tensor blk.64.attn_v.weight (size = 4300800 bytes) -- ignoring
+0.00.581.847 W model has unused tensor blk.64.attn_output.weight (size = 25804800 bytes) -- ignoring
+0.00.581.853 W model has unused tensor blk.64.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+0.00.581.859 W model has unused tensor blk.64.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+0.00.581.865 W model has unused tensor blk.64.ffn_gate.weight (size = 73113600 bytes) -- ignoring
+0.00.581.871 W model has unused tensor blk.64.ffn_down.weight (size = 73113600 bytes) -- ignoring
+0.00.581.877 W model has unused tensor blk.64.ffn_up.weight (size = 73113600 bytes) -- ignoring
+0.00.581.885 W model has unused tensor blk.64.nextn.eh_proj.weight (size = 43008000 bytes) -- ignoring
+0.00.581.892 W model has unused tensor blk.64.nextn.enorm.weight (size = 20480 bytes) -- ignoring
+0.00.581.898 W model has unused tensor blk.64.nextn.hnorm.weight (size = 20480 bytes) -- ignoring
+0.00.581.915 W model has unused tensor blk.64.nextn.shared_head_norm.weight (size = 20480 bytes) -- ignoring
+0.05.402.298 I cmn          init: llama threadpool init, n_threads = 8
+0.05.500.714 I common_speculative_init_result: loading draft model '/home/hjotha/models/Qwen3.8-27B-DFlash2-Q8_0.gguf'
+0.06.884.707 E ggml_backend_cuda_buffer_type_alloc_buffer: allocating 1040.41 MiB on device 0: cudaMalloc failed: out of memory
+0.06.884.716 E ggml_gallocr_reserve_n_impl: failed to allocate CUDA0 buffer of size 1090949120
+0.06.884.716 E graph_reserve: failed to allocate compute buffers
+0.06.887.106 E llama_init_from_model: failed to initialize the context: failed to allocate compute pp buffers
+0.06.887.110 E common_speculative_init_result: failed to create draft context
+0.06.887.161 E srv    load_model: failed to create MTP context
+0.06.887.181 I srv    operator(): operator(): cleaning up before exit...
+0.06.888.011 E srv  llama_server: exiting due to model loading error

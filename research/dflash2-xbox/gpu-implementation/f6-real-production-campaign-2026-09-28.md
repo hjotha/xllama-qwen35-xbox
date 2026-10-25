@@ -10,11 +10,11 @@ and restored afterwards (RESTORE_EXIT=0 in all six runs).
 
 Xbox app 1.0.0.42, backend selected by LocalState\dflash-backend.txt.
 
-| Round | d3d12 tps | cpu tps | content sha256 (both modes) |
-|---|---|---|---|
-| 1 | 21.318 | 12.916 | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
-| 2 | 21.195 | 12.922 | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
-| 3 | 21.273 | 12.921 | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
+| Round | d3d12 tps | cpu tps | content sha256 (both modes)                                      |
+| ----- | --------- | ------- | ---------------------------------------------------------------- |
+| 1     | 21.318    | 12.916  | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
+| 2     | 21.195    | 12.922  | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
+| 3     | 21.273    | 12.921  | 31e48d4676ed512e3ec25ad9caea71cc6ee26c15de6f7b7bceb7b87981e218dc |
 
 Means: d3d12 21.26 tok/s (spread 21.19-21.32), cpu 12.92 tok/s. Speedup 1.65x
 with byte-identical generated content across all six runs (no correctness or

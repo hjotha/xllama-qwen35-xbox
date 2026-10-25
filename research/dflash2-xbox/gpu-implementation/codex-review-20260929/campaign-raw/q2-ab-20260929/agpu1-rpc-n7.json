@@ -1,0 +1,86 @@
+{
+  "kind": "dflash2_xbox_dedicated_rpc_fused",
+  "mode": "fused",
+  "limitations": "Synthetic features and embeddings; no target verification or acceptance; backend must be verified from server logs",
+  "host": "192.168.1.26",
+  "port": 50053,
+  "model": {
+    "bytes": 705430880,
+    "n_ctx": 49152,
+    "encoder_width": 25600,
+    "decoder_width": 5120,
+    "top_k": 16,
+    "mask_id": 248070,
+    "kv_bits_k": 4,
+    "kv_bits_v": 4
+  },
+  "warmup": 20,
+  "iterations": 100,
+  "sync_tokens": 1,
+  "drafts": 7,
+  "hello_rtt_us": 1495.6,
+  "first_cycle_after_model_load": {
+    "cycle_rtt_us": 49848.6,
+    "fused": {
+      "rtt_us": 49848.6,
+      "xbox_receive_us": 3072,
+      "xbox_prepare_us": 175,
+      "xbox_compute_us": 41770,
+      "prior_response_us": 75
+    }
+  },
+  "first_output_sha256": "c27a1539b151a1729bdf8e6d2e88c21f37263ec6752f6500d9a30e7a734a036d",
+  "differing_outputs": 0,
+  "phases_us": {
+    "cycle_rtt_us": {
+      "count": 100,
+      "mean": 47690.070999999996,
+      "min": 46900.7,
+      "p50": 47614.2,
+      "p90": 48180.14,
+      "p95": 48878.755,
+      "p99": 49705.202,
+      "max": 50002.4
+    },
+    "fused_rtt_us": {
+      "count": 100,
+      "mean": 47690.070999999996,
+      "min": 46900.7,
+      "p50": 47614.2,
+      "p90": 48180.14,
+      "p95": 48878.755,
+      "p99": 49705.202,
+      "max": 50002.4
+    },
+    "fused_xbox_compute_us": {
+      "count": 100,
+      "mean": 41715.02,
+      "min": 41629,
+      "p50": 41703.0,
+      "p90": 41766.3,
+      "p95": 41784.3,
+      "p99": 41948.33,
+      "max": 41981
+    },
+    "fused_xbox_prepare_us": {
+      "count": 100,
+      "mean": 177.18,
+      "min": 174,
+      "p50": 175.0,
+      "p90": 180.1,
+      "p95": 196.05,
+      "p99": 201.01,
+      "max": 202
+    },
+    "fused_xbox_receive_us": {
+      "count": 100,
+      "mean": 2351.72,
+      "min": 2292,
+      "p50": 2346.5,
+      "p90": 2402.4,
+      "p95": 2419.15,
+      "p99": 2456.14,
+      "max": 2470
+    }
+  }
+}

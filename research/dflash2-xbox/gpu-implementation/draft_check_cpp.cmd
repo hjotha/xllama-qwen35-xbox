@@ -8,6 +8,7 @@ cl /nologo /Zs /W4 /WX /EHsc /std:c++17 /utf-8 /bigobj /arch:AVX2 ^
  /DGGML_USE_CPU /DGGML_STATIC /DGGML_SCHED_MAX_COPIES=4 ^
  /Iinclude /Ishaders\generated /Illama.cpp\include /Illama.cpp\src ^
  /Illama.cpp\ggml\include /Illama.cpp\ggml\src /Iuwp\generated ^
+ uwp\dflash-rpc\dflash-gpu-engine.cpp ^
  uwp\dflash-rpc\dflash-gpu-draft-engine.cpp ^
  uwp\dflash-rpc\dflash-gpu-draft-probe.cpp
 set "RESULT=%errorlevel%"

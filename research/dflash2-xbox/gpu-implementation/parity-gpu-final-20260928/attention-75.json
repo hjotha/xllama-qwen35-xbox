@@ -1,0 +1,47 @@
+{
+  "host": "192.168.1.26",
+  "port": 50053,
+  "wall_ms": 80.51400000113063,
+  "status": 0,
+  "response_bytes": 502,
+  "xbox_receive_us": 0,
+  "xbox_prepare_us": 0,
+  "xbox_compute_us": 71387,
+  "xbox_prior_response_us": 0,
+  "probe": {
+    "passed": true,
+    "probe": "dflash_attention_q4_0",
+    "adapter": "SraKmd_arden",
+    "hardware": true,
+    "shaderModel": "6.0",
+    "queryCount": 2,
+    "swa": 2048,
+    "fencesCompleted": 3,
+    "stages": [
+      {
+        "name": "initial_q4_swa",
+        "passed": true,
+        "activeRows": 5,
+        "maxAbsErr": 0.0
+      },
+      {
+        "name": "trimmed_after_fence",
+        "passed": true,
+        "activeRows": 4,
+        "maxAbsErr": 0.0
+      },
+      {
+        "name": "reinject_after_fence",
+        "passed": true,
+        "activeRows": 5,
+        "maxAbsErr": 0.0
+      }
+    ],
+    "cpuExpfCheck": {
+      "samples": 1048576,
+      "polynomialDifferences": 0,
+      "doubleDifferences": 76,
+      "examples": []
+    }
+  }
+}

@@ -63,7 +63,7 @@ Sob a mesma aceitação e os mesmos demais custos, o executor GPU precisaria fic
 - DRAFT aceita `n_max` de 1 a 7; processa `n_max + 1` posições. Com `n_max=4`, são cinco posições. O HELLO atual não anuncia um campo de máximo de drafts.
 - SYNC aceita de uma a 64 posições. O grafo tem convolução dinâmica, RMSNorm, RoPE, atenção, SwiGLU, residuais e escrita/leitura do KV.
 
-Geometria e tipos vêm do [log de carga preservado](./evidence/dflash-core-after-swift-p70-1.0.0.7.log), produzido com o app 1.0.0.7. Usá-lo como inventário histórico e reconfirmar o hash e os metadados do GGUF na execução; ele não é uma medição de memória GPU da versão 1.0.0.10.
+Geometria e tipos têm referência no [relatório consolidado](./CONSOLIDADO-DFlash2-Xbox-2026-09-28.md), que registra o inventário de 81 tensores. O log bruto `evidence/dflash-core-after-swift-p70-1.0.0.7.log` permanece como artefato local ignorado; reconfirmar o hash e os metadados do GGUF na execução, sem tratá-lo como medição de memória GPU da versão 1.0.0.10.
 
 ### 3.2 O que os testes do xllama permitem concluir
 
@@ -97,7 +97,7 @@ Xbox DFlash RPC
 
 Criar um executor específico para o DFlash usado pelo RPC, com uma interface interna pequena para carregar o modelo, resetar, cortar o sufixo, executar SYNC e executar DRAFT. Reusar o leitor GGUF/ggml disponível; não criar outro parser ou um framework genérico de inferência.
 
-Conservar o caminho CPU original como referência. A seleção de executor será feita antes de iniciar a sequência e permanecerá fixa durante a conexão. Uma configuração local proposta é `LocalState\dflash-backend.txt`, com `cpu` como padrão e `d3d12` como opção explícita. Esse arquivo e seus valores ainda precisam ser implementados; não são uma interface existente.
+Conservar o caminho CPU original como referência. A seleção de executor será feita antes de iniciar a sequência e permanecerá fixa durante a conexão. `LocalState\dflash-backend.txt` aceita `d3d12` (padrão) ou `cpu` como override explícito. Se a inicialização D3D12 falhar, usar CPU antes de iniciar a sequência.
 
 DirectML é uma opção interna do executor D3D12, inicialmente habilitada apenas no comparativo. A escolha de kernel por operação deve ser pequena, explícita e registrada no log. Não implementar um autotuner permanente antes de haver evidência de benefício.
 
@@ -138,7 +138,7 @@ Os nomes de novos arquivos abaixo são propostos. Criar somente os necessários 
 | `shaders/generated/`                               | Bytecode AOT gerado pelo fluxo de compilação, sem edição manual                 |
 | `include/xllama/d3d12_dyn.h`                       | Resolver o runtime D3D12 do sistema                                             |
 | `src/bridge/gpugemv.cpp` e `gpubw.cpp`             | Referência de criação de recursos, timers e verificação                         |
-| `llama.cpp/src/models/dflash.cpp`                  | Especificação executável do grafo e das operações; evitar mudanças semânticas   |
+| `beellama.cpp/src/models/dflash.cpp`               | Especificação executável do grafo e das operações; evitar mudanças semânticas   |
 | `research/dflash2-xbox/test_trim_protocol.py`      | Estender os testes existentes de estado e entradas inválidas                    |
 | `research/dflash2-xbox/dflash_persistent_smoke.py` | Smoke por conexão, reset e repetição                                            |
 | `research/dflash2-xbox/dflash_dedicated_bench.py`  | Base do benchmark de RPC; dados sintéticos não substituem replay real           |
@@ -403,8 +403,8 @@ A primeira entrega de implementação deve ser F0–F2: dados reproduzíveis, ex
 ## 13. Fontes
 
 - [Relatório TRIM/rewind, versão 1.0.0.10](./trim-rewind-optimization-2026-09-28.md).
-- [Hashes dos fontes medidos](./trim-optimization-2026-09-28/source-hashes.json).
-- [Servidor dedicado](../../uwp/dflash-rpc/dedicated.cpp), [protocolo](../../uwp/dflash-rpc/dedicated_protocol.h) e [grafo DFlash](../../llama.cpp/src/models/dflash.cpp).
+- O manifesto de hashes `trim-optimization-2026-09-28/source-hashes.json` é gerado localmente e ignorado; a metodologia está resumida no relatório TRIM/rewind acima.
+- [Servidor dedicado](../../uwp/dflash-rpc/dedicated.cpp), [protocolo](../../uwp/dflash-rpc/dedicated_protocol.h) e [grafo DFlash](../../beellama.cpp/src/models/dflash.cpp).
 - [Infraestrutura GEMV D3D12](../../src/bridge/gpugemv.cpp) e [shader Q4_K](../../shaders/gpugemv_q4k_wave32.hlsl).
 - [Pesquisa GPU do xllama](../../docs/phase15-re-opt.md) e [restrições UWP](../../docs/uwp-constraints.md), lidas à luz do código e das ressalvas registradas acima.
 - [DirectML: recursos, command lists e integração D3D12](https://learn.microsoft.com/en-us/windows/ai/directml/dml).

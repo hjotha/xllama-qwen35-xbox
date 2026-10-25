@@ -1,0 +1,72 @@
+{
+  "commit": "3d4128354880b345eb87f1ab4c70d9acc5cbe93c",
+  "version": "version: 0.4.7-dev (build 12308, commit 3d4128354-dirty)\nbuilt with GNU 16.2.1 for Linux x86_64\nggml op count: 106\n",
+  "binary_sha256": "bda17a8cb9beee2bb7de875d11401374f3cff538fc8bf7b1ecbac2b5388d3585",
+  "runtime_library_sha256": {
+    "/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/libllama-common.so.0.4.7": "c25f63ad830276ea6db9b9e5b6ae7c1cba6be2fccf6990ed5ff0da8e19ef5bfe",
+    "/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/libllama-server-impl.so": "ef637e59dc215216a2c7dd0386497417f4b614f4cfbdecd2107ccee84f52c871",
+    "/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/libllama.so.0.4.7": "7695238cbc1416d1fa11d86ed10705e7cda0142d089d2422ef1806daf71d0955"
+  },
+  "source_status": " M common/arg.cpp\n M common/common.h\n M common/dflash-shadow-observation.h\n M common/speculative.cpp\n M docs/benchmarks/mtp-dflash2-shadow-early-20260929/README.md\n M docs/benchmarks/mtp-dflash2-shadow-early-20260929/cpu-controller.py\n M docs/benchmarks/mtp-dflash2-shadow-early-20260929/runner.py\n M docs/mtp-dflash2-hybrid-plan.md\n M tests/test-dflash-shadow-observation.cpp\n M tools/server/server-context.cpp\n?? docs/benchmarks/mtp-dflash2-hybrid-active-20260929/\n?? docs/benchmarks/mtp-dflash2-shadow-early-20260929/analyze_review.py\n?? docs/benchmarks/mtp-dflash2-shadow-early-20260929/review-v1/\n?? docs/benchmarks/mtp-dflash2-shadow-early-20260929/review-v2/\n?? docs/benchmarks/mtp-dflash2-shadow-early-20260929/shadow-every4-early-off.observer-output.txt\n?? docs/benchmarks/mtp-dflash2-shadow-early-20260929/shadow-every4-early-on.observer-output.txt\n?? docs/benchmarks/mtp-dflash2-suffix-dense-20260929/\n?? docs/benchmarks/mtp-dflash2-suffix-value-20260929/\n?? docs/speculative-verification-review-20260929.md\n",
+  "speculative_source_sha256": "af265027ebeb15ddeeb075d5485a61dee278efdce2e047a0c73d7416d8de2241",
+  "target": "/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf",
+  "draft": "/home/hjotha/models/Qwen3.8-27B-DFlash2-Q2_K.gguf",
+  "xbox_package": "1.0.0.84",
+  "xbox_backend": "d3d12",
+  "xbox_model": "dflash-q2.gguf",
+  "runs": [
+    {
+      "mode": "gpu-sequential",
+      "command": [
+        "/home/hjotha/beellama.cpp/build-dflash-xbox-dl/bin/llama-server",
+        "--model",
+        "/home/hjotha/models/Swift-1.5-Qwen3.8-27B-GSQ-RCO-IQ3_XXS-mtp.gguf",
+        "--device",
+        "CUDA0",
+        "--n-gpu-layers",
+        "99",
+        "--fit",
+        "off",
+        "--load-mode",
+        "none",
+        "--cache-type-k",
+        "kvarn4",
+        "--cache-type-v",
+        "kvarn4",
+        "--flash-attn",
+        "on",
+        "--ctx-size",
+        "8192",
+        "--parallel",
+        "1",
+        "--batch-size",
+        "64",
+        "--ubatch-size",
+        "64",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "59567",
+        "--spec-type",
+        "draft-dflash",
+        "--spec-draft-model",
+        "/home/hjotha/models/Qwen3.8-27B-DFlash2-Q2_K.gguf",
+        "--spec-draft-n-max",
+        "4",
+        "--draft-p-min",
+        "0.25",
+        "--spec-draft-ngl",
+        "0",
+        "--spec-draft-device",
+        "none"
+      ],
+      "env": {
+        "DFLASH_XBOX_RPC": "192.168.1.26:50053",
+        "DFLASH_XBOX_SEPARATE_DRAFT": "0",
+        "DFLASH_XBOX_PIPELINE": "0",
+        "DFLASH_XBOX_METRICS": "/tmp/dflash-q2-layout-ab-20260929/agpu2/gpu-sequential-metrics.jsonl",
+        "DFLASH_XBOX_TRACE": "1"
+      }
+    }
+  ]
+}

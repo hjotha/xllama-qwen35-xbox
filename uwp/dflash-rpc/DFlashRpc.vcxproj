@@ -51,6 +51,8 @@
   <ItemGroup>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="dedicated.cpp" />
+    <ClCompile Include="remote-attn.cpp" />
+    <ClCompile Include="remote-attn-engine.cpp" />
     <ClCompile Include="dflash-gpu-probe.cpp" />
     <ClCompile Include="dflash-gpu-kv.cpp" />
     <ClCompile Include="dflash-gpu-kv-probe.cpp" />
@@ -66,8 +68,8 @@
     <ClCompile Include="..\..\llama.cpp\ggml\src\ggml-rpc\transport.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ggml-uwp.vcxproj">
-      <Project>{B7E11D2A-4C63-4A0E-9D1F-2A6C58F0AA31}</Project>
+    <ProjectReference Include="..\ggml-dflash-uwp.vcxproj">
+      <Project>{F285782C-2876-4B41-ADF4-1B1A067458DC}</Project>
       <LinkLibraryDependencies>true</LinkLibraryDependencies>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
       <SetConfiguration>Configuration=$(Configuration)</SetConfiguration>

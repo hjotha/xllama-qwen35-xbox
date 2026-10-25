@@ -1,0 +1,471 @@
+2:llama_model_loader: loaded meta data with 43 key-value pairs and 81 tensors from Q:\Users\UserMgr1\AppData\Local\Packages\HJotha.XboxDFlashRpc_3hvcqmcd1t14m\LocalState\dflash-q2.gguf (version GGUF V3 (latest))
+2:llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+2:llama_model_loader: - kv   0:                       general.architecture str              = dflash
+2:llama_model_loader: - kv   1:                               general.type str              = model
+2:llama_model_loader: - kv   2:                               general.name str              = Qwen Draft
+2:llama_model_loader: - kv   3:                         general.size_label str              = 1.9B
+2:llama_model_loader: - kv   4:                            general.license str              = apache-2.0
+2:llama_model_loader: - kv   5:                   general.base_model.count u32              = 1
+2:llama_model_loader: - kv   6:                  general.base_model.0.name str              = Qwen3.8 27B
+2:llama_model_loader: - kv   7:          general.base_model.0.organization str              = Qwen
+2:llama_model_loader: - kv   8:              general.base_model.0.repo_url str              = https://huggingface.co/Qwen/Qwen3.8-27B
+2:llama_model_loader: - kv   9:                               general.tags arr[str,7]       = ["dflash2", "speculative-decoding", "...
+2:llama_model_loader: - kv  10:                         dflash.block_count u32              = 5
+2:llama_model_loader: - kv  11:                      dflash.context_length u32              = 262144
+2:llama_model_loader: - kv  12:                    dflash.embedding_length u32              = 5120
+2:llama_model_loader: - kv  13:                 dflash.feed_forward_length u32              = 17408
+2:llama_model_loader: - kv  14:                dflash.attention.head_count u32              = 32
+2:llama_model_loader: - kv  15:             dflash.attention.head_count_kv u32              = 8
+2:llama_model_loader: - kv  16:                    dflash.attention.causal bool             = false
+2:llama_model_loader: - kv  17:                      dflash.rope.freq_base f32              = 10000000.000000
+2:llama_model_loader: - kv  18:    dflash.attention.layer_norm_rms_epsilon f32              = 0.000001
+2:llama_model_loader: - kv  19:                dflash.attention.key_length u32              = 128
+2:llama_model_loader: - kv  20:              dflash.attention.value_length u32              = 128
+2:llama_model_loader: - kv  21:                          dflash.block_size u32              = 8
+2:llama_model_loader: - kv  22:                    dflash.conv_kernel_size u32              = 2
+2:llama_model_loader: - kv  23:                     dflash.conv_group_size u32              = 16
+2:llama_model_loader: - kv  24:                       dflash.selector_rank u32              = 256
+2:llama_model_loader: - kv  25:                      dflash.selector_top_k u32              = 16
+2:llama_model_loader: - kv  26:                       dflash.target_layers arr[i32,5]       = [6, 20, 34, 48, 62]
+2:llama_model_loader: - kv  27:            dflash.attention.sliding_window u32              = 2048
+2:llama_model_loader: - kv  28:    dflash.attention.sliding_window_pattern arr[bool,5]      = [true, true, true, true, true]
+2:llama_model_loader: - kv  29:             dflash.rope.dimension_sections arr[i32,4]       = [64, 0, 0, 0]
+2:llama_model_loader: - kv  30:                       tokenizer.ggml.model str              = gpt2
+2:llama_model_loader: - kv  31:                         tokenizer.ggml.pre str              = qwen35
+2:llama_model_loader: - kv  32:                      tokenizer.ggml.tokens arr[str,248320]  = ["!", "\"", "#", "$", "%", "&", "'", ...
+2:llama_model_loader: - kv  33:                  tokenizer.ggml.token_type arr[i32,248320]  = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, ...
+2:llama_model_loader: - kv  34:                      tokenizer.ggml.merges arr[str,247587]  = ["Ġ Ġ", "ĠĠ ĠĠ", "i n", "Ġ t",...
+2:llama_model_loader: - kv  35:                tokenizer.ggml.eos_token_id u32              = 248046
+2:llama_model_loader: - kv  36:            tokenizer.ggml.padding_token_id u32              = 248044
+2:llama_model_loader: - kv  37:                tokenizer.ggml.bos_token_id u32              = 248044
+2:llama_model_loader: - kv  38:               tokenizer.ggml.add_bos_token bool             = false
+2:llama_model_loader: - kv  39:                    tokenizer.chat_template str              = {%- set image_count = namespace(value...
+2:llama_model_loader: - kv  40:               tokenizer.ggml.mask_token_id u32              = 248070
+2:llama_model_loader: - kv  41:               general.quantization_version u32              = 2
+2:llama_model_loader: - kv  42:                          general.file_type u32              = 10
+2:llama_model_loader: - type  f32:   32 tensors
+2:llama_model_loader: - type q2_K:   34 tensors
+2:llama_model_loader: - type q3_K:   10 tensors
+2:llama_model_loader: - type q4_K:    5 tensors
+2:print_info: file format = GGUF V3 (latest)
+2:print_info: file type   = Q2_K - Medium
+2:print_info: file size   = 662.31 MiB (2.89 BPW) 
+2:load_arch_hparams: DFlash extract_layers = [6, 20, 34, 48, 62]
+1:init_tokenizer: initializing tokenizer for type 2
+2:load: 0 unused tokens
+1:load: control token: 248062 '<|fim_suffix|>' is not marked as EOG
+1:load: control token: 248072 '<tts_pad>' is not marked as EOG
+1:load: control token: 248050 '<|box_end|>' is not marked as EOG
+1:load: control token: 248048 '<|object_ref_end|>' is not marked as EOG
+1:load: control token: 248055 '<|vision_pad|>' is not marked as EOG
+1:load: control token: 248060 '<|fim_prefix|>' is not marked as EOG
+1:load: control token: 248049 '<|box_start|>' is not marked as EOG
+1:load: control token: 248073 '<tts_text_bos>' is not marked as EOG
+1:load: control token: 248052 '<|quad_end|>' is not marked as EOG
+1:load: control token: 248054 '<|vision_end|>' is not marked as EOG
+1:load: control token: 248075 '<tts_text_bos_single>' is not marked as EOG
+1:load: control token: 248056 '<|image_pad|>' is not marked as EOG
+1:load: control token: 248071 '<|audio_end|>' is not marked as EOG
+1:load: control token: 248045 '<|im_start|>' is not marked as EOG
+1:load: control token: 248047 '<|object_ref_start|>' is not marked as EOG
+1:load: control token: 248051 '<|quad_start|>' is not marked as EOG
+1:load: control token: 248053 '<|vision_start|>' is not marked as EOG
+1:load: control token: 248057 '<|video_pad|>' is not marked as EOG
+1:load: control token: 248061 '<|fim_middle|>' is not marked as EOG
+1:load: control token: 248070 '<|audio_start|>' is not marked as EOG
+1:load: control token: 248074 '<tts_text_eod>' is not marked as EOG
+1:load: control token: 248076 '<|audio_pad|>' is not marked as EOG
+2:load: printing all EOG tokens:
+2:load:   - 248044 ('<|endoftext|>')
+2:load:   - 248046 ('<|im_end|>')
+2:load:   - 248063 ('<|fim_pad|>')
+2:load:   - 248064 ('<|repo_name|>')
+2:load:   - 248065 ('<|file_sep|>')
+2:load: special tokens cache size = 33
+2:load: token to piece cache size = 1.7581 MB
+2:print_info: arch                  = dflash
+2:print_info: vocab_only            = 0
+2:print_info: no_alloc              = 0
+2:print_info: n_ctx_train           = 262144
+2:print_info: n_embd_inp            = 5120
+2:print_info: n_embd                = 5120
+2:print_info: n_embd_out            = 5120
+2:print_info: n_layer               = 5
+2:print_info: n_layer_all           = 5
+2:print_info: n_head                = 32
+2:print_info: n_head_kv             = 8
+2:print_info: n_rot                 = 128
+2:print_info: n_swa                 = 2048
+2:print_info: is_swa_any            = 1
+2:print_info: non_causal_type       = 0
+2:print_info: n_embd_head_k         = 128
+2:print_info: n_embd_head_v         = 128
+2:print_info: n_gqa                 = 4
+2:print_info: n_embd_k_gqa          = 1024
+2:print_info: n_embd_v_gqa          = 1024
+2:print_info: f_norm_eps            = 0.0e+00
+2:print_info: f_norm_rms_eps        = 1.0e-06
+2:print_info: f_clamp_kqv           = 0.0e+00
+2:print_info: f_max_alibi_bias      = 0.0e+00
+2:print_info: f_logit_scale         = 0.0e+00
+2:print_info: f_attn_scale          = 0.0e+00
+2:print_info: f_attn_value_scale    = 0.0000
+2:print_info: n_ff                  = 17408
+2:print_info: n_expert              = 0
+2:print_info: n_expert_used         = 0
+2:print_info: n_expert_groups       = 0
+2:print_info: n_group_used          = 0
+2:print_info: causal attn           = 0
+2:print_info: pooling type          = -1
+2:print_info: rope type             = 8
+2:print_info: rope scaling          = linear
+2:print_info: freq_base_train       = 10000000.0
+2:print_info: freq_scale_train      = 1
+2:print_info: freq_base_swa         = 10000000.0
+2:print_info: freq_scale_swa        = 1
+2:print_info: n_embd_head_k_swa     = 128
+2:print_info: n_embd_head_v_swa     = 128
+2:print_info: n_rot_swa             = 128
+2:print_info: n_ctx_orig_yarn       = 262144
+2:print_info: rope_yarn_log_mul     = 0.0000
+2:print_info: rope_finetuned        = unknown
+2:print_info: mrope sections        = [64, 0, 0, 0]
+2:print_info: model type            = ?B
+2:print_info: model params          = 1.92 B
+2:print_info: general.name          = Qwen Draft
+2:print_info: vocab type            = BPE
+2:print_info: n_vocab               = 248320
+2:print_info: n_merges              = 247587
+2:print_info: BOS token             = 248044 '<|endoftext|>'
+2:print_info: EOS token             = 248046 '<|im_end|>'
+2:print_info: EOT token             = 248046 '<|im_end|>'
+2:print_info: PAD token             = 248044 '<|endoftext|>'
+2:print_info: MASK token            = 248070 '<|audio_start|>'
+2:print_info: LF token              = 198 'Ċ'
+2:print_info: FIM PRE token         = 248060 '<|fim_prefix|>'
+2:print_info: FIM SUF token         = 248062 '<|fim_suffix|>'
+2:print_info: FIM MID token         = 248061 '<|fim_middle|>'
+2:print_info: FIM PAD token         = 248063 '<|fim_pad|>'
+2:print_info: FIM REP token         = 248064 '<|repo_name|>'
+2:print_info: FIM SEP token         = 248065 '<|file_sep|>'
+2:print_info: EOG token             = 248044 '<|endoftext|>'
+2:print_info: EOG token             = 248046 '<|im_end|>'
+2:print_info: EOG token             = 248063 '<|fim_pad|>'
+2:print_info: EOG token             = 248064 '<|repo_name|>'
+2:print_info: EOG token             = 248065 '<|file_sep|>'
+2:print_info: max token length      = 256
+2:load_tensors: loading model tensors, this can take a while... (load_mode = none)
+1:load_tensors: layer   0 assigned to device CPU, is_swa = 1
+1:load_tensors: layer   1 assigned to device CPU, is_swa = 1
+1:load_tensors: layer   2 assigned to device CPU, is_swa = 1
+1:load_tensors: layer   3 assigned to device CPU, is_swa = 1
+1:load_tensors: layer   4 assigned to device CPU, is_swa = 1
+1:load_tensors: layer   5 assigned to device CPU, is_swa = 0
+1:create_tensor: loading tensor token_embd.weight
+1:create_tensor: loading tensor selector_predecessor.weight
+1:create_tensor: loading tensor selector_successor.weight
+1:create_tensor: loading tensor selector_hidden.weight
+2:load_arch_tensors: DFlash2 conv kernel = 2, group = 16, selector rank = 256, top-k = 16
+1:create_tensor: loading tensor fc.weight
+1:create_tensor: loading tensor fc.scale
+1:create_tensor: loading tensor enc.output_norm.weight
+1:create_tensor: loading tensor output_norm.weight
+1:create_tensor: loading tensor output.weight
+1:create_tensor: loading tensor blk.0.attn_norm.weight
+1:create_tensor: loading tensor blk.0.attn_q.weight
+1:create_tensor: loading tensor blk.0.attn_k.weight
+1:create_tensor: loading tensor blk.0.attn_v.weight
+1:create_tensor: loading tensor blk.0.attn_output.weight
+1:create_tensor: loading tensor blk.0.attn_q_norm.weight
+1:create_tensor: loading tensor blk.0.attn_k_norm.weight
+1:create_tensor: loading tensor blk.0.attn_sinks.weight
+1:create_tensor: loading tensor blk.0.ffn_norm.weight
+1:create_tensor: loading tensor blk.0.ffn_gate.weight
+1:create_tensor: loading tensor blk.0.ffn_down.weight
+1:create_tensor: loading tensor blk.0.ffn_up.weight
+1:create_tensor: loading tensor blk.0.attn_conv_base
+1:create_tensor: loading tensor blk.0.attn_conv_proj.weight
+1:create_tensor: loading tensor blk.0.ffn_conv_base
+1:create_tensor: loading tensor blk.0.ffn_conv_proj.weight
+1:create_tensor: loading tensor blk.1.attn_norm.weight
+1:create_tensor: loading tensor blk.1.attn_q.weight
+1:create_tensor: loading tensor blk.1.attn_k.weight
+1:create_tensor: loading tensor blk.1.attn_v.weight
+1:create_tensor: loading tensor blk.1.attn_output.weight
+1:create_tensor: loading tensor blk.1.attn_q_norm.weight
+1:create_tensor: loading tensor blk.1.attn_k_norm.weight
+1:create_tensor: loading tensor blk.1.attn_sinks.weight
+1:create_tensor: loading tensor blk.1.ffn_norm.weight
+1:create_tensor: loading tensor blk.1.ffn_gate.weight
+1:create_tensor: loading tensor blk.1.ffn_down.weight
+1:create_tensor: loading tensor blk.1.ffn_up.weight
+1:create_tensor: loading tensor blk.1.attn_conv_base
+1:create_tensor: loading tensor blk.1.attn_conv_proj.weight
+1:create_tensor: loading tensor blk.1.ffn_conv_base
+1:create_tensor: loading tensor blk.1.ffn_conv_proj.weight
+1:create_tensor: loading tensor blk.2.attn_norm.weight
+1:create_tensor: loading tensor blk.2.attn_q.weight
+1:create_tensor: loading tensor blk.2.attn_k.weight
+1:create_tensor: loading tensor blk.2.attn_v.weight
+1:create_tensor: loading tensor blk.2.attn_output.weight
+1:create_tensor: loading tensor blk.2.attn_q_norm.weight
+1:create_tensor: loading tensor blk.2.attn_k_norm.weight
+1:create_tensor: loading tensor blk.2.attn_sinks.weight
+1:create_tensor: loading tensor blk.2.ffn_norm.weight
+1:create_tensor: loading tensor blk.2.ffn_gate.weight
+1:create_tensor: loading tensor blk.2.ffn_down.weight
+1:create_tensor: loading tensor blk.2.ffn_up.weight
+1:create_tensor: loading tensor blk.2.attn_conv_base
+1:create_tensor: loading tensor blk.2.attn_conv_proj.weight
+1:create_tensor: loading tensor blk.2.ffn_conv_base
+1:create_tensor: loading tensor blk.2.ffn_conv_proj.weight
+1:create_tensor: loading tensor blk.3.attn_norm.weight
+1:create_tensor: loading tensor blk.3.attn_q.weight
+1:create_tensor: loading tensor blk.3.attn_k.weight
+1:create_tensor: loading tensor blk.3.attn_v.weight
+1:create_tensor: loading tensor blk.3.attn_output.weight
+1:create_tensor: loading tensor blk.3.attn_q_norm.weight
+1:create_tensor: loading tensor blk.3.attn_k_norm.weight
+1:create_tensor: loading tensor blk.3.attn_sinks.weight
+1:create_tensor: loading tensor blk.3.ffn_norm.weight
+1:create_tensor: loading tensor blk.3.ffn_gate.weight
+1:create_tensor: loading tensor blk.3.ffn_down.weight
+1:create_tensor: loading tensor blk.3.ffn_up.weight
+1:create_tensor: loading tensor blk.3.attn_conv_base
+1:create_tensor: loading tensor blk.3.attn_conv_proj.weight
+1:create_tensor: loading tensor blk.3.ffn_conv_base
+1:create_tensor: loading tensor blk.3.ffn_conv_proj.weight
+1:create_tensor: loading tensor blk.4.attn_norm.weight
+1:create_tensor: loading tensor blk.4.attn_q.weight
+1:create_tensor: loading tensor blk.4.attn_k.weight
+1:create_tensor: loading tensor blk.4.attn_v.weight
+1:create_tensor: loading tensor blk.4.attn_output.weight
+1:create_tensor: loading tensor blk.4.attn_q_norm.weight
+1:create_tensor: loading tensor blk.4.attn_k_norm.weight
+1:create_tensor: loading tensor blk.4.attn_sinks.weight
+1:create_tensor: loading tensor blk.4.ffn_norm.weight
+1:create_tensor: loading tensor blk.4.ffn_gate.weight
+1:create_tensor: loading tensor blk.4.ffn_down.weight
+1:create_tensor: loading tensor blk.4.ffn_up.weight
+1:create_tensor: loading tensor blk.4.attn_conv_base
+1:create_tensor: loading tensor blk.4.attn_conv_proj.weight
+1:create_tensor: loading tensor blk.4.ffn_conv_base
+1:create_tensor: loading tensor blk.4.ffn_conv_proj.weight
+1:create_tensor: loading tensor blk.0.attn_q.scale
+1:create_tensor: loading tensor blk.0.attn_k.scale
+1:create_tensor: loading tensor blk.0.attn_v.scale
+1:create_tensor: loading tensor blk.0.attn_output.scale
+1:create_tensor: loading tensor blk.0.ffn_gate.scale
+1:create_tensor: loading tensor blk.0.ffn_down.scale
+1:create_tensor: loading tensor blk.0.ffn_up.scale
+1:create_tensor: loading tensor blk.0.attn_q.input_scale
+1:create_tensor: loading tensor blk.0.attn_k.input_scale
+1:create_tensor: loading tensor blk.0.attn_v.input_scale
+1:create_tensor: loading tensor blk.0.attn_output.input_scale
+1:create_tensor: loading tensor blk.0.ffn_gate.input_scale
+1:create_tensor: loading tensor blk.0.ffn_down.input_scale
+1:create_tensor: loading tensor blk.0.ffn_up.input_scale
+1:create_tensor: loading tensor blk.1.attn_q.scale
+1:create_tensor: loading tensor blk.1.attn_k.scale
+1:create_tensor: loading tensor blk.1.attn_v.scale
+1:create_tensor: loading tensor blk.1.attn_output.scale
+1:create_tensor: loading tensor blk.1.ffn_gate.scale
+1:create_tensor: loading tensor blk.1.ffn_down.scale
+1:create_tensor: loading tensor blk.1.ffn_up.scale
+1:create_tensor: loading tensor blk.1.attn_q.input_scale
+1:create_tensor: loading tensor blk.1.attn_k.input_scale
+1:create_tensor: loading tensor blk.1.attn_v.input_scale
+1:create_tensor: loading tensor blk.1.attn_output.input_scale
+1:create_tensor: loading tensor blk.1.ffn_gate.input_scale
+1:create_tensor: loading tensor blk.1.ffn_down.input_scale
+1:create_tensor: loading tensor blk.1.ffn_up.input_scale
+1:create_tensor: loading tensor blk.2.attn_q.scale
+1:create_tensor: loading tensor blk.2.attn_k.scale
+1:create_tensor: loading tensor blk.2.attn_v.scale
+1:create_tensor: loading tensor blk.2.attn_output.scale
+1:create_tensor: loading tensor blk.2.ffn_gate.scale
+1:create_tensor: loading tensor blk.2.ffn_down.scale
+1:create_tensor: loading tensor blk.2.ffn_up.scale
+1:create_tensor: loading tensor blk.2.attn_q.input_scale
+1:create_tensor: loading tensor blk.2.attn_k.input_scale
+1:create_tensor: loading tensor blk.2.attn_v.input_scale
+1:create_tensor: loading tensor blk.2.attn_output.input_scale
+1:create_tensor: loading tensor blk.2.ffn_gate.input_scale
+1:create_tensor: loading tensor blk.2.ffn_down.input_scale
+1:create_tensor: loading tensor blk.2.ffn_up.input_scale
+1:create_tensor: loading tensor blk.3.attn_q.scale
+1:create_tensor: loading tensor blk.3.attn_k.scale
+1:create_tensor: loading tensor blk.3.attn_v.scale
+1:create_tensor: loading tensor blk.3.attn_output.scale
+1:create_tensor: loading tensor blk.3.ffn_gate.scale
+1:create_tensor: loading tensor blk.3.ffn_down.scale
+1:create_tensor: loading tensor blk.3.ffn_up.scale
+1:create_tensor: loading tensor blk.3.attn_q.input_scale
+1:create_tensor: loading tensor blk.3.attn_k.input_scale
+1:create_tensor: loading tensor blk.3.attn_v.input_scale
+1:create_tensor: loading tensor blk.3.attn_output.input_scale
+1:create_tensor: loading tensor blk.3.ffn_gate.input_scale
+1:create_tensor: loading tensor blk.3.ffn_down.input_scale
+1:create_tensor: loading tensor blk.3.ffn_up.input_scale
+1:create_tensor: loading tensor blk.4.attn_q.scale
+1:create_tensor: loading tensor blk.4.attn_k.scale
+1:create_tensor: loading tensor blk.4.attn_v.scale
+1:create_tensor: loading tensor blk.4.attn_output.scale
+1:create_tensor: loading tensor blk.4.ffn_gate.scale
+1:create_tensor: loading tensor blk.4.ffn_down.scale
+1:create_tensor: loading tensor blk.4.ffn_up.scale
+1:create_tensor: loading tensor blk.4.attn_q.input_scale
+1:create_tensor: loading tensor blk.4.attn_k.input_scale
+1:create_tensor: loading tensor blk.4.attn_v.input_scale
+1:create_tensor: loading tensor blk.4.attn_output.input_scale
+1:create_tensor: loading tensor blk.4.ffn_gate.input_scale
+1:create_tensor: loading tensor blk.4.ffn_down.input_scale
+1:create_tensor: loading tensor blk.4.ffn_up.input_scale
+1:done_getting_tensors: tensor 'selector_predecessor.weight' (q2_K) (and 75 others) cannot be used with preferred buffer type CPU_REPACK, using CPU instead
+2:load_tensors:          CPU model buffer size =   648.25 MiB
+2:load_tensors:   CPU_REPACK model buffer size =    14.06 MiB
+1:load_all_data: buffer type CPU_REPACK is not the default buffer type for device CPU for async uploads
+1:repack: repack tensor blk.0.attn_v.weight with q4_K_8x8
+1:repack: repack tensor blk.1.attn_v.weight with q4_K_8x8
+1:repack: repack tensor blk.2.attn_v.weight with q4_K_8x8
+5:.1:repack: repack tensor blk.3.attn_v.weight with q4_K_8x8
+1:repack: repack tensor blk.4.attn_v.weight with q4_K_8x8
+1:load_all_data: no device found for buffer type CPU for async uploads
+5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:.5:
+2:llama_init_from_model: enabling flash_attn since it is required for quantized V cache
+3:llama_init_from_model: model default pooling_type is [-1], but [0] was specified
+2:llama_context: constructing llama_context
+2:llama_context: n_seq_max             = 1
+2:llama_context: n_ctx                 = 49152
+2:llama_context: n_ctx_seq             = 49152
+2:llama_context: n_batch               = 64
+2:llama_context: n_ubatch              = 64
+2:llama_context: causal_attn           = 0
+2:llama_context: flash_attn            = enabled
+2:llama_context: kv_unified            = false
+2:llama_context: freq_base             = 10000000.0
+2:llama_context: freq_scale            = 1
+2:llama_context: n_rs_seq              = 0
+2:llama_context: n_outputs_max         = 64
+2:llama_context: n_outputs_max_per_seq = 1
+2:llama_context: n_ctx_seq (49152) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+1:set_abort_callback: call
+2:llama_context:        CPU  output buffer size =     0.02 MiB
+3:llama_kv_cache_iswa: using full-size SWA cache (ref: https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+2:llama_kv_cache_iswa: creating non-SWA KV cache, size = 49152 cells
+1:llama_kv_cache: layer   0: filtered
+1:llama_kv_cache: layer   1: filtered
+1:llama_kv_cache: layer   2: filtered
+1:llama_kv_cache: layer   3: filtered
+1:llama_kv_cache: layer   4: filtered
+2:llama_kv_cache: size =    0.00 MiB ( 49152 cells,   0 layers,  1/1 seqs), K (none):    0.00 MiB, V (none):    0.00 MiB
+2:llama_kv_cache: attn_rot_k = 0, n_embd_head_k_all = 0
+2:llama_kv_cache: attn_rot_v = 0, n_embd_head_k_all = 0
+2:llama_kv_cache_iswa: creating     SWA KV cache, size = 49152 cells
+1:llama_kv_cache: layer   0: dev = CPU
+1:llama_kv_cache: layer   1: dev = CPU
+1:llama_kv_cache: layer   2: dev = CPU
+1:llama_kv_cache: layer   3: dev = CPU
+1:llama_kv_cache: layer   4: dev = CPU
+2:llama_kv_cache:        CPU KV buffer size =   270.00 MiB
+2:llama_kv_cache: size =  270.00 MiB ( 49152 cells,   5 layers,  1/1 seqs), K (q4_0):  135.00 MiB, V (q4_0):  135.00 MiB
+2:llama_kv_cache: attn_rot_k = 1, n_embd_head_k_all = 128
+2:llama_kv_cache: attn_rot_v = 1, n_embd_head_k_all = 128
+1:llama_context: enumerating backends
+1:llama_context: backend_ptrs.size() = 1
+2:sched_reserve: reserving ...
+1:sched_reserve: max_nodes = 1280
+1:sched_reserve: reserving full memory module
+1:sched_reserve: worst-case: n_tokens = 64, n_seqs = 1, n_outputs = 1
+2:resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC post enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =   64, n_seqs =  1, n_outputs =   64
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+1:graph_reserve: reserving a graph for ubatch with n_tokens =   64, n_seqs =  1, n_outputs =   64
+2:sched_reserve:        CPU compute buffer size =    27.53 MiB
+2:sched_reserve: graph nodes  = 707 (with bs=64), 667 (with bs=1)
+2:sched_reserve: graph splits = 1
+2:sched_reserve: reserve took 7.80 ms, sched copies = 1
+1:set_embeddings_nextn: value = 1, masked = 0
+1:set_causal_attn: value = 0
+2:llama_init_from_model: enabling flash_attn since it is required for quantized V cache
+3:llama_init_from_model: model default pooling_type is [-1], but [0] was specified
+2:llama_context: constructing llama_context
+2:llama_context: n_seq_max             = 1
+2:llama_context: n_ctx                 = 2048
+2:llama_context: n_ctx_seq             = 2048
+2:llama_context: n_batch               = 64
+2:llama_context: n_ubatch              = 64
+2:llama_context: causal_attn           = 0
+2:llama_context: flash_attn            = enabled
+2:llama_context: kv_unified            = false
+2:llama_context: freq_base             = 10000000.0
+2:llama_context: freq_scale            = 1
+2:llama_context: n_rs_seq              = 0
+2:llama_context: n_outputs_max         = 64
+2:llama_context: n_outputs_max_per_seq = 1
+2:llama_context: n_ctx_seq (2048) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+1:set_abort_callback: call
+2:llama_context:        CPU  output buffer size =     0.02 MiB
+3:llama_kv_cache_iswa: using full-size SWA cache (ref: https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+2:llama_kv_cache_iswa: creating non-SWA KV cache, size = 2048 cells
+1:llama_kv_cache: layer   0: filtered
+1:llama_kv_cache: layer   1: filtered
+1:llama_kv_cache: layer   2: filtered
+1:llama_kv_cache: layer   3: filtered
+1:llama_kv_cache: layer   4: filtered
+2:llama_kv_cache: size =    0.00 MiB (  2048 cells,   0 layers,  1/1 seqs), K (none):    0.00 MiB, V (none):    0.00 MiB
+2:llama_kv_cache: attn_rot_k = 0, n_embd_head_k_all = 0
+2:llama_kv_cache: attn_rot_v = 0, n_embd_head_k_all = 0
+2:llama_kv_cache_iswa: creating     SWA KV cache, size = 2048 cells
+1:llama_kv_cache: layer   0: dev = CPU
+1:llama_kv_cache: layer   1: dev = CPU
+1:llama_kv_cache: layer   2: dev = CPU
+1:llama_kv_cache: layer   3: dev = CPU
+1:llama_kv_cache: layer   4: dev = CPU
+2:llama_kv_cache:        CPU KV buffer size =    11.25 MiB
+2:llama_kv_cache: size =   11.25 MiB (  2048 cells,   5 layers,  1/1 seqs), K (q4_0):    5.62 MiB, V (q4_0):    5.62 MiB
+2:llama_kv_cache: attn_rot_k = 1, n_embd_head_k_all = 128
+2:llama_kv_cache: attn_rot_v = 1, n_embd_head_k_all = 128
+1:llama_context: enumerating backends
+1:llama_context: backend_ptrs.size() = 1
+2:sched_reserve: reserving ...
+1:sched_reserve: max_nodes = 1280
+1:sched_reserve: reserving full memory module
+1:sched_reserve: worst-case: n_tokens = 64, n_seqs = 1, n_outputs = 1
+2:resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2:resolve_fused_ops: fused DeepSeek V4 HC post enabled
+1:graph_reserve: reserving a graph for ubatch with n_tokens =   64, n_seqs =  1, n_outputs =   64
+1:graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+1:graph_reserve: reserving a graph for ubatch with n_tokens =   64, n_seqs =  1, n_outputs =   64
+2:sched_reserve:        CPU compute buffer size =    21.78 MiB
+2:sched_reserve: graph nodes  = 707 (with bs=64), 667 (with bs=1)
+2:sched_reserve: graph splits = 1
+2:sched_reserve: reserve took 3.81 ms, sched copies = 1
+1:set_embeddings_nextn: value = 1, masked = 0
+1:set_causal_attn: value = 0
+3:init: embeddings required but some input tokens were not marked as outputs -> overriding
+1:output_reserve: reallocating output buffer from size 0.02 MiB to 1.46 MiB
+1:build_kv_store: layer 0 body K/V and exact-tail K/V scheduled=not-configured
+1:build_kv_store: layer 1 body K/V and exact-tail K/V scheduled=not-configured
+1:build_kv_store: layer 2 body K/V and exact-tail K/V scheduled=not-configured
+1:build_kv_store: layer 3 body K/V and exact-tail K/V scheduled=not-configured
+1:build_kv_store: layer 4 body K/V and exact-tail K/V scheduled=not-configured
+1:ggml_gallocr_needs_realloc: graph has different number of nodes
+1:ggml_gallocr_alloc_graph: reallocating buffers automatically
+3:init: embeddings required but some input tokens were not marked as outputs -> overriding
+1:ggml_gallocr_needs_realloc: graph has different number of nodes
+1:ggml_gallocr_alloc_graph: reallocating buffers automatically
+1:~llama_context:        CPU compute buffer size is  21.7834 MiB, matches expectation of  21.7834 MiB
+1:set_embeddings_nextn: value = 1, masked = 0
+1:set_causal_attn: value = 0

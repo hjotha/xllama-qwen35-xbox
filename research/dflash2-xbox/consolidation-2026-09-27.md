@@ -4,12 +4,12 @@ Date: 2026-09-27. Active source worktree: `C:\Users\hjotha\worktrees\xllama-dfla
 
 ## Provenance
 
-| Prior worktree | Material retained here | Status |
-| --- | --- | --- |
-| `xbox-dflash-architecture` | `dflash2-remote-pipeline-audit-2026-09-27.md` | Read-only architecture audit. |
-| `xbox-dflash-rpc-probe` | LAN report, three raw JSON datasets, Python clients, `transport-probe` UWP source, `xbox_portal.py` | DFR2 transport probe, not model inference. Original worktree remains untouched. |
-| `xllama-dflash2-xbox` | Four UWP compatibility edits already byte-identical in the active nested checkout | No unique source to import. Original worktree remains untouched. |
-| `xllama-dflash-xbox` | GGML RPC UWP app and DFL2 dedicated draft server sources | Active implementation base. |
+| Prior worktree             | Material retained here                                                                              | Status                                                                          |
+| -------------------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `xbox-dflash-architecture` | `dflash2-remote-pipeline-audit-2026-09-27.md`                                                       | Read-only architecture audit.                                                   |
+| `xbox-dflash-rpc-probe`    | LAN report, three raw JSON datasets, Python clients, `transport-probe` UWP source, `xbox_portal.py` | DFR2 transport probe, not model inference. Original worktree remains untouched. |
+| `xllama-dflash2-xbox`      | Four UWP compatibility edits already byte-identical in the active nested checkout                   | No unique source to import. Original worktree remains untouched.                |
+| `xllama-dflash-xbox`       | GGML RPC UWP app and DFL2 dedicated draft server sources                                            | Active implementation base.                                                     |
 
 The copied `transport-probe/DFlashRpcProbe` directory contains generated `AppPackages`, `bin`, and `obj` subdirectories. A bounded `Remove-Item -LiteralPath ... -Recurse -Force` command was rejected by automatic policy, so they remain for now. They are copied artifacts, not new implementation.
 
@@ -27,12 +27,12 @@ The copied `transport-probe/DFlashRpcProbe` directory contains generated `AppPac
 
 ## Validation gates and comparison table
 
-| Baseline | Same Swift 1.5 / Q3 / kvarn4 workload | Decode TPS | Acceptance | Status |
-| --- | --- | ---: | ---: | --- |
-| A target alone on `.57` | Pending GPU recovery | — | — | Not measured |
-| B target + local DFlash2 | Pending GPU recovery | — | — | Not measured |
-| C target + generic Xbox RPC | Requires RPC-enabled `.57` binary and graph validation | — | — | Not measured |
-| D target + dedicated Xbox RPC | Requires split graph, session protocol, parity | — | — | Not measured |
-| E host projection + Xbox backbone | Requires D and host selector placement | — | — | Not measured |
+| Baseline                          | Same Swift 1.5 / Q3 / kvarn4 workload                  | Decode TPS | Acceptance | Status       |
+| --------------------------------- | ------------------------------------------------------ | ---------: | ---------: | ------------ |
+| A target alone on `.57`           | Pending GPU recovery                                   |          — |          — | Not measured |
+| B target + local DFlash2          | Pending GPU recovery                                   |          — |          — | Not measured |
+| C target + generic Xbox RPC       | Requires RPC-enabled `.57` binary and graph validation |          — |          — | Not measured |
+| D target + dedicated Xbox RPC     | Requires split graph, session protocol, parity         |          — |          — | Not measured |
+| E host projection + Xbox backbone | Requires D and host selector placement                 |          — |          — | Not measured |
 
 Do not classify remote DFlash2 as viable, marginal, or not viable from the measured transport alone. The next discriminating tests are: GPU recovery on `.57`; Game classification and model load on Xbox; deterministic split parity; then 512-token A/B/C/D/E workloads with identical prompts, seed, sampling, target/quant/KV, and n_max 2/4/6/8 where supported.

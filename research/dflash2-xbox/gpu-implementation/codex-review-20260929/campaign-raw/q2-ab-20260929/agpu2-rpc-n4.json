@@ -1,0 +1,86 @@
+{
+  "kind": "dflash2_xbox_dedicated_rpc_fused",
+  "mode": "fused",
+  "limitations": "Synthetic features and embeddings; no target verification or acceptance; backend must be verified from server logs",
+  "host": "192.168.1.26",
+  "port": 50053,
+  "model": {
+    "bytes": 705430880,
+    "n_ctx": 49152,
+    "encoder_width": 25600,
+    "decoder_width": 5120,
+    "top_k": 16,
+    "mask_id": 248070,
+    "kv_bits_k": 4,
+    "kv_bits_v": 4
+  },
+  "warmup": 20,
+  "iterations": 100,
+  "sync_tokens": 1,
+  "drafts": 4,
+  "hello_rtt_us": 1654.3,
+  "first_cycle_after_model_load": {
+    "cycle_rtt_us": 47787.7,
+    "fused": {
+      "rtt_us": 47787.7,
+      "xbox_receive_us": 2433,
+      "xbox_prepare_us": 188,
+      "xbox_compute_us": 41455,
+      "prior_response_us": 48
+    }
+  },
+  "first_output_sha256": "ace5a673ab393d90ca477fa2458cbbc2be7d5555013ec9c49dc57d11d0f20e5c",
+  "differing_outputs": 0,
+  "phases_us": {
+    "cycle_rtt_us": {
+      "count": 100,
+      "mean": 44354.990999999995,
+      "min": 43908.1,
+      "p50": 44285.65,
+      "p90": 44537.46,
+      "p95": 44624.36,
+      "p99": 45621.38200000003,
+      "max": 50728.0
+    },
+    "fused_rtt_us": {
+      "count": 100,
+      "mean": 44354.990999999995,
+      "min": 43908.1,
+      "p50": 44285.65,
+      "p90": 44537.46,
+      "p95": 44624.36,
+      "p99": 45621.38200000003,
+      "max": 50728.0
+    },
+    "fused_xbox_compute_us": {
+      "count": 100,
+      "mean": 40076.49,
+      "min": 40013,
+      "p50": 40061.0,
+      "p90": 40113.7,
+      "p95": 40134.0,
+      "p99": 40154.32000000001,
+      "max": 41275
+    },
+    "fused_xbox_prepare_us": {
+      "count": 100,
+      "mean": 139.35,
+      "min": 135,
+      "p50": 137.0,
+      "p90": 153.1,
+      "p95": 155.0,
+      "p99": 159.03000000000003,
+      "max": 162
+    },
+    "fused_xbox_receive_us": {
+      "count": 100,
+      "mean": 1866.7,
+      "min": 426,
+      "p50": 1895.0,
+      "p90": 1918.1,
+      "p95": 1933.0,
+      "p99": 1948.08,
+      "max": 1956
+    }
+  }
+}

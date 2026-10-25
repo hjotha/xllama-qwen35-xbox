@@ -2,4 +2,4 @@
 
 #include <string>
 
-void serve_dflash_dedicated(const std::string & local_folder);
+void serve_dflash_dedicated(const std::string& local_folder);

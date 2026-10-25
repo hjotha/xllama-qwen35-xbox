@@ -8,7 +8,7 @@ cbuffer Params : register(b0) {
     float epsilon;
     float rope_base;
     float rope_freq_scale;
-    uint reserved;
+    uint rope_cache_offset;
 };
 
 ByteAddressBuffer X : register(t0);
@@ -16,27 +16,31 @@ ByteAddressBuffer W : register(t1);
 ByteAddressBuffer Positions : register(t2);
 RWByteAddressBuffer Y : register(u0);
 groupshared float reduction[128];
+#include "ggml_float.hlsli"
+groupshared double norm_reduction[128];
 
 [numthreads(128, 1, 1)]
 void FcNorm(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     const uint row = group.x;
     if (row >= batch) return;
-    float sum = 0.0f;
+    precise double sum = 0.0;
     for (uint col = lane; col < width; col += 128u) {
-        const float v = asfloat(X.Load((row * width + col) * 4u)) * scale;
-        sum += v * v;
+        precise float v = asfloat(X.Load((row * width + col) * 4u)) * scale;
+        precise float square = v * v;
+        sum += (double)square;
     }
-    reduction[lane] = sum;
+    norm_reduction[lane] = sum;
     GroupMemoryBarrierWithGroupSync();
     for (uint stride = 64u; stride > 0u; stride >>= 1u) {
-        if (lane < stride) reduction[lane] += reduction[lane + stride];
+        if (lane < stride) norm_reduction[lane] += norm_reduction[lane + stride];
         GroupMemoryBarrierWithGroupSync();
     }
-    const float factor = rsqrt(reduction[0] / float(width) + epsilon);
+    precise float factor = ggml_rms_factor(norm_reduction[0], width, epsilon);
     for (uint col = lane; col < width; col += 128u) {
         const float v = asfloat(X.Load((row * width + col) * 4u)) * scale;
         const float w = asfloat(W.Load(col * 4u));
-        Y.Store((row * width + col) * 4u, asuint(v * factor * w));
+        precise float result = v * factor * w;
+        Y.Store((row * width + col) * 4u, asuint(result));
     }
 }
 
@@ -48,25 +52,27 @@ void KeyNormRope(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     const uint row = group.y;
     if (head >= 8u || row >= batch) return;
     const uint base_index = row * 1024u + head * 128u;
-    const float v = asfloat(X.Load((base_index + lane) * 4u)) * scale;
-    reduction[lane] = v * v;
+    precise float v = asfloat(X.Load((base_index + lane) * 4u)) * scale;
+    precise float square = v * v;
+    norm_reduction[lane] = (double)square;
     GroupMemoryBarrierWithGroupSync();
     for (uint stride = 64u; stride > 0u; stride >>= 1u) {
-        if (lane < stride) reduction[lane] += reduction[lane + stride];
+        if (lane < stride) norm_reduction[lane] += norm_reduction[lane + stride];
         GroupMemoryBarrierWithGroupSync();
     }
     if (lane < 64u) {
-        const float factor = rsqrt(reduction[0] / 128.0f + epsilon);
-        const float a = asfloat(X.Load((base_index + lane) * 4u)) * scale * factor
+        precise float factor = ggml_rms_factor(norm_reduction[0], 128u, epsilon);
+        precise float a = asfloat(X.Load((base_index + lane) * 4u)) * scale * factor
                       * asfloat(W.Load(lane * 4u));
-        const float b = asfloat(X.Load((base_index + lane + 64u) * 4u)) * scale * factor
+        precise float b = asfloat(X.Load((base_index + lane + 64u) * 4u)) * scale * factor
                       * asfloat(W.Load((lane + 64u) * 4u));
-        const float pos = float(Positions.Load(row * 4u));
-        const float theta = pos * pow(rope_base, -float(lane) / 64.0f) * rope_freq_scale;
-        float s, c;
-        sincos(theta, s, c);
-        Y.Store((base_index + lane) * 4u, asuint(a * c - b * s));
-        Y.Store((base_index + lane + 64u) * 4u, asuint(a * s + b * c));
+        const uint offset = rope_cache_offset + (row * 128u + lane * 2u) * 4u;
+        const float c = asfloat(Positions.Load(offset));
+        const float s = asfloat(Positions.Load(offset + 4u));
+        precise float first = a * c - b * s;
+        precise float second = a * s + b * c;
+        Y.Store((base_index + lane) * 4u, asuint(first));
+        Y.Store((base_index + lane + 64u) * 4u, asuint(second));
     }
 }
 

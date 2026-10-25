@@ -1,0 +1,86 @@
+{
+  "kind": "dflash2_xbox_dedicated_rpc_fused",
+  "mode": "fused",
+  "limitations": "Synthetic features and embeddings; no target verification or acceptance; backend must be verified from server logs",
+  "host": "192.168.1.26",
+  "port": 50053,
+  "model": {
+    "bytes": 705430880,
+    "n_ctx": 49152,
+    "encoder_width": 25600,
+    "decoder_width": 5120,
+    "top_k": 16,
+    "mask_id": 248070,
+    "kv_bits_k": 4,
+    "kv_bits_v": 4
+  },
+  "warmup": 20,
+  "iterations": 100,
+  "sync_tokens": 1,
+  "drafts": 4,
+  "hello_rtt_us": 1073.4,
+  "first_cycle_after_model_load": {
+    "cycle_rtt_us": 40456.4,
+    "fused": {
+      "rtt_us": 40456.4,
+      "xbox_receive_us": 2581,
+      "xbox_prepare_us": 184,
+      "xbox_compute_us": 34061,
+      "prior_response_us": 51
+    }
+  },
+  "first_output_sha256": "ace5a673ab393d90ca477fa2458cbbc2be7d5555013ec9c49dc57d11d0f20e5c",
+  "differing_outputs": 0,
+  "phases_us": {
+    "cycle_rtt_us": {
+      "count": 100,
+      "mean": 36735.231,
+      "min": 36318.4,
+      "p50": 36707.9,
+      "p90": 36979.61,
+      "p95": 37019.895,
+      "p99": 38014.82400000001,
+      "max": 39175.5
+    },
+    "fused_rtt_us": {
+      "count": 100,
+      "mean": 36735.231,
+      "min": 36318.4,
+      "p50": 36707.9,
+      "p90": 36979.61,
+      "p95": 37019.895,
+      "p99": 38014.82400000001,
+      "max": 39175.5
+    },
+    "fused_xbox_compute_us": {
+      "count": 100,
+      "mean": 32563.64,
+      "min": 32488,
+      "p50": 32562.0,
+      "p90": 32607.1,
+      "p95": 32616.05,
+      "p99": 32640.03,
+      "max": 32643
+    },
+    "fused_xbox_prepare_us": {
+      "count": 100,
+      "mean": 136.52,
+      "min": 135,
+      "p50": 136.0,
+      "p90": 138.0,
+      "p95": 139.0,
+      "p99": 142.01,
+      "max": 143
+    },
+    "fused_xbox_receive_us": {
+      "count": 100,
+      "mean": 1883.54,
+      "min": 1701,
+      "p50": 1890.0,
+      "p90": 1924.2,
+      "p95": 1931.6499999999999,
+      "p99": 1988.14,
+      "max": 2002
+    }
+  }
+}

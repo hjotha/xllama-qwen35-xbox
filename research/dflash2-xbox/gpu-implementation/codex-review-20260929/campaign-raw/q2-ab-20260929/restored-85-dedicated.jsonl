@@ -1,0 +1,3 @@
+{"phase":"load","status":"ready","modelBytes":705430880,"elapsedUs":1513562,"contextTokens":49152,"kv":"q4_0"}
+{"phase":"backend","requested":"d3d12","effective":"d3d12","elapsedUs":5428175}
+{"phase":"listen","status":"ready","port":50053}

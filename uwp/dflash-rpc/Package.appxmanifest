@@ -3,7 +3,7 @@
          xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
          xmlns:mp="http://schemas.microsoft.com/appx/2014/phone/manifest"
          IgnorableNamespaces="uap mp">
-  <Identity Name="HJotha.XboxDFlashRpc" Publisher="CN=Hjotha Xbox Probe" Version="1.0.0.42" ProcessorArchitecture="x64" />
+  <Identity Name="HJotha.XboxDFlashRpc" Publisher="CN=Hjotha Xbox Probe" Version="1.0.0.89" ProcessorArchitecture="x64" />
   <mp:PhoneIdentity PhoneProductId="047DE0E9-1967-4AF5-ABF6-77B4DC299733" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>Xbox DFlash RPC</DisplayName>
