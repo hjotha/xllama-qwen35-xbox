@@ -1,20 +1,18 @@
 // RKVA KVarN flash attention — causal GQA over 4-bit records + F16 stage.
 //
-// Port of ggml-vulkan kvarn_flash_attn.comp for the RKVA engine, simplified to
-// the RKVA MVP contract: single stream (stream 0), dense contiguous positions
-// (token t == absolute position t), no exact precision tail (tail_tokens=0),
-// no sinks, no SWA, no split_k (split_k=1), delayed records (eager=0).
-// Domain: rotated. The engine applies the inverse WHT on the output.
+// Port of ggml-vulkan kvarn_flash_attn.comp for the RKVA engine, with:
+// - single stream (stream 0), dense contiguous positions
+// - stage F16 buffer acting as tail_groups (256-token lossless tail) + sink (group 0)
+// - split_k parallel partitioning for saturated 52-CU Xbox execution
+// - WaveActiveSum (Wave32) reduction for low-latency dot products
+// - rotated domain: the engine applies the inverse WHT on the output.
 //
-// One thread group owns one (query, logical kv head, gqa group) tile; lane d
-// holds slice dimension d (each thread covers dim d and d+128). Q must already
-// be WHT-rotated by the engine (rkva_wht).
+// Grid: (n_query, n_kv_heads * gqa_groups, split_k), numthreads(128, 1, 1).
 //
-// Grid: (n_query, n_kv_heads * gqa_groups, 1), numthreads(128, 1, 1).
-//
-// b0 params, t0 = Q rotated F32 [n_tokens][n_head][head_dim],
+// b0 params:
+// t0 = Q rotated F32 [n_tokens][n_head][head_dim],
 // t1 = K records, t2 = K stage, t3 = V records, t4 = V stage,
-// t5 = query_positions (i32 [n_tokens]), u0 = OUT F32 [n_tokens][n_head][head_dim].
+// t5 = query_positions (i32 [n_tokens]), u0 = OUT F32 or split_accum.
 
 #include "ggml_float.hlsli"
 
@@ -39,6 +37,7 @@ cbuffer Params : register(b0) {
     uint tail_groups;      // 2
     uint record_words;     // 2240
     float kq_scale;        // 0.0625
+    uint split_k;          // 1 default, >1 for split-K decode
 };
 
 ByteAddressBuffer   q_rot    : register(t0); // F32 [n_tokens][n_head][head_dim]
@@ -52,7 +51,7 @@ RWByteAddressBuffer out_buf  : register(u0);
 static const uint KVAR_N_DIM = 128;
 static const uint GQA_GROUP_MAX = 4;
 
-groupshared float sh_reduce[128];
+groupshared float sh_wave_sum[4];
 groupshared float sh_maximum[GQA_GROUP_MAX];
 groupshared float sh_denominator[GQA_GROUP_MAX];
 groupshared float sh_old_scale[GQA_GROUP_MAX];
@@ -130,6 +129,9 @@ void CSFlashAttnKvarn(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     const uint gqa_group = group.y % gqa_groups;
     const uint query_head_first = logical_head * gqa + gqa_group * gqa_group_size;
     const uint active_heads = min(gqa_group_size, gqa - gqa_group * gqa_group_size);
+    const uint split_idx = group.z;
+    const uint eff_split_k = max(split_k, 1u);
+
     if (query >= n_query || logical_head >= n_head_kv) {
         return;
     }
@@ -140,52 +142,56 @@ void CSFlashAttnKvarn(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
     const uint live_group = live > 0 ? (live - 1) / KVAR_N_DIM : 0;
     const uint live_pos = live > 0 ? (live - 1) % KVAR_N_DIM : 0;
 
+    const uint token_start = (limit * split_idx) / eff_split_k;
+    const uint token_end   = (limit * (split_idx + 1u)) / eff_split_k;
+
     float accumulator[GQA_GROUP_MAX * 4];
     for (uint i = 0; i < GQA_GROUP_MAX * 4; ++i) {
-        accumulator[i] = 0.0;
+        accumulator[i] = 0.0f;
     }
     if (lane == 0) {
         for (uint gi = 0; gi < active_heads; ++gi) {
-            sh_maximum[gi] = -3.402823466e38;
-            sh_denominator[gi] = 0.0;
+            sh_maximum[gi] = -3.402823466e38f;
+            sh_denominator[gi] = 0.0f;
         }
     }
     GroupMemoryBarrierWithGroupSync();
 
-    for (uint token = 0; token < limit; ++token) {
+    for (uint token = token_start; token < token_end; ++token) {
         float k_values[2];
         float v_values[2];
         for (uint slice = 0; slice < head_slices; ++slice) {
-            const uint dim = slice * KVAR_N_DIM + lane;
             k_values[slice] = load_kvarn(false, logical_head, token, live_group, live_pos, slice, lane);
             v_values[slice] = load_kvarn(true, logical_head, token, live_group, live_pos, slice, lane);
         }
 
         for (uint gi = 0; gi < active_heads; ++gi) {
             const uint query_head = query_head_first + gi;
-            float partial = 0.0;
+            float partial = 0.0f;
             for (uint slice = 0; slice < head_slices; ++slice) {
                 const uint dim = slice * KVAR_N_DIM + lane;
                 const uint q_idx = (query * n_head + query_head) * head_dim + dim;
                 partial += asfloat(q_rot.Load(q_idx * 4)) * k_values[slice];
             }
-            sh_reduce[lane] = partial;
-            GroupMemoryBarrierWithGroupSync();
-            [unroll]
-            for (uint step = 64; step > 0; step >>= 1) {
-                if (lane < step) {
-                    sh_reduce[lane] += sh_reduce[lane + step];
-                }
-                GroupMemoryBarrierWithGroupSync();
+
+            // WaveActiveSum across 32 lanes in wave
+            float wave_sum = WaveActiveSum(partial);
+            if (WaveIsFirstLane()) {
+                sh_wave_sum[lane >> 5] = wave_sum;
             }
-            const float total = sh_reduce[0];
             GroupMemoryBarrierWithGroupSync();
+
+            float total = 0.0f;
+            if (lane < 4) {
+                total = sh_wave_sum[lane];
+            }
+            total = WaveActiveSum(total);
 
             if (lane == 0) {
                 float score = total * kq_scale;
                 const float next_maximum = max(sh_maximum[gi], score);
-                const float old_scale = sh_maximum[gi] < -3.0e38 ?
-                    0.0 : rkva_exp(sh_maximum[gi] - next_maximum);
+                const float old_scale = sh_maximum[gi] < -3.0e38f ?
+                    0.0f : rkva_exp(sh_maximum[gi] - next_maximum);
                 const float weight = rkva_exp(score - next_maximum);
                 sh_maximum[gi] = next_maximum;
                 sh_denominator[gi] = sh_denominator[gi] * old_scale + weight;
@@ -203,21 +209,47 @@ void CSFlashAttnKvarn(uint lane : SV_GroupIndex, uint3 group : SV_GroupID) {
         }
     }
 
-    if (lane == 0) {
-        for (uint gi = 0; gi < active_heads; ++gi) {
-            sh_old_scale[gi] = 1.0;
-            sh_weight[gi] = sh_denominator[gi] > 0.0 ? 1.0 / sh_denominator[gi] : 0.0;
+    if (eff_split_k <= 1) {
+        // Direct single-pass output
+        if (lane == 0) {
+            for (uint gi = 0; gi < active_heads; ++gi) {
+                sh_old_scale[gi] = 1.0f;
+                sh_weight[gi] = sh_denominator[gi] > 0.0f ? 1.0f / sh_denominator[gi] : 0.0f;
+            }
         }
-    }
-    GroupMemoryBarrierWithGroupSync();
+        GroupMemoryBarrierWithGroupSync();
 
-    for (uint gi = 0; gi < active_heads; ++gi) {
-        const uint query_head = query_head_first + gi;
-        const uint dst_base = (query * n_head + query_head) * head_dim;
-        for (uint slice = 0; slice < head_slices; ++slice) {
-            const uint dim = slice * KVAR_N_DIM + lane;
-            out_buf.Store((dst_base + dim) * 4, asuint(
-                accumulator[gi * 4 + slice] * sh_old_scale[gi] * sh_weight[gi]));
+        for (uint gi = 0; gi < active_heads; ++gi) {
+            const uint query_head = query_head_first + gi;
+            const uint dst_base = (query * n_head + query_head) * head_dim;
+            for (uint slice = 0; slice < head_slices; ++slice) {
+                const uint dim = slice * KVAR_N_DIM + lane;
+                out_buf.Store((dst_base + dim) * 4, asuint(
+                    accumulator[gi * 4 + slice] * sh_old_scale[gi] * sh_weight[gi]));
+            }
+        }
+    } else {
+        // Multi-pass split_k output: write unnormalized accumulator and (m_part, l_part)
+        const uint total_q_heads = n_query * n_head;
+        const uint o_part_stride = total_q_heads * head_dim;
+        const uint lm_part_offset = eff_split_k * o_part_stride * 4;
+        const uint lm_part_stride = total_q_heads * 2;
+
+        for (uint gi = 0; gi < active_heads; ++gi) {
+            const uint query_head = query_head_first + gi;
+            const uint q_head_idx = query * n_head + query_head;
+            const uint o_base = split_idx * o_part_stride + q_head_idx * head_dim;
+
+            for (uint slice = 0; slice < head_slices; ++slice) {
+                const uint dim = slice * KVAR_N_DIM + lane;
+                out_buf.Store((o_base + dim) * 4, asuint(accumulator[gi * 4 + slice]));
+            }
+
+            if (lane == 0) {
+                const uint lm_idx = split_idx * lm_part_stride + q_head_idx * 2;
+                out_buf.Store(lm_part_offset + lm_idx * 4, asuint(sh_maximum[gi]));
+                out_buf.Store(lm_part_offset + (lm_idx + 1) * 4, asuint(sh_denominator[gi]));
+            }
         }
     }
 }

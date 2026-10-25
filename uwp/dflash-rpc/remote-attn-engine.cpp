@@ -11,11 +11,16 @@
 #include "remote-attn-engine.h"
 
 #include "rkva_flash_attn_dxil.h"
-#include "rkva_store_f16_dxil.h"
-#include "rkva_wht_dxil.h"
-#include "rkva_store_kvarn4_dxil.h"
 #include "rkva_flash_attn_kvarn4_dxil.h"
+#include "rkva_store_f16_dxil.h"
+#include "rkva_store_kvarn4_dxil.h"
+#include "rkva_wht_dxil.h"
 #include "xllama/d3d12_dyn.h"
+
+static const uint8_t* kRkvaStoreKvarn4Dxil = g_rkva_store_kvarn4_dxil;
+static const size_t kRkvaStoreKvarn4DxilSize = sizeof(g_rkva_store_kvarn4_dxil);
+static const uint8_t* kRkvaFlashAttnKvarn4Dxil = g_rkva_flash_attn_kvarn4_dxil;
+static const size_t kRkvaFlashAttnKvarn4DxilSize = sizeof(g_rkva_flash_attn_kvarn4_dxil);
 
 #include <dxgi1_4.h>
 
@@ -45,7 +50,7 @@ bool fail(std::string* error, const char* stage, HRESULT hr = S_OK) {
     return false;
 }
 
-}  // namespace
+} // namespace
 
 // Per-session KV storage. One DEFAULT buffer holds every remote layer's K and
 // V. F16 path: [slot][kind: 0=K,1=V][capacity][n_head_kv][head_dim].
@@ -56,21 +61,21 @@ bool fail(std::string* error, const char* stage, HRESULT hr = S_OK) {
 struct RemoteAttnEngine::Session {
     uint32_t id = 0;
     uint32_t capacity = 0;
-    int32_t high_water = -1;  // highest stored position; -1 = empty
+    int32_t high_water = -1; // highest stored position; -1 = empty
     bool valid = true;
-    Buffer kv;                // DEFAULT, ALLOW_UNORDERED_ACCESS
+    Buffer kv; // DEFAULT, ALLOW_UNORDERED_ACCESS
     uint64_t kv_bytes = 0;
-    uint64_t layer_stride = 0;  // bytes per (slot) covering K+V
-    uint64_t half_stride = 0;   // bytes per K or V plane (F16 path)
+    uint64_t layer_stride = 0; // bytes per (slot) covering K+V
+    uint64_t half_stride = 0;  // bytes per K or V plane (F16 path)
     // KVarN path sizes (bits>8 none; cache_bits 2..8).
-    uint64_t record_words = 0;   // per record group, u32 words
-    uint64_t records_bytes = 0;  // per layer per kind (K or V)
-    uint64_t stage_bytes = 0;    // per layer per kind (K or V)
+    uint64_t record_words = 0;  // per record group, u32 words
+    uint64_t records_bytes = 0; // per layer per kind (K or V)
+    uint64_t stage_bytes = 0;   // per layer per kind (K or V)
     uint64_t groups_per_stream = 0;
-    uint64_t rec_off = 0;        // byte offset of records K within a layer slot
-    uint64_t stg_off = 0;        // byte offset of stage K within a layer slot
-    uint64_t rec_v_off = 0;      // byte offset of records V within a layer slot
-    uint64_t stg_v_off = 0;      // byte offset of stage V within a layer slot
+    uint64_t rec_off = 0;   // byte offset of records K within a layer slot
+    uint64_t stg_off = 0;   // byte offset of stage K within a layer slot
+    uint64_t rec_v_off = 0; // byte offset of records V within a layer slot
+    uint64_t stg_v_off = 0; // byte offset of stage V within a layer slot
 };
 
 RemoteAttnEngine::RemoteAttnEngine() = default;
@@ -325,7 +330,7 @@ bool RemoteAttnEngine::create_pipelines(std::string* error) {
     if (FAILED(hr)) {
         return fail(error, "CreateComputePipelineState attn", hr);
     }
-    attn_prefill_pso_ = attn_decode_pso_;  // same kernel; grid differs
+    attn_prefill_pso_ = attn_decode_pso_; // same kernel; grid differs
 
     pso.pRootSignature = store_root_.Get();
     pso.CS = {kRkvaStoreF16Dxil, kRkvaStoreF16DxilSize};
@@ -399,7 +404,7 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
         return fail(error, "engine not ready");
     }
     if (find_session(session_id)) {
-        return true;  // idempotent
+        return true; // idempotent
     }
     const uint32_t cap = capacity ? capacity : geo_.max_ctx;
     auto session = std::make_unique<Session>();
@@ -414,11 +419,10 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
         //   records V / stage V: same sizes
         const uint32_t bits = geo_.cache_bits_k;
         const uint32_t n_heads = geo_.n_head_kv * geo_.head_slices;
-        session->groups_per_stream = (uint64_t) (cap + 127) / 128;
-        session->record_words = (uint64_t) bits * 512 + 192;
-        session->records_bytes = session->groups_per_stream * n_heads *
-                                 session->record_words * 4;
-        session->stage_bytes = (uint64_t) geo_.stage_groups * 128 * n_heads * 64 * 4;
+        session->groups_per_stream = (uint64_t)(cap + 127) / 128;
+        session->record_words = (uint64_t)bits * 512 + 192;
+        session->records_bytes = session->groups_per_stream * n_heads * session->record_words * 4;
+        session->stage_bytes = (uint64_t)geo_.stage_groups * 128 * n_heads * 64 * 4;
         session->rec_off = 0;
         session->stg_off = session->records_bytes;
         session->rec_v_off = session->stg_off + session->stage_bytes;
@@ -426,8 +430,8 @@ bool RemoteAttnEngine::create_session(uint32_t session_id, uint32_t capacity, st
         session->layer_stride = session->stg_v_off + session->stage_bytes;
         session->half_stride = 0;
     } else {
-        session->half_stride = uint64_t(cap) * geo_.n_head_kv * geo_.head_dim * 2;  // F16
-        session->layer_stride = session->half_stride * 2;                            // K + V
+        session->half_stride = uint64_t(cap) * geo_.n_head_kv * geo_.head_dim * 2; // F16
+        session->layer_stride = session->half_stride * 2;                          // K + V
     }
     session->kv_bytes = session->layer_stride * n_layers;
     if (!create_buffer(session->kv_bytes, D3D12_HEAP_TYPE_DEFAULT,
@@ -497,19 +501,21 @@ bool RemoteAttnEngine::ensure_scratch(uint32_t n_tokens, std::string* error) {
     const uint64_t out_bytes = q_bytes;
 
     qkv_upload_ = Buffer{};
-    wht_workspace_ = Buffer{};   // DEFAULT UAV: attention output before readback
-    q_rotated_ = Buffer{};       // DEFAULT UAV: WHT(Q) input / inverse-WHT output
-    out_readback_ = Buffer{};    // READBACK: CPU-visible copy of the output
+    wht_workspace_ = Buffer{}; // DEFAULT UAV: attention output before readback
+    q_rotated_ = Buffer{};     // DEFAULT UAV: WHT(Q) input / inverse-WHT output
+    out_readback_ = Buffer{};  // READBACK: CPU-visible copy of the output
 
     if (!create_buffer(upload_bytes, D3D12_HEAP_TYPE_UPLOAD, D3D12_RESOURCE_FLAG_NONE,
                        D3D12_RESOURCE_STATE_GENERIC_READ, &qkv_upload_, error)) {
         return false;
     }
-    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &wht_workspace_, error)) {
         return false;
     }
-    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+    if (!create_buffer(out_bytes, D3D12_HEAP_TYPE_DEFAULT,
+                       D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
                        D3D12_RESOURCE_STATE_UNORDERED_ACCESS, &q_rotated_, error)) {
         return false;
     }
@@ -539,7 +545,7 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
     uint32_t slot;
     auto it = layer_slot_.find(layer_abs);
     if (it == layer_slot_.end()) {
-        slot = (uint32_t) layer_slot_.size();
+        slot = (uint32_t)layer_slot_.size();
         if (geo_.n_layers && slot >= geo_.n_layers) {
             return fail(error, "attend: too many remote layers");
         }
@@ -551,7 +557,7 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
     // Validate positions are within capacity.
     int32_t max_pos = s->high_water;
     for (uint32_t t = 0; t < n_tokens; ++t) {
-        if (positions[t] < 0 || (uint32_t) positions[t] >= s->capacity) {
+        if (positions[t] < 0 || (uint32_t)positions[t] >= s->capacity) {
             return fail(error, "attend: position out of range");
         }
         max_pos = std::max(max_pos, positions[t]);
@@ -596,7 +602,7 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
     transition(s->kv, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
     s->high_water = max_pos;
-    const uint32_t active_count = (uint32_t) (s->high_water + 1);
+    const uint32_t active_count = (uint32_t)(s->high_water + 1);
 
     const bool kvarn = geo_.cache_bits_k >= 2 && geo_.cache_bits_k <= 8;
     Buffer* readback_src = &wht_workspace_;
@@ -621,8 +627,7 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
         cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
         cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
         cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);
-        cmd_->SetComputeRootUnorderedAccessView(2,
-            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(2, q_rotated_.resource->GetGPUVirtualAddress());
         cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
         uav_barrier(q_rotated_);
 
@@ -633,8 +638,8 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
             const bool is_v = pass == 1;
             cmd_->SetComputeRoot32BitConstant(0, n_heads_phys, 0);
             cmd_->SetComputeRoot32BitConstant(0, n_tokens, 1);
-            cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->groups_per_stream, 2);
-            cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->record_words, 3);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->groups_per_stream, 2);
+            cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->record_words, 3);
             cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 4);
             cmd_->SetComputeRoot32BitConstant(0, geo_.sinkhorn_iters, 5);
             cmd_->SetComputeRoot32BitConstant(0, is_v ? 1u : 0u, 6);
@@ -663,22 +668,20 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
         cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 3);
         cmd_->SetComputeRoot32BitConstant(0, n_tokens, 4);
         cmd_->SetComputeRoot32BitConstant(0, active_count, 5);
-        cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->groups_per_stream, 6);
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->groups_per_stream, 6);
         cmd_->SetComputeRoot32BitConstant(0, geo_.cache_bits_k, 7);
         cmd_->SetComputeRoot32BitConstant(0, geo_.head_slices, 8);
         cmd_->SetComputeRoot32BitConstant(0, geo_.stage_groups, 9);
         cmd_->SetComputeRoot32BitConstant(0, geo_.tail_groups, 10);
-        cmd_->SetComputeRoot32BitConstant(0, (uint32_t) s->record_words, 11);
-        cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*) &geo_.kq_scale, 12);
-        cmd_->SetComputeRootShaderResourceView(1,
-            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRoot32BitConstant(0, (uint32_t)s->record_words, 11);
+        cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*)&geo_.kq_scale, 12);
+        cmd_->SetComputeRootShaderResourceView(1, q_rotated_.resource->GetGPUVirtualAddress());
         cmd_->SetComputeRootShaderResourceView(2, rec_k);
         cmd_->SetComputeRootShaderResourceView(3, stg_k);
         cmd_->SetComputeRootShaderResourceView(4, rec_v);
         cmd_->SetComputeRootShaderResourceView(5, stg_v);
         cmd_->SetComputeRootShaderResourceView(6, upload_addr + pos_off);
-        cmd_->SetComputeRootUnorderedAccessView(7,
-            wht_workspace_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(7, wht_workspace_.resource->GetGPUVirtualAddress());
         cmd_->Dispatch(n_tokens, geo_.n_head_kv * gqa_groups, 1);
         uav_barrier(wht_workspace_);
 
@@ -691,10 +694,8 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
         cmd_->SetComputeRoot32BitConstant(0, n_tokens * geo_.n_head, 0);
         cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 1);
         cmd_->SetComputeRoot32BitConstant(0, 0u, 2);
-        cmd_->SetComputeRootShaderResourceView(1,
-            wht_workspace_.resource->GetGPUVirtualAddress());
-        cmd_->SetComputeRootUnorderedAccessView(2,
-            q_rotated_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootShaderResourceView(1, wht_workspace_.resource->GetGPUVirtualAddress());
+        cmd_->SetComputeRootUnorderedAccessView(2, q_rotated_.resource->GetGPUVirtualAddress());
         cmd_->Dispatch(n_tokens * geo_.n_head, 1, 1);
         uav_barrier(q_rotated_);
         readback_src = &q_rotated_;
@@ -727,21 +728,22 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
         transition(wht_workspace_, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
         {
             cmd_->SetComputeRootSignature(attn_root_.Get());
-            cmd_->SetPipelineState(n_tokens == 1 ? attn_decode_pso_.Get() : attn_prefill_pso_.Get());
-            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);       // query_count
-            cmd_->SetComputeRoot32BitConstant(0, active_count, 1);   // active_count
+            cmd_->SetPipelineState(n_tokens == 1 ? attn_decode_pso_.Get()
+                                                 : attn_prefill_pso_.Get());
+            cmd_->SetComputeRoot32BitConstant(0, n_tokens, 0);     // query_count
+            cmd_->SetComputeRoot32BitConstant(0, active_count, 1); // active_count
             cmd_->SetComputeRoot32BitConstant(0, geo_.n_head, 2);
             cmd_->SetComputeRoot32BitConstant(0, geo_.n_head_kv, 3);
             cmd_->SetComputeRoot32BitConstant(0, geo_.head_dim, 4);
-            cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*) &geo_.kq_scale, 5);
+            cmd_->SetComputeRoot32BitConstant(0, *(const uint32_t*)&geo_.kq_scale, 5);
             cmd_->SetComputeRoot32BitConstant(0, s->capacity, 6);
             cmd_->SetComputeRoot32BitConstant(0, 0u, 7);
             cmd_->SetComputeRootShaderResourceView(1, upload_addr + q_off);   // queries
             cmd_->SetComputeRootShaderResourceView(2, k_plane);               // keys
             cmd_->SetComputeRootShaderResourceView(3, v_plane);               // values
             cmd_->SetComputeRootShaderResourceView(4, upload_addr + pos_off); // query_positions
-            cmd_->SetComputeRootUnorderedAccessView(5,
-                wht_workspace_.resource->GetGPUVirtualAddress());
+            cmd_->SetComputeRootUnorderedAccessView(
+                5, wht_workspace_.resource->GetGPUVirtualAddress());
             cmd_->Dispatch(geo_.n_head, n_tokens, 1);
             uav_barrier(wht_workspace_);
         }
@@ -763,13 +765,13 @@ bool RemoteAttnEngine::attend(uint32_t session_id, uint32_t layer_abs, uint32_t 
 
     {
         void* mapped = nullptr;
-        D3D12_RANGE range {0, q_bytes};
+        D3D12_RANGE range{0, q_bytes};
         HRESULT hr = out_readback_.resource->Map(0, &range, &mapped);
         if (FAILED(hr)) {
             return fail(error, "Map readback", hr);
         }
         std::memcpy(out, mapped, q_bytes);
-        D3D12_RANGE empty {0, 0};
+        D3D12_RANGE empty{0, 0};
         out_readback_.resource->Unmap(0, &empty);
     }
     return true;
