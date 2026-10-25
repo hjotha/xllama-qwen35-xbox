@@ -88,7 +88,11 @@ if(XLLAMA_BUILD_PROBES)
         src/bridge/gpubw.cpp
         src/bridge/gpugemv.cpp
         src/bridge/gpustep.cpp
+        src/bridge/tttarget.cpp
         src/bridge/ramceil.cpp
+        src/bridge/replay.cpp
+        src/bridge/diverge.cpp
+        src/bridge/termgate.cpp
     )
 endif()
 

@@ -27,6 +27,77 @@ float sbyte(uint word, uint i) {
 
 [numthreads(NUM_THREADS, 1, 1)]
 void CSMain(uint tid : SV_GroupIndex, uint3 gid : SV_GroupID) {
+#ifdef TILE_COLS
+    // LM-head experiment: reuse each packed weight load across 2/4 columns.
+    // Per-column FP32 expression and reduction are the OLD kernel's; every
+    // reduction/barrier executes even for the uniform past-ncols column tail.
+    const uint row0 = gid.x * NUM_ROWS;
+    const uint col0 = gid.y * TILE_COLS;
+    const uint ix = tid >> 4;
+    const uint itid = tid & 15u;
+    const uint v = itid >> 3;
+    const uint l0 = 4u * (itid & 7u);
+    const uint is = l0 >> 4;
+    const uint e = 128u * v + l0;
+    float acc[TILE_COLS][NUM_ROWS];
+    [unroll]
+    for (uint c = 0; c < TILE_COLS; ++c) {
+        [unroll]
+        for (uint r = 0; r < NUM_ROWS; ++r)
+            acc[c][r] = 0.0;
+    }
+
+    for (uint blk = ix; blk < nchunk; blk += IN_FLIGHT) {
+        const uint xe = blk * 256u + e;
+        float4 x1[TILE_COLS], x2[TILE_COLS], x3[TILE_COLS], x4[TILE_COLS];
+        [unroll]
+        for (uint c = 0; c < TILE_COLS; ++c) {
+            x1[c] = x2[c] = x3[c] = x4[c] = (float4)0;
+            if (col0 + c < ncols) {
+                x1[c] = xload(col0 + c, xe);
+                x2[c] = xload(col0 + c, xe + 32u);
+                x3[c] = xload(col0 + c, xe + 64u);
+                x4[c] = xload(col0 + c, xe + 96u);
+            }
+        }
+        [unroll]
+        for (uint r = 0; r < NUM_ROWS; ++r) {
+            const uint row = min(row0 + r, n - 1u);
+            const uint bb = row * w_row_bytes + blk * 210u;
+            const uint ql_a = ld32(bb + 64u * v + l0);
+            const uint ql_b = ld32(bb + 64u * v + 32u + l0);
+            const uint qh = ld32(bb + 128u + 32u * v + l0);
+            const uint s0 = ld32(bb + 192u + 8u * v);
+            const uint s1 = ld32(bb + 192u + 8u * v + 4u);
+            const float d = f16tof32(ld16(bb + 208u));
+            const float4 q1 = q6v(ql_a, qh, 0u, 0u);
+            const float4 q2 = q6v(ql_b, qh, 0u, 2u);
+            const float4 q3 = q6v(ql_a, qh, 4u, 4u);
+            const float4 q4 = q6v(ql_b, qh, 4u, 6u);
+            [unroll]
+            for (uint c = 0; c < TILE_COLS; ++c) {
+                if (col0 + c < ncols) {
+                    const float t = sbyte(s0, is) * dot(q1, x1[c]) +
+                                    sbyte(s0, is + 2u) * dot(q2, x2[c]) +
+                                    sbyte(s1, is) * dot(q3, x3[c]) +
+                                    sbyte(s1, is + 2u) * dot(q4, x4[c]);
+                    acc[c][r] += d * t;
+                }
+            }
+        }
+    }
+    [unroll]
+    for (uint c = 0; c < TILE_COLS; ++c) {
+        float column[NUM_ROWS];
+        [unroll]
+        for (uint r = 0; r < NUM_ROWS; ++r)
+            column[r] = acc[c][r];
+        reduce_store_col(column, tid, row0, col0 + c, col0 + c < ncols);
+        // Unconditional: the previous store must finish reading red before
+        // the next column's reduction overwrites it, including tail columns.
+        GroupMemoryBarrierWithGroupSync();
+    }
+#else
     const uint row0 = gid.x * NUM_ROWS;
     const uint col = gid.y;
     const uint ix = tid >> 4;
@@ -66,4 +137,5 @@ void CSMain(uint tid : SV_GroupIndex, uint3 gid : SV_GroupID) {
         }
     }
     reduce_store(acc, tid, row0, col);
+#endif
 }

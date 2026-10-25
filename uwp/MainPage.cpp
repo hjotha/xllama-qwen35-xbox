@@ -847,8 +847,12 @@ void MainPageController::WaitKvSnapshotSave() {
 }
 
 void MainPageController::ApplyCatalogueModelKnobs(const std::wstring& model) {
-    // Catalogue optional n_predict (thinking tier uses 1024 — #223). 0 / absent
-    // leaves the Settings slider alone so chat/coding stay at the user's value.
+    // llama.ini [n_predict] seeds the slider when the catalogue has no opinion,
+    // so the UI and the LAN API share one default budget. A catalogue value
+    // still wins (thinking tier uses 1024 — #223); 0 / absent in the catalogue
+    // leaves the user's slider value alone.
+    if (::xllama::llama_ini_n_predict > 0)
+        m_n_predict = std::clamp(::xllama::llama_ini_n_predict, 16, 2048);
     const auto& manifest = CachedManifest();
     const auto* e = ::xllama::FindManifestEntry(manifest, model);
     if (!e || e->n_predict <= 0)
@@ -2320,6 +2324,7 @@ fire_and_forget MainPageController::EnsureModelAsync() {
     std::wstring model_name =
         self->m_model_filename.empty() ? DefaultChatModelId() : self->m_model_filename;
     self->EnsureModelNamedAsync(model_name, true);
+    return {};
 }
 
 fire_and_forget MainPageController::EnsureModelNamedAsync(std::wstring model_name,
@@ -2650,10 +2655,21 @@ void MainPageController::PreloadSessionAsync() {
         hub.preloading.store(true); // API waits briefly instead of 503-ing
         try {
             std::lock_guard<std::mutex> hub_lk(hub.mtx);
-            std::string err;
-            if (!self->EnsureSession(model, &err))
+            // Plan 009: a warm-up preload must never evict a live session.
+            // The GUI default-model preload used to swap out an API chat
+            // session (and its KV) seconds after boot/activity, making any
+            // cross-request reuse racy. Preload only into an empty hub; a
+            // user-initiated GUI turn still swaps explicitly via
+            // EnsureSession, and the API waits on `preloading` as before.
+            if (hub.session) {
                 ::xllama::log_output(
-                    ("[xllama] session preload failed (non-fatal): " + err + "\n").c_str());
+                    ("[xllama] session preload skipped: " + hub.model + " resident\n").c_str());
+            } else {
+                std::string err;
+                if (!self->EnsureSession(model, &err))
+                    ::xllama::log_output(
+                        ("[xllama] session preload failed (non-fatal): " + err + "\n").c_str());
+            }
         } catch (...) {
         }
         hub.preloading.store(false);
@@ -2707,6 +2723,11 @@ bool MainPageController::EnsureSession(const std::string& model, std::string* er
         }
     }
     std::string err;
+    if (sp.backend == ::xllama::Backend::LlamaCpp) {
+        // Shared config parser (same as the API entry): llama.ini session
+        // keys + selected-profile knobs. MTP stays OFF unless ini says so.
+        ::xllama::bridge::apply_llama_ini_session(sp);
+    }
     ::xllama::Session* s = ::xllama::session_hub().ensure_locked(model, sp, &err);
     if (!s) {
         if (err_out)

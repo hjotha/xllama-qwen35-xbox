@@ -11,6 +11,7 @@
 #include "xllama/ggml_d3d12.h"
 #include "xllama/platform.h"
 
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -23,7 +24,13 @@ inline void gguf_gpu_log(ggml_log_level level, const char* text, void*) {
         return;
     const bool keep = level == GGML_LOG_LEVEL_WARN || level == GGML_LOG_LEVEL_ERROR ||
                       std::strstr(text, "buffer size") || std::strstr(text, "offload") ||
-                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12");
+                      std::strstr(text, "graph splits") || std::strstr(text, "D3D12") ||
+                      // Scheduler placement audit (ggmlprof=sched/sched2): split
+                      // headers and per-node assignment lines, including
+                      // CPU-titled ones the normal filter drops. These only
+                      // exist when GGML_SCHED_DEBUG is set, so default runs are
+                      // unchanged.
+                      std::strstr(text, "## SPLIT") || std::strstr(text, "node #");
     if (keep)
         log_output(std::string("[llama] ") + text);
 }
@@ -63,6 +70,11 @@ inline int apply_gguf_gpu_layers(int requested, llama_model_params& mparams) {
 inline void apply_gguf_gpu_context(int applied_layers, llama_context_params& cparams) {
     if (applied_layers > 0)
         cparams.offload_kqv = false;
+    // Explicit fused-attention control; AUTO otherwise falls back to the
+    // separate CPU QK/softmax/PV graph when the device lacks FLASH_ATTN_EXT.
+    const char* fa = std::getenv("XLLAMA_FLASH_ATTN");
+    if (fa && (std::strcmp(fa, "1") == 0 || std::strcmp(fa, "2") == 0))
+        cparams.flash_attn_type = LLAMA_FLASH_ATTN_TYPE_ENABLED;
 }
 
 // Persistent CPU threadpools for a context that alternates CPU and d3d12

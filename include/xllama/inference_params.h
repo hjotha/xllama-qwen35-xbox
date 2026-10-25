@@ -51,6 +51,11 @@ struct InferenceParams {
     /// Thread count (0 = auto-detect).
     int n_threads = 0;
 
+    /// Batch thread count for graphs with more than one token (prefill chunks,
+    /// verify batches, catch-up). 0 = same as n_threads (unchanged default);
+    /// single-token decode always uses n_threads (plan 006 C1).
+    int n_threads_batch = 0;
+
     /// Which repetition of a repeated bench this run is (0 = not a bench).
     /// Written verbatim into the bench CSV's run_index column.
     int run_index = 0;
@@ -69,6 +74,12 @@ struct InferenceParams {
     /// Bench only: decode exactly n_predict tokens, through end-of-generation
     /// (stop sequences should be cleared too). Default off.
     bool ignore_eog = false;
+
+    /// Phase instrumentation on/off (plan 003 stage 2). ON by default. OFF removes
+    /// the per-phase chrono snapshots while keeping every counter, so the ON/OFF
+    /// delta measures the cost of the instrumentation itself rather than guessing
+    /// it from the residual. Does NOT change decoding or sampling.
+    bool profile_phases = true;
 
     /// Sampling defaults from `xllama/sampling.h`.
     float temperature = sampling_defaults::kTemperature;
@@ -212,6 +223,16 @@ struct InferenceResult {
     /// True if stopped on a stop sequence; false if capped by n_predict/EOS.
     bool ended_with_stop = false;
 
+    /// Termination-state gate (plan 003): natural-EOG evidence straight from
+    /// the result — the sampled token id and the branch that sampled it — so
+    /// a gate never infers EOG from a short output or from hitting the cap.
+    /// Stop-sequence evidence: the branch and loop round the stop fired in.
+    /// Defaults: -1 / empty = the run ended without that event (cap, abort).
+    int eog_token = -1;
+    std::string eog_branch;
+    std::string stop_branch;
+    int stop_round = -1;
+
     /// Max length actually requested of the engine.
     /// On DirectML this controls prefill throughput. 0 = N/A (GGUF).
     int max_length = 0;
@@ -228,11 +249,37 @@ struct InferenceResult {
     /// GGUF layers actually placed on the d3d12 backend (0 = CPU run).
     int gpu_layers = 0;
 
-    /// Speculative drafts generated (0 when prompt_lookup is off).
+    /// Speculative drafts generated, MTP + n-gram lookup combined (0 when both are
+    /// off). Read n_mtp_drafted when the question is "did MTP propose anything":
+    /// this aggregate cannot distinguish the two sources.
     int n_drafted = 0;
 
-    /// Speculative drafts accepted.
+    /// Speculative drafts accepted, both sources combined.
     int n_spec_accepted = 0;
+
+    /// Proposals that came from the MTP head, and the ones accepted from them.
+    /// Zero whenever MTP is off, even if the n-gram lookup drafted.
+    int n_mtp_drafted = 0;
+    int n_mtp_accepted = 0;
+
+    /// Proposals that came from the n-gram lookup (only when it is enabled).
+    int n_lookup_drafted = 0;
+    int n_lookup_accepted = 0;
+
+    /// MTP rounds that carried a non-empty draft batch. With this at 0 the MTP
+    /// head never reached a verify batch, whatever n_drafted says.
+    int n_mtp_rounds = 0;
+
+    /// Wall-clock accounting over the SAME interval, so the phases can be
+    /// reconciled against a total instead of being compared to nothing
+    /// (plan 003 stage 2). t_total_ms covers load + prefill + decode;
+    /// t_decode_ms is the decode loop alone and t_decode_accounted_ms is the sum
+    /// of the per-phase timers inside it, so their difference is the residual.
+    double t_total_ms = 0.0;
+    double t_decode_ms = 0.0;
+    double t_decode_accounted_ms = 0.0;
+    double t_lookup_ms = 0.0;
+    double t_classic_ms = 0.0;
 
     /// True when MTP was requested and the draft context actually came up.
     /// A bench that asked for MTP must fail when this is false (plan 003,

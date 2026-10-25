@@ -45,7 +45,12 @@ param(
     # Store SKU: XLLAMA_STORE_SKU — no LAN API, no USB models, no headless flags;
     # AppxManifest.store.xml (internetClient only). Dev Mode remains the default.
     # See docs/store-readiness.md. Still test-signed (Partner Center identity later).
-    [switch]$StoreSku       = $false
+    [switch]$StoreSku       = $false,
+    # /O2 and AVX2 remain enabled; only whole-program compile/link is skipped.
+    # Separate persistent object/output paths preserve both build caches.
+    [switch]$Iteration      = $false,
+    [switch]$Clean          = $false,
+    [string]$WindowsSdkVersion = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -128,7 +133,7 @@ Write-Host "Using MSBuild: $MsBuild"
 # ---------------------------------------------------------------------------
 $UwpDir = Join-Path $RepoRoot "uwp"
 $CrtDlls = @("MSVCP140.dll", "MSVCP140_1.dll", "VCRUNTIME140.dll", "VCRUNTIME140_1.dll")
-$CrtRedistDir = Get-ChildItem `
+$CrtRedistDir = Get-Item `
     -Path "${env:ProgramFiles}\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\x64\Microsoft.VC143.CRT" `
     -ErrorAction SilentlyContinue |
     Sort-Object FullName -Descending | Select-Object -First 1
@@ -138,8 +143,11 @@ if ($CrtRedistDir) {
     foreach ($dll in $CrtDlls) {
         $src = Join-Path $CrtRedistDir.FullName $dll
         if (Test-Path $src) {
-            Copy-Item $src $UwpDir -Force
-            Write-Host "  Copied $dll"
+            $dst = Join-Path $UwpDir $dll
+            if (-not (Test-Path $dst) -or (Get-FileHash $src).Hash -ne (Get-FileHash $dst).Hash) {
+                Copy-Item $src $UwpDir -Force
+                Write-Host "  Copied $dll"
+            }
         }
     }
 } else {
@@ -149,8 +157,15 @@ if ($CrtRedistDir) {
 # ---------------------------------------------------------------------------
 # NuGet restore (packages.config in uwp\ → restores to uwp\packages\)
 # ---------------------------------------------------------------------------
-Write-Host "Restoring NuGet packages ..."
-nuget restore $SlnPath
+$missingPackages = @(([xml](Get-Content (Join-Path $UwpDir "packages.config"))).packages.package |
+    Where-Object { -not (Test-Path (Join-Path $UwpDir "packages/$($_.id).$($_.version)")) })
+if (-not $Iteration -or $missingPackages.Count -gt 0) {
+    Write-Host "Restoring NuGet packages ..."
+    nuget restore $SlnPath
+    if ($LASTEXITCODE -ne 0) { throw "NuGet restore failed ($LASTEXITCODE)" }
+} else {
+    Write-Host "Iteration: reusing installed NuGet packages."
+}
 
 if ($PatchedGenAI -and $Backend -ne "llamacpp") {
     $VendorScript = Join-Path $RepoRoot "scripts/vendor-genai-dml-patch.ps1"
@@ -220,26 +235,43 @@ $MsBuildArgs = @(
     $SlnPath,
     "/p:Configuration=$Configuration",
     "/p:Platform=$Platform",
-    "/p:AppxPackageSigningEnabled=true",
+    "/p:AppxPackageSigningEnabled=$(-not $Iteration)",
     "/p:PackageCertificateKeyFile=$PfxPath",
     "/p:PackageCertificatePassword=$CertPwd",
     "/p:PackageCertificateThumbprint=$($cert.Thumbprint)",
     "/m",
     "/nologo"
 )
+$target = "/t:Build"
+$MsBuildArgs += $target
+if ($WindowsSdkVersion) { $MsBuildArgs += "/p:WindowsTargetPlatformVersion=$WindowsSdkVersion" }
+if ($Iteration) {
+    $MsBuildArgs += "/p:XllamaIteration=true"
+    Write-Host "Iteration: optimized incremental Build without LTCG; persistent separate cache."
+}
 if ($StoreSku) {
     $MsBuildArgs += "/p:XllamaStoreSku=true"
 }
+if ($Backend -ne "ort") { $MsBuildArgs += "/p:XllamaBackend=$Backend" }
+if ($Clean) {
+    # Clean the whole solution before pre-building ggml. Rebuild afterwards
+    # would clean the inactive ProjectReference and delete the freshly built lib.
+    $CleanArgs = @($MsBuildArgs | Where-Object { $_ -ne $target }) + "/t:Clean"
+    & $MsBuild @CleanArgs
+    if ($LASTEXITCODE -ne 0) { throw "Solution clean failed ($LASTEXITCODE)" }
+}
 if ($Backend -ne "ort") {
     Write-Host "Backend: $Backend (links the static ggml/llama lib)"
-    $MsBuildArgs += "/p:XllamaBackend=$Backend"
     # Pre-build the static ggml/llama lib explicitly: the solution maps it
     # ActiveCfg-only (no Build.0 — the ORT variants must not compile it, the
     # submodule may be absent there), so the solution build resolves the
     # ProjectReference path but does not build the lib itself (LNK1181).
     $GgmlProj = Join-Path $RepoRoot "uwp/ggml-uwp.vcxproj"
     Write-Host "Pre-building ggml-uwp.vcxproj ($Configuration|$Platform) ..."
-    & $MsBuild $GgmlProj "/p:Configuration=$Configuration" "/p:Platform=$Platform" "/m" "/nologo"
+    $GgmlArgs = @($GgmlProj, "/p:Configuration=$Configuration", "/p:Platform=$Platform", "/m", "/nologo", $target)
+    if ($Iteration) { $GgmlArgs += "/p:XllamaIteration=true" }
+    if ($WindowsSdkVersion) { $GgmlArgs += "/p:WindowsTargetPlatformVersion=$WindowsSdkVersion" }
+    & $MsBuild @GgmlArgs
     if ($LASTEXITCODE -ne 0) {
         Write-Error "ggml-uwp build failed ($LASTEXITCODE)"
         exit $LASTEXITCODE

@@ -6,16 +6,19 @@
 #   shaders/gpugemv_q4k_wave32.hlsl → gpugemv_q4k_wave32_dxil.h (H6.2 LDS-red)
 #   shaders/gpugemv_q4k_rows.hlsl   → gpugemv_q4k_rows_dxil.h   (H6.3 multi-row)
 #   shaders/gpugemv_q4k_dot4.hlsl   → gpugemv_q4k_dot4_dxil.h   (H6.3 int8 dot, cs_6_4)
-#   shaders/ggml_d3d12_mmv_{q4_0,q4_k,q5_k,q6_k}.hlsl → ggml_d3d12_mmv_*_t{64,128}_dxil.h
+#   shaders/ggml_d3d12_mmv_{q4_0,q4_k,q5_k,q6_k,q8_0}.hlsl → ggml_d3d12_mmv_*_t{64,128}_dxil.h
 #     (D2 backend; one blob per thread-group width, -D NUM_THREADS)
+#   shaders/ggml_d3d12_mmv_q4_k.hlsl -D TWO_COL=1 → ggml_d3d12_mmv_q4_k_t{64,128}_2col_dxil.h
+#     (plan 004 two-column tile experiment; same script, new target only)
 #
-# Usage: compile-gpugemv-shader.sh [naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k ...]
+# Usage: compile-gpugemv-shader.sh [naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k|mmv_q8_0|mmv_q4_k_2col|mmv_q6_k_2col|mmv_q6_k_4col|gdn ...]
 #        (default: all)
 # A different dxc release emits different bytes: regenerate only the targets
 # you changed so measured blobs stay the ones the CSVs were recorded with.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DXC="${DXC:-dxc}"
+PYTHON="${PYTHON:-python3}"
 
 if [[ ! -x "$DXC" ]] && ! command -v "$DXC" >/dev/null 2>&1; then
 	echo "dxc not found (set DXC=...). Example Linux release:" >&2
@@ -30,7 +33,7 @@ emit_header() {
 	local source_rel="$3"
 	local symbol="$4"
 	local profile="$5"
-	python3 - "$dxil" "$out_h" "$source_rel" "$symbol" "$profile" <<'PY'
+	"$PYTHON" - "$dxil" "$out_h" "$source_rel" "$symbol" "$profile" <<'PY'
 import sys
 from pathlib import Path
 
@@ -89,7 +92,7 @@ compile_target() {
 	dot4) compile_one "$ROOT/shaders/gpugemv_q4k_dot4.hlsl" \
 		"$ROOT/shaders/generated/gpugemv_q4k_dot4_dxil.h" \
 		"shaders/gpugemv_q4k_dot4.hlsl" "kGpugemvQ4kDot4Dxil" cs_6_4 ;;
-	mmv_q4_0 | mmv_q4_k | mmv_q5_k | mmv_q6_k)
+		mmv_q4_0 | mmv_q4_k | mmv_q5_k | mmv_q6_k | mmv_q8_0)
 		local t="${1#mmv_}" w sym
 		for w in 64 128; do
 			sym="kGgmlD3d12Mmv$(echo "$t" | sed -e 's/_\(.\)/\U\1/g' -e 's/^./\U&/')T${w}Dxil"
@@ -99,15 +102,39 @@ compile_target() {
 				-D "NUM_THREADS=${w}"
 		done
 		;;
+	gdn) compile_one "$ROOT/shaders/ggml_d3d12_gated_delta_net.hlsl" \
+		"$ROOT/shaders/generated/ggml_d3d12_gated_delta_net_dxil.h" \
+		"shaders/ggml_d3d12_gated_delta_net.hlsl" "kGgmlD3d12GatedDeltaNetDxil" cs_6_0 ;;
+	mmv_q6_k_2col | mmv_q6_k_4col)
+		local cols="${1#mmv_q6_k_}" w sym
+		cols="${cols%col}"
+		for w in 64 128; do
+			sym="kGgmlD3d12MmvQ6K${cols}ColT${w}Dxil"
+			compile_one "$ROOT/shaders/ggml_d3d12_mmv_q6_k.hlsl" \
+				"$ROOT/shaders/generated/ggml_d3d12_mmv_q6_k_t${w}_${cols}col_dxil.h" \
+				"shaders/ggml_d3d12_mmv_q6_k.hlsl -D NUM_THREADS=${w} -D TILE_COLS=${cols}" \
+				"$sym" cs_6_0 -D "NUM_THREADS=${w}" -D "TILE_COLS=${cols}"
+		done
+		;;
+	mmv_q4_k_2col)
+		local w sym
+		for w in 64 128; do
+			sym="kGgmlD3d12MmvQ4K2ColT${w}Dxil"
+			compile_one "$ROOT/shaders/ggml_d3d12_mmv_q4_k.hlsl" \
+				"$ROOT/shaders/generated/ggml_d3d12_mmv_q4_k_t${w}_2col_dxil.h" \
+				"shaders/ggml_d3d12_mmv_q4_k.hlsl -D NUM_THREADS=${w} -D TWO_COL=1" "$sym" \
+				cs_6_0 -D "NUM_THREADS=${w}" -D TWO_COL=1
+		done
+		;;
 	*)
-		echo "unknown target: $1 (naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k)" >&2
+			echo "unknown target: $1 (naive|wave32|rows|dot4|mmv_q4_0|mmv_q4_k|mmv_q5_k|mmv_q6_k|mmv_q8_0|mmv_q4_k_2col|mmv_q6_k_2col|mmv_q6_k_4col|gdn)" >&2
 		exit 2
 		;;
 	esac
 }
 
 if [[ $# -eq 0 ]]; then
-	set -- naive wave32 rows dot4 mmv_q4_0 mmv_q4_k mmv_q5_k mmv_q6_k
+	set -- naive wave32 rows dot4 mmv_q4_0 mmv_q4_k mmv_q5_k mmv_q6_k mmv_q8_0 gdn
 fi
 for target in "$@"; do
 	compile_target "$target"

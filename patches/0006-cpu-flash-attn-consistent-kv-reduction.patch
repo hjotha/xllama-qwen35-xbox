@@ -1,0 +1,14 @@
+--- a/ggml/src/ggml-cpu/ops.cpp
++++ b/ggml/src/ggml-cpu/ops.cpp
+@@ -9421,7 +9421,10 @@
+     const bool use_ref = params->use_ref;
+ 
+     const bool kv_is_f32_or_f16 = (k->type == GGML_TYPE_F32 || k->type == GGML_TYPE_F16);
+-    const bool use_split_kv_path = !use_ref && (neq1 == 1 && neq3 == 1) && kv_is_f32_or_f16 && (k->type == v->type) && q->type == GGML_TYPE_F32 && nek1 >= 512;
++    // Keep per-query reduction identical to multi-query verification when requested.
++    const char * no_split = getenv("GGML_FLASH_ATTN_NO_SPLIT_KV");
++    const bool split_allowed = !(no_split && no_split[0] == '1' && no_split[1] == '\0');
++    const bool use_split_kv_path = split_allowed && !use_ref && (neq1 == 1 && neq3 == 1) && kv_is_f32_or_f16 && (k->type == v->type) && q->type == GGML_TYPE_F32 && nek1 >= 512;
+ 
+     if (use_split_kv_path) {
+         const int64_t chunk_size = (nek1 + nth - 1) / nth;

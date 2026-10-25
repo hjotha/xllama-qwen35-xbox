@@ -7,10 +7,15 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <mutex>
 #include <thread>
 
-#ifdef XLLAMA_UWP
+#ifndef _WIN32
+    #include <time.h>
+#endif
+
+#if defined(_WIN32)
     #ifndef WIN32_LEAN_AND_MEAN
         #define WIN32_LEAN_AND_MEAN
     #endif
@@ -19,6 +24,11 @@
     #endif
 // clang-format off
     #include <windows.h>
+// clang-format on
+#endif
+
+#ifdef XLLAMA_UWP
+// clang-format off
     #define PSAPI_VERSION 2
     #include <psapi.h>
     #include <unknwn.h>
@@ -39,6 +49,24 @@ int detect_threads_llama() noexcept {
     return std::min(detect_threads(), 6); // ggml livelock at t7/t8 (see platform.h)
 #else
     return detect_threads();
+#endif
+}
+
+double process_cpu_ms() noexcept {
+#if defined(_WIN32)
+    FILETIME creation{}, exit_time{}, kernel{}, user{};
+    if (!GetProcessTimes(GetCurrentProcess(), &creation, &exit_time, &kernel, &user))
+        return -1.0;
+    auto ticks = [](const FILETIME& t) -> unsigned long long {
+        return (static_cast<unsigned long long>(t.dwHighDateTime) << 32) |
+               static_cast<unsigned long long>(t.dwLowDateTime);
+    };
+    return static_cast<double>(ticks(kernel) + ticks(user)) / 10000.0; // 100ns ticks -> ms
+#else
+    timespec ts{};
+    if (clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &ts) != 0)
+        return -1.0;
+    return static_cast<double>(ts.tv_sec) * 1000.0 + static_cast<double>(ts.tv_nsec) / 1000000.0;
 #endif
 }
 

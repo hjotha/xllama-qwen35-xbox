@@ -58,6 +58,12 @@ struct llama_mtp_weights_info llama_model_mtp_weights_get_info(const struct llam
 
 namespace xllama {
 
+// The Xbox has at most six application CPU workers; reject malformed overrides.
+inline int mtp_draft_threads(const char* value, int fallback) {
+    return value && value[0] >= '1' && value[0] <= '6' && value[1] == '\0' ? value[0] - '0'
+                                                                           : fallback;
+}
+
 // Knobs mirrored from common_params_speculative in the fork's common layer.
 // The defaults match its draft defaults: up to 4 proposed tokens, minimum 1,
 // and only keep drafting while the sampled candidate is at least this likely.
@@ -71,6 +77,10 @@ struct MtpDraftParams {
 // budget goes (plan 003, stage 2). Times are milliseconds; counters are
 // counts. The drafter accumulates into this struct during draft() and
 // process(); the loop reads it after each call and resets it.
+//
+// Every chrono snapshot below is gated on the caller's `profile` flag. With it
+// off the counters still increment but the time fields stay 0, so an ON/OFF pair
+// measures the instrumentation's own cost instead of inferring it from a residual.
 struct MtpDraftStats {
     double decode_ms = 0.0;   // llama_decode inside draft() / process()
     double sample_ms = 0.0;   // draft sampler (including the p_min gate)
@@ -104,6 +114,21 @@ class MtpDrafter {
         return m_ctx;
     }
 
+    // Bring the private mirror in line with a target KV that was rewound or
+    // cleared. |pos| is how many positions the target now keeps: 0 clears the
+    // mirror, a positive value drops the speculative tail at or above it. The
+    // pending row describes the mirror, so it cannot survive either. Fails
+    // closed when the mirror refuses the trim.
+    bool align_to(llama_pos pos);
+
+    // True when the pending row is exactly the hidden state a replay starting at
+    // |pos| needs: the mirror holds the prefix below |pos| and the pending row
+    // describes position |pos - 1|. The caller must have proven that prefix
+    // holds the same tokens as the target's before believing this.
+    bool can_carry_from(llama_pos pos) const {
+        return m_pending_valid && m_pending_pos == pos - 1;
+    }
+
     // Proposed tokens for the next decode position. |last_token| is the token
     // just committed at |pos|; |h_row| is the target's hidden state for that
     // token (llama_get_embeddings_nextn_ith on the target context). Returns an
@@ -113,7 +138,7 @@ class MtpDrafter {
     // |n_max_eff| clamps this call's depth below params().n_max (context or
     // output budget already consumed); -1 keeps the configured depth.
     std::vector<llama_token> draft(llama_token last_token, llama_pos pos, const float* h_row,
-                                   int n_embd, int n_max_eff = -1);
+                                   int n_embd, int n_max_eff = -1, bool profile = true);
 
     // Replay a committed prefix into the private context so the draft head
     // attends to the same history the target has. Mirrors the catch-up decode
@@ -127,7 +152,7 @@ class MtpDrafter {
     // of tokens[0] in the target cache. Returns false on decode failure, in
     // which case the drafter must be re-validated before drafting again.
     bool process(const llama_token* tokens, const float* h_rows, const float* h_pending, int n,
-                 llama_pos pos0);
+                 llama_pos pos0, bool profile = true);
 
     // Phase accounting for the last draft()/process() calls (see MtpDraftStats).
     const MtpDraftStats& stats() const {
@@ -141,6 +166,64 @@ class MtpDrafter {
         return m_params;
     }
 
+    // Plan 009 complete-state persistence: the private draft KV is real
+    // state (Qwen3.5 keeps a private draft KV), so a slot file must be able
+    // to carry it or a restore silently degrades the drafter to a partial
+    // mirror (documented hole) with a decoy pending row. Test-only accessors
+    // follow for the aligned-comparison probes.
+    bool get_state(std::vector<uint8_t>& blob) const;
+    bool set_state(const uint8_t* data, size_t size);
+    // Install a REAL pending row (the true hidden state carried from the
+    // save). Fail-closed: no row, no valid pos => false and nothing changes.
+    bool prime_pending(const float* row, llama_pos pos);
+    llama_pos mirror_pos_min() const;
+
+    // Plan 009 S3 probe (test-only accessors): the pending row bytes and the
+    // mirror's position extent, so a diagnostic can compare drafter-boundary
+    // state between arms. Production paths never read these.
+    const float* pending_row_data() const {
+        return m_pending_valid ? m_pending_h.data() : nullptr;
+    }
+    llama_pos mirror_pos_max() const {
+        return m_ctx ? llama_memory_seq_pos_max(llama_get_memory(m_ctx), 0) : -1;
+    }
+
+    // Turn-end observability (plan 009): the pending carry + mirror end that
+    // the NEXT turn's F3.5 can_carry check will see. Log-only support; the
+    // reuse decision never reads these.
+    bool pending_valid() const {
+        return m_pending_valid;
+    }
+    llama_pos pending_pos() const {
+        return m_pending_pos;
+    }
+
+    // Plan 009 committed carry: install the snapshot (last successfully
+    // replayed prefix end) as the pending carry when it describes exactly
+    // |committed_end| and the mirror holds at least through it. Returns
+    // false (leaving everything untouched) otherwise. This is what lets a
+    // turn that ended after speculative draft rounds still carry into the
+    // next turn: draft() clobbers pending with future positions, but the
+    // snapshot survives (only process() success writes it).
+    bool commit_carry(llama_pos committed_end);
+
+    // Plan 009 slot-restore: after the mirror was cleared because a disk
+    // restore replaced the target prefix (new process), the pending row is
+    // gone, so F3.5 would refuse the carry and the next turn would full-
+    // prefill. Priming a ZERO pending row at |pos| (the last restored
+    // token) makes can_carry_from(pos+1) true again so the tail-only turn
+    // keeps MTP drafting. The row is a deliberate DECOY: the draft context
+    // below |pos| stays empty and this row does not describe the target's
+    // hidden state of that token. It is safe by the same contract every
+    // draft already lives under — the target verifies every candidate, so
+    // a wrong draft costs time, never output text, and draft() returning
+    // empty falls back to classic decode (F2.3). Worst case measured on
+    // the rev234 zerocarry arms: acceptance halves, text identical, no
+    // state divergence in the target. Fail-closed: returns false (leaving
+    // the cleared mirror, i.e. full prefill) unless the drafter is ready
+    // and |pos| >= 0.
+    bool prime_zero_carry(llama_pos pos);
+
   private:
     llama_context* m_ctx = nullptr;
     llama_sampler* m_smpl = nullptr;
@@ -151,6 +234,16 @@ class MtpDrafter {
     std::vector<float> m_pending_h;
     llama_pos m_pending_pos = -1;
     bool m_pending_valid = false;
+    // Plan 009 committed carry: snapshot of the last successfully replayed
+    // prefix end (row + position), written only by process() on success.
+    // draft() rounds overwrite m_pending_* with future positions, but never
+    // touch these — so commit_carry() can restore a correct carry at turn
+    // end. Invalidated whenever the mirror prefix dies (align_to rules
+    // below, process() decode failure); never persisted (re-established
+    // every turn from live rows).
+    std::vector<float> m_carry_h;
+    llama_pos m_carry_pos = -1;
+    bool m_carry_valid = false;
     MtpDraftStats m_stats{};
 };
 
